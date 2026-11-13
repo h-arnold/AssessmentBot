@@ -56,6 +56,7 @@ This feature is **not** intended to:
 - Both tables already set `scroll={{ x: 'max-content' }}`, which supplies the horizontal overflow and is required for fixed columns.
 - The Student Averages table currently requests non-fixed name columns. The Task Heatmap table currently requests fixed name columns.
 - Both heatmap surfaces render the same table component, so the embedded and standalone heatmaps share one implementation path.
+- The Class page renders either the overview (with the Student Averages table) or the assignment heatmap view, never both at once, so only one of the two student tables is in the document at a time on that page.
 - The application header participates in normal document flow; it is not fixed. Header and scroll offsets therefore default to `0`.
 - The fluid-width exception for heatmap pages and panels stays in force: the table keeps its own horizontal scrolling, and the page must not gain document-level horizontal overflow.
 - The Task Heatmap feature must not import from the Class page feature. The shared student-name column module is the permitted common owner.
@@ -84,7 +85,7 @@ The table's horizontal scroll region is the `.ant-table-body` element that owns 
 1. While the table is read and its header would pass the top of the viewport, the header pins to the viewport top with a zero top offset.
 2. Header grouping, column titles, sort controls, and filter controls keep their current content and behaviour while pinned.
 3. The header unpins at the table container's bottom edge; it never detaches from the table's own vertical span. The container extends past the scroll region by the sticky bar's height while the bar is rendered, so unpin assertions allow that tolerance.
-4. The header renders in the separate `.ant-table-header.ant-table-sticky-holder` table. Header cells remain in the accessibility tree with their existing names and roles, but they are no longer contained by the table that holds the rows. When the source table supplies an `aria-label`, both the header and body tables carry it, so the label resolves to two table elements.
+4. The header renders in a separate table inside the `.ant-table-header.ant-table-sticky-holder` element. Header cells remain in the accessibility tree with their existing names and roles, but they are no longer contained by the table that holds the rows. When the source table supplies an `aria-label`, both the header and body tables carry it, so the label resolves to two table elements.
 
 ### Rendered DOM structure
 
@@ -121,11 +122,11 @@ The tree omits Ant Design's Spin wrappers (`.ant-spin-nested-loading` and `.ant-
 ### Proposed high-level tree
 
 ```text
-Class page
+Class page (renders one branch at a time)
 ├── Class overview
 │   └── Student Averages card
 │       └── Table (sticky, fixed name columns)
-└── Assignment heatmap view
+└── Assignment heatmap view (replaces the overview while open)
     └── Task Heatmap card
         └── TaskHeatmapTable (sticky, fixed name columns)
 
@@ -295,14 +296,15 @@ None.
 - Implement the scroll model with the Ant Design `Table` `sticky` prop on both table components. Do not add `scroll.y`, height measurements, or a fixed-height container.
 - Leave header and scroll offsets at their Ant Design defaults (`0`). If the application shell later gains a fixed header or footer, the offsets must be revisited in the same change that introduces it.
 - Both heatmap surfaces are covered by `TaskHeatmapTable`; do not add a second heatmap code path.
-- Simplify the shared student-name column builder so both columns are always fixed; update both call sites and the canonical shared-helper document.
+- Simplify the shared student-name column builder so both columns are always fixed; update both call sites, remove the builder's `sticky`-option JSDoc and the `StudentNameTableColumnsOptions` type along with the option, and update the canonical shared-helper document.
+- The canonical shared-helper doc updates (§3.6 and the §9 register entry in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`) must first land as planned-only entries marked `Not implemented` before implementation starts; the implementing change removes the marker as it delivers the decision.
 - A dedicated layout specification is required because the change alters visible scrolling behaviour and viewport-pinned regions.
 - Expect and plan the split-header DOM change. Tests that probe `.ant-table-content` must move to `.ant-table-body`. Tests that resolve either table by accessible name (`getByRole('table', { name: 'Task Heatmap' })`, `getByLabelText`, or `queryByLabelText`) become ambiguous and must be replaced with structural bases. Wrapper or Card scoping alone does not disambiguate `table` or `row` roles, because both halves are inside the same wrapper.
   - Row and cell assertions base on the body table under `.ant-table-body`.
   - Column-header assertions base on the header table under `.ant-table-header.ant-table-sticky-holder`.
-  - Wrapper scoping is valid only for roles that occur once per column, such as a named column header.
+  - Wrapper scoping is valid only for roles whose occurrence count is unchanged by the split, such as a named column header, which keeps its pre-split count. The `table` role count doubles — one table becomes the header and body tables, both carrying the source `aria-label` when one is supplied. `row` occurrences are redistributed between the two tables with the total unchanged, so wrapper-scoped row queries still match the same rows but can no longer be attributed to one table or scoped through a `table` role locator; basing row and cell assertions on `.ant-table-body` is the attribution and robustness convention, not a consequence of a count change.
 - The Student Averages table remains unnamed in both halves of the split render, so its locators must use the surrounding Card to find the wrapper and then the body or header structural base rather than an accessible name.
-- Browser coverage must choose a narrow viewport height below the table scroll region's rendered height, measured at runtime, and scroll each table until it crosses the viewport bottom edge. The table's document top offset includes the surrounding page title, navigation cards, and selection or summary regions. The headless Playwright Chromium project hides native scrollbars, so Ant Design's cached scrollbar measurement is 0. Assert the hidden state by scrolling the scroll region's bottom edge to or above the viewport bottom; do not assert a one-scrollbar-height boundary unless the case launches a browser with visible scrollbars. No canonical-fixture generator change is expected.
+- Browser coverage must choose a narrow viewport that is narrow in both dimensions: its width below each surface's horizontal-overflow threshold, measured at runtime (`scrollWidth > clientWidth` on the `.ant-table-body` scroll region) — the repo's established 390px convention (see `NARROW_VIEWPORT` in `heatmaps-layout.spec.ts`) pins the width only — and its height below the table scroll region's rendered height, also measured at runtime. Then scroll each table until it crosses the viewport bottom edge. The table's document top offset includes the surrounding page title, navigation cards, and selection or summary regions. The headless Playwright Chromium project hides native scrollbars, so Ant Design's cached scrollbar measurement is 0. Assert the hidden state by scrolling the scroll region's bottom edge to or above the viewport bottom; do not assert a one-scrollbar-height boundary unless the case launches a browser with visible scrollbars. No canonical-fixture generator change is expected.
 - Browser end-to-end tests must prove the bar's viewport-bottom geometry, header pinning, fixed-column stability, and the absence of document-level horizontal overflow on all three surfaces. Poll for the bar's presence; do not assert it synchronously or exactly at the visibility boundary.
 - No data-shape documentation update is required.
 
@@ -314,8 +316,8 @@ None.
   - column-header, row, and cell assertions are re-scoped in `TaskHeatmapPage.spec.tsx`, `HeatmapBuilderSurface.spec.tsx`, `ClassPageHeatmapView.spec.tsx`, and the heatmap half of `studentNameTableColumns.spec.tsx`, because `getByRole('table', { name: 'Task Heatmap' })` and `getByLabelText('Task Heatmap')` resolve to both the header and body tables after the split. In `studentNameTableColumns.spec.tsx`, anchor structural `col` and row probes to the body table so the header colgroup is not measured by mistake. The class-side table in that spec is rendered without `sticky` or `scroll`, so its half remains a single table;
   - the other `TaskHeatmapTable.*.spec.tsx` suites use unscoped column-header and button locators, which keep resolving because header cells remain in the accessibility tree. Do not re-scope them unless the implementation changes their DOM beyond this plan;
   - `StudentAveragesTableCard.spec.tsx` and the `studentAveragesTableColumns.*.spec.tsx` suites use container-query and unscoped locators and survive the split. Add the sticky-header-holder assertion for the Student Averages table to `StudentAveragesTableCard.spec.tsx`;
-  - run a one-off locator audit for any remaining co-located table spec and re-scope only locators that become ambiguous. The audit must include position-based unscoped row locators, such as `getByRole('row').filter({ hasText: ... })`, because they now also match header-table rows and work only through their content filter.
-- Browser end-to-end coverage on all three surfaces at a narrow viewport:
+  - run a one-off locator audit spanning both the Vitest and Playwright layers for any remaining co-located table spec and re-scope only locators that become ambiguous. The audit must include unscoped content-filtered row locators, such as `getByRole('row').filter({ hasText: ... })` (the `class-page-baseline-mode.spec.ts` E2E case is the real example): their match set is unchanged by the split, so they are audited for attribution and robustness only — confirming the content filter still selects the intended rows — not because the split altered their matching.
+- Browser end-to-end coverage on all three surfaces at a narrow viewport (narrow in both width and height, per the planning handoff notes):
   - the sticky bar appears and is pinned to the viewport bottom while the table scroll region crosses the bottom edge;
   - dragging or scrolling horizontally moves the table and keeps the bar synchronised;
   - Forename and Surname keep their viewport position while metric columns move;
@@ -327,8 +329,8 @@ None.
   - the sticky bar is absent on the Student Averages table and on both heatmap surfaces, none of which has horizontal overflow at that width;
   - the document has no horizontal overflow.
 - Browser fixture basis:
-  - the coverage reuses the existing `createHeatmapScenario` fixture (10 students, 3 tasks). Its roster and per-student score evidence are committed local literals; its class metadata snapshot and definition partials select from the committed `small` canonical corpus;
-  - the local roster and score literals are accepted because the behaviour under test is table geometry and scrolling, not analysis scoring, and the fixture is already committed and in active use. No synthetic generator change is planned. The fixture's 10 rows offer enough content to exceed a narrow viewport height once the scroll region is measured at runtime;
+  - the coverage reuses the existing `createHeatmapScenario` fixture (10 students, 3 tasks). Its roster, per-student score evidence, and assignment-definition partial are committed local literals; its class metadata snapshot selects from the committed `small` canonical corpus;
+  - the local roster and score literals are accepted because the behaviour under test is table geometry and scrolling, not analysis scoring, and the fixture is already committed and in active use. No synthetic generator change is planned. The fixture's 10 rows offer enough content to exceed the runtime-chosen short viewport height once the scroll region is measured;
   - invalid or boundary states are not needed for this feature.
 - Regression coverage:
   - every E2E spec on the three surfaces that resolves a table by accessible name or scopes headers, rows, or cells through a table role locator must be re-scoped. Verified examples include `heatmaps.spec.ts`, `heatmaps-layout.spec.ts`, `class-page-baseline-mode.spec.ts`, `task-heatmap.spec.ts`, `task-heatmap-summary.spec.ts`, `task-heatmap-re-run-assessment.spec.ts`, `task-preview-card.spec.ts`, `task-preview-source-link.spec.ts`, `task-preview-source-link.visual.spec.ts`, `assessment-error-previews.spec.ts`, `assessment-error-merged-previews.spec.ts`, `legacy-assignment-results.spec.ts`, `navigation-screenshots.spec.ts`, `metric-range-filter.spec.ts`, `post-analysis-metadata.feedback.spec.ts`, `post-analysis-metadata.persistence.spec.ts`, and the helpers `task-preview-source-link-helpers.ts` and `assessment-error-preview-journeys.ts`;
@@ -338,7 +340,7 @@ None.
 
 ## Documentation and rollout notes
 
-- Update `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §3.6 to record that both tables always receive fixed name columns and that the builder option was removed, and add a one-line §9 register entry recording the same decision.
+- Update `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §3.6 to record that both tables always receive fixed name columns and that the builder option was removed, and add a one-line §9 register entry recording the same decision; while editing §3.6, scope the existing purity bullet explicitly to the `utils/splitStudentName.ts` module, because the column-builder module is not pure.
 - Update `docs/developer/frontend/frontend-loading-and-width-standards.md`: keep §7.1 for the heatmap fluid-width exception and add a sibling subsection for student tables that records the sticky bar and sticky header for both the heatmap and the Student Averages table while each table keeps its own horizontal scrolling.
 - Add the sticky-table locator convention to `docs/developer/frontend/frontend-playwright-e2e.md` for the browser suites and to `docs/developer/frontend/frontend-testing.md` for the Vitest suites: a sticky table splits into a header holder and a body table, so tests base row and cell queries on `.ant-table-body` and header queries on `.ant-table-header.ant-table-sticky-holder`, and never resolve the table by accessible name.
 - No migration, data reset, or rollout dependency.
