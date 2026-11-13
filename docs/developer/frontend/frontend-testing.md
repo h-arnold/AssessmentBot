@@ -291,8 +291,8 @@ dispatcher suite:
   [Synthetic Test Data](../testing/synthetic-test-data.md#node-dispatcher-metadata-round-trip).
 
 Both browser specs use the existing runtime response queues. Keep strict dispatch:
-an unknown method or exhausted queue must still fail. The full browser suite
-currently runs **314** tests.
+an unknown method or exhausted queue must still fail. Run the full browser suite
+with `npm run test:e2e` from `src/frontend`.
 
 ### API transport and queue suites
 
@@ -1080,6 +1080,31 @@ focused combobox with explicit `key`/`code` and matching `keyCode`/`which`, wrap
 and assert `aria-activedescendant` before pressing Enter. Keep the keyboard expectation intact;
 do not replace it with a hidden-option assertion or drop the real-browser keyboard/closemotion
 coverage.
+
+### 8. Sticky student tables render as a split
+
+The Student Averages table and the Task Heatmap (embedded and standalone) enable Ant Design's
+`sticky` mode, so each renders as two tables plus a scrollbar:
+
+- `.ant-table-header.ant-table-sticky-holder` holds the header table. Base every `columnheader`
+  query here.
+- `.ant-table-body` holds the body table and owns the horizontal overflow. Base every row and
+  cell query here.
+- `.ant-table-sticky-scroll` holds the pinned scrollbar while the body overflows horizontally.
+  `happy-dom` never measures overflow, so component specs assert the holder and body structure
+  only; the bar's behaviour belongs to Playwright.
+
+Never resolve a sticky student table by accessible name. Ant Design copies a supplied
+`aria-label` onto both tables, so `getByRole('table', { name: 'Task Heatmap' })` matches two
+elements and fails strict mode, while the unnamed Student Averages table cannot be found by name
+at all. Scope through the owning `Card` or wrapper, then use the structural bases: rows and cells
+from `.ant-table-body`, column headers from `.ant-table-header.ant-table-sticky-holder`.
+Wrapper-scoped queries remain valid only for roles whose occurrence count the split leaves
+unchanged, such as a named column header.
+
+The body `tbody` starts with an `aria-hidden` `tr.ant-table-measure-row` that repeats the column
+titles as text. Count data rows with `tbody tr.ant-table-row`; a bare `tbody tr` includes the
+measure row. For the same reason, assert headers by role rather than by text.
 
 ## `act()` Warning Avoidance
 

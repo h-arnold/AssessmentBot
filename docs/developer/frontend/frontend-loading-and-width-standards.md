@@ -168,6 +168,16 @@ This is a deliberately narrow exception:
 - The heatmap table keeps its own internal horizontal scrolling. The exception widens the container that holds the table; it does not force the table to fit the viewport.
 - Because the exception removes a cap rather than adding a width, it introduces no new width token. Keep named exceptions few, centralised, and named by intent.
 
+### 7.2 Sticky tables in student-table surfaces
+
+Both student tables use Ant Design's `sticky` mode: the Student Averages table on the Class page and the Task Heatmap on the Class page assignment view and the standalone Heatmaps page. Sticky mode changes scroll affordances only; each table keeps its own horizontal scrolling inside its existing capped or fluid frame, and width ownership stays with that frame.
+
+- The header pins to the viewport top inside `.ant-table-header.ant-table-sticky-holder` while the table is read.
+- While the table body overflows horizontally, a pinned scrollbar (`.ant-table-sticky-scroll`) appears at the viewport bottom, so the table can be panned without scrolling to its end. The table's own horizontal scrollbar stays reachable at its end; the pinned bar supplements it.
+- Forename and Surname are fixed start columns, so they stay visible while the metric and task columns move.
+- The document remains the only scroll container. No ancestor of either table may clip or scroll, or the pinned header and bar would track that ancestor instead of the viewport.
+- No fixed-height body region or `scroll.y` is set; vertical scrolling stays with the document.
+
 ## 8. Accessibility semantics
 
 - Initial blocking load must expose accessible loading semantics, such as a labelled `role="status"` region while the skeleton is present.

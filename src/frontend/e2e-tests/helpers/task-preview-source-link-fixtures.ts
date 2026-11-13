@@ -166,9 +166,6 @@ export const SLIDES_ASSIGNMENT_ID = 'assignment-2-1';
 /** Canonical populated Sheets assignment used for the second editor URL shape. */
 export const SHEETS_ASSIGNMENT_ID = 'assignment-2-2';
 
-/** Accessible name of the task heatmap table on both entry points. */
-export const HEATMAP_TABLE_NAME = 'Task Heatmap';
-
 /**
  * Valid Sheets tab id that must survive verbatim into the link fragment.
  * The Sheets value `"0"` is a valid gid.

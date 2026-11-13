@@ -410,6 +410,34 @@ expect(page.getByRole('combobox')).toHaveTextContent('Select an assignment');
 await expect(page.getByText('Select an assignment')).toBeVisible();
 ```
 
+### Sticky Table Split Render
+
+The three student-table surfaces — Student Averages on the Class page overview, the Class page
+assignment heatmap view, and the standalone Heatmaps page — render Ant Design tables in `sticky`
+mode. Each splits into a header table, a body table and a bar:
+
+- `.ant-table-header.ant-table-sticky-holder` holds the header table. Base every `columnheader`
+  query here.
+- `.ant-table-body` holds the body table and is the horizontal scroll region. Base every row and
+  cell query here.
+- `.ant-table-sticky-scroll` renders only while the body overflows horizontally and its scroll
+  region crosses the viewport bottom; its thumb is `.ant-table-sticky-scroll-bar`. Poll for its
+  presence rather than asserting synchronously.
+
+Use the shared helper in [Shared Helpers and Imports](#shared-helpers-and-imports) for these
+bases instead of repeating the selectors.
+
+Never resolve a sticky student table by accessible name. Ant Design copies a supplied `aria-label`
+onto both tables, so `getByRole('table', { name: 'Task Heatmap' })` and `getByLabelText` match two
+elements and violate strict mode; the Student Averages table supplies no label, so no name query
+finds it at all. Scope by the owning `.ant-card` (Student Averages) or the page (both heatmap
+surfaces), then use the structural bases. Wrapper-scoped queries remain valid only for roles whose
+occurrence count the split leaves unchanged, such as a named column header, and for ancestor probes.
+
+The body `tbody` starts with an `aria-hidden` `tr.ant-table-measure-row` that repeats the column
+titles as text. Count data rows with `tbody tr.ant-table-row`; a bare `tbody tr` includes the
+measure row. For the same reason, assert headers by role inside the holder rather than by text.
+
 ---
 
 ## Playwright Best Practices
@@ -577,7 +605,9 @@ unauthorised, backend error, delayed loading) to quickly verify usability during
 - E2E runtime mocks: `src/frontend/e2e-tests/shared/endToEndRuntimeMocks.ts`
 - Classes E2E helpers: `src/frontend/e2e-tests/helpers/classes-page-end-to-end-helpers.ts`
 - Select popup readiness helper: `src/frontend/e2e-tests/helpers/select-popup-readiness.ts` — exports `waitForSelectPopupReady(option)`, called before each ready-sensitive option click listed in [Select Popup Readiness Before Option Clicks](#select-popup-readiness-before-option-clicks).
-- Sticky-table locators (`Not implemented`): a shared module under `src/frontend/e2e-tests/helpers/` (for example `sticky-table-locators.ts`) will expose wrapper-scoped structural bases for `.ant-table-header.ant-table-sticky-holder`, `.ant-table-body` and `.ant-table-sticky-scroll`, so specs never resolve a sticky table by accessible name. Keep a base local to its spec if fewer than three specs need it.
+- Sticky-table locators: `src/frontend/e2e-tests/helpers/sticky-table-locators.ts` — structural bases for the three sticky student tables: `stickyTableWrapper(scope)`, `stickyTableHeaderHolder(scope)`, `stickyTableBody(scope)` and `stickyTableScrollBar(scope)`. Each takes a `StickyTableScope` (`Page | Locator`) containing exactly one sticky table: the `Page` on either heatmap surface, the owning `.ant-card` for Student Averages on the Class page overview. Use it instead of resolving a sticky table by accessible name; see [Sticky Table Split Render](#sticky-table-split-render).
+- Sticky-table coverage: `src/frontend/e2e-tests/sticky-table-scroll.spec.ts` — six journeys over the three student-table surfaces (three narrow at 390px, three wide at 1920px) and the first consumer of `stickyTableScrollBar`. The narrow journeys pin the bar and header, pan (programmatically or by dragging the thumb), prove the fixed name columns hold their viewport position, sort while pinned on the Class page overview, and assert the bar unmounts once the scroll region's bottom edge reaches the viewport bottom. The Class page journeys collapse the shell navigation before resizing: the expanded sider otherwise squeezes the cards at 390px. The wide journeys assert no bar, no region overflow and no document overflow.
+  - Document-overflow encoding: at 390px the Class page chrome already overflows the document independently of the tables, so the two Class-page journeys fall back to the table's contribution invariant — document `scrollWidth` is identical with the table's card hidden and shown. The strict `scrollWidth <= clientWidth` assertion applies to the Heatmaps page and to all three wide journeys.
 - `google.script.run` harness: `src/frontend/src/test/googleScriptRunHarness.ts`
   - For Playwright init scripts, inline `googleScriptRunApiHandlerFactorySource` inside `page.addInitScript(...)`
 - Classes page test helpers (shared fixtures): `src/frontend/src/test/classes/classesPageTestHelpers.ts`

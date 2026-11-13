@@ -118,10 +118,9 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 - `splitStudentName`: shared deterministic helper module at `src/frontend/src/utils/splitStudentName.ts`. It exports:
   - `splitStudentName(studentName: string): { forename: string; surname: string }` — the first whitespace-separated token becomes `forename`; the remaining tokens are joined with single spaces as `surname`. Leading, trailing, and repeated internal whitespace is collapsed; an empty or whitespace-only name returns two empty strings. Honourifics are never special-cased.
   - `compareStudentNamePart(part: 'forename' | 'surname', a, b): number` — selects the requested derived part of two `Readonly<{ studentName: string; studentId: string }>` rows, compares them locale-aware and case-insensitively, and tie-breaks by ascending `studentId`. The comparison is direction-neutral; call sites apply direction inversion.
-- Consumers: the Student Averages table (`features/classPage/studentAveragesTableColumns.tsx` column renderers and per-column sorters, and `features/classPage/classPageModel.ts` explicit derived sort) and the Task Heatmap table (`features/taskHeatmap/TaskHeatmapTable.tsx` two sticky columns and their sorters). No duplicate per-feature name-splitting logic is permitted.
+- Consumers: the Student Averages table (`features/classPage/studentAveragesTableColumns.tsx` column renderers and per-column sorters, and `features/classPage/classPageModel.ts` explicit derived sort) and the Task Heatmap table (`features/taskHeatmap/TaskHeatmapTable.tsx` two fixed name columns and their sorters). No duplicate per-feature name-splitting logic is permitted.
 - **Standing requirement:** all tables displaying a student name use Forename and Surname columns derived via this shared helper. Default ordering stays full-name ascending through the unchanged `compareStudentNames` comparator.
-- Shared Forename/Surname Ant Design columns: `buildStudentNameColumns<Row>(options)` at `src/frontend/src/features/shared/studentNameTableColumns.tsx` — the column counterpart consumed by the two tables above.
-- Always-fixed name columns (`Not implemented`): both consumers need fixed name columns, so `buildStudentNameColumns` will always emit `fixed: 'start'` on Forename and Surname. The `options` parameter, the `StudentNameTableColumnsOptions` type and its `sticky`-option JSDoc will be removed, and both call sites (`features/classPage/studentAveragesTableColumns.tsx` and `features/taskHeatmap/TaskHeatmapTable.tsx`) will drop the option argument.
+- Shared Forename/Surname Ant Design columns: `buildStudentNameColumns<Row>()` at `src/frontend/src/features/shared/studentNameTableColumns.tsx` — the column counterpart consumed by the two tables above. It takes no column options and always emits `fixed: 'start'` on Forename and Surname, because both consumers need fixed name columns and no caller needs the non-fixed variant (SPEC decision 5). The former `options` parameter, `StudentNameTableColumnsOptions` type and `sticky`-option JSDoc are removed; do not reintroduce them.
 - `src/frontend/src/utils/splitStudentName.ts` is pure: no React, Ant Design, I/O, or state dependencies. `studentNameTableColumns.tsx` is not: it imports Ant Design `Typography` and renders JSX.
 
 ### 3.7 Data analysis display and projection helpers
@@ -221,7 +220,7 @@ Use topic-specific docs for runtime policy details:
 
 ## 9. Helper decision register
 
-Section 3 lists what exists; this section records what was **decided** — especially what the code cannot show: helpers deliberately not extracted, designs rejected or superseded, and decisions still pending.
+Section 3 lists what exists; this section records what was **decided** — especially what the code cannot show: helpers deliberately not extracted, designs rejected or superseded, and delivered decisions whose reasoning must not be undone.
 
 Rules for new entries:
 
@@ -247,9 +246,9 @@ Rules for new entries:
 - **9.24 Generic wizard orchestrator hook and entry-intent taxonomy — rejected.** `useAssessTaskRecoveryFlow` owns stale recovery; only `buildReparseRequest` remains, in `src/frontend/src/features/assignmentWizard/assignmentWizardOrchestrator.ts`. Do not re-propose `resolveWizardEntryMode`, `useAssignmentWizardOrchestrator` or a generic `{kind: ...}` entry intent.
 - **9.27 Debounced `Add new` dispatch — rejected.** Opening a caller-owned modal is an immediate, idempotent state transition, so `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.tsx` dispatches synchronously and has no `debounceMs` prop. `useDebounce` and its other callers are unchanged. Do not reinstate a debounce on this command path.
 
-### Pending decisions
+### Delivered decisions
 
-- **9.30 Always-fixed student-name columns** — `src/frontend/src/features/shared/studentNameTableColumns.tsx` will always emit `fixed: 'start'` on Forename and Surname and drop the `options` parameter, the `StudentNameTableColumnsOptions` type and its `sticky`-option JSDoc, because both consumers need fixed columns and no caller needs the non-fixed variant. **Status: `Not implemented`**.
+- **9.30 Always-fixed student-name columns** — `src/frontend/src/features/shared/studentNameTableColumns.tsx` always emits `fixed: 'start'` on Forename and Surname and takes no column options. Both consumers need fixed name columns and no caller needs a non-fixed variant (SPEC decision 5), so the `options` parameter, the `StudentNameTableColumnsOptions` type and the `sticky`-option JSDoc are removed.
 
 ### Cross-referenced decisions
 
