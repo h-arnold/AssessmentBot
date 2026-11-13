@@ -126,7 +126,7 @@ Definitions are created and updated by a separate flow: the frontend upserts via
 - **Process Flow**:
   1. Validates params; starts progress tracking ("Assessment run starting.").
   2. Loads the full definition via `AssignmentDefinitionController.getDefinitionByKey(definitionKey, { form: 'full' })`; throws if missing.
-  3. Loads the ABClass via `ABClassController.loadClass(courseId)` — refreshes and persists the Classroom roster; throws `ClassNotFoundError` when no stored class exists.
+  3. Loads the ABClass via `ABClassController.loadClass(courseId)` — refreshes the Classroom roster and persists it only when it changed; throws `ClassNotFoundError` when no stored class exists.
   4. Creates the assignment instance (Step 3.3).
   5. Extracts students from the class; `includeImages` is true for SLIDES.
   6. Runs the pipeline (Phase 4).

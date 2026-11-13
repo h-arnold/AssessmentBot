@@ -838,13 +838,24 @@ caught and reclassified as caller validation errors.
 
 The roster refresh keeps its full refresh responsibilities (class name, owner, teachers and
 students); it is not narrowed to students-only behaviour. `ABClassRoster._persistRoster()`
-patches only the fields it owns in each store:
+compares the refreshed roster with both stored records and returns without writing when nothing
+changed. When a write is required, it patches only the fields it owns in each store:
 
 | Store                 | Existing-document update                                                                                                                                             |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Full class collection | `$set` only `className`, `classOwner`, `teachers` and `students`, in the existing forms.                                                                             |
 | `abclass_partials`    | `$set` only `className`, `classOwner` and `teachers`. Never includes `students`, `assignments`, `metadata`, `cohortKey`, `yearGroupKey`, `courseLength` or `active`. |
 
+- The unchanged-roster skip requires all of the following: the stored full document's
+  `className`, `classOwner`, `teachers` and `students` equal the refreshed values; a registry row
+  is present and its stored `_id` is neither `null` nor `undefined`; and that row's `className`,
+  `classOwner` and `teachers` equal the refreshed values (the row stores no `students`). Values
+  are compared key-order-insensitively; array order remains significant. A skip emits one
+  `_persistRoster: roster unchanged; skipping persistence` info log carrying the `classId`,
+  performs no `updateOne`, `insertOne`, `replaceOne` or `save` on either collection, and calls
+  neither roster-partial preparation nor write helper. A missing registry row, a stale registry
+  row, a stale full document or a row without a stored `_id` all continue to the write path
+  below, so the registry is still repaired and a corrupt row still fails loudly.
 - Registry patch values match the serialised forms produced by `ABClass.toPartialJSON()`:
   `classOwner` through `ABClass.serialiseOwner()` and each teacher through
   `ArrayUtils.serialiseArray()`, retaining the class-name/`null` representation. Only these
@@ -852,9 +863,10 @@ patches only the fields it owns in each store:
   obtain them. The full-store roster payload retains its existing forms and behaviour.
 - An existing partial keeps its own metadata exactly as stored, including `null` or field
   absence, and it is never read, validated, copied or rewritten by this patch even when it
-  differs from the loaded full class's metadata. Other unrelated fields are also unchanged. The
-  permitted `findOne({ classId })` existence lookup is used only to establish existence and the
-  row's stored `_id`.
+  differs from the loaded full class's metadata. Other unrelated fields are also unchanged; a
+  skipped write leaves both stores untouched. The permitted
+  `findOne({ classId })` lookup supplies the existence check and the row's stored `_id` for the
+  write path, and it also supplies the stored roster values used by the skip comparison.
 - When the partial row is missing, a complete normal partial is prepared from the already loaded
   ABClass, including validated metadata/`null`, and inserted after the full store is saved. No
   roster-only fragment is written. This is write-through creation, not a general repair or
@@ -877,6 +889,9 @@ patches only the fields it owns in each store:
 - A field-scoped roster patch of an existing partial is **not** a metadata-bearing write. It
   must not use, validate, copy or rewrite the stored metadata value; the existence lookup
   required by the missing-partial path is unaffected.
+- The comparison changes only whether a redundant write is issued. Neither stored shape,
+  validation schema nor transport payload changes; only `_persistRoster()`'s decision to write
+  is affected.
 
 ### Sub-entity: AssignmentPartial (embedded via transport)
 
@@ -1381,7 +1396,7 @@ Controller:                 src/backend/y_controllers/ABClassController/
   ├── ABClassValidation.js              — classId/courseLength domain checks; _buildUpdatePatch() (own-undefined reference-key rejection)/_applyPatchToClass(); _validateRequestMetadata() request gate
   ├── ABClassResponseMapper.js          — _toReadView() (legacy read preparation, assignment-definition-key integrity check + metadata projection), _normaliseClassPartial(), _buildClassSummary()
   ├── ABClassPersistence.js             — persistClassAndPartial() prepared full/partial writes + field-scoped roster helpers
-  ├── ABClassRoster.js                  — roster refresh and _persistRoster() field-scoped registry patch
+  ├── ABClassRoster.js                  — roster refresh; _persistRoster() unchanged-roster skip and field-scoped registry patch
   ├── ABClassMutationOps.js             — upsert/update/delete orchestration; request metadata gate; prepared selective editable partial
   └── ABClassAssignmentOps.js           — assignment mutation operations
 
