@@ -6,9 +6,9 @@
  * pure name splitting and comparison functions remain in
  * `utils/splitStudentName.ts`.
  *
- * Both columns are always fixed start columns. The former `sticky` option was
- * removed per `SPEC.md` decision 5 ("No non-fixed variant"), because both
- * consumers require fixed name columns.
+ * Both columns are always fixed start columns: both consumers require fixed
+ * name columns and no caller needs a non-fixed variant, so the builder takes
+ * no column options.
  */
 
 import type { JSX } from 'react';

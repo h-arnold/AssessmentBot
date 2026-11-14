@@ -1,15 +1,6 @@
 # Frontend Shared Helpers and Abstraction Standards
 
-This document is the canonical policy for shared-helper discovery and abstraction decisions in `src/frontend`.
-
-Use it alongside:
-
-- `src/frontend/AGENTS.md`
-- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
-- `docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `docs/developer/frontend/frontend-logging-and-error-handling.md`
-- `docs/developer/frontend/frontend-testing.md`
-- `docs/developer/frontend/frontend-shell-navigation-and-motion.md`
+This document is the canonical policy for shared-helper discovery and abstraction decisions in `src/frontend`. For topic-specific docs, see [Section 8](#8-relationship-to-other-canonical-docs).
 
 ## 1. Purpose and scope
 
@@ -45,7 +36,7 @@ Do not create a new helper only to move code out of a large file.
 
 ### 3.1a Hooks and derivation helpers
 
-- Page dataset-state hook and pure helpers: `src/frontend/src/hooks/usePageDataset.ts` — also hosts the shared neutral `computeDatasetBlockingReason` / `DatasetBlockingReason` resolver (a discriminated reason: `none` | `failed` | `untrustworthy` | `queryError`) used by both `classPage` (`useClassPageData.helpers`) and the standalone Heatmaps surface (`heatmapsSurfaceState`) to derive their feature-specific blocking errors from a single precedence decision; this resolved a three-way drift
+- Page dataset-state hook and pure helpers: `src/frontend/src/hooks/usePageDataset.ts` — also hosts the shared neutral `computeDatasetBlockingReason` / `DatasetBlockingReason` resolver (a discriminated reason: `none` | `failed` | `untrustworthy` | `queryError`) used by both `classPage` (`useClassPageData.helpers`) and the standalone Heatmaps surface (`heatmapsSurfaceState`) to derive their feature-specific blocking errors from a single precedence decision
 - Once-only conditional callback hook (React 19 StrictMode-safe): `src/frontend/src/hooks/useLogOnce.ts`
 - Shared post-analysis extension point: `src/frontend/src/hooks/usePostAnalysisTasks.ts` owns the generic context/outcome lifecycle, with schemas and the ordered runner under `services/dataAnalysis/postAnalysis/`. `src/frontend/src/hooks/usePagePostAnalysisTasks.ts` is the canonical page eligibility/context wrapper: it builds a memoised context only when the surface is `ready` with complete class, live definitions and a successful averaging result, creates the descriptor list once per mount and forwards the committed selected class ID. Both averaging surfaces call it directly. Register future tasks once in `createPostAnalysisTaskDescriptors` and import actual owners directly, without a facade/barrel. See [lifecycle and registration rules](data-analysis-architecture.md#shared-post-analysis-lifecycle-and-extension).
 - Post-analysis feedback/invalidation: `hooks/postAnalysisFeedback.ts` owns mount/class-scoped notification identity and dismissal memory, using the required `App.useApp().notification` host, and `hooks/postAnalysisInvalidation.ts` completes confirmed metadata saves with both required query settlements inside the cached attempt. See the canonical [feedback](frontend-logging-and-error-handling.md#post-analysis-metadata-failures) and [query](frontend-react-query-and-prefetch.md#post-analysis-metadata-invalidation) contracts. Task diagnostics belong to `services/dataAnalysis/postAnalysis/postAnalysisDiagnostics.ts`, not per-feature loggers.
@@ -53,7 +44,7 @@ Do not create a new helper only to move code out of a large file.
 ### 3.2 Error and transport helpers
 
 - Unknown-error normalisation: `src/frontend/src/errors/normaliseUnknownError.ts`
-- Unknown → `Error` normalisation: `toError(unknown): Error` in `src/frontend/src/errors/normaliseUnknownError.ts` — the canonical `unknown → Error` helper (S-N4) used across features; complements `normaliseUnknownError` (which returns a plain payload) when a caller needs a concrete `Error` instance
+- Unknown → `Error` normalisation: `toError(unknown): Error` in `src/frontend/src/errors/normaliseUnknownError.ts` — the canonical `unknown → Error` helper used across features; complements `normaliseUnknownError` (which returns a plain payload) when a caller needs a concrete `Error` instance
 - Blocking-load trust-boundary helper: `src/frontend/src/errors/blockingLoadError.ts`
 - Shared blocking-error → `Result` config resolver and `BlockingConfig` type: `src/frontend/src/errors/blockingConfig.ts` (per-feature copy maps supply the error-specific titles; the resolver mechanism is shared)
 - Transport error contract: `src/frontend/src/errors/apiTransportError.ts`
@@ -83,28 +74,8 @@ Feature-scoped helpers should stay feature-scoped unless there is proven cross-f
 
 ### 3.4 Shared test helpers
 
-- Frontend provider render helper: `src/frontend/src/test/renderWithFrontendProviders.tsx`
-- `google.script.run` harness: `src/frontend/src/test/googleScriptRunHarness.ts`
-- API transport/queue suite support: `src/frontend/src/test/api/apiServiceTransportTestHelpers.ts` shares harness/envelope factories and dynamic owner loaders after module resets; transport loads from `@/services/apiService`, queue from `@/services/api/apiQueue`. `apiServiceTestMocks.ts` supplies the transport mock scaffold and owner-derived types. No facade or barrel is involved.
-- Shared classes test fixtures/builders: `src/frontend/src/test/classes/classesTestHelpers.ts`
-- Classes Page test helpers: `src/frontend/src/test/classes/classesPageTestHelpers.ts` is the compatibility facade and owns `toPlainClassPartials`. The split responsibilities live in `classesPageTestFixtures.ts` (fixture factories and constants, including `createFixtureClassPartial` and `createFixtureYearGroup`), `classesPageRenderHelpers.tsx` (`renderClassesPage` and query-client helpers), `classesPageModelAssertions.ts` (`verifyClassesPageModel` and type guards) and `classesPageScreenAssertions.tsx` (DOM/screen assertions). Existing imports through the facade stay valid; new call sites may import from the owning module.
-- Classes Page grouped view-model test support: `src/frontend/src/test/classes/classesPageModelTestSupport.ts` — shared factories and assertion helpers for `classesPageModel.base.spec.ts`, `classesPageModel.sorting.spec.ts` and `classesPageModel.validation.spec.ts`.
-- Classes Page component suite support: `src/frontend/src/test/classes/ClassesPage.mockSetup.ts` registers the shared doubles; `classesPageComponentTestSetup.ts` binds typed handles and seeds per-test service/selection behaviour; `classesPageWarmupFixtures.ts` owns independent readiness, failure and trust fixtures. Used by `ClassesPage.spec.tsx` and its grouping/cards/refresh/shell companions; the refresh-only query override stays local to that suite.
-- Classes panel and bulk test infrastructure: registration-only mock setup modules (`*.mockSetup.ts` under `src/frontend/src/test/`) register identical `vi.mock` doubles once per spec family (pattern detail in `docs/developer/frontend/frontend-testing.md`); the panel family's doubles come from `createClassesManagementPanelMocks` (`classes/classesManagementPanelMockFactories.tsx`) and the bulk-panel factories `createBulkPanelMocks` / `createBulkQueueModuleMock` / `BULK_PANEL_COMPONENT_MOCKS` alongside `makeRow`, `assertQueuedBatchMutationCalledOnce` and `assertSingleSelectedRowEdit` in `classes/bulkFlowTestHelpers.ts`. The panel harness `createClassesManagementPanelHarness` (`classes/classesManagementPanelHarness.tsx`) owns the `ClassesManagementPanel.*.spec.tsx` `reset()` queue/modal behaviour, the `buildClassesManagementState` binding, the dynamic panel render, and the shared `MutableQueueState` type.
-- Class-page fixtures and hook helpers: `src/frontend/src/test/classPage/classPageFixtures.ts` (ready `ClassPageData` and adapter fixtures, imported statically by the Class page composition specs), `useClassPageDataTestFixtures.ts` (pure query/dataset builders plus the shared `createClassPageDataWrapper` provider wrapper, imported statically by the hook specs), and `useClassPageDataMockHandles.ts` (`createUseClassPageDataMockHandles()` binds the typed mocked hook dependencies for the main, blocking, and memoisation hook specs; the assignment-queries spec keeps its own bindings and the diagnostics spec declares local hoisted mocks).
-- Auth gate test helpers: `src/frontend/src/test/auth/appAuthGateTestHelpers.tsx` — the access-result fixtures, `EMPTY_STARTUP_WARMUP_RESULT`, and `createQueryWrapper()`, imported statically by the auth-gate specs; `auth/appAuthGate.mockSetup.ts` registers their doubles (`AppAuthGate.auth` keeps its local hoisted mocks).
-- Shared data-analysis test fixtures and assertion helpers: `src/frontend/src/test/dataAnalysis/` (fixtures, averaging analyser assertions), including the focused one-class/one-student `buildSingleStudentInput` builder. Placement follows the shared test helpers convention; cross-referenced from `docs/developer/frontend/frontend-testing.md`.
-- Heatmap adapter suite setup: `src/frontend/src/test/dataAnalysis/heatmapAdapterTestSetup.ts` — shared class/definition/averaging-result builders for `heatmapAdapter.spec.ts` and `heatmapAdapter.weighting.spec.ts`.
-- Heatmaps hook suite support: `src/frontend/src/test/taskHeatmap/useHeatmapsPageData.mockSetup.ts` registers the hook doubles and exports nothing; `useHeatmapsPageDataMockHandles.ts` owns the typed slot the setup module fills; `useHeatmapsPageDataSpecMocks.ts` binds `heatmapsPageDataMocks` and exports `installUseQueriesMock`, `createHeatmapsPageDataHarness` and `mockWarmupDatasetsReady`. Import the setup module before `./useHeatmapsPageData`. Used by `useHeatmapsPageData.knownErrorPreview.spec.ts`. See the inventory in `docs/developer/frontend/frontend-testing.md#shared-test-helpers`.
-- Class-detail schema wire fixtures: `src/frontend/src/test/abClass/classDetailSchemaFixtures.ts` — shared wire payloads for `classDetailService.zod.full.spec.ts`, `.submissions.spec.ts`, `.definitions.spec.ts` and `.metadataIntegration.spec.ts`; `validClassFull` carries a detached canonical metadata snapshot.
-- Shared document-order button-name helpers for placement assertions: `src/frontend/src/test/shared/buttonOrderingTestHelpers.ts` (exports `getAccessibleButtonNames` and `getAccessibleButtonIndex`), so specs assert relative action placement against the same accessible names.
-- Shared DOM guards for query results: `src/frontend/src/test/shared/domGuards.ts` (exports `requireElement` and `requireTableElement`), which assert-and-narrow queried DOM elements and throw a descriptive `TypeError` instead of relying on non-null assertions.
-- ABClass metadata test selectors: `src/frontend/src/test/abClass/abClassMetadataFixtures.ts` — Vitest-only `METADATA_PROFILE_CLASS_PARTIALS` parses committed `small`, `medium` and `large-representative` views through `?raw`; `cloneMetadata` returns detached copies. Runner-neutral `abClassMetadataSharedFixtures.ts` owns `CANONICAL_NON_NULL_METADATA` / `createCanonicalMetadataFixture()` using direct JSON loading, schema validation, freezing and cloning. The raw selector re-exports these bindings for compatibility; helpers reached by Playwright import the neutral owner directly.
-- Focused full-class fixture defaults: `src/frontend/src/test/abClass/classFullFixtureDefaults.ts` — constructor-owned defaults for `classPageAdapterTestFixtures.classFull` and `dataAnalysis/fixtures.createClassFull`; omitted/undefined metadata gets a detached canonical snapshot, while explicit null and supplied metadata survive unchanged. No production schema default is implied.
-- ABClass mutation fixtures: `src/frontend/src/test/abClass/abClassMutationFixtures.ts` — required upsert configuration selects canonical `small` class-0, whose cohort/year-group keys are both non-null strings. Detached partial responses are selected independently and may retain nullable configuration keys; complete metadata replacement requests use the shared canonical metadata factory.
-- Metadata refresh test support: `src/frontend/src/test/abClass/metadataRefreshFixtures.ts` owns detached historical-source boundary clones and untouched canonical failure inputs; `metadataRefreshTransport.ts` uses the shared GAS harness with real transport/validation/queue; `metadataEvidenceOracle.ts` calculates independent numeric expectations from assessment evidence, not supplied metadata. See the synthetic guide for the newest-instance null-name limitation.
-- Post-analysis rendered-owner support: `src/frontend/src/test/abClass/postAnalysisHookTestSupport.tsx` observes committed lifecycle state under the required real `App` host; `postAnalysisFeedbackTestSupport.tsx` renders independent owners under one real App host and query client. Its `completeNotificationLeave` handles HappyDOM's missing CSS animation completion only after a real leave starts. See [lifecycle tests](frontend-testing.md#shared-post-analysis-lifecycle-tests).
-- Post-analysis metadata browser scenarios: `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` builds canonical `small` class-2 historical-source, changed-write and newer-version runtime scenarios for `post-analysis-metadata.persistence.spec.ts` and `post-analysis-metadata.feedback.spec.ts`. Reuse it; do not duplicate the canonical setup.
+Shared test-helper modules (fixtures, mock setup, harnesses, assertion helpers) are inventoried once in [Frontend Testing](frontend-testing.md#shared-test-helpers); add new modules there.
+
 - Production page copy for assertions: `src/frontend/src/pages/pageContent.ts` — reuse the stable headings and summaries from here instead of mirroring them in tests.
 
 Test helper placement rules remain governed by `docs/developer/frontend/frontend-testing.md`.
@@ -113,8 +84,8 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 
 - `PageNavCard` `wrapActions`: opt-in action wrapping on `components/PageHeader/PageHeader.tsx`. True enables outer Flex wrapping with `gap={APP_GAP_SM}` (8px), and action Space wrapping with existing tight spacing. Omitted/false keeps current layout. Only `TaskHeatmapPage`'s normal navigation opts in; its title-error branch stays unchanged. Wrapped single-item rows are left-aligned. No new tag helper or navigation component is needed.
 
-- `ImageRenderer`: shared presentational component at `src/frontend/src/components/ImageRenderer/ImageRenderer.tsx`. Renders a base64 data URL as a constrained `<img>` (maxWidth 100%, height auto, maxHeight 400, default alt "Student response image"). Introduced for the Task Preview Card and reused there.
-- `MarkdownRenderer`: shared presentational component at `src/frontend/src/components/MarkdownRenderer/MarkdownRenderer.tsx`. Renders markdown text and tables via `react-markdown` + `remark-gfm` (no `rehype-raw`, for XSS safety). Co-located CSS for basic table styling. Introduced for the Task Preview Card, using `react-markdown` + `remark-gfm`, no `rehype-raw`, and a co-located `MarkdownRenderer.module.css`.
+- `ImageRenderer`: shared presentational component at `src/frontend/src/components/ImageRenderer/ImageRenderer.tsx`. Renders a base64 data URL as a constrained `<img>` (maxWidth 100%, height auto, maxHeight 400, default alt "Student response image").
+- `MarkdownRenderer`: shared presentational component at `src/frontend/src/components/MarkdownRenderer/MarkdownRenderer.tsx`. Renders markdown text and tables via `react-markdown` + `remark-gfm` (no `rehype-raw`, for XSS safety), with co-located CSS for basic table styling.
 
 ### 3.6 Student-name helpers
 
@@ -123,7 +94,7 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
   - `compareStudentNamePart(part: 'forename' | 'surname', a, b): number` — selects the requested derived part of two `Readonly<{ studentName: string; studentId: string }>` rows, compares them locale-aware and case-insensitively, and tie-breaks by ascending `studentId`. The comparison is direction-neutral; call sites apply direction inversion.
 - Consumers: the Student Averages table (`features/classPage/studentAveragesTableColumns.tsx` column renderers and per-column sorters, and `features/classPage/classPageModel.ts` explicit derived sort) and the Task Heatmap table (`features/taskHeatmap/TaskHeatmapTable.tsx` two fixed name columns and their sorters). No duplicate per-feature name-splitting logic is permitted.
 - **Standing requirement:** all tables displaying a student name use Forename and Surname columns derived via this shared helper. Default ordering stays full-name ascending through the unchanged `compareStudentNames` comparator.
-- Shared Forename/Surname Ant Design columns: `buildStudentNameColumns<Row>()` at `src/frontend/src/features/shared/studentNameTableColumns.tsx` — the column counterpart consumed by the two tables above. It takes no column options and always emits `fixed: 'start'` on Forename and Surname, because both consumers need fixed name columns and no caller needs the non-fixed variant (SPEC decision 5). The former `options` parameter, `StudentNameTableColumnsOptions` type and `sticky`-option JSDoc are removed; do not reintroduce them.
+- Shared Forename/Surname Ant Design columns: `buildStudentNameColumns<Row>()` at `src/frontend/src/features/shared/studentNameTableColumns.tsx` — the column counterpart consumed by the two tables above. It takes no column options and always emits `fixed: 'start'` on Forename and Surname, because both consumers need fixed name columns and no caller needs the non-fixed variant. Do not introduce a column-options parameter or a non-fixed variant.
 - `src/frontend/src/utils/splitStudentName.ts` is pure: no React, Ant Design, I/O, or state dependencies. `studentNameTableColumns.tsx` is not: it imports Ant Design `Typography` and renders JSX.
 
 ### 3.7 Data analysis display and projection helpers
@@ -154,7 +125,7 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 - Queued mutation wrappers: `src/frontend/src/services/abClass/abClassMutationService.ts` exports `upsertABClass`, `updateABClass` and the `CLASSES_BULK_MUTATION_JOB_NAME` lane symbol. Both wrappers validate before admission to the actual `classesBulkMutation` FIFO, then parse the response through `parseApiResponse(ClassPartialSchema, ...)`; transport errors and retry ownership are unchanged. Reserved-slot owners import the lane constant instead of repeating the string. Import these owners directly, without a facade or barrel. Never await these queued wrappers inside an active reservation on the same lane.
 - Pure metadata refresh helpers: `services/dataAnalysis/postAnalysis/metadataProjection.ts` owns `getMetadataRefreshDecision`, `compareAssignmentNewestFirst`, `projectAverageScores` and `mergeClassMetadata`: canonical source-time gating, shared newest-first/ID ordering, unrounded score/marker projection and stable newest-first rolling history capped at three assignment instances. `mergeClassMetadata` validates its replacement through `NonNullableABClassMetadataSchema` and returns the non-null snapshot directly.
 - Metadata task identity: `services/dataAnalysis/postAnalysis/postAnalysisTasks.ts` owns `REFRESH_AB_CLASS_METADATA_TASK_ID`, `createPostAnalysisTaskDescriptors`, `sourceVersionSignature` and the metadata attempt key. Feedback, invalidation and diagnostics import the task-ID constant; diagnostics reuse the metadata comparator. Do not duplicate the task-ID literal or the canonical newest-first ordering.
-- Metadata task entry: `services/dataAnalysis/postAnalysis/refreshABClassMetadata.ts` owns `refreshABClassMetadata(context: PostAnalysisContext, now)`, which skips unchanged/stale/empty cached sources before enqueue, calculation or clock access. It uses the shared schema-derived context and declares no narrowed task-local type. It delegates changed candidates to `services/abClass/abClassMetadataService.ts` (`refreshABClassMetadataInQueue`). The writer reserves the `CLASSES_BULK_MUTATION_JOB_NAME` lane across fresh full read, authoritative recheck, full-class and isolated-target standard-weight analysis, complete metadata update and real partial-response parsing. No nested enqueue, upsert, rollback or task retry exists. See [Data Analysis Architecture](data-analysis-architecture.md#metadata-refresh-task-and-persistence) for cache limitations and session-local guarantees. Both averaging surfaces call the shared page hook directly with the unsliced class and committed class ID. Test-only browser and Node dispatcher coverage lives in the suites listed in [Frontend Testing](frontend-testing.md#shared-post-analysis-lifecycle-tests).
+- Metadata task entry: `services/dataAnalysis/postAnalysis/refreshABClassMetadata.ts` owns `refreshABClassMetadata(context: PostAnalysisContext, now)`, which skips unchanged/stale/empty cached sources before enqueue, calculation or clock access. It uses the shared schema-derived context and declares no narrowed task-local type. It delegates changed candidates to `services/abClass/abClassMetadataService.ts` (`refreshABClassMetadataInQueue`). The writer reserves the `CLASSES_BULK_MUTATION_JOB_NAME` lane across fresh full read, authoritative recheck, full-class and isolated-target standard-weight analysis, complete metadata update and real partial-response parsing. No nested enqueue, upsert, rollback or task retry exists. See [Data Analysis Architecture](data-analysis-architecture.md#metadata-refresh-task-and-persistence) for cache limitations and session-local guarantees. Both averaging surfaces call the shared page hook directly with the unsliced class and committed class ID.
 
 ## 4. Extraction decision rules
 
@@ -192,7 +163,7 @@ Reject these patterns during implementation and review:
 - Keep feature-specific helpers inside the owning feature folder.
 - Name helpers by the contract they provide, not by where they were extracted from.
 - Prefer explicit function exports and typed return contracts.
-- Service-folder grouping conventions: `docs/developer/frontend/frontend-architecture.md`.
+- Folder conventions, including service-folder grouping and the `utils/` layout: `docs/developer/frontend/frontend-architecture.md`.
 
 ## 7. Review and PR checks
 
@@ -215,6 +186,7 @@ This document defines helper discovery and abstraction rules.
 
 Use topic-specific docs for runtime policy details:
 
+- Frontend component agent guidance: `src/frontend/AGENTS.md`
 - React Query and prefetch policy: `docs/developer/frontend/frontend-react-query-and-prefetch.md`
 - Loading, width, and busy-state semantics: `docs/developer/frontend/frontend-loading-and-width-standards.md`
 - Logging and error-handling policy: `docs/developer/frontend/frontend-logging-and-error-handling.md`
@@ -251,7 +223,7 @@ Rules for new entries:
 
 ### Delivered decisions
 
-- **9.30 Always-fixed student-name columns** — `src/frontend/src/features/shared/studentNameTableColumns.tsx` always emits `fixed: 'start'` on Forename and Surname and takes no column options. Both consumers need fixed name columns and no caller needs a non-fixed variant (SPEC decision 5), so the `options` parameter, the `StudentNameTableColumnsOptions` type and the `sticky`-option JSDoc are removed.
+- **9.30 Always-fixed student-name columns** — no caller needs a non-fixed variant; do not add a column-options parameter or a `sticky`-style option to `studentNameTableColumns.tsx`.
 
 ### Cross-referenced decisions
 
@@ -297,13 +269,3 @@ Behaviour that the code alone does not explain:
 - Both read paths isolate per-item corruption and replace unidentifiable items with the three-criterion `CORRUPT_RECORD` shape.
 - E preview reuses the existing preview owners; do not add a generic popover, preview or query helper. E contributes no numeric weight or data-point count.
 - The preview-only E override and known-partial fallback stay feature-local to `features/taskHeatmap/`.
-
-## 10. Frontend utils folder convention
-
-The `src/frontend/src/utils/` folder exists for pure formatting / utility functions that are shared across the frontend. This folder is a separate convention from the service-folder rules in `frontend-architecture.md`, which govern only `services/` subfolder organisation.
-
-### Rules
-
-- **Pure functions only.** Files in `utils/` must have no React, Ant Design, I/O, or state dependencies. They are plain TypeScript modules exporting typed pure functions.
-- **No service-folder governance.** The subfolder-by-domain-prefix rule in `frontend-architecture.md` applies only to `services/`. The `utils/` folder is a flat namespace; files are named by the domain they format (e.g. `dateFormatting.ts`). A future subfolder reorganisation may be considered if the folder exceeds 5–6 files, but no barrel exports (`index.ts`) are created in v1 — consumers import directly.
-- **First entry:** `dateFormatting.ts` — exports `formatUpdatedAtLabel(updatedAt: string | null): string` (`en-GB`, date-only, rendered in UTC; em-dash fallback for null or unparseable input). The Class page adapter deliberately does not use the fallback: it throws upstream on null or unparseable input.
