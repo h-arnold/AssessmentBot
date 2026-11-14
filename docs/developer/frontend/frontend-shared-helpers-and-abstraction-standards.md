@@ -246,8 +246,8 @@ Rules for new entries:
 
 ### Rejected and superseded designs
 
-- **9.24 Generic wizard orchestrator hook and entry-intent taxonomy — rejected.** `useAssessTaskRecoveryFlow` owns stale recovery; only `buildReparseRequest` remains, in `src/frontend/src/features/assignmentWizard/assignmentWizardOrchestrator.ts`. Do not re-propose `resolveWizardEntryMode`, `useAssignmentWizardOrchestrator` or a generic `{kind: ...}` entry intent.
-- **9.27 Debounced `Add new` dispatch — rejected.** Opening a caller-owned modal is an immediate, idempotent state transition, so `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.tsx` dispatches synchronously and has no `debounceMs` prop. `useDebounce` and its other callers are unchanged. Do not reinstate a debounce on this command path.
+- **9.31 Generic wizard orchestrator hook and entry-intent taxonomy — rejected.** `useAssessTaskRecoveryFlow` owns stale recovery; only `buildReparseRequest` remains, in `src/frontend/src/features/assignmentWizard/assignmentWizardOrchestrator.ts`. Do not re-propose `resolveWizardEntryMode`, `useAssignmentWizardOrchestrator` or a generic `{kind: ...}` entry intent.
+- **9.32 Debounced `Add new` dispatch — rejected.** Opening a caller-owned modal is an immediate, idempotent state transition, so `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.tsx` dispatches synchronously and has no `debounceMs` prop. `useDebounce` and its other callers are unchanged. Do not reinstate a debounce on this command path.
 
 ### Delivered decisions
 
