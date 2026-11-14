@@ -20,6 +20,8 @@ const EMPTY_FILTERS = {
 const COMPUTED_SCORE = 4;
 const STUDENT_NAME_COLUMN_COUNT = 2;
 const STUDENT_TABLE_COUNT = 2;
+/** Index of the final element when reading from the end. */
+const LAST_ELEMENT_INDEX = -1;
 const CLASS_AVERAGE_ROW = {
   studentId: 'student-alice',
   studentName: 'Alice Smith',
@@ -52,7 +54,10 @@ function resolveStickyHeatmapTables(container: HTMLElement): {
     throw new TypeError('Expected exactly two rendered table wrappers.');
   }
 
-  const heatmapWrapper = tableWrappers[STUDENT_TABLE_COUNT - 1];
+  const heatmapWrapper = requireElement(
+    [...tableWrappers].at(LAST_ELEMENT_INDEX) ?? null,
+    'Expected exactly two rendered table wrappers.'
+  );
   const headerHolder = requireElement(
     heatmapWrapper.querySelector('.ant-table-header.ant-table-sticky-holder'),
     'Expected the sticky Task Heatmap header holder.'
@@ -138,12 +143,15 @@ describe('shared student-name table column presentation', () => {
     ]);
     expect(heatmapNameColumnWidths).toEqual(classNameColumnWidths);
 
-    const classDataRow = classTable.querySelector(':scope tbody tr[data-row-key]');
+    const classDataRow = requireElement(
+      classTable.querySelector(':scope tbody tr[data-row-key]'),
+      'Expected both student-name tables to render a data row.'
+    );
     // Data rows live in the body table, not the header table.
-    const heatmapDataRow = heatmapBodyTable.querySelector(':scope tbody tr[data-row-key]');
-    if (!(classDataRow instanceof HTMLElement) || !(heatmapDataRow instanceof HTMLElement)) {
-      throw new TypeError('Expected both student-name tables to render a data row.');
-    }
+    const heatmapDataRow = requireElement(
+      heatmapBodyTable.querySelector(':scope tbody tr[data-row-key]'),
+      'Expected both student-name tables to render a data row.'
+    );
     const classNameValues = within(classDataRow)
       .getAllByRole('cell')
       .slice(0, STUDENT_NAME_COLUMN_COUNT)

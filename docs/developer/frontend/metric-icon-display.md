@@ -63,8 +63,8 @@ These values are passed directly to `createElement(icon, { size: 20, strokeWidth
 
 `MetricIconLabel` is used as the `title` property of Ant Design `Table.Column` definitions in two places:
 
-- **Heatmap task-column sub-headers** (`TaskHeatmapTable.tsx`, line 234): each metric column within a task group renders `MetricIconLabel` as its column title.
-- **Student averages table** (`studentAveragesTableColumns.tsx`, line 107): each metric column header renders `MetricIconLabel`.
+- **Heatmap task-column sub-headers** (`taskHeatmapTableColumns.tsx`): each metric column within a task group renders `MetricIconLabel` as its column title.
+- **Student averages table** (`studentAveragesTableColumns.tsx`): each metric column header renders `MetricIconLabel`.
 
 In both cases, the `icon` and `label` come from `METRIC_DISPLAY_META`, a map that centralises metric display metadata (icon, label, display title) for each metric key.
 

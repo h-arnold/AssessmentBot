@@ -2,9 +2,10 @@
  * The Student Averages table card for the Class page.
  *
  * Renders an Ant Design `Card` (`size="small"`, title `"Student Averages"`)
- * containing a control row (`Input.Search` on the left, static label on the
- * right) and an Ant Design `Table` with six columns (Forename, Surname,
- * Completeness, Accuracy, SPaG, Average).
+ * containing a control row (`Space.Compact` with a plain `Input` and
+ * `SearchOutlined` prefix on the left, static label on the right) and an Ant
+ * Design `Table` with six columns (Forename, Surname, Completeness, Accuracy,
+ * SPaG, Average).
  *
  * @remarks
  * **State ownership.** The component owns three pieces of user-controlled

@@ -41,6 +41,7 @@ import {
   stickyTableWrapper,
   type StickyTableScope,
 } from './helpers/sticky-table-locators';
+import { ASSIGNMENTS_CONTROL_INDEX } from './helpers/shell-controls';
 import {
   createHeatmapScenario,
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
@@ -60,8 +61,6 @@ const THUMB_DRAG_DISTANCE = 100;
 const NARROW_HEIGHT_DIVISOR = 2;
 /** An element's centre offset is its box edge plus its size divided by this. */
 const RECT_CENTRE_DIVISOR = 2;
-/** Heatmaps builder combobox order: class, topics, assignments. */
-const ASSIGNMENTS_CONTROL_INDEX = 2;
 /**
  * Sub-pixel rounding tolerance for geometry comparisons, matching the
  * committed convention in `heatmaps-layout.spec.ts`; the document-overflow

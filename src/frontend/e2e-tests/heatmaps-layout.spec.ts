@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { installRuntimeMock, selectVisibleOption } from './shared/endToEndRuntimeMocks';
 import { stickyTableWrapper } from './helpers/sticky-table-locators';
+import { ASSIGNMENTS_CONTROL_INDEX } from './helpers/shell-controls';
 import {
   createHeatmapScenario,
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
@@ -14,7 +15,6 @@ const VIEWPORT_HEIGHT = 1000;
 const EXPECTED_SHELL_PADDING = 16;
 const GEOMETRY_TOLERANCE = 1;
 const SIBLING_PAGE_MAX_WIDTH = 1280;
-const ASSIGNMENTS_CONTROL_INDEX = 2;
 
 test('populated Heatmaps stays fluid across viewport widths without widening capped siblings', async ({
   page,

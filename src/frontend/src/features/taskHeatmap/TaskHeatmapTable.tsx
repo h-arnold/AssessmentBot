@@ -3,7 +3,7 @@
  *
  * Renders a grouped-header Ant Design Table from a structurally-narrowed
  * heatmap view model (`TaskHeatmapData`). The first two columns (Forename,
- * Surname) are sticky: both derive their display values from the stored
+ * Surname) are fixed at the start: both derive their display values from the stored
  * single-string `studentName` via the shared `splitStudentName` helper and
  * sort by their own derived value with a `studentId` tie-break. The default
  * initial order remains full-name ascending via the `rows.toSorted`

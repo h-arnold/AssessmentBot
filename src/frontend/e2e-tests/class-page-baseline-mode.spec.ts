@@ -36,7 +36,7 @@ import {
   buildClassFullDocument,
   type HeatmapSkippedTasksByStudentId,
 } from './helpers/task-heatmap-class-fixtures';
-import { stickyTableHeaderHolder } from './helpers/sticky-table-locators';
+import { stickyTableBody, stickyTableHeaderHolder } from './helpers/sticky-table-locators';
 
 // Visible control copy pinned by the attempt-baseline layout specification
 // (copy home: `pageContent` under `classDetail`).
@@ -241,7 +241,7 @@ test.describe('Class page attempt-baseline mode', () => {
     await openHeatmapClass(page);
 
     const control = getModeControl(page);
-    const studentTenRow = page.getByRole('row').filter({ hasText: 'Ten' });
+    const studentTenRow = stickyTableBody(page).getByRole('row').filter({ hasText: 'Ten' });
     await expect(studentTenRow).toHaveCount(1);
 
     // Student Ten attempted all three tasks, so their averages drop the

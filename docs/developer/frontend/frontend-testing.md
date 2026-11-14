@@ -1091,9 +1091,10 @@ The Student Averages table and the Task Heatmap (embedded and standalone) enable
   query here.
 - `.ant-table-body` holds the body table and owns the horizontal overflow. Base every row and
   cell query here.
-- `.ant-table-sticky-scroll` holds the pinned scrollbar while the body overflows horizontally.
-  `happy-dom` never measures overflow, so component specs assert the holder and body structure
-  only; the bar's behaviour belongs to Playwright.
+- `.ant-table-sticky-scroll` holds the pinned scrollbar, and renders only while the body overflows
+  horizontally and its scroll region crosses the viewport bottom. `happy-dom` never measures
+  overflow, so component specs assert the holder and body structure only; the bar's behaviour
+  belongs to Playwright.
 
 Never resolve a sticky student table by accessible name. Ant Design copies a supplied
 `aria-label` onto both tables, so `getByRole('table', { name: 'Task Heatmap' })` matches two
