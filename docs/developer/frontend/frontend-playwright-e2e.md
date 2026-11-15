@@ -427,10 +427,10 @@ mode. Each splits into a header table, a body table and a bar:
 Use the shared helper in [Shared Helpers and Imports](#shared-helpers-and-imports) for these
 bases instead of repeating the selectors.
 
-Never resolve a sticky student table by accessible name. Ant Design copies a supplied `aria-label`
-onto both tables, so `getByRole('table', { name: 'Task Heatmap' })` and `getByLabelText` match two
-elements and violate strict mode; the Student Averages table supplies no label, so no name query
-finds it at all. Scope by the owning `.ant-card` (Student Averages) or the page (both heatmap
+Never resolve a sticky student table by accessible name. Both sticky student tables supply an
+`aria-label`, and Ant Design copies it onto both tables, so `getByRole('table', { name: 'Task Heatmap' })`,
+`getByRole('table', { name: 'Student Averages' })` and `getByLabelText` each match two elements and
+violate strict mode. Scope by the owning `.ant-card` (Student Averages) or the page (both heatmap
 surfaces), then use the structural bases. Wrapper-scoped queries remain valid only for roles whose
 occurrence count the split leaves unchanged, such as a named column header, and for ancestor probes.
 

@@ -176,15 +176,15 @@ All inter-element gaps/spacings expressed in TSX must come from a single constan
 - **Module path:** `src/frontend/src/theme/spacing.ts` (created during implementation; this section documents its intended contract).
 - **Exports and their token mapping:**
 
-  | Constant                 | Value      | Maps To                            |
-  | ------------------------ | ---------- | ---------------------------------- |
-  | `APP_GAP_XS`             | `4`        | `--app-spacing-xs`                 |
-  | `APP_GAP_SM`             | `8`        | `--app-spacing-sm`                 |
-  | `APP_GAP_COMPACT`        | `12`       | Accepted Flex half-step (see §6.2) |
-  | `APP_GAP_MD`             | `16`       | `--app-spacing-md`                 |
-  | `APP_GAP_LG`             | `24`       | `--app-spacing-lg`                 |
-  | `APP_SPACE_SIZE_DEFAULT` | `'middle'` | 16px Space size                    |
-  | `APP_SPACE_SIZE_TIGHT`   | `'small'`  | 8px Space size                     |
+  | Constant                 | Value      | Maps To                          |
+  | ------------------------ | ---------- | -------------------------------- |
+  | `APP_GAP_XS`             | `4`        | `--app-spacing-xs`               |
+  | `APP_GAP_SM`             | `8`        | `--app-spacing-sm`               |
+  | `APP_GAP_COMPACT`        | `12`       | Accepted Flex half-step (see §6) |
+  | `APP_GAP_MD`             | `16`       | `--app-spacing-md`               |
+  | `APP_GAP_LG`             | `24`       | `--app-spacing-lg`               |
+  | `APP_SPACE_SIZE_DEFAULT` | `'middle'` | 16px Space size                  |
+  | `APP_SPACE_SIZE_TIGHT`   | `'small'`  | 8px Space size                   |
 
 - **Rule:** Replace magic-number `gap`/`margin`/`padding` literals and implicit `<Space>` sizes with these constants. The `<Space size={0}>` zero-gap option list in `AssignmentDefinitionsTable.tsx` (the table filter dropdown) is a documented exception and need not use a constant.
 - **Relationship to CSS tokens:** These constants mirror the existing `--app-spacing-*` CSS custom properties defined in `src/frontend/src/index.css`. The TS module is the TypeScript-side source of truth for component code.
@@ -238,6 +238,9 @@ variables. The remaining non-token values below are deliberate:
 - `padding: '4px 8px'` in `AssignmentDefinitionsTable.tsx` filter dropdowns — the 4px vertical is
   the permitted half-unit exception; the 8px horizontal maps to `var(--app-spacing-sm)`.
 - `padding: '2px 4px'` in `MetricPill.tsx` compact mode — see §5.2.
+- `APP_GAP_COMPACT` (12px) Flex gaps such as those in `ClassesManagementPanel.tsx` and
+  `AssignmentsManagementSurface.tsx` — a deliberate 8 + 4 half-step between the 8px grid steps,
+  permitted for Flex `gap` where a tighter visual grouping needs it.
 - `CLASSES_CARD_HORIZONTAL_PADDING_FACTOR = 2` in `ClassesPage.tsx` — a scaling factor, not a
   spacing literal. The card gap itself derives from `APP_GAP_MD`.
 
