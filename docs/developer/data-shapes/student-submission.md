@@ -211,7 +211,7 @@ This shape embeds [Contract: BaseTaskArtifact](base-task-artifact.md) and
    Both serialisers always include `documentId` (which may be `null`). The frontend
    schemas tolerate both `null` and an absent field to handle Google Classroom edge
    cases where the Drive reference is omitted for students who never opened the
-   assignment. The partial schemas are permissive by design at the transport boundary.
+   assignment. Both read schemas are permissive by design at the transport boundary.
 
 2. **`StudentSubmissionPartialSchema.studentName` is `z.string().nullable()` and the backend always emits it as a nullable string.**
 
@@ -222,8 +222,7 @@ This shape embeds [Contract: BaseTaskArtifact](base-task-artifact.md) and
 4. **`StudentSubmission.updatedAt` uses a monotonic counter suffix (e.g. `"2025-09-10T12:30:00Z#2"`).**
    Not standard ISO 8601. The frontend uses `z.string()`, so it passes validation;
    downstream code that parses it as ISO 8601 would fail on the `#N` suffix. The schema is
-   intentionally loose; the counter is documented in
-   `../backend/rehydration.md` (§Hydration Guidelines).
+   intentionally loose.
 
 5. **`StudentSubmissionItemSchema.feedback` uses `z.looseObject` while `StudentSubmissionItemPartialSchema.feedback` uses `z.unknown()`.**
    The full schema validates `type` and `createdAt` as strings but tolerates extra

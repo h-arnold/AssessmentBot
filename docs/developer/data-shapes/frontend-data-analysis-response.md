@@ -1244,7 +1244,7 @@ the sections above.
    evidence must never invoke baseline selection), while the public summary
    input continues to validate the caller's supplied `analysisMode`.
 
-   the internal delegation pin and the required
+   The internal delegation pin and the required
    public filter field are in place; the reconciliation confirms the analyser
    stays internally `'absolute'` and the public summary schema is unchanged.
 
@@ -1268,7 +1268,7 @@ the sections above.
    `error`, and any mixture with a converted criterion converges on
    `excluded`.
 
-   the rule lives in the co-located module
+   The rule lives in the co-located module
    `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts`
    (`rollupCardCriteria`; `deriveBaselineTaskKeySet` —
    `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`;
@@ -1326,7 +1326,7 @@ the sections above.
    each hop. `MergedHeatmapTaskColumn` inherits the field via its existing spread
    of the base projection. `HeatmapCell` is unchanged: marking is
    **column-level only in v1**, and cell values stay absolute in both modes.
-   both column descriptors require the field and
+   Both column descriptors require the field and
    the adapter derives the set from its own analyser result; the fail-fast
    throws name `appliedAnalysisMode` (missing or unrecognised echo) and
    `attemptBaseline` (baseline-mode result without the block), as the Baseline

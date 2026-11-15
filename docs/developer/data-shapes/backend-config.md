@@ -300,7 +300,7 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
   - `setBackendConfig_(config)` — validates `params` is a plain object (throws `ApiValidationError` for non-object/array). **Rejects any auth field** (`authMode`, `authGroupEmail`, `authUsers`, `authRevision`) present on the payload as a single `ApiValidationError` (`INVALID_REQUEST`) for every caller, including admins, before any ordinary field is staged. Defers per-field validation of ordinary fields to `ConfigurationManager.preparePropertyValue()` → `CONFIG_SCHEMA` rules, then commits the whole patch through one `writeConfigurationLocked` call.
 - `src/backend/ConfigurationManager/01_configKeysAndSchema.js` — `CONFIG_SCHEMA` defines per-key validation (ordinary fields only; auth fields are validated in the dedicated auth-endpoint path, see [Contract: AuthUsers](auth-users.md)):
   - Integer fields: `Validate.validateIntegerInRange()` with domain-appropriate bounds.
-  - `apiKey`: `validateApiKey()` — pattern check.
+  - `apiKey`: `validateApiKey_()` — pattern check.
   - `backendUrl`: `Validate.validateUrl()` — URL string validation.
   - `revokeAuthTriggerSet` / `jsonDbBackupOnInitialise`: `Validate.validateBoolean()` + normalise via `toBooleanString`.
   - `jsonDbLogLevel`: `validateLogLevel()` — enum check + normalise.
@@ -319,9 +319,10 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
 ### Known discrepancies
 
 1. **`revokeAuthTriggerSet` is writable in the backend but excluded from the frontend write schema.**
-   `setBackendConfig_()` accepts and writes it, while `BackendConfigWriteInputSchema` and the form
-   mapper intentionally exclude it. The frontend treats the field as read-only: it appears in the
-   settings UI but is never sent back.
+   `setBackendConfig_()` accepts and writes it, and both the read payload and `BackendConfigSchema`
+   carry it, while `BackendConfigWriteInputSchema` and the form mapper intentionally exclude it. The
+   field is neither displayed nor editable in the settings UI: `backendSettingsFieldNames` lists only
+   the ten editable fields and no `.tsx` file references it, so the frontend never sends it back.
 
 2. **`backendUrl` write schema is stricter than the read schema.**
    The read response's `BackendUrlSchema` (`z.union([z.url(), z.literal('')])`) allows an empty
@@ -355,8 +356,10 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
    response, so both schemas must change in lockstep.
 
 7. **Persistence-table `authMode` row documents the storage contract only.**
-   Row 14 lists `googleGroups | scriptProperties` (the `'none'` bypass is removed), consistent with
-   `01_configKeysAndSchema.js`. `getAuthMode()` resolves an absent `authMode` paired with a
+   Its Row 14 notes describe only the `'none'` rejection and the legacy leniency; the accepted
+   `googleGroups | scriptProperties` enum is stated in the `authMode` `CONFIG_SCHEMA` validation
+   note under [§ Validation](#validation), consistent with `01_configKeysAndSchema.js`.
+   `getAuthMode()` resolves an absent `authMode` paired with a
    non-blank `authGroupEmail` to `googleGroups` (legacy leniency) and resolves to `null` otherwise.
    The read transport does not emit `authMode`.
 

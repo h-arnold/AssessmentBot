@@ -434,7 +434,7 @@ Preparation rules:
 | Mutation            | The restored instance, its saved raw submissions and later persistence output are unchanged.                                                                                                                                                                                                             |
 
 Stored explicit `REASSESSMENT_REQUIRED` errors remain supported: they are served as stored on
-both read paths and are not regenerated. There is no all-results placeholder producer; the
+both read paths and are not regenerated. There is no all-criteria placeholder producer; the
 catalogue entry remains accepted for previously stored errors.
 
 Format gate and persistence preservation:

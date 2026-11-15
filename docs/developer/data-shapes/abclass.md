@@ -1321,6 +1321,13 @@ canonical snapshots and boundary probes; it is the parity oracle, not production
 
 ---
 
+## Scope boundaries
+
+Ordinary class saves preserve raw legacy bodies and original version values, including non-array
+submissions roots.
+
+---
+
 ## File Index
 
 ```
@@ -1451,8 +1458,3 @@ Regression suites:
   ├── tests/api/abclassMetadataApi.test.js                              — wrapper forwarding/adaptation
   └── tests/api/apiHandler/abclassMetadata{Reads,Writes,Errors}.test.js — real read/write/error envelopes
 ```
-
-## Scope boundaries
-
-Ordinary class saves preserve raw legacy bodies and original version values, including non-array
-submissions roots. Corrupted student IDs remain explicitly out of scope.
