@@ -114,6 +114,60 @@ describe('AssignmentFactory behaviour', () => {
     });
     expect(routed.kind).toBe('sheets');
     expect(routed.data.assignmentDefinition.documentType).toBe('SHEETS');
+    expect(routed.data.assignmentDefinition.primaryTitle).toBe('Legacy');
+    expect(routed.data.assignmentDefinition.primaryTitle).not.toBe('Assignment a-two');
+  });
+
+  it('rejects legacy data with no assignmentName', () => {
+    const factory = globalThis.AssignmentFactory;
+    const invoke = () =>
+      factory.fromJSON({
+        courseId: 'c-legacy-missing-name',
+        assignmentId: 'a-legacy-missing-name',
+        documentType: 'SHEETS',
+        tasks: {},
+      });
+
+    expect(invoke).toThrow(TypeError);
+    expect(invoke).toThrow(
+      /assignmentName must be a string.*courseId=c-legacy-missing-name.*assignmentId=a-legacy-missing-name/
+    );
+  });
+
+  it.each([
+    ['null', null],
+    ['number', 42],
+  ])('rejects a %s legacy assignmentName', (_label, assignmentName) => {
+    const factory = globalThis.AssignmentFactory;
+    const invoke = () =>
+      factory.fromJSON({
+        courseId: 'c-legacy-invalid-name',
+        assignmentId: 'a-legacy-invalid-name',
+        assignmentName,
+        documentType: 'SHEETS',
+        tasks: {},
+      });
+
+    expect(invoke).toThrow(TypeError);
+    expect(invoke).toThrow(
+      /assignmentName must be a string.*courseId=c-legacy-invalid-name.*assignmentId=a-legacy-invalid-name/
+    );
+  });
+
+  it('passes a blank legacy assignmentName through to the definition', () => {
+    const factory = globalThis.AssignmentFactory;
+    const routed = factory.fromJSON({
+      courseId: 'c-legacy-blank-name',
+      assignmentId: 'a-legacy-blank-name',
+      assignmentName: '',
+      documentType: 'SLIDES',
+      tasks: {},
+    });
+
+    // The guard accepts any string, including a blank one, and passes it through
+    // verbatim. Rejecting an empty primaryTitle belongs to AssignmentDefinition
+    // validation downstream, which this suite replaces with a mock.
+    expect(routed.data.assignmentDefinition.primaryTitle).toBe('');
   });
 
   it('fails when legacy data has no usable document type', () => {
