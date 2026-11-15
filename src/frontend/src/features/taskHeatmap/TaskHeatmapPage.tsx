@@ -245,7 +245,7 @@ function HeatmapSummary({
  *   the table region while keeping the header `Card` visible.  Does NOT call
  *   `onBack`.
  * - Other projection errors (generic `Error`, unknown `assignmentId`): logs via
- *   `logFrontendError('TaskHeatmapPage', error)`, surfaces a user-safe
+ *   `logFrontendError('TaskHeatmapPage.projection', error, …)`, surfaces a user-safe
  *   toast message, then calls `onBack` exactly once — no in-view error UI.
  * - Summary analysis or adaptation errors: logs through `logPipelineError`,
  *   replaces the summary cards with a local `Alert`, and keeps the heatmap table.
@@ -309,7 +309,10 @@ export function TaskHeatmapPage({
 
   // Assignment-query error logging: fires once via useLogOnce guard.
   useLogOnce(assignmentQuery.isError, () => {
-    logFrontendError('TaskHeatmapPage', assignmentQuery.error);
+    logFrontendError('TaskHeatmapPage.assignmentQuery', assignmentQuery.error, {
+      classId: classFull.classId,
+      assignmentId,
+    });
   });
 
   // Assignment not-found logging: fires once via useLogOnce guard.
@@ -327,7 +330,10 @@ export function TaskHeatmapPage({
   // and auto-navigate back. Guarded against double-execution in React 19
   // StrictMode via useLogOnce.
   useLogOnce(isGenericError, () => {
-    logFrontendError('TaskHeatmapPage', state.error);
+    logFrontendError('TaskHeatmapPage.projection', state.error, {
+      classId: classFull.classId,
+      assignmentId,
+    });
     message.error('Something went wrong while loading the heatmap. Returning to class overview.');
     backCallback();
   });

@@ -14,11 +14,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render } from '@testing-library/react';
 
 import { TaskHeatmapTable } from './TaskHeatmapTable';
-import { requireElement, requireTableElement } from '@/test/shared/domGuards';
+import { requireElement, resolveStickyTables } from '@/test/shared/domGuards';
 import { buildHeatmapResult } from '@/test/taskHeatmapTableTestHelpers';
-
-/** Ant Design splits a sticky table into a header table and a body table. */
-const STICKY_TABLE_COUNT = 2;
 
 afterEach(() => {
   cleanup();
@@ -39,30 +36,12 @@ describe('TaskHeatmapTable sticky render', () => {
       container.querySelector('.ant-table-wrapper'),
       'Expected the Task Heatmap table wrapper.'
     );
-    const headerHolder = requireElement(
-      wrapper.querySelector('.ant-table-header.ant-table-sticky-holder'),
-      'Expected the sticky header holder and body elements.'
-    );
-    const body = requireElement(
-      wrapper.querySelector('.ant-table-body'),
-      'Expected the sticky header holder and body elements.'
-    );
-    const headerTable = requireTableElement(
-      headerHolder.querySelector('table'),
-      'Expected a header table and a body table.'
-    );
-    const bodyTable = requireTableElement(
-      body.querySelector('table'),
-      'Expected a header table and a body table.'
-    );
+    const { headerTable, bodyTable } = resolveStickyTables(wrapper, 'Task Heatmap');
 
     // Ant Design copies the source label onto both halves; the duplicated
     // accessible name is accepted and must not be "fixed".
     expect(headerTable.getAttribute('aria-label')).toBe('Task Heatmap');
     expect(bodyTable.getAttribute('aria-label')).toBe('Task Heatmap');
-    expect(wrapper.querySelectorAll('table[aria-label="Task Heatmap"]')).toHaveLength(
-      STICKY_TABLE_COUNT
-    );
 
     // Rows live in the body table; header cells live in the header table.
     expect(bodyTable.querySelector(':scope tbody tr[data-row-key]')).not.toBeNull();

@@ -145,12 +145,13 @@ export function TaskHeatmapTable({
   }, [sourceAssignments, taskColumns]);
 
   const columns: TableColumnsType<TaskHeatmapRow> = useMemo(() => {
-    // ── Forename / Surname (top-level sticky columns, no children) ──
-    // Both columns stay fixed at the start so the split name pair scrolls
-    // as one sticky unit. Neither column carries a `defaultSortOrder`: the
-    // default full-name ascending order comes from the `sortedRows` pre-sort
-    // above (unchanged `compareStudentNames`), and Ant Design applies the
-    // per-column derived sorter only after a header click.
+    // ── Forename / Surname (top-level fixed columns, no children) ──
+    // Both columns stay fixed at the start so the split name pair scrolls as
+    // one unit while the table itself carries the sticky behaviour. Neither
+    // column carries a `defaultSortOrder`: the default full-name ascending
+    // order comes from the `sortedRows` pre-sort above (unchanged
+    // `compareStudentNames`), and Ant Design applies the per-column derived
+    // sorter only after a header click.
     const [forenameColumn, surnameColumn] = buildStudentNameColumns<TaskHeatmapRow>();
 
     // ── Per-task group columns (built once, indexed by task position) ─
@@ -228,7 +229,7 @@ export function TaskHeatmapTable({
         sticky
         aria-label="Task Heatmap"
         onChange={(_pagination, filters): void => {
-          setTableFilters(filters as Record<string, FilterValue | null>);
+          setTableFilters(filters);
         }}
       />
     </>

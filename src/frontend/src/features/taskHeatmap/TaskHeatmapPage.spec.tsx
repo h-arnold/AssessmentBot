@@ -27,6 +27,7 @@ import {
   VALID_ASSIGNMENT_PARTIAL,
 } from '@/test/taskHeatmapPageFixtures';
 import { createTestQueryClient } from '@/test/dataAnalysis/heatmapFixtures';
+import { requireElement } from '@/test/shared/domGuards';
 
 // ===========================================================================
 // Helpers
@@ -129,20 +130,22 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
         screen.queryByRole('region', { name: 'Completeness summary' })
       ).not.toBeInTheDocument();
       expect(screen.queryByRole('region', { name: 'Accuracy summary' })).not.toBeInTheDocument();
-      const tableHeader = container.querySelector<HTMLElement>(
-        '.ant-table-header.ant-table-sticky-holder'
+      const tableHeader = requireElement(
+        container.querySelector('.ant-table-header.ant-table-sticky-holder'),
+        'Expected the Task Heatmap sticky header holder.'
       );
-      const tableBody = container.querySelector<HTMLElement>('.ant-table-body');
-      expect(tableHeader).toBeInTheDocument();
-      expect(tableBody).toBeInTheDocument();
+      const tableBody = requireElement(
+        container.querySelector('.ant-table-body'),
+        'Expected the Task Heatmap body.'
+      );
       expect(
-        within(tableHeader!).getByRole('columnheader', { name: 'Task One' })
+        within(tableHeader).getByRole('columnheader', { name: 'Task One' })
       ).toBeInTheDocument();
       expect(
-        within(tableBody!).getByRole('cell', { name: 'Student One, Task One, Completeness: 5' })
+        within(tableBody).getByRole('cell', { name: 'Student One, Task One, Completeness: 5' })
       ).toHaveTextContent('5');
       expect(
-        alert.compareDocumentPosition(tableBody!) & Node.DOCUMENT_POSITION_FOLLOWING
+        alert.compareDocumentPosition(tableBody) & Node.DOCUMENT_POSITION_FOLLOWING
       ).toBeTruthy();
       expect(onBack).not.toHaveBeenCalled();
       expect(logFrontendError).toHaveBeenCalledExactlyOnceWith('TaskHeatmapPage.summary', error, {
@@ -150,7 +153,7 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
         assignmentId: properties.assignmentId,
       });
 
-      const forename = within(tableHeader!).getByRole('columnheader', { name: /Forename/ });
+      const forename = within(tableHeader).getByRole('columnheader', { name: /Forename/ });
       await user.click(forename);
       expect(forename).toHaveAttribute('aria-sort', 'ascending');
       await act(async () => {
@@ -277,8 +280,15 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
       </QueryClientProvider>
     );
 
-    // The error should be logged via logFrontendError('TaskHeatmapPage', ...)
-    expect(logFrontendError).toHaveBeenCalledWith('TaskHeatmapPage', expect.any(Error));
+    // The error should be logged via logFrontendError with the projection context and the selection identifiers.
+    expect(logFrontendError).toHaveBeenCalledExactlyOnceWith(
+      'TaskHeatmapPage.projection',
+      expect.any(Error),
+      {
+        classId: classFullFixture.classId,
+        assignmentId: 'nonexistent-id',
+      }
+    );
 
     // onBack should be called exactly once (auto-navigate)
     expect(onBack).toHaveBeenCalledTimes(1);

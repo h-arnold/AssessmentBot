@@ -124,10 +124,14 @@ describe('TaskHeatmapPage — assignment useQuery wiring', () => {
     renderTaskHeatmapPage(vi.fn());
 
     await waitFor(() => {
-      expect(mockLogFrontendError).toHaveBeenCalledWith('TaskHeatmapPage', expect.any(Error));
+      expect(mockLogFrontendError).toHaveBeenCalledWith(
+        'TaskHeatmapPage.assignmentQuery',
+        expect.any(Error),
+        { classId: classFullFixture.classId, assignmentId: 'a-1' }
+      );
     });
     const calls = mockLogFrontendError.mock.calls.filter(
-      (call: unknown[]) => call[0] === 'TaskHeatmapPage'
+      (call: unknown[]) => call[0] === 'TaskHeatmapPage.assignmentQuery'
     );
     expect(calls).toHaveLength(1);
   });

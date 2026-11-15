@@ -334,8 +334,9 @@ describe('ClassPage heatmap view-state wiring', () => {
 
   it('auto-navigates back, logs, and shows transient feedback when assignmentId is unknown', async () => {
     // Constraint: adaptMetricsToHeatmap throws on unknown assignmentId.
-    // TaskHeatmapPage catches, logs via logFrontendError('TaskHeatmapPage', error),
-    // and calls onBack (returning to overview). No Ant Design Alert/Result error
+    // TaskHeatmapPage catches, logs via logFrontendError(
+    // 'TaskHeatmapPage.projection', error, { classId, assignmentId }), and
+    // calls onBack (returning to overview). No Ant Design Alert/Result error
     // is rendered in the heatmap view.
     const queryClient = createTestQueryClient();
 
@@ -344,14 +345,19 @@ describe('ClassPage heatmap view-state wiring', () => {
     const { container } = render(createElement(QueryClientProvider, { client: queryClient }, app));
 
     // The catch-and-navigate behaviour means:
-    //   - logFrontendError was called with first argument 'TaskHeatmapPage'
+    //   - logFrontendError was called with the 'TaskHeatmapPage.projection' context
+    //     and the { classId, assignmentId } metadata
     //   - The heatmap table body is NOT present
     //   - The overview card IS present (onBack returned to overview)
     //   - No in-view Alert/Result error message is shown
 
     // These assertions verify the catch-and-navigate behaviour.
 
-    expect(mockLogFrontendError).toHaveBeenCalledWith('TaskHeatmapPage', expect.any(Error));
+    expect(mockLogFrontendError).toHaveBeenCalledWith(
+      'TaskHeatmapPage.projection',
+      expect.any(Error),
+      { classId: classFullFixture.classId, assignmentId: 'missing-id' }
+    );
 
     // The heatmap should not be visible.
     expect(container.querySelector('.ant-table-body')).not.toBeInTheDocument();

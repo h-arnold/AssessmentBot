@@ -1,94 +1,62 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
-import { Table } from 'antd';
+import { cleanup, render, within } from '@testing-library/react';
 
+import { StudentAveragesTableCard } from '../classPage/StudentAveragesTableCard';
 import { TaskHeatmapTable } from '../taskHeatmap/TaskHeatmapTable';
-import { buildStudentAveragesTableColumns } from '../classPage/studentAveragesTableColumns';
 import type { StudentAverageRowModel } from '../classPage/classPageAdapter.zod';
 import { buildStudentNameColumns } from './studentNameTableColumns';
-import { createComputedMetricResult } from '@/test/dataAnalysis/fixtures';
-import { requireElement, requireTableElement } from '@/test/shared/domGuards';
+import { requireElement, resolveStickyTables } from '@/test/shared/domGuards';
+import {
+  buildStudentAverageRow,
+  createClassPageAdapterResult,
+} from '@/test/classPage/classPageFixtures';
 import { buildCell, buildHeatmapResult } from '@/test/taskHeatmapTableTestHelpers';
 import { APP_COL_WIDTH_FORENAME, APP_COL_WIDTH_SURNAME } from '@/theme/spacing';
 
-const EMPTY_FILTERS = {
-  completeness: [],
-  accuracy: [],
-  spag: [],
-  average: [],
-} as const;
-const COMPUTED_SCORE = 4;
 const STUDENT_NAME_COLUMN_COUNT = 2;
-const STUDENT_TABLE_COUNT = 2;
-/** Index of the final element when reading from the end. */
-const LAST_ELEMENT_INDEX = -1;
-const CLASS_AVERAGE_ROW = {
+const CLASS_AVERAGE_ROW = buildStudentAverageRow({
   studentId: 'student-alice',
   studentName: 'Alice Smith',
-  metrics: {
-    completeness: createComputedMetricResult({ value: COMPUTED_SCORE }),
-    accuracy: createComputedMetricResult({ value: COMPUTED_SCORE }),
-    spag: createComputedMetricResult({ value: COMPUTED_SCORE }),
-    average: createComputedMetricResult({ value: COMPUTED_SCORE }),
-  },
-} satisfies StudentAverageRowModel;
+});
 
 afterEach(() => {
   cleanup();
 });
 
 /**
- * Resolve the sticky Task Heatmap header and body tables from the rendered
- * wrapper, avoiding the duplicated accessible name on both halves.
+ * Resolve the Student Averages and Task Heatmap table wrappers from a render
+ * that contains both tables.
+ *
+ * The Student Averages table is the one inside the card; the Task Heatmap
+ * table is rendered outside any card. Resolving the wrappers this way keeps
+ * each half attributable without counting wrappers.
  *
  * @param {HTMLElement} container - The container returned by `render`.
- * @returns {Readonly<{ headerTable: HTMLTableElement; bodyTable: HTMLTableElement }>} The split tables.
+ * @returns {Readonly<{ studentAveragesWrapper: HTMLElement; heatmapWrapper: HTMLElement }>} The two table wrappers.
  */
-function resolveStickyHeatmapTables(container: HTMLElement): {
-  headerTable: HTMLTableElement;
-  bodyTable: HTMLTableElement;
+function resolveTableWrappers(container: HTMLElement): {
+  studentAveragesWrapper: HTMLElement;
+  heatmapWrapper: HTMLElement;
 } {
-  const tableWrappers = container.querySelectorAll('.ant-table-wrapper');
-
-  if (tableWrappers.length !== STUDENT_TABLE_COUNT) {
-    throw new TypeError('Expected exactly two rendered table wrappers.');
-  }
-
+  const tableWrappers = [...container.querySelectorAll('.ant-table-wrapper')];
+  const studentAveragesWrapper = requireElement(
+    tableWrappers.find((wrapper) => wrapper.closest('.ant-card')) ?? null,
+    'Expected the Student Averages table wrapper inside its card.'
+  );
   const heatmapWrapper = requireElement(
-    [...tableWrappers].at(LAST_ELEMENT_INDEX) ?? null,
-    'Expected exactly two rendered table wrappers.'
-  );
-  const headerHolder = requireElement(
-    heatmapWrapper.querySelector('.ant-table-header.ant-table-sticky-holder'),
-    'Expected the sticky Task Heatmap header holder.'
-  );
-  const body = requireElement(
-    heatmapWrapper.querySelector('.ant-table-body'),
-    'Expected the sticky Task Heatmap body.'
-  );
-  const headerTable = requireTableElement(
-    headerHolder.querySelector('table'),
-    'Expected the sticky Task Heatmap header table.'
-  );
-  const bodyTable = requireTableElement(
-    body.querySelector('table'),
-    'Expected the sticky Task Heatmap body table.'
+    tableWrappers.find((wrapper) => !wrapper.closest('.ant-card')) ?? null,
+    'Expected the Task Heatmap table wrapper outside the card.'
   );
 
-  return { headerTable, bodyTable };
+  return { studentAveragesWrapper, heatmapWrapper };
 }
 
 describe('shared student-name table column presentation', () => {
-  it('keeps split-name headers, widths, and rendered values aligned across Class and Heatmap tables', () => {
+  it('keeps split-name headers, widths, and rendered values aligned across the Student Averages and Task Heatmap tables', () => {
     const { container } = render(
       <>
-        <Table<StudentAverageRowModel>
-          aria-label="Student averages table"
-          columns={buildStudentAveragesTableColumns(EMPTY_FILTERS)}
-          dataSource={[CLASS_AVERAGE_ROW]}
-          rowKey="studentId"
-          pagination={false}
-          size="small"
+        <StudentAveragesTableCard
+          adapterResult={createClassPageAdapterResult({ studentAverages: [CLASS_AVERAGE_ROW] })}
         />
         <TaskHeatmapTable
           heatmapResult={buildHeatmapResult({
@@ -107,52 +75,57 @@ describe('shared student-name table column presentation', () => {
       </>
     );
 
-    // The Class-side table is rendered without `sticky` or `scroll`, so it
-    // stays a single named table. The Task Heatmap is sticky and splits into a
-    // header table and a body table; never resolve it by accessible name,
-    // because Ant Design copies `aria-label="Task Heatmap"` onto both halves.
-    const classTable = screen.getByRole('table', { name: 'Student averages table' });
-    const { headerTable: heatmapHeaderTable, bodyTable: heatmapBodyTable } =
-      resolveStickyHeatmapTables(container);
+    // Both tables render sticky, so each splits into a header table and a body
+    // table. Never resolve either by accessible name: Ant Design copies each
+    // source label onto both halves, and the Student Averages label is also the
+    // card title.
+    const { studentAveragesWrapper, heatmapWrapper } = resolveTableWrappers(container);
+    const studentAverages = resolveStickyTables(studentAveragesWrapper, 'Student Averages');
+    const heatmap = resolveStickyTables(heatmapWrapper, 'Task Heatmap');
 
-    const classForename = within(classTable).getByRole('columnheader', { name: 'Forename' });
-    const heatmapForename = within(heatmapHeaderTable).getByRole('columnheader', {
+    const studentForename = within(studentAverages.headerTable).getByRole('columnheader', {
       name: 'Forename',
     });
-    const classSurname = within(classTable).getByRole('columnheader', { name: 'Surname' });
-    const heatmapSurname = within(heatmapHeaderTable).getByRole('columnheader', {
+    const heatmapForename = within(heatmap.headerTable).getByRole('columnheader', {
+      name: 'Forename',
+    });
+    const studentSurname = within(studentAverages.headerTable).getByRole('columnheader', {
+      name: 'Surname',
+    });
+    const heatmapSurname = within(heatmap.headerTable).getByRole('columnheader', {
       name: 'Surname',
     });
 
-    expect(classForename).toHaveTextContent('Forename');
+    expect(studentForename).toHaveTextContent('Forename');
     expect(heatmapForename).toHaveTextContent('Forename');
-    expect(classSurname).toHaveTextContent('Surname');
+    expect(studentSurname).toHaveTextContent('Surname');
     expect(heatmapSurname).toHaveTextContent('Surname');
-    const classNameColumnWidths = [...classTable.querySelectorAll('col')]
+
+    // Anchor the width probe to each body table so the header colgroup is not
+    // measured by mistake.
+    const studentNameColumnWidths = [...studentAverages.bodyTable.querySelectorAll('col')]
       .slice(0, STUDENT_NAME_COLUMN_COUNT)
       .map((column) => (column as HTMLElement).style.width);
-    // Anchor the width probe to the body table so the header colgroup is not
-    // measured by mistake.
-    const heatmapNameColumnWidths = [...heatmapBodyTable.querySelectorAll('col')]
+    const heatmapNameColumnWidths = [...heatmap.bodyTable.querySelectorAll('col')]
       .slice(0, STUDENT_NAME_COLUMN_COUNT)
       .map((column) => (column as HTMLElement).style.width);
 
-    expect(classNameColumnWidths).toEqual([
+    expect(studentNameColumnWidths).toEqual([
       `${APP_COL_WIDTH_FORENAME}px`,
       `${APP_COL_WIDTH_SURNAME}px`,
     ]);
-    expect(heatmapNameColumnWidths).toEqual(classNameColumnWidths);
+    expect(heatmapNameColumnWidths).toEqual(studentNameColumnWidths);
 
-    const classDataRow = requireElement(
-      classTable.querySelector(':scope tbody tr[data-row-key]'),
-      'Expected both student-name tables to render a data row.'
-    );
     // Data rows live in the body table, not the header table.
-    const heatmapDataRow = requireElement(
-      heatmapBodyTable.querySelector(':scope tbody tr[data-row-key]'),
+    const studentDataRow = requireElement(
+      studentAverages.bodyTable.querySelector(':scope tbody tr[data-row-key]'),
       'Expected both student-name tables to render a data row.'
     );
-    const classNameValues = within(classDataRow)
+    const heatmapDataRow = requireElement(
+      heatmap.bodyTable.querySelector(':scope tbody tr[data-row-key]'),
+      'Expected both student-name tables to render a data row.'
+    );
+    const studentNameValues = within(studentDataRow)
       .getAllByRole('cell')
       .slice(0, STUDENT_NAME_COLUMN_COUNT)
       .map((cell) => cell.textContent);
@@ -161,8 +134,8 @@ describe('shared student-name table column presentation', () => {
       .slice(0, STUDENT_NAME_COLUMN_COUNT)
       .map((cell) => cell.textContent);
 
-    expect(classNameValues).toEqual(['Alice', 'Smith']);
-    expect(heatmapNameValues).toEqual(classNameValues);
+    expect(studentNameValues).toEqual(['Alice', 'Smith']);
+    expect(heatmapNameValues).toEqual(studentNameValues);
   });
 });
 
