@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { installRuntimeMock, selectVisibleOption } from './shared/endToEndRuntimeMocks';
 import { stickyTableWrapper } from './helpers/sticky-table-locators';
-import { ASSIGNMENTS_CONTROL_INDEX } from './helpers/shell-controls';
+import {
+  ASSIGNMENTS_CONTROL_INDEX,
+  CLASS_CONTROL_INDEX,
+  TOPICS_CONTROL_INDEX,
+} from './helpers/shell-controls';
 import {
   createHeatmapScenario,
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
@@ -23,9 +27,9 @@ test('populated Heatmaps stays fluid across viewport widths without widening cap
   await page.setViewportSize({ width: VIEWPORT_1920, height: VIEWPORT_HEIGHT });
   await page.goto('/');
   await page.getByRole('menuitem', { name: 'Heatmaps' }).click();
-  await page.getByRole('combobox').nth(0).click();
+  await page.getByRole('combobox').nth(CLASS_CONTROL_INDEX).click();
   await selectVisibleOption(page, HEATMAP_CLASS_NAME);
-  await expect(page.getByRole('combobox').nth(1)).toBeEnabled();
+  await expect(page.getByRole('combobox').nth(TOPICS_CONTROL_INDEX)).toBeEnabled();
   await page.getByRole('combobox').nth(ASSIGNMENTS_CONTROL_INDEX).click();
   await selectVisibleOption(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE);
 
@@ -84,7 +88,6 @@ test('populated Heatmaps stays fluid across viewport widths without widening cap
         const documentOverflow = document.documentElement.scrollWidth - window.innerWidth;
         return {
           documentOverflow,
-          tableBodyWidth: tableBody.clientWidth,
           tableScrollWidth: tableBody.scrollWidth,
           noDocumentOverflow: documentOverflow <= tolerance,
           tableScrollsLocally: tableBody.scrollWidth > tableBody.clientWidth,

@@ -62,7 +62,6 @@ import {
   openEmbeddedHeatmap,
   openMergedHeatmap,
   openPreviewPopover,
-  revealMetricCellForPointer,
   setColourScheme,
   sourceDocumentAction,
   taskMetricCells,
@@ -146,9 +145,8 @@ const BODY_KINDS: readonly SourceLinkBodyKind[] = ['TEXT', 'IMAGE', 'TABLE'];
  *
  * Order matters: the viewport is set before navigation, the colour scheme is
  * switched before the pointer enters a cell (moving onto the shell switch would
- * close a hover-opened popover), and the page is scrolled right last for the
- * pointer journey only (a no-op where the page already fits, and pointless for
- * the keyboard journey, whose own focus scroll reveals the cell).
+ * close a hover-opened popover), and the page settles before the baseline is
+ * read.
  *
  * @remarks
  * The closed-page overflow baseline is read last — once the journey has settled
@@ -179,9 +177,6 @@ async function enterEntryPoint(
     : openMergedHeatmap(page, { controlActivation: viewport.activation }));
   await expect(stickyTableWrapper(page)).toBeVisible();
   await setColourScheme(page, scheme);
-  if (viewport.activation === 'pointer') {
-    await revealMetricCellForPointer(page);
-  }
   return await readClosedPageOverflowWidth(page, matrixKey(viewport, entryPoint, scheme));
 }
 
@@ -317,7 +312,6 @@ test.describe('Preview body renderer samples', () => {
       );
       await openEmbeddedHeatmap(page);
       await setColourScheme(page, 'light');
-      await revealMetricCellForPointer(page);
 
       // The journey has settled and nothing is open yet, so this is the one
       // reading the preview below may be compared against.

@@ -46,7 +46,7 @@ import {
   withClassPartialAssessmentError,
 } from './helpers/assessment-error-preview-journeys';
 import { stickyTableHeaderHolder, stickyTableWrapper } from './helpers/sticky-table-locators';
-import { ASSIGNMENTS_CONTROL_INDEX } from './helpers/shell-controls';
+import { ASSIGNMENTS_CONTROL_INDEX, CLASS_CONTROL_INDEX } from './helpers/shell-controls';
 import { readClosedPageOverflowWidth } from './helpers/task-preview-source-link-geometry';
 import { pageContent } from '@/pages/pageContent';
 import {
@@ -100,9 +100,6 @@ const NO_REASONING_COPY = 'No reasoning available';
 
 /** Placeholder response copy for a confirmed no-submission cell. */
 const NO_SUBMISSION_COPY = 'No submission available';
-
-/** Selecting controls by index, in the builder's fixed order. */
-const CLASS_CONTROL_INDEX = 0;
 
 /**
  * Copies served for each selected assignment's full read.

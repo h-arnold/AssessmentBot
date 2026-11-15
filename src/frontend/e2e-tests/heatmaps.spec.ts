@@ -7,12 +7,14 @@ import {
   HEATMAP_CLASS_NAME,
 } from './helpers/task-heatmap-end-to-end-helpers';
 import { stickyTableBody, stickyTableHeaderHolder } from './helpers/sticky-table-locators';
-import { ASSIGNMENTS_CONTROL_INDEX } from './helpers/shell-controls';
+import {
+  ASSIGNMENTS_CONTROL_INDEX,
+  CLASS_CONTROL_INDEX,
+  TOPICS_CONTROL_INDEX,
+} from './helpers/shell-controls';
 
 const HEATMAPS_LABEL = pageContent.heatmaps.heading;
 const TOPIC_LABEL = 'Earth';
-const CLASS_CONTROL_INDEX = 0;
-const TOPICS_CONTROL_INDEX = 1;
 
 /**
  * Navigate to the standalone Heatmaps page.

@@ -15,12 +15,17 @@ import type { Locator, Page } from '@playwright/test';
  *
  * Never resolve a sticky student table by accessible name: `getByRole('table',
  * { name: ... })`, `getByLabelText` and their `queryBy*`/`findBy*` variants
- * all match both halves and strict-mode violate. Base row and cell queries on
+ * all match both halves and violate strict mode. Base row and cell queries on
  * `stickyTableBody` and column-header queries on `stickyTableHeaderHolder`;
  * use `stickyTableWrapper` only for roles whose occurrence count the split
- * does not change (a named column header, for example) and for ancestor probes
- * such as the owning card. Tables outside the three student-table surfaces
+ * does not change (a named column header, for example), for ancestor probes
+ * such as the owning card, and as a readiness/visibility gate before scoping
+ * into the halves. Tables outside the three student-table surfaces
  * (Classes, Assignments, modal tables) do not use this module.
+ *
+ * The selectors behind these locators are exported as constants so spec
+ * modules running `evaluate` snapshots (which cannot close over imports)
+ * can pass them in as arguments, keeping a rename single-sourced.
  *
  * Each base takes a scope that contains exactly one sticky student table: the
  * `Page` on a surface rendering a single table (the standalone Heatmaps page,
@@ -32,14 +37,24 @@ import type { Locator, Page } from '@playwright/test';
 /** A locator scope that contains exactly one sticky student table. */
 export type StickyTableScope = Page | Locator;
 
+/**
+ * Split render's wrapper, which contains both halves of the split.
+ *
+ * Exported for `evaluate` snapshots, which cannot close over the locators.
+ */
+export const STICKY_TABLE_WRAPPER_SELECTOR = '.ant-table-wrapper';
+
 /** Split render's header holder, which contains the header table. */
-const HEADER_HOLDER_SELECTOR = '.ant-table-header.ant-table-sticky-holder';
+export const HEADER_HOLDER_SELECTOR = '.ant-table-header.ant-table-sticky-holder';
 
 /** Split render's body scroll region, which contains the body table. */
-const BODY_SELECTOR = '.ant-table-body';
+export const BODY_SELECTOR = '.ant-table-body';
 
 /** Sticky horizontal scrollbar; absent when the table has no horizontal overflow. */
-const STICKY_SCROLL_SELECTOR = '.ant-table-sticky-scroll';
+export const STICKY_SCROLL_SELECTOR = '.ant-table-sticky-scroll';
+
+/** The sticky scrollbar's thumb, which exists only while the bar is mounted. */
+export const STICKY_SCROLL_THUMB_SELECTOR = '.ant-table-sticky-scroll-bar';
 
 /**
  * Return the wrapper of the sticky student table inside `scope`.
@@ -47,15 +62,17 @@ const STICKY_SCROLL_SELECTOR = '.ant-table-sticky-scroll';
  * The wrapper contains both halves of the split render, so it is the base for
  * roles whose occurrence count the split does not change (a named column
  * header keeps its pre-split count) and for ancestor probes such as the
- * owning card. It is never a substitute for `stickyTableBody` (rows and
- * cells) or `stickyTableHeaderHolder` (column headers), because the wrapper
- * cannot attribute a query to one half of the split.
+ * owning card. It is also a readiness gate: awaiting its visibility confirms
+ * the table has rendered before scoping into the halves. It is never a
+ * substitute for `stickyTableBody` (rows and cells) or
+ * `stickyTableHeaderHolder` (column headers), because the wrapper cannot
+ * attribute a query to one half of the split.
  *
  * @param {StickyTableScope} scope - Page or locator holding one sticky table.
  * @returns {Locator} The `.ant-table-wrapper` of the sticky student table.
  */
 export function stickyTableWrapper(scope: StickyTableScope): Locator {
-  return scope.locator('.ant-table-wrapper');
+  return scope.locator(STICKY_TABLE_WRAPPER_SELECTOR);
 }
 
 /**
@@ -106,4 +123,17 @@ export function stickyTableBody(scope: StickyTableScope): Locator {
  */
 export function stickyTableScrollBar(scope: StickyTableScope): Locator {
   return scope.locator(STICKY_SCROLL_SELECTOR);
+}
+
+/**
+ * Return the thumb of the sticky horizontal scrollbar inside `scope`.
+ *
+ * The thumb is the bar's `.ant-table-sticky-scroll-bar` descendant, so it
+ * exists only while the bar is mounted; await its visibility beside the bar's.
+ *
+ * @param {StickyTableScope} scope - Page or locator holding one sticky table.
+ * @returns {Locator} The `.ant-table-sticky-scroll-bar` thumb element.
+ */
+export function stickyScrollBarThumb(scope: StickyTableScope): Locator {
+  return stickyTableScrollBar(scope).locator(STICKY_SCROLL_THUMB_SELECTOR);
 }

@@ -27,6 +27,7 @@ import {
   SOURCE_LINK_CLASS_NAME,
 } from './task-preview-source-link-fixtures';
 import { stickyTableWrapper } from './sticky-table-locators';
+import { ASSIGNMENTS_CONTROL_INDEX, CLASS_CONTROL_INDEX } from './shell-controls';
 import { SOURCE_ACTION_LABEL } from '@/features/taskHeatmap/TaskPreviewCard';
 import { createSourceLinkScenario } from './task-preview-source-link-scenarios';
 
@@ -59,10 +60,6 @@ export const GOOGLE_DOCS_STUB_TEXT = 'Stubbed source document';
 
 /** Harmless content served instead of a real Google document. */
 const GOOGLE_DOCS_STUB_BODY = `<p id="${GOOGLE_DOCS_STUB_MARKER}">${GOOGLE_DOCS_STUB_TEXT}</p>`;
-
-// Heatmaps builder combobox order: class, topics, assignments.
-const HEATMAPS_CLASS_COMBOBOX_INDEX = 0;
-const HEATMAPS_ASSIGNMENTS_COMBOBOX_INDEX = 2;
 
 // ---------------------------------------------------------------------------
 // Locators
@@ -289,19 +286,14 @@ export async function openMergedHeatmap(
   await page.getByRole('menuitem', { name: HEATMAPS_LABEL }).click();
   await expect(page.getByRole('heading', { level: 2, name: HEATMAPS_LABEL })).toBeVisible();
 
-  await selectBuilderOption(
-    page,
-    HEATMAPS_CLASS_COMBOBOX_INDEX,
-    SOURCE_LINK_CLASS_NAME,
-    controlActivation
-  );
+  await selectBuilderOption(page, CLASS_CONTROL_INDEX, SOURCE_LINK_CLASS_NAME, controlActivation);
 
   let selection = Promise.resolve();
   assignmentTitles.forEach((assignmentTitle) => {
     selection = selection.then(() => {
       return selectBuilderOption(
         page,
-        HEATMAPS_ASSIGNMENTS_COMBOBOX_INDEX,
+        ASSIGNMENTS_CONTROL_INDEX,
         assignmentTitle,
         controlActivation
       );
@@ -419,25 +411,4 @@ export async function setColourScheme(page: Page, scheme: 'light' | 'dark'): Pro
     await themeSwitch.click();
   }
   await expect(themeSwitch).toBeChecked({ checked: shouldBeDark });
-}
-
-/**
- * Reveal step the pointer journeys call before hovering a metric cell.
- *
- * @remarks
- * Kept as the pointer journeys' reveal step, and a deliberate no-op: the
- * sticky table keeps its horizontal overflow inside its own `.ant-table-body`
- * scroll region, so the page no longer scrolls the table's right edge into
- * view and this window scroll cannot reveal a metric cell. Measured at
- * 390x844, the fixed Forename/Surname columns are wider than the body's
- * remaining visible strip, so no metric cell is pointer-reachable there and
- * callers open the preview with the keyboard instead.
- *
- * @param {Page} page - The Playwright page under test.
- * @returns {Promise<void>} Resolves immediately; the window scroll is a no-op.
- */
-export async function revealMetricCellForPointer(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    window.scrollTo(document.documentElement.scrollWidth, 0);
-  });
 }

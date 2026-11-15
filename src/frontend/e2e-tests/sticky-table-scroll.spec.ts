@@ -13,35 +13,53 @@
  * height so the 10-row `createHeatmapScenario` fixture overflows, then assert
  * the bar's viewport-bottom geometry, thumb synchronisation during panning and
  * thumb dragging, fixed Forename/Surname stability, header pinning, a Surname
- * sort applying while pinned (Class page overview), the bar
- * hiding once the scroll region's bottom edge reaches the viewport bottom, and
- * that the table adds nothing to the document's horizontal overflow. The Class
- * page journeys collapse the shell navigation before resizing: the sider
- * otherwise stays expanded at 390px and squeezes the cards below usable width.
- * Headless
- * Chromium hides native scrollbars, so Ant Design's cached scrollbar
- * measurement is 0: the bar's hidden state is asserted by scrolling the scroll
- * region's bottom edge to or above the viewport bottom, never against a
- * one-scrollbar-height boundary; the bar unmounts when hidden or when the
- * table has no horizontal overflow, so absence is asserted with
- * `toHaveCount(0)`. The Heatmaps page additionally asserts
- * `document.scrollingElement.scrollWidth <= clientWidth`; the two Class page
- * surfaces cannot, because their page chrome already overflows the document
- * at 390px independently of this feature (see the contributing report).
- * Wide-viewport journeys (1920px, overflow-free on all three surfaces) assert
- * that no sticky bar renders and the document keeps no horizontal overflow.
+ * sort applying while pinned (Class page overview), a metric-cell hover
+ * firing its preview past the frozen columns on the heatmap surfaces, the
+ * region reaching its maximum scroll-left with the last column fully visible,
+ * the bar hiding once the scroll region's bottom edge reaches the viewport
+ * bottom, and that the table adds nothing to the document's horizontal
+ * overflow. The Class page journeys collapse the shell navigation before
+ * resizing: the sider otherwise stays expanded at 390px and squeezes the
+ * cards below usable width. Headless Chromium hides native scrollbars, so
+ * Ant Design's cached scrollbar measurement is 0: the bar's hidden state is
+ * asserted by scrolling the scroll region's bottom edge to or above the
+ * viewport bottom, never against a one-scrollbar-height boundary; the bar
+ * unmounts when hidden or when the table has no horizontal overflow, so
+ * absence is asserted with `toHaveCount(0)`. The Heatmaps page additionally
+ * asserts `document.scrollingElement.scrollWidth <= clientWidth`; the two
+ * Class page surfaces cannot, because their page chrome already overflows
+ * the document at 390px independently of this feature (see the contributing
+ * report). Wide-viewport journeys (1920px, overflow-free on all three
+ * surfaces) assert that no sticky bar renders and the document keeps no
+ * horizontal overflow.
  */
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { installRuntimeMock, selectVisibleOption } from './shared/endToEndRuntimeMocks';
 import {
+  stickyScrollBarThumb,
   stickyTableBody,
   stickyTableHeaderHolder,
   stickyTableScrollBar,
   stickyTableWrapper,
   type StickyTableScope,
 } from './helpers/sticky-table-locators';
-import { ASSIGNMENTS_CONTROL_INDEX } from './helpers/shell-controls';
+import {
+  expectBarPinnedGeometry,
+  expectHeaderPinnedAtTop,
+  GEOMETRY_TOLERANCE,
+  type NameColumnGeometry,
+  panTableRegion,
+  panTableRegionToEnd,
+  readNameColumnGeometry,
+  readStickyGeometry,
+  scrollRegionAcrossViewportBottom,
+} from './helpers/sticky-table-scroll-geometry';
+import {
+  ASSIGNMENTS_CONTROL_INDEX,
+  CLASS_CONTROL_INDEX,
+  TOPICS_CONTROL_INDEX,
+} from './helpers/shell-controls';
 import {
   createHeatmapScenario,
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
@@ -53,142 +71,14 @@ const NARROW_VIEWPORT_WIDTH = 390;
 const WIDE_VIEWPORT_WIDTH = 1920;
 const PROVISIONAL_VIEWPORT_HEIGHT = 1000;
 const MIN_NARROW_VIEWPORT_HEIGHT = 320;
-/** Document offset kept above the scroll region so the header holder pins. */
-const VIEWPORT_TOP_MARGIN = 16;
 const HORIZONTAL_PAN = 120;
 const THUMB_DRAG_DISTANCE = 100;
 /** Runtime narrow height is the measured scroll region height divided by this. */
 const NARROW_HEIGHT_DIVISOR = 2;
 /** An element's centre offset is its box edge plus its size divided by this. */
 const RECT_CENTRE_DIVISOR = 2;
-/**
- * Sub-pixel rounding tolerance for geometry comparisons, matching the
- * committed convention in `heatmaps-layout.spec.ts`; the document-overflow
- * comparison needs it because `scrollWidth`/`clientWidth` round oppositely.
- */
-const GEOMETRY_TOLERANCE = 1;
 /** Thumb-to-scroll proportionality tolerance (the relation is exact in rc-table). */
 const SYNC_TOLERANCE = 0.05;
-
-/** Measured geometry of one sticky table's scroll region, bar and thumb. */
-interface StickyGeometry {
-  /** Viewport bottom minus bar bottom; 0 while the bar is pinned. */
-  barBottomOffset: number | null;
-  barWidth: number | null;
-  barLeft: number | null;
-  regionLeft: number;
-  regionTop: number;
-  regionBottom: number;
-  regionVisibleWidth: number;
-  regionScrollWidth: number;
-  regionClientWidth: number;
-  scrollLeft: number;
-  /** Thumb translate offset inside the bar track. */
-  thumbOffset: number | null;
-  /** Track width minus thumb width; the thumb's travel range. */
-  thumbRange: number | null;
-  viewportHeight: number;
-  documentOverflow: number;
-}
-
-/** Measured viewport x-positions of the fixed name columns and moving probes. */
-interface NameColumnGeometry {
-  forenameHeaderX: number;
-  surnameHeaderX: number;
-  movingHeaderX: number;
-  forenameCellX: number;
-  surnameCellX: number;
-  trailingCellX: number;
-}
-
-/**
- * Read an element's viewport x-position.
- *
- * @param {Locator} locator - The element locator to measure.
- * @returns {Promise<number>} The element's viewport x-position.
- */
-function viewportXOf(locator: Locator): Promise<number> {
-  return locator.evaluate((cell) => cell.getBoundingClientRect().x);
-}
-
-/**
- * Read the scroll region, sticky bar and thumb geometry of the one sticky
- * student table inside `scope` as a single consistent snapshot. Bar and thumb
- * fields are null when the bar is unmounted (hidden or no overflow).
- *
- * @param {StickyTableScope} scope - Scope holding exactly one sticky table.
- * @returns {Promise<StickyGeometry>} The measured geometry.
- */
-async function readStickyGeometry(scope: StickyTableScope): Promise<StickyGeometry> {
-  const raw = await stickyTableBody(scope).evaluate((region) => {
-    // document.scrollingElement is documentElement in standards mode; its overflow is the criterion's measure.
-    const bar = region.closest('.ant-table-wrapper')?.querySelector('.ant-table-sticky-scroll');
-    const barRect = bar ? bar.getBoundingClientRect() : null;
-    const thumb = bar ? bar.querySelector('.ant-table-sticky-scroll-bar') : null;
-    const thumbRect = thumb ? thumb.getBoundingClientRect() : null;
-    const regionRect = region.getBoundingClientRect();
-    return {
-      regionLeft: regionRect.left,
-      regionTop: regionRect.top,
-      regionBottom: regionRect.bottom,
-      regionVisibleWidth:
-        Math.min(regionRect.right, window.innerWidth) - Math.max(regionRect.left, 0),
-      barRect: barRect
-        ? { left: barRect.left, bottom: barRect.bottom, width: barRect.width }
-        : null,
-      thumbRect: thumbRect ? { left: thumbRect.left, width: thumbRect.width } : null,
-      scrollLeft: region.scrollLeft,
-      regionScrollWidth: region.scrollWidth,
-      regionClientWidth: region.clientWidth,
-      viewportHeight: window.innerHeight,
-      documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    };
-  });
-  const { barRect, thumbRect, ...region } = raw;
-  const [barBottomOffset, barWidth, barLeft] = barRect
-    ? [region.viewportHeight - barRect.bottom, barRect.width, barRect.left]
-    : [null, null, null];
-  const [thumbOffset, thumbRange] =
-    barRect && thumbRect
-      ? [thumbRect.left - barRect.left, barRect.width - thumbRect.width]
-      : [null, null];
-  return { ...region, barBottomOffset, barWidth, barLeft, thumbOffset, thumbRange };
-}
-
-/**
- * Read the viewport x-positions of the fixed Forename/Surname header and body
- * cells, the first Completeness header, and the first row's trailing cell.
- *
- * @param {StickyTableScope} scope - Scope holding exactly one sticky table.
- * @returns {Promise<NameColumnGeometry>} The measured x-positions.
- */
-async function readNameColumnGeometry(scope: StickyTableScope): Promise<NameColumnGeometry> {
-  const header = stickyTableHeaderHolder(scope);
-  const firstRow = stickyTableBody(scope).locator('tbody tr.ant-table-row').first();
-  return {
-    forenameHeaderX: await viewportXOf(header.getByRole('columnheader', { name: 'Forename' })),
-    surnameHeaderX: await viewportXOf(header.getByRole('columnheader', { name: 'Surname' })),
-    movingHeaderX: await viewportXOf(
-      header.getByRole('columnheader', { name: 'Completeness' }).first()
-    ),
-    forenameCellX: await viewportXOf(firstRow.getByRole('cell').nth(0)),
-    surnameCellX: await viewportXOf(firstRow.getByRole('cell').nth(1)),
-    trailingCellX: await viewportXOf(firstRow.getByRole('cell').last()),
-  };
-}
-
-/**
- * Assert the header holder is pinned at the viewport top with a zero top offset.
- *
- * @param {StickyTableScope} scope - Scope holding exactly one sticky table.
- * @returns {Promise<void>} Resolves once the assertion holds.
- */
-async function expectHeaderPinnedAtTop(scope: StickyTableScope): Promise<void> {
-  const holderTop = await stickyTableHeaderHolder(scope).evaluate(
-    (holder) => holder.getBoundingClientRect().top
-  );
-  expect(Math.abs(holderTop)).toBeLessThanOrEqual(GEOMETRY_TOLERANCE);
-}
 
 /**
  * Collapse the shell navigation before a narrow resize: the sider otherwise
@@ -235,62 +125,36 @@ async function useNarrowViewport(page: Page, scope: StickyTableScope): Promise<v
 }
 
 /**
- * Scroll the document so the table's scroll region crosses the viewport bottom
- * edge, leaving the header holder scrolled past the viewport top.
- *
- * @param {StickyTableScope} scope - Scope holding exactly one sticky table.
- * @returns {Promise<void>} Resolves once the document has scrolled.
- */
-async function scrollRegionAcrossViewportBottom(scope: StickyTableScope): Promise<void> {
-  await stickyTableBody(scope).evaluate((region, margin) => {
-    const regionTop = region.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo(0, Math.max(0, regionTop - margin));
-  }, VIEWPORT_TOP_MARGIN);
-}
-
-/**
- * Pan the scroll region horizontally to `distance` pixels of scroll-left.
- *
- * @param {StickyTableScope} scope - Scope holding exactly one sticky table.
- * @param {number} distance - Scroll-left target in pixels.
- * @returns {Promise<void>} Resolves once the region has scrolled.
- */
-async function panTableRegion(scope: StickyTableScope, distance: number): Promise<void> {
-  await stickyTableBody(scope).evaluate((region, pan) => {
-    region.scrollLeft = pan;
-  }, distance);
-}
-
-/**
  * Assert the full sticky-scroll journey on one surface: the bar pinned to the
  * viewport bottom and spanning the region's visible width while the region
  * crosses the bottom edge, the header holder pinned at the viewport top, a
  * horizontal pan (thumb drag or programmatic) that keeps the thumb synchronised
- * while the fixed name columns hold their viewport x-position, and — at the
- * table's end — the bar unmounted with the region still overflowing and partly
- * visible so its own scrollbar is reachable.
+ * while the fixed name columns hold their viewport x-position, the region
+ * reaching its maximum scroll-left with the last column fully visible, a
+ * metric-cell hover firing the preview past the frozen columns when
+ * `metricCellTrigger` is supplied, and — at the table's end — the bar
+ * unmounted with the region still overflowing and partly visible so its own
+ * scrollbar is reachable.
  *
  * @param {Page} page - The Playwright page under test.
  * @param {StickyTableScope} scope - Scope holding exactly one sticky table.
  * @param {boolean} shouldPanByThumbDrag - Pan by dragging the thumb, not the region.
+ * @param {Locator} [metricCellTrigger] - A heatmap metric-cell preview trigger
+ *   to hover at end-of-range. Only the embedded heatmap journey supplies one:
+ *   the Student Averages table has no preview triggers, and the standalone
+ *   Heatmaps page has no pointer-reachable metric cells at 390px.
  * @returns {Promise<void>} Resolves once the journey's assertions hold.
  */
 async function expectStickyScrollJourney(
   page: Page,
   scope: StickyTableScope,
-  shouldPanByThumbDrag: boolean
+  shouldPanByThumbDrag: boolean,
+  metricCellTrigger?: Locator
 ): Promise<void> {
   await scrollRegionAcrossViewportBottom(scope);
   // Presence is polled: the bar renders only after Ant Design's first visibility check.
   await expect(stickyTableScrollBar(scope)).toBeVisible();
-  const pinned = await readStickyGeometry(scope);
-  expect(Math.abs(pinned.barBottomOffset ?? NaN)).toBeLessThanOrEqual(GEOMETRY_TOLERANCE);
-  expect(Math.abs((pinned.barWidth ?? NaN) - pinned.regionVisibleWidth)).toBeLessThanOrEqual(
-    GEOMETRY_TOLERANCE
-  );
-  expect(Math.abs((pinned.barLeft ?? NaN) - Math.max(pinned.regionLeft, 0))).toBeLessThanOrEqual(
-    GEOMETRY_TOLERANCE
-  );
+  await expectBarPinnedGeometry(scope);
   await expectHeaderPinnedAtTop(scope);
   // The table adds nothing to the document's horizontal overflow: the document
   // is exactly as wide with the table's card hidden as shown (pre-existing page
@@ -308,7 +172,7 @@ async function expectStickyScrollJourney(
 
   const columnsBefore = await readNameColumnGeometry(scope);
   if (shouldPanByThumbDrag) {
-    const thumb = stickyTableScrollBar(scope).locator('.ant-table-sticky-scroll-bar');
+    const thumb = stickyScrollBarThumb(scope);
     const thumbBox = await thumb.boundingBox();
     if (!thumbBox) {
       throw new Error('Sticky bar thumb has no bounding box to drag.');
@@ -355,6 +219,52 @@ async function expectStickyScrollJourney(
     GEOMETRY_TOLERANCE
   );
 
+  // End-of-range: the region must reach its maximum scroll-left, aligning the
+  // first row's last cell with the region's visible right edge — a clamped-
+  // scroll regression cannot pass this.
+  await panTableRegionToEnd(scope);
+  const endOfRange = await readStickyGeometry(scope);
+  const endOfRangeScrollable = endOfRange.regionScrollWidth - endOfRange.regionClientWidth;
+  expect(endOfRangeScrollable).toBeGreaterThan(0);
+  expect(endOfRange.scrollLeft).toBeGreaterThanOrEqual(endOfRangeScrollable - GEOMETRY_TOLERANCE);
+  const endOfRangeCells = await stickyTableBody(scope).evaluate((region) => {
+    const firstRow = region.querySelector(':scope tbody tr.ant-table-row');
+    if (!(firstRow instanceof HTMLElement)) {
+      throw new TypeError('Sticky table body has no data row to measure.');
+    }
+    const lastCell = firstRow.lastElementChild;
+    if (!(lastCell instanceof HTMLElement)) {
+      throw new TypeError('First data row has no trailing cell to measure.');
+    }
+    const regionRect = region.getBoundingClientRect();
+    return {
+      regionVisibleRight: Math.min(regionRect.right, window.innerWidth),
+      lastCellRight: lastCell.getBoundingClientRect().right,
+    };
+  });
+  expect(endOfRangeCells.lastCellRight).toBeLessThanOrEqual(
+    endOfRangeCells.regionVisibleRight + GEOMETRY_TOLERANCE
+  );
+  expect(endOfRangeCells.lastCellRight).toBeGreaterThanOrEqual(
+    endOfRangeCells.regionVisibleRight - GEOMETRY_TOLERANCE
+  );
+
+  if (metricCellTrigger) {
+    // Hit-testing through the frozen columns: at end-of-range the last task
+    // column is pointer-reachable past the fixed Forename/Surname columns, so
+    // hovering its metric cell must fire the preview — an overlay swallowing
+    // pointer events cannot pass this.
+    await expect(metricCellTrigger).toBeVisible();
+    await metricCellTrigger.hover();
+    const popover = page.locator('.ant-popover');
+    await expect(popover).toBeVisible();
+    await expect(popover.getByText('Reasoning', { exact: true })).toHaveCount(1);
+    await expect(popover.getByText('Student Response', { exact: true })).toHaveCount(1);
+    // Park the pointer so the hover preview closes before the bar-unmount step.
+    await page.mouse.move(0, 0);
+    await expect(popover).toHaveCount(0);
+  }
+
   await page.evaluate(() => {
     window.scrollTo(0, document.documentElement.scrollHeight);
   });
@@ -380,6 +290,7 @@ async function expectNoStickyBar(scope: StickyTableScope): Promise<void> {
   );
   expect(geometry.documentOverflow).toBeLessThanOrEqual(GEOMETRY_TOLERANCE);
 }
+
 /**
  * Install the heatmap scenario and open one student-table surface.
  *
@@ -403,9 +314,9 @@ async function openSurface(
   if (surface === 'standalone') {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Heatmaps' }).click();
-    await page.getByRole('combobox').nth(0).click();
+    await page.getByRole('combobox').nth(CLASS_CONTROL_INDEX).click();
     await selectVisibleOption(page, HEATMAP_CLASS_NAME);
-    await expect(page.getByRole('combobox').nth(1)).toBeEnabled();
+    await expect(page.getByRole('combobox').nth(TOPICS_CONTROL_INDEX)).toBeEnabled();
     await page.getByRole('combobox').nth(ASSIGNMENTS_CONTROL_INDEX).click();
     await selectVisibleOption(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE);
   } else {
@@ -419,6 +330,31 @@ async function openSurface(
     return page.locator('.ant-card').filter({ hasText: 'Student Averages' });
   }
   return page;
+}
+
+/**
+ * Build the heatmap's last-column metric-cell preview trigger.
+ *
+ * The fixture's last task group is Task 3 and its last sub-column is SPaG, so
+ * Student Six's Task 3 SPaG cell sits in the scrolled column; at end-of-range
+ * it is pointer-reachable past the fixed Forename/Surname columns. Student Six
+ * is row six: the pinned two-tier header overlays the region's first rows at
+ * the short viewport, so the hit-test targets a row whose centre clears both
+ * the pinned header above and the sticky bar below.
+ *
+ * Only the embedded journey supplies this trigger: the standalone Heatmaps
+ * page keeps its sider expanded at 390px, which squeezes the scroll region
+ * narrower than the fixed columns, so no metric cell is pointer-reachable
+ * there and the visual spec opens previews with the keyboard instead.
+ *
+ * @param {StickyTableScope} scope - Scope holding exactly one sticky table.
+ * @returns {Locator} The metric cell's preview trigger button.
+ */
+function heatmapMetricPreviewTrigger(scope: StickyTableScope): Locator {
+  return stickyTableBody(scope).getByRole('button', {
+    name: 'Student Six, Task 3, SPaG: 5',
+    exact: true,
+  });
 }
 
 test.describe('narrow viewport sticky table behaviour', () => {
@@ -454,7 +390,7 @@ test.describe('narrow viewport sticky table behaviour', () => {
     const scope = await openSurface(page, 'embedded');
     await collapseShellNavigation(page);
     await useNarrowViewport(page, scope);
-    await expectStickyScrollJourney(page, scope, true);
+    await expectStickyScrollJourney(page, scope, true, heatmapMetricPreviewTrigger(scope));
   });
 
   test('Heatmaps page pins bar and header and keeps name columns fixed while panning', async ({

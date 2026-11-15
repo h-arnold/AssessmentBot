@@ -8,8 +8,14 @@ import {
 } from './helpers/task-heatmap-end-to-end-helpers';
 
 const CLASSES_LABEL = 'Classes';
-const FILTERED_ROW_COUNT = 2;
-const INCLUDED_ROW_COUNT = 11;
+/**
+ * Data rows left once the narrowed completeness range applies with Include
+ * Excluded off: the zero-weight assignment excludes every student's aggregates
+ * from analysis, so no data row passes and only the empty placeholder renders.
+ */
+const FILTERED_ROW_COUNT = 0;
+/** Data rows shown once Include Excluded also admits the excluded rows. */
+const INCLUDED_ROW_COUNT = 10;
 
 /**
  * Navigate from the root shell to the fixture class overview.
@@ -42,12 +48,13 @@ test('filters excluded aggregate rows and hides the toggle from task filters', a
   const lowerHandle = aggregateFilter.locator('.ant-slider-handle').first();
   await lowerHandle.focus();
   await page.keyboard.press('ArrowUp');
-  await expect(averagesBody.locator('tbody tr')).toHaveCount(FILTERED_ROW_COUNT);
+  // Count data rows only: a bare `tbody tr` includes the aria-hidden measure row.
+  await expect(averagesBody.locator('tbody tr.ant-table-row')).toHaveCount(FILTERED_ROW_COUNT);
 
   await completenessHeader.getByRole('button').click();
   const narrowedAggregateFilter = page.locator('.ant-dropdown:visible').last();
   await narrowedAggregateFilter.getByRole('checkbox', { name: 'Include Excluded' }).click();
-  await expect(averagesBody.locator('tbody tr')).toHaveCount(INCLUDED_ROW_COUNT);
+  await expect(averagesBody.locator('tbody tr.ant-table-row')).toHaveCount(INCLUDED_ROW_COUNT);
 
   await completenessHeader.getByRole('button').click();
   const reopenedFilter = page.locator('.ant-dropdown:visible').last();
