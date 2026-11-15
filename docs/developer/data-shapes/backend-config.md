@@ -302,8 +302,8 @@ None. BackendConfig is a standalone contract with no embedded sub-entities.
   - Integer fields: `Validate.validateIntegerInRange()` with domain-appropriate bounds.
   - `apiKey`: `validateApiKey_()` — pattern check.
   - `backendUrl`: `Validate.validateUrl()` — URL string validation.
-  - `revokeAuthTriggerSet` / `jsonDbBackupOnInitialise`: `Validate.validateBoolean()` + normalise via `toBooleanString`.
-  - `jsonDbLogLevel`: `validateLogLevel()` — enum check + normalise.
+  - `revokeAuthTriggerSet` / `jsonDbBackupOnInitialise`: `Validate.validateBoolean()` + normalise via `toBooleanString_`.
+  - `jsonDbLogLevel`: `validateLogLevel_()` — enum check + normalise.
   - `jsonDbRootFolderId`: calls `instance.isValidGoogleDriveFolderId()` which checks format via regex and existence via `DriveApp.getFolderById()`.
   - `authGroupEmail`: blank-tolerant email validation (blank → allowed; non-blank → validated as email) using the `(value, instance)` signature (precedent: the `JSON_DB_ROOT_FOLDER_ID` validator). The `CONFIG_SCHEMA` once-set guard is present but unreached from any transport (see the auth-save mechanism note above): `setAuthenticationSettings` validates the candidate with `validateAuthStateStrict_` and commits through `writeConfigurationLocked`, never through `preparePropertyValue`.
   - `authMode`: enum validation accepting only `googleGroups` and `scriptProperties` (`'none'` is rejected as an unrecognised mode); `getAuthMode()` resolves an absent `authMode` paired with a non-blank `authGroupEmail` to `googleGroups` (legacy leniency) and resolves to `null` otherwise (see discrepancy #7).

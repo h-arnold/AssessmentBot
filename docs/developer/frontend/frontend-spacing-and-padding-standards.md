@@ -173,7 +173,7 @@ The `InlineDialog` container uses `padding: 24` with `marginTop: 16` — both va
 
 All inter-element gaps/spacings expressed in TSX must come from a single constant module:
 
-- **Module path:** `src/frontend/src/theme/spacing.ts` (created during implementation; this section documents its intended contract).
+- **Module path:** `src/frontend/src/theme/spacing.ts` — the implemented owner of the canonical spacing tokens; this section documents its contract.
 - **Exports and their token mapping:**
 
   | Constant                 | Value      | Maps To                          |
