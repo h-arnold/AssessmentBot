@@ -516,12 +516,12 @@ Key notes:
   `TaskDefinitionSchema.pageId: z.string()` (`assignmentAssessment.zod.ts`), which has always
   required it. Both parsers populate it unconditionally: the Slides parser via `getPageId(slide)`
   (a platform-guaranteed non-empty slide object ID) and the Sheets parser via
-  `String(sheetData.sheetId)`. `_deriveId()` therefore no longer applies a `pageId || ''` fallback.
+  `String(sheetData.sheetId)`. `_deriveId()` therefore applies no `pageId || ''` fallback.
 - **Legacy `fromJSON()` fails loudly.** `TaskDefinition.fromJSON()` passes `json.pageId` straight
-  to the constructor, so a legacy stored definition whose persisted JSON omits `pageId` now throws
-  `TaskDefinition requires pageId` instead of silently defaulting to `null`. This is intended:
-  extraction always sets the field, so such records are not expected to exist, and a loud failure
-  is preferred over tolerating an unlinkable task.
+  to the constructor, so a legacy stored definition whose persisted JSON omits `pageId` throws
+  `TaskDefinition requires pageId` rather than defaulting to `null`. This is intended: extraction
+  always sets the field, so such records are not expected to exist, and a loud failure is preferred
+  over tolerating an unlinkable task.
 
 ### Sub-entity: BaseTaskArtifact
 
@@ -611,7 +611,7 @@ The definition-write availability invariant is owned by
    passes the stored value through verbatim, so a legacy persisted partial row carrying `null`
    would be emitted as `null`. Frontend `TaskPartialSchema` declares `taskWeighting: z.number()`
    which rejects `null`.
-   **Classification: Fragile** — currently works because all newly created TaskDefinitions
+   **Risk:** currently works because all newly created TaskDefinitions
    default weighting to 1, but a legacy partial-wire-format record with null weighting would cause
    a Zod parse error in `getAssignmentDefinitionPartials`. The response mapper
    `_getFullAssignmentDefinition()` (used by `getAssignmentDefinition` and
@@ -624,8 +624,8 @@ The definition-write availability invariant is owned by
    definition-endpoint schemas (`assignmentDefinition.zod.ts`) declare no field for them.
    The Assignment contract differs: its embedded full definition carries both fields, and
    `AssignmentDefinitionSchema` (`assignmentAssessment.zod.ts`) requires them as
-   `z.string().nullable()` (see the persistence notes above).
-   **Classification: Aligned** — deliberate design. The fields stay internal to the definition
+   `z.string().nullable()` (see the persistence notes above). This is deliberate design. The
+   fields stay internal to the definition
    endpoints' transport and the backend refresh logic, while the Assignment-embedded definition
    intentionally transports them.
 
@@ -634,27 +634,24 @@ The definition-write availability invariant is owned by
    The response mapper `_getFullAssignmentDefinition()` transforms it to a lightweight
    `Array<{taskId, taskTitle, taskWeighting}>`. The frontend `AssignmentDefinitionSchema`
    expects `z.array(AssignmentDefinitionTaskSchema)`.
-   Additionally, the transform filters out tasks with null/undefined `taskWeighting`.
-   **Classification: Aligned** — the response mapper is the canonical transport-boundary
-   transformation. Both sides handle the array shape deliberately.
+   Additionally, the transform filters out tasks with null/undefined `taskWeighting`. The
+   response mapper is the transport-boundary transformation. Both sides handle the array shape
+   deliberately.
 
 4. **`DeleteAssignmentDefinitionResponseSchema` is `z.void().nullable()` but backend handler returns `undefined`.**
    The backend handler `deleteAssignmentDefinition_()` calls the controller and returns
    `undefined`. The `apiHandler` converts this to `null` via `data ?? null`. The frontend
    schema accepts both `void` and `null`.
-   **Classification: Aligned** — documented contract via the transport envelope.
 
 5. **`primaryTitle` uses `z.string()` in partial schema but `TrimmedNonEmptyStringSchema` in full schema.**
    `AssignmentDefinitionPartialSchema` uses `z.string()` for `primaryTitle`, `primaryTopic`,
    `alternateTitles`, `alternateTopics`, and `documentType`, while the full
    `AssignmentDefinitionSchema` uses `TrimmedNonEmptyStringSchema` for `primaryTitle`,
-   `primaryTopic`, and `DocumentTypeSchema` for `documentType`.
-   **Classification: Aligned** — both accept the backend output; the partial schema is
-   deliberately more permissive to tolerate registry data.
+   `primaryTopic`, and `DocumentTypeSchema` for `documentType`. Both accept the backend output;
+   the partial schema is deliberately more permissive to tolerate registry data.
 
 6. **`AssignmentDefinitionPartialSchema` uses `z.array(z.string())` for `alternateTitles`/`alternateTopics` while full schema uses `z.array(TrimmedNonEmptyStringSchema)`.**
    Same pattern as above: partial is more permissive.
-   **Classification: Aligned** — no risk of breakage.
 
 ---
 

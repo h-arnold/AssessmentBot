@@ -3,7 +3,7 @@
  *
  * Renders a grouped-header Ant Design Table from a structurally-narrowed
  * heatmap view model (`TaskHeatmapData`). The first two columns (Forename,
- * Surname) are sticky: both derive their display values from the stored
+ * Surname) are fixed at the start: both derive their display values from the stored
  * single-string `studentName` via the shared `splitStudentName` helper and
  * sort by their own derived value with a `studentId` tie-break. The default
  * initial order remains full-name ascending via the `rows.toSorted`
@@ -49,6 +49,13 @@ import { BASELINE_CAPTION, buildTaskHeaderPresentation } from './taskHeatmapColu
  * Render a heatmap table from a structurally-narrowed heatmap view model.
  *
  * @remarks
+ * **Sticky split render.** The table sets `sticky` with Ant Design's default
+ * offsets (`0`), so it renders as a header table inside
+ * `.ant-table-header.ant-table-sticky-holder` above a body table inside
+ * `.ant-table-body`. Ant Design copies `aria-label="Task Heatmap"` onto both
+ * tables, so the accessible name resolves to two table elements. That
+ * duplication is accepted (SPEC.md decision 8) and must not be deduplicated.
+ *
  * **Structural-subset typing (why not generics).** The prop type is a plain
  * structural contract (`TaskHeatmapData`) rather than a generic over the two
  * adapter output types. Both `HeatmapResult` (embedded) and
@@ -138,15 +145,14 @@ export function TaskHeatmapTable({
   }, [sourceAssignments, taskColumns]);
 
   const columns: TableColumnsType<TaskHeatmapRow> = useMemo(() => {
-    // ── Forename / Surname (top-level sticky columns, no children) ──
-    // Both columns stay fixed at the start so the split name pair scrolls
-    // as one sticky unit. Neither column carries a `defaultSortOrder`: the
-    // default full-name ascending order comes from the `sortedRows` pre-sort
-    // above (unchanged `compareStudentNames`), and Ant Design applies the
-    // per-column derived sorter only after a header click.
-    const [forenameColumn, surnameColumn] = buildStudentNameColumns<TaskHeatmapRow>({
-      sticky: true,
-    });
+    // ── Forename / Surname (top-level fixed columns, no children) ──
+    // Both columns stay fixed at the start so the split name pair scrolls as
+    // one unit while the table itself carries the sticky behaviour. Neither
+    // column carries a `defaultSortOrder`: the default full-name ascending
+    // order comes from the `sortedRows` pre-sort above (unchanged
+    // `compareStudentNames`), and Ant Design applies the per-column derived
+    // sorter only after a header click.
+    const [forenameColumn, surnameColumn] = buildStudentNameColumns<TaskHeatmapRow>();
 
     // ── Per-task group columns (built once, indexed by task position) ─
     const groupedTaskColumns = taskColumns.map((taskColumn: TaskHeatmapColumn, taskIndex) => {
@@ -220,9 +226,10 @@ export function TaskHeatmapTable({
         size="small"
         bordered
         scroll={{ x: 'max-content' }}
+        sticky
         aria-label="Task Heatmap"
         onChange={(_pagination, filters): void => {
-          setTableFilters(filters as Record<string, FilterValue | null>);
+          setTableFilters(filters);
         }}
       />
     </>

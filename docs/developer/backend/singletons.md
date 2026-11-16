@@ -393,15 +393,12 @@ const apiKey = config.getApiKey();
 
 ---
 
-## 📋 Delivered feature entries
+## 📋 Auth and cache singletons
 
-Entries below record the delivered Auth Service singleton and CacheManager extension.
+### AuthService
 
-### AuthService (new singleton)
-
-- Status: `Implemented`
 - Owning path: `src/backend/Utils/AuthService.js`
-- Decision: new singleton extending `BaseSingleton`.
+- Extends `BaseSingleton`.
 - Contract: `checkAccess({ bypassCache?, neverClaim?, method? })` returning
   `{ allowed, role? }`. The singleton owns the access decision: it resolves the caller's
   identity, delegates the membership decision to the configured provider, and delivers the
@@ -409,8 +406,7 @@ Entries below record the delivered Auth Service singleton and CacheManager exten
   [application-authentication.md](../security/application-authentication.md); the cached
   entry contract in [auth-cache.md](../data-shapes/auth-cache.md).
 
-### CacheManager generic methods (extended)
+### CacheManager generic methods
 
-- Status: `Implemented`
 - Owning path: `src/backend/RequestHandlers/CacheManager.js`
-- Decision: extend the existing class with generic `get(key)`, `put(key, value, ttlSeconds)` methods. Generic methods handle JSON serialisation/deserialisation internally; `put()` requires an explicit TTL (no default — the AuthService passes its 6-hour TTL at the call site). Existing assessment-specific methods stay unchanged; existing `console.error` calls convert to `ABLogger`.
+- Exposes generic `get(key)` and `put(key, value, ttlSeconds)` methods. Generic methods handle JSON serialisation/deserialisation internally; `put()` requires an explicit TTL (no default — the AuthService passes its 6-hour TTL at the call site). Existing assessment-specific methods stay unchanged; existing `console.error` calls convert to `ABLogger`.

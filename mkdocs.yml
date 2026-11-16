@@ -70,6 +70,9 @@ nav:
           - ABClass: developer/data-shapes/abclass.md
           - Assignment Definition: developer/data-shapes/assignment-definition.md
           - Assignment: developer/data-shapes/assignment.md
+          - Assessment: developer/data-shapes/assessment.md
+          - Student Submission: developer/data-shapes/student-submission.md
+          - Base Task Artifact: developer/data-shapes/base-task-artifact.md
           - Auth Cache: developer/data-shapes/auth-cache.md
           - Auth Users: developer/data-shapes/auth-users.md
           - Backend Config: developer/data-shapes/backend-config.md
@@ -77,6 +80,7 @@ nav:
           - Reference Data: developer/data-shapes/reference-data.md
           - Request Store: developer/data-shapes/request-store.md
           - Trigger Context: developer/data-shapes/trigger-context.md
+          - Frontend Data Analysis Response: developer/data-shapes/frontend-data-analysis-response.md
       - Frontend:
           - Frontend Architecture: developer/frontend/frontend-architecture.md
           - Frontend Testing: developer/frontend/frontend-testing.md
@@ -91,7 +95,7 @@ nav:
           - Data Analysis Architecture: developer/frontend/data-analysis-architecture.md
           - Metric Display Precision: developer/frontend/metric-display-precision.md
           - Metric Icon Display: developer/frontend/metric-icon-display.md
-          - Navigation Consistency Status: developer/frontend/navigation-consistency-status.md
+          - Page Header and Navigation Pattern: developer/frontend/page-header-navigation-pattern.md
       - Builder:
           - Builder Script: developer/builder/builder-script.md
           - Regression Checker How-To: developer/builder/regression-checker-how-to.md
@@ -118,6 +122,7 @@ nav:
       - Data Analysis and Scoring: pedagogy/data-analysis-scoring.md
   - Release Notes:
       - Releases: releaseNotes/RELEASES.md
+      - v1.1.0: releaseNotes/v1.1.0_release_notes.md
       - v1.0.0: releaseNotes/v1.0.0_release_notes.md
       - v0.7.9: releaseNotes/v0.7.9_release_notes.md
       - v0.7.8: releaseNotes/v0.7.8_release_notes.md

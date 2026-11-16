@@ -17,6 +17,10 @@ import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type * as studentAveragesTableColumnsModule from './studentAveragesTableColumns';
 import { BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL } from '@/services/dataAnalysis/metricDisplay/metricTone';
 import {
+  buildStudentAverageRow,
+  createClassPageAdapterResult,
+} from '@/test/classPage/classPageFixtures';
+import {
   createComputedMetricResult,
   createNotAttemptedMetricResult,
   createExcludedMetricResult,
@@ -92,48 +96,6 @@ const LAST_CALL_INDEX = -1;
 // ---------------------------------------------------------------------------
 
 /**
- * Build a valid StudentAverageRowModel fixture for tests.
- *
- * @param {Partial<StudentAverageRowModel>} [overrides] - Optional overrides.
- * @returns {StudentAverageRowModel} A StudentAverageRowModel fixture.
- */
-function buildRow(overrides: Partial<StudentAverageRowModel> = {}): StudentAverageRowModel {
-  return {
-    studentId: 's-1',
-    studentName: 'Alice',
-    metrics: {
-      completeness: createComputedMetricResult({ value: 4 }),
-      accuracy: createComputedMetricResult({ value: 3 }),
-      spag: createComputedMetricResult({ value: 3.5 }),
-      average: createComputedMetricResult({ value: 3.7 }),
-    },
-    ...overrides,
-  };
-}
-
-/**
- * Build a minimal ClassPageAdapterResult fixture for tests.
- *
- * @param {Partial<ClassPageAdapterResult>} [overrides] - Optional overrides.
- * @returns {ClassPageAdapterResult} A ClassPageAdapterResult fixture.
- */
-function buildAdapterResult(
-  overrides: Partial<ClassPageAdapterResult> = {}
-): ClassPageAdapterResult {
-  return {
-    recentAssignments: [],
-    studentAverages: [buildRow()],
-    classMetrics: {
-      completeness: createComputedMetricResult({ value: 4.2 }),
-      accuracy: createComputedMetricResult({ value: 3.5 }),
-      spag: createNotAttemptedMetricResult(),
-      overall: createComputedMetricResult({ value: 3.8 }),
-    },
-    ...overrides,
-  };
-}
-
-/**
  * Build a valid ClassPageViewModel for the mocked `buildClassPageViewModel`.
  *
  * @param {Partial<ClassPageViewModel>} [overrides] - Optional overrides.
@@ -185,9 +147,12 @@ function buildMockColumns(): MockColumn[] {
 // Default mock return values
 // ---------------------------------------------------------------------------
 
+/** Default student row rendered by the mocked view model. */
+const DEFAULT_STUDENT_ROW = buildStudentAverageRow({ studentId: 's-1', studentName: 'Alice' });
+
 /** Default view model returned by mockBuildViewModel. */
 const DEFAULT_VIEW_MODEL = buildViewModel({
-  studentAverages: [buildRow({ studentId: 's-1', studentName: 'Alice' })],
+  studentAverages: [DEFAULT_STUDENT_ROW],
 });
 
 /** Default columns returned by mockBuildColumns. */
@@ -231,7 +196,10 @@ function renderCard(
     analysisMode?: AnalysisMode;
   } = {}
 ): ReturnType<typeof render> {
-  const adapterResult = buildAdapterResult(options.adapterResult);
+  const adapterResult = createClassPageAdapterResult({
+    studentAverages: [DEFAULT_STUDENT_ROW],
+    ...options.adapterResult,
+  });
 
   return render(
     <StudentAveragesTableCard adapterResult={adapterResult} analysisMode={options.analysisMode} />
@@ -390,7 +358,7 @@ describe('StudentAveragesTableCard', () => {
     const INCLUDE_EXCLUDED_KEY = '2|4|0|0|1';
     const user = userEvent.setup();
     const excluded = createExcludedMetricResult();
-    const excludedRow = buildRow({
+    const excludedRow = buildStudentAverageRow({
       metrics: {
         completeness: excluded,
         accuracy: createComputedMetricResult({ value: 3 }),
@@ -453,7 +421,8 @@ describe('StudentAveragesTableCard', () => {
     );
     mockBuildColumns.mockImplementation(actualColumns.buildStudentAveragesTableColumns);
 
-    const excludedRow = buildRow({
+    const excludedRow = buildStudentAverageRow({
+      studentName: 'Alice',
       metrics: {
         completeness: createExcludedMetricResult(),
         accuracy: createComputedMetricResult({ value: 3 }),

@@ -502,7 +502,7 @@ Assessments are `Assessment` instances (`src/backend/Models/Assessment.js`); see
   }
   ```
 
-`formulaComparisonResults` is transient. The assessor writes only the three assessments and the `cellReference` feedback to the submission item; it no longer writes an `assessments.formulaComparison` entry. See [Component Shape: BaseTaskArtifact § Concrete artifact types](../data-shapes/base-task-artifact.md#concrete-artifact-types).
+`formulaComparisonResults` is transient. The assessor writes only the three assessments and the `cellReference` feedback to the submission item; it writes no `assessments.formulaComparison` entry. See [Component Shape: BaseTaskArtifact § Concrete artifact types](../data-shapes/base-task-artifact.md#concrete-artifact-types).
 
 ---
 

@@ -45,7 +45,7 @@ Read the matching doc before you act. When in doubt, read it.
 | `docs/developer/frontend/metric-display-precision.md`                          | rendering metric scores                                                                                                  | decimal-place convention                                                        |
 | `docs/developer/frontend/metric-icon-display.md`                               | rendering metric icons                                                                                                   | icon rendering, theme colour, stroke                                            |
 | `docs/developer/data-shapes/INDEX.md`                                          | defining or updating a backend-facing Zod schema                                                                         | canonical backend contracts                                                     |
-| `docs/developer/frontend/navigation-consistency-status.md`                     | reference                                                                                                                | page-title/nav-card pattern status                                              |
+| `docs/developer/frontend/page-header-navigation-pattern.md`                    | adding or changing a page header, title card or nav card                                                                 | page header pattern, stacking, page-level actions                               |
 
 > `docs/developer/frontend/ant-design-docs-cache/` holds cached Ant Design notes for offline reference. It is not canonical policy.
 

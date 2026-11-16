@@ -30,6 +30,7 @@
 
 import { expect, test } from '@playwright/test';
 import { getMethodCalls } from './shared/endToEndRuntimeMocks';
+import { stickyTableWrapper } from './helpers/sticky-table-locators';
 import {
   GOOGLE_DOCS_STUB_TEXT,
   captureSourceNavigation,
@@ -48,7 +49,6 @@ import {
 } from './helpers/task-preview-source-link-scenarios';
 import {
   CANONICAL_SLIDES_ASSIGNMENT,
-  HEATMAP_TABLE_NAME,
   withNumericSheetsPageId,
   withSourceLocationOverride,
 } from './helpers/task-preview-source-link-fixtures';
@@ -118,7 +118,7 @@ test.describe('Task preview source link — pointer interaction', () => {
     // native focus. Assert the true native behaviour directly.
     await expect(action).toBeFocused();
     // The original view survives the new-tab navigation untouched.
-    await expect(page.getByRole('table', { name: HEATMAP_TABLE_NAME })).toBeVisible();
+    await expect(stickyTableWrapper(page)).toBeVisible();
     await expect(metricTrigger(page, slidesCell.cellAccessibleLabel)).toHaveCount(1);
     expect(await getMethodCalls(page)).toEqual(callsBeforePreview);
   });
@@ -154,7 +154,7 @@ test.describe('Task preview source link — pointer interaction', () => {
 
     expect(navigation.url).toBe(sheetsCell.expectedSourceUrl);
     expect(navigation.stubContent).toBe(GOOGLE_DOCS_STUB_TEXT);
-    await expect(page.getByRole('table', { name: HEATMAP_TABLE_NAME })).toBeVisible();
+    await expect(stickyTableWrapper(page)).toBeVisible();
     expect(await getMethodCalls(page)).toEqual(callsBeforePreview);
   });
 });

@@ -18,7 +18,7 @@
  * Assignments whose `definitionKey` has no resolvable partial are omitted, and
  * the assignment set narrows to the active topic selection (cascade). The
  * rendered Checkbox `checked` state is derived from membership of the option's
- * `value` in the surface's controlled selected-values array — antd v6.3.1's
+ * `value` in the surface's controlled selected-values array — antd v6.6.7's
  * `optionRender` exposes NO `selected` flag, so we read `oriOption.value`
  * (pinned by the red contract).
  *

@@ -13,6 +13,7 @@
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { installRuntimeMock } from './shared/endToEndRuntimeMocks';
+import { stickyTableWrapper } from './helpers/sticky-table-locators';
 import {
   createHeatmapScenario,
   HEATMAP_CLASS_NAME,
@@ -20,7 +21,6 @@ import {
 } from './helpers/task-heatmap-end-to-end-helpers';
 
 const CLASSES_LABEL = 'Classes';
-const HEATMAP_TABLE_NAME = 'Task Heatmap';
 
 /**
  * Navigate from the root shell to the open heatmap table (ready state).
@@ -45,7 +45,7 @@ async function openHeatmapTable(page: Page): Promise<void> {
   // Open the heatmap from the recent assignment card.
   await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
 
-  const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
+  const table = stickyTableWrapper(page);
   await expect(table).toBeVisible();
 }
 

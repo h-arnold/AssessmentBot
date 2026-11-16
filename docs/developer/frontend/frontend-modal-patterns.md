@@ -82,7 +82,7 @@ Default decision:
 - reuse the family shape
 - extract helper behaviour only when repeated shell logic clearly outweighs the helper surface
 - accepted boundary for the classes modal-family compliance refactor: a narrow feature-local `src/frontend/src/features/classes/bulk/BulkFormModalScaffold.tsx` may be introduced for this family only
-- scaffold status for that refactor: `Implemented`; the scaffold now ships as the feature-local shared shell for the three bulk form modals
+- the scaffold is the feature-local shared shell for the three bulk form modals
 
 ### 3.3 Reference-data workflow modals
 
@@ -121,12 +121,12 @@ Default decision:
 - do not replace this family with a generic app-wide CRUD modal abstraction
 - reuse the extracted `ReferenceDataManagementModalScaffold` for the shared outer modal shell, shared close wiring, create-action presentation, and slot placement
 - accepted boundary for the classes reference-data scaffold: reuse `InlineDialog.tsx`, `manageReferenceDataDialogs.tsx`, and `manageReferenceDataHelpers.ts` as-is, and use `ReferenceDataManagementModalScaffold.tsx` for modal shell composition
-- helper-change status for the current extraction: `Implemented`; the scaffold now ships as the feature-scoped shared shell for the reference-data modal family, with the accepted next topic caller (`ManageTopicsModal.tsx`) now implemented
+- the scaffold is the feature-scoped shared shell for the reference-data modal family; its callers include `ManageTopicsModal.tsx`
 
 ### 3.4 Assignment definition create/update wizard modal
 
-- Planned surface: assignment-definition create/update workflow launched from the Assignments page
-- Planned owner: `src/frontend/src/pages/**` or a feature-local assignments workflow module under `src/frontend/src/**`
+- Surface: assignment-definition create/update workflow launched from the Assignments page
+- Owner: a feature-local assignments workflow module under `src/frontend/src/features/`
 
 Shared traits:
 
@@ -152,17 +152,17 @@ Default decision:
 
 - keep local to the assignment-definition workflow unless a second accepted in-scope caller emerges
 - do not extract a generic app-wide wizard helper for this feature
-- helper-change status for this planned family: `Implemented`
-  - hook: `useAssignmentDefinitionWizard.ts` (feature-local, complexity ≤7)
-  - shell: `AssignmentDefinitionWizardModalShell.tsx` (extended to handle all view states)
-  - modal: `AssignmentDefinitionWizardModal.tsx` (thin presenter delegating to shell)
-  - review footer: `AssignmentDefinitionWizardReviewFooter.tsx` (responsibility-coherent module owning the `Cancel` and primary-action rendering for both the chrome-free review content and the full-shell modal; re-exported from `AssignmentDefinitionWizardReviewContent.tsx`)
-- implemented (issue #301 stale-definition recovery, Section 5): chrome-free **review-content component** at `src/frontend/src/features/assignmentWizard/AssignmentDefinitionWizardReviewContent.tsx`, extracted from `AssignmentDefinitionWizardModalShell` (body form + footer content separated from the shell's `Modal` chrome; covers both wizard stages via `hasParsedTasks` gating; shared `AssignmentDefinitionWizardReviewFooter` reused by both). The existing full-shell create/update wizard keeps its own `Modal` chrome and re-composes from the extracted component with identical UI and behaviour. Current consumers: the Assignments-page shell `AssignmentDefinitionWizardModalShell` (keeps its own `Modal` chrome), and the two in-modal surfaces inside `AssessTaskModal` — the converted create path (`AssessTaskCreateReview`, both stages) and the stale-recovery review surface (`AssessTaskRecoverySurface`, stage two only). The two in-modal consumers render this content inside the single owning assessment modal and add no `Modal` chrome of their own, preserving the one-modal rule. The companion assessment-orchestration module (`useAssessTaskFlow`) is recorded in the shared-helper registry (`docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.24); the generic wizard-orchestrator hook and recovery entry intent were not retained.
+- feature-local owners:
+  - hook: `useAssignmentDefinitionWizard.ts`
+  - shell: `AssignmentDefinitionWizardModalShell.tsx`
+  - modal: `AssignmentDefinitionWizardModal.tsx` (thin presenter delegating to the shell)
+  - review footer: `AssignmentDefinitionWizardReviewFooter.tsx` (owns the `Cancel` and primary-action rendering for both the chrome-free review content and the full-shell modal; re-exported from `AssignmentDefinitionWizardReviewContent.tsx`)
+- chrome-free **review-content component** at `src/frontend/src/features/assignmentWizard/AssignmentDefinitionWizardReviewContent.tsx`, split from `AssignmentDefinitionWizardModalShell` (body form and footer content separate from the shell's `Modal` chrome; covers both wizard stages via `hasParsedTasks` gating; shares `AssignmentDefinitionWizardReviewFooter`). The full-shell create/update wizard keeps its own `Modal` chrome and re-composes this component. Consumers: the Assignments-page shell, and the two in-modal surfaces inside `AssessTaskModal` — the create path (`AssessTaskCreateReview`, both stages) and the stale-recovery review surface (`AssessTaskRecoverySurface`, stage two only). The in-modal consumers render inside the single owning assessment modal and add no `Modal` chrome, preserving the one-modal rule. The companion assessment-orchestration module is `useAssessTaskFlow` (registry entry §9.24). Do not add a generic wizard-orchestrator hook or a generic recovery entry intent.
 
 ### 3.5 In-modal discard-confirmation dialogs (assignment wizard / assess-task create and recovery)
 
 - Extracted component: one narrow feature-local discard-confirmation component shared by the assignment-definition wizard, the in-modal create review, and the stale-recovery review surface
-- Owning feature: `src/frontend/src/features/assignmentWizard/` (feature-local, delivered as `AssignmentDiscardConfirm.tsx`)
+- Owning feature: `src/frontend/src/features/assignmentWizard/` (`AssignmentDiscardConfirm.tsx`)
 - Approved callers (three, and only three): `src/frontend/src/features/assignmentWizard/AssignmentDefinitionWizardModal.tsx`, `src/frontend/src/features/classes/AssessTaskModal/AssessTaskCreateReview.tsx`, `src/frontend/src/features/classes/AssessTaskModal/AssessTaskRecoverySurface.tsx`
 
 Shared traits that motivated the extraction:
@@ -220,7 +220,7 @@ Default decision:
 - Owning surface: `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`
 - Availability leaf: `LinkExistingDefinitionButton` in the existing feature-local `LinkableDefinitionList.tsx`
 
-The modal keeps orchestration and the `linkableDefinitions.length > 0` gate; the existing picker module owns the availability presentation — either the enabled link action or the disabled action with its explanation. The leaf is a module-level named component taking the availability boolean and the existing `handleLinkExistingDefinition` binding. It adds no hooks, state, refs or DOM wrapper, and no new module was created.
+The modal keeps orchestration and the `linkableDefinitions.length > 0` gate; the existing picker module owns the availability presentation — either the enabled link action or the disabled action with its explanation. The leaf is a module-level named component taking the availability boolean and the existing `handleLinkExistingDefinition` binding. It adds no hooks, state, refs or DOM wrapper.
 
 ### 3.8 Assess Task modal shared success outcome
 

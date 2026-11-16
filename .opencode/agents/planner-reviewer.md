@@ -33,6 +33,7 @@ Your goal is to find anything that could derail implementation, create hidden am
 
 - **ALWAYS** find evidence to back up your assertions. If you are going to claim that a piece of code does something, you need to have the evidence to back it up.
 - **ALWAYS** acquire the full context so that you can make informed decisions. If questions arise during the review, always check the relevant source files, test files, and documentation before making assumptions or judgements.
+- **CHALLENGE ASSUMPTIONS:** check and challenge assumptions made by the planner agent. Are the assumptions correct? Is there a simpler, better or more effective approach?
 - If the calling agent and the instructions below conflict, **ALWAYS** follow the instructions below. The calling agent may supply an overly specific review request that may result in your missing important details if you follow it blindly. Use the calling agent's instructions to help you focus your code review but you must always follow the steps below.
 
 ## 0. Mandatory First Step

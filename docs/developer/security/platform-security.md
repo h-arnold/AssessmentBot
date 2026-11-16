@@ -106,7 +106,7 @@ were added, with users re-authorising on next access.
 > **Recommended operational practice.** Keep scope additions minimal and justified — add a
 > scope only when the code genuinely requires it, and prefer readonly variants wherever
 > possible. Review the `oauthScopes` array on every manifest change, and confirm the
-> `TriggerController.REQUIRED_SCOPES` list has been updated in lockstep.
+> `TriggerController.REQUIRED_SCOPES` list in lockstep.
 
 ## Drive file and folder permissions
 
@@ -161,8 +161,7 @@ Two mechanisms tie trigger execution back to the rest of the security model:
   before creating the trigger (see the scope section above), so the trigger is installed
   only with the full, granted authorisation surface.
 - **A single funnel for execution.** All scheduled work funnels through one public
-  entrypoint, `triggerHandler` (`src/backend/Triggers/triggerHandler.js`); the legacy
-  per-task wrapper (`triggerProcessSelectedAssignment`) has been removed. `triggerHandler`
+  entrypoint, `triggerHandler` (`src/backend/Triggers/triggerHandler.js`). `triggerHandler`
   performs validate-then-dispatch and owns all cleanup: for a resolved `triggerUid` it
   clears the stored context (`TriggerController.clearTriggerContext`) and deletes the
   fired trigger (`TriggerController.deleteTriggerById`) even when the handler throws. Its

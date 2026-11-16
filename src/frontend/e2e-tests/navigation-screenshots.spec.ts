@@ -12,6 +12,7 @@ import {
   HEATMAP_CLASS_NAME,
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
 } from './helpers/task-heatmap-end-to-end-helpers';
+import { stickyTableWrapper } from './helpers/sticky-table-locators';
 
 const CLASSES_NAV_LABEL = 'Classes';
 
@@ -42,7 +43,7 @@ async function openTaskHeatmap(page: Page): Promise<void> {
   await card.click();
 
   // Wait for heatmap table.
-  await expect(page.getByRole('table', { name: 'Task Heatmap' })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
 }
 
 test.describe('Navigation screenshot tests', () => {

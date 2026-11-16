@@ -2,9 +2,10 @@
  * The Student Averages table card for the Class page.
  *
  * Renders an Ant Design `Card` (`size="small"`, title `"Student Averages"`)
- * containing a control row (`Input.Search` on the left, static label on the
- * right) and an Ant Design `Table` with six columns (Forename, Surname,
- * Completeness, Accuracy, SPaG, Average).
+ * containing a control row (`Space.Compact` with a plain `Input` and
+ * `SearchOutlined` prefix on the left, static label on the right) and an Ant
+ * Design `Table` with six columns (Forename, Surname, Completeness, Accuracy,
+ * SPaG, Average).
  *
  * @remarks
  * **State ownership.** The component owns three pieces of user-controlled
@@ -38,9 +39,16 @@
  * to the cleared (`null`) sort, so the table falls back to full-name
  * ascending order.
  *
+ * **Sticky split render.** The table sets `sticky` with Ant Design's default
+ * offsets (`0`), so it renders as a header table inside
+ * `.ant-table-header.ant-table-sticky-holder` above a body table inside
+ * `.ant-table-body`. The table supplies `aria-label="Student Averages"`, which
+ * Ant Design copies onto both halves. `sticky` alone adds no fixed-height body
+ * region (`scroll.y`).
+ *
  * **Search input (v1 workaround).** The component uses `Space.Compact` with a
  * plain `Input` and `SearchOutlined` prefix instead of Ant Design's
- * `Input.Search`, because Ant Design v6.3.1 always renders a `<button>` in
+ * `Input.Search`, because Ant Design v6.6.7 always renders a `<button>` in
  * `Input.Search` regardless of the `enterButton` prop, which contradicts the
  * layout spec's requirement that no submit button is rendered (filters apply
  * on keystroke). The workaround produces the same visual result (search icon,
@@ -272,6 +280,8 @@ export function StudentAveragesTableCard(
         pagination={false}
         size="small"
         scroll={{ x: 'max-content' }}
+        sticky
+        aria-label="Student Averages"
         onChange={handleTableChange}
         locale={EMPTY_LOCALE}
       />

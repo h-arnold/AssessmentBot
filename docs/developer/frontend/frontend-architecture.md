@@ -2,7 +2,7 @@
 
 Structural and organisational conventions for `src/frontend/src/**`.
 
-This is the canonical home for frontend structural conventions. `src/frontend/AGENTS.md` signposts here rather than restating the rules. Add further conventions here as they are consolidated out of the agent instructions.
+This is the canonical home for frontend structural conventions. `src/frontend/AGENTS.md` signposts here rather than restating the rules; add further conventions here.
 
 ## 1. Relationship to other docs
 
@@ -167,3 +167,13 @@ The backend global `apiHandler()` returns the response envelope as a JSON string
 - **`failureHandler`:** GAS passes raw error strings (not JSON) to `failureHandler`; `apiService.ts` handles this without parsing.
 
 For test mock fidelity rules, see `frontend-testing.md`.
+
+## 6. Frontend utils folder convention
+
+The `src/frontend/src/utils/` folder holds pure formatting and utility functions shared across the frontend. It is a separate convention from the service-folder rules in Section 2, which govern only `services/` subfolder organisation.
+
+### 6.1 Rules
+
+- **Pure functions only.** Files in `utils/` must have no React, Ant Design, I/O, or state dependencies. They are plain TypeScript modules exporting typed pure functions.
+- **No service-folder governance.** The subfolder-by-domain-prefix rule in Section 2 applies only to `services/`. The `utils/` folder is a flat namespace; files are named by the domain they format (for example `dateFormatting.ts`). A subfolder reorganisation may be considered if the folder exceeds 5–6 files, but no barrel exports (`index.ts`) are created; consumers import directly.
+- **First entry:** `dateFormatting.ts` — exports `formatUpdatedAtLabel(updatedAt: string | null): string` (`en-GB`, date-only, rendered in UTC; em-dash fallback for null or unparseable input). The Class page adapter deliberately does not use the fallback: it throws upstream on null or unparseable input.

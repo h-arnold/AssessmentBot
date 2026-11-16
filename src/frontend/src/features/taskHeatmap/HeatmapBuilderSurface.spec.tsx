@@ -17,7 +17,7 @@
  * `adaptMetricsToMergedHeatmap` in `services/dataAnalysis/heatmapAdapter.merged.ts`).
  *
  * --- `optionRender` value-accessor pin (confirmed against INSTALLED antd typings) ---
- * The repo pins **antd v6.3.1** (the "(v5)" hint in the plan is stale). The installed
+ * The repo pins **antd v6.6.7** (the "(v5)" hint in the plan is stale). The installed
  * `@rc-component/select` (antd v6's Select base) types `optionRender` as:
  *
  *   optionRender?: (
@@ -274,7 +274,7 @@ describe('HeatmapBuilderSurface — checkbox options', () => {
     const assignments = screen.getByRole('combobox', { name: /assignments/i });
     await user.click(assignments);
 
-    // Search narrows the option list without a server round-trip. In antd v6.3.1
+    // Search narrows the option list without a server round-trip. In antd v6.6.7
     // the search surface for a searchable Select IS the combobox (no separate
     // `searchbox`-role node is rendered), so the query targets that element.
     await user.type(assignments, 'Title def1');
@@ -335,8 +335,8 @@ describe('HeatmapBuilderSurface — content-region precedence matrix', () => {
       surfaceState: { status: 'ready' } as HeatmapsSurfaceState,
     });
 
-    // The merged table is the TaskHeatmapTable (aria-label "Task Heatmap").
-    expect(screen.getByLabelText('Task Heatmap')).toBeInTheDocument();
+    // The merged table is the TaskHeatmapTable; assert its body scroll region.
+    expect(document.querySelector('.ant-table-body')).toBeInTheDocument();
   });
 
   it('gives the blocking state precedence over empty-state candidates when both co-occur', () => {
@@ -406,8 +406,8 @@ describe('HeatmapBuilderSurface — refresh', () => {
       isRefreshing: true,
     });
 
-    // Visible data persists during refresh — no skeleton flash, table stays mounted.
-    expect(screen.getByLabelText('Task Heatmap')).toBeInTheDocument();
+    // Visible data persists during refresh — no skeleton flash, body region stays mounted.
+    expect(document.querySelector('.ant-table-body')).toBeInTheDocument();
     expect(document.querySelector('.ant-skeleton')).not.toBeInTheDocument();
   });
 });

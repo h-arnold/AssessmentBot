@@ -22,11 +22,12 @@ import {
 } from '../shared/endToEndRuntimeMocks';
 import { pageContent } from '@/pages/pageContent';
 import {
-  HEATMAP_TABLE_NAME,
   SHEETS_ASSIGNMENT_TITLE,
   SLIDES_ASSIGNMENT_TITLE,
   SOURCE_LINK_CLASS_NAME,
 } from './task-preview-source-link-fixtures';
+import { stickyTableWrapper } from './sticky-table-locators';
+import { ASSIGNMENTS_CONTROL_INDEX, CLASS_CONTROL_INDEX } from './shell-controls';
 import { SOURCE_ACTION_LABEL } from '@/features/taskHeatmap/TaskPreviewCard';
 import { createSourceLinkScenario } from './task-preview-source-link-scenarios';
 
@@ -59,10 +60,6 @@ export const GOOGLE_DOCS_STUB_TEXT = 'Stubbed source document';
 
 /** Harmless content served instead of a real Google document. */
 const GOOGLE_DOCS_STUB_BODY = `<p id="${GOOGLE_DOCS_STUB_MARKER}">${GOOGLE_DOCS_STUB_TEXT}</p>`;
-
-// Heatmaps builder combobox order: class, topics, assignments.
-const HEATMAPS_CLASS_COMBOBOX_INDEX = 0;
-const HEATMAPS_ASSIGNMENTS_COMBOBOX_INDEX = 2;
 
 // ---------------------------------------------------------------------------
 // Locators
@@ -202,7 +199,7 @@ export async function openEmbeddedHeatmap(
 ): Promise<void> {
   await openCanonicalClassOverview(page);
   await page.getByRole('button').filter({ hasText: assignmentTitle }).click();
-  await expect(page.getByRole('table', { name: HEATMAP_TABLE_NAME })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
 }
 
 /**
@@ -289,19 +286,14 @@ export async function openMergedHeatmap(
   await page.getByRole('menuitem', { name: HEATMAPS_LABEL }).click();
   await expect(page.getByRole('heading', { level: 2, name: HEATMAPS_LABEL })).toBeVisible();
 
-  await selectBuilderOption(
-    page,
-    HEATMAPS_CLASS_COMBOBOX_INDEX,
-    SOURCE_LINK_CLASS_NAME,
-    controlActivation
-  );
+  await selectBuilderOption(page, CLASS_CONTROL_INDEX, SOURCE_LINK_CLASS_NAME, controlActivation);
 
   let selection = Promise.resolve();
   assignmentTitles.forEach((assignmentTitle) => {
     selection = selection.then(() => {
       return selectBuilderOption(
         page,
-        HEATMAPS_ASSIGNMENTS_COMBOBOX_INDEX,
+        ASSIGNMENTS_CONTROL_INDEX,
         assignmentTitle,
         controlActivation
       );
@@ -309,7 +301,7 @@ export async function openMergedHeatmap(
   });
   await selection;
 
-  await expect(page.getByRole('table', { name: HEATMAP_TABLE_NAME })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
 }
 
 // ---------------------------------------------------------------------------
@@ -419,25 +411,4 @@ export async function setColourScheme(page: Page, scheme: 'light' | 'dark'): Pro
     await themeSwitch.click();
   }
   await expect(themeSwitch).toBeChecked({ checked: shouldBeDark });
-}
-
-/**
- * Scroll the page fully right so a metric cell clears the table's sticky name
- * columns for the pointer journey.
- *
- * @remarks
- * At the narrow viewport the heatmap table is wider than the page, so the page is
- * scrolled — which is exactly what a teacher does. It is not sufficient there:
- * measured at 390x844, the sticky Forename/Surname columns are wider than the
- * table's remaining visible strip and cover every metric cell, so no pointer
- * journey exists at that viewport and callers open the preview with the keyboard
- * instead. At viewports where the page already fits this is a no-op.
- *
- * @param {Page} page - The Playwright page under test.
- * @returns {Promise<void>} Resolves once the page is scrolled fully right.
- */
-export async function revealMetricCellForPointer(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    window.scrollTo(document.documentElement.scrollWidth, 0);
-  });
 }

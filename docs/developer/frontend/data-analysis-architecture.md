@@ -1,11 +1,5 @@
 # Data Analysis Architecture
 
-## Status
-
-**Implemented analysis pipeline.** This document records the zero-weight and
-attempt-baseline analysis architecture and the shared analysis boundaries.
-Delivery evidence is not tracked here.
-
 ## Purpose
 
 The data-analysis domain must preserve two independent facts about an assessed
@@ -17,7 +11,7 @@ observation:
 A zero effective weight changes the second fact only; it does not turn an
 assessed numeric score into `N` or `E`.
 
-This architecture mirrors the delivered behaviour in
+The attempt-baseline behaviour is specified in
 [Attempt-baseline mode (post-accumulation)](#attempt-baseline-mode-post-accumulation).
 The canonical contract is
 [`frontend-data-analysis-response.md`](../data-shapes/frontend-data-analysis-response.md).
@@ -243,11 +237,9 @@ remounts while logging distinct errors.
    validation union permits only that zero-data shape without weakening the
    shared raw-`N` contract or reclassifying it as `excluded`.
 
-## Delivered modular boundaries
+## Analyser module boundaries
 
-Dual accumulation was added after extracting coherent, analyser-local
-responsibilities out of the former 509-line `averagingAnalyser.accumulation.ts`.
-The delivered analyser package is:
+The analyser package keeps each coherent responsibility in its own module:
 
 | Module                                       | Responsibility                                                                                                                                                                                                                          |
 | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -277,7 +269,7 @@ always wins. The merged surface uses full reads only and resolves per-column sta
 through `previewStatusByTaskKey`. Neither lookup feeds analysis: preview selection
 never changes class scores, summaries or metadata.
 
-The task-heatmap presentation was kept feature-local. Zero-weight and
+The task-heatmap presentation stays feature-local. Zero-weight and
 outside-the-baseline header rendering and group-edge class construction live in
 `features/taskHeatmap/taskHeatmapColumnMarking.tsx`
 (`buildTaskHeaderPresentation`, `getExcludedMetricEdgeClass`), consumed by

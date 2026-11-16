@@ -45,6 +45,8 @@ import {
   UNAVAILABLE_TITLE,
   withClassPartialAssessmentError,
 } from './helpers/assessment-error-preview-journeys';
+import { stickyTableHeaderHolder, stickyTableWrapper } from './helpers/sticky-table-locators';
+import { ASSIGNMENTS_CONTROL_INDEX, CLASS_CONTROL_INDEX } from './helpers/shell-controls';
 import { readClosedPageOverflowWidth } from './helpers/task-preview-source-link-geometry';
 import { pageContent } from '@/pages/pageContent';
 import {
@@ -53,7 +55,6 @@ import {
 } from '@/features/taskHeatmap/TaskPreviewCard';
 import { PREVIEW_ERROR_TEXT } from '@/features/taskHeatmap/TaskMetricPreviewContent';
 
-const TABLE_NAME = 'Task Heatmap';
 const REASONING_HEADING = 'Reasoning';
 const RESPONSE_HEADING = 'Student Response';
 
@@ -99,10 +100,6 @@ const NO_REASONING_COPY = 'No reasoning available';
 
 /** Placeholder response copy for a confirmed no-submission cell. */
 const NO_SUBMISSION_COPY = 'No submission available';
-
-/** Selecting controls by index, in the builder's fixed order. */
-const CLASS_CONTROL_INDEX = 0;
-const ASSIGNMENTS_CONTROL_INDEX = 2;
 
 /**
  * Copies served for each selected assignment's full read.
@@ -221,7 +218,7 @@ async function openMergedSharedDefinition(
   await page.getByRole('combobox').nth(ASSIGNMENTS_CONTROL_INDEX).click();
   await selectVisibleOption(page, sharedTitle, 1);
 
-  await expect(page.getByRole('table', { name: TABLE_NAME })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
 }
 
 /**
@@ -289,10 +286,10 @@ test.describe('Merged heatmap — explicit assessment errors', () => {
     await openSharedInstances(page);
 
     // The shared definition collapses to one column set, not two.
-    const table = page.getByRole('table', { name: TABLE_NAME });
-    await expect(table.getByRole('columnheader', { name: /shared definition/ })).toHaveCount(1);
+    const header = stickyTableHeaderHolder(page);
+    await expect(header.getByRole('columnheader', { name: /shared definition/ })).toHaveCount(1);
     await expect(
-      table.getByRole('columnheader', { name: MERGED_TASK_TITLE, exact: true })
+      header.getByRole('columnheader', { name: MERGED_TASK_TITLE, exact: true })
     ).toHaveCount(1);
 
     // The E instance's reasoning and content are shown for its own student.

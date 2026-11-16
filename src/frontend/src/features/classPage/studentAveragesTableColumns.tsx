@@ -178,9 +178,7 @@ export function buildStudentAveragesTableColumns(
   // No `defaultSortOrder`: the initial full-name order comes from the
   // view model (see `buildClassPageViewModel`), and a static indicator
   // here would re-sort by derived forename on mount.
-  const [forenameColumn, surnameColumn] = buildStudentNameColumns<StudentAverageRowModel>({
-    sticky: false,
-  });
+  const [forenameColumn, surnameColumn] = buildStudentNameColumns<StudentAverageRowModel>();
 
   return [
     forenameColumn,

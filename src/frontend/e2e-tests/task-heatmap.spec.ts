@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS } from '@/features/taskHeatmap/taskHeatmapColumnMarking';
 import { installRuntimeMock, releaseNextDeferredSuccess } from './shared/endToEndRuntimeMocks';
+import { stickyTableBody, stickyTableHeaderHolder } from './helpers/sticky-table-locators';
 import {
   CLASSES_LABEL,
   createHeatmapScenario,
@@ -9,7 +10,6 @@ import {
   openHeatmapClass,
 } from './helpers/task-heatmap-end-to-end-helpers';
 
-const HEATMAP_TABLE_NAME = 'Task Heatmap';
 const EXCLUDED_METRIC_ACCESSIBLE_NAME = 'Excluded from average: displayed work had zero weighting.';
 /** Number of metric sub-columns per task group (Completeness, Accuracy, SPaG). */
 const METRIC_SUBCOLUMN_COUNT = 3;
@@ -37,19 +37,19 @@ test.describe('Task Heatmap E2E journey', () => {
     await expect(page.getByRole('heading', { name: HEATMAP_CLASS_NAME })).toBeVisible();
 
     // Grouped header: split student name columns + Task 1/2/3 with Completeness/Accuracy/SPaG.
-    const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
-    await expect(table).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: 'Forename' })).toHaveCount(1);
-    await expect(table.getByRole('columnheader', { name: 'Surname' })).toHaveCount(1);
-    const studentTwoRow = table
+    const header = stickyTableHeaderHolder(page);
+    await expect(header).toBeVisible();
+    await expect(header.getByRole('columnheader', { name: 'Forename' })).toHaveCount(1);
+    await expect(header.getByRole('columnheader', { name: 'Surname' })).toHaveCount(1);
+    const studentTwoRow = stickyTableBody(page)
       .locator('tbody tr.ant-table-row')
       .filter({ has: page.locator('[aria-label^="Student Two,"]') });
     await expect(studentTwoRow.locator('td').nth(0)).toHaveText('Student');
     await expect(studentTwoRow.locator('td').nth(1)).toHaveText('Two');
     for (const taskTitle of HEATMAP_TASK_TITLES) {
-      await expect(table.getByRole('columnheader', { name: taskTitle })).toHaveCount(1);
+      await expect(header.getByRole('columnheader', { name: taskTitle })).toHaveCount(1);
     }
-    await expect(table.getByRole('columnheader', { name: 'Completeness' })).toHaveCount(
+    await expect(header.getByRole('columnheader', { name: 'Completeness' })).toHaveCount(
       METRIC_SUBCOLUMN_COUNT
     );
 
@@ -85,15 +85,15 @@ test.describe('Task Heatmap E2E journey', () => {
     );
 
     await assignmentCard.click();
-    const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
-    await expect(table).toBeVisible();
+    const header = stickyTableHeaderHolder(page);
+    await expect(header).toBeVisible();
 
     const zeroWeightLabel =
       'Task 1 Zero weighting — scores are shown but do not contribute to averages.';
     // The marked header's tooltip target span is deliberately not focusable, so
     // it is located by its class inside the first excluded group header (Task 1);
     // its composed accessible label stays pinned.
-    const zeroWeightHeader = table.locator('th.task-heatmap-excluded-group').first();
+    const zeroWeightHeader = header.locator('th.task-heatmap-excluded-group').first();
     const taskHeaderLabel = zeroWeightHeader.locator(`.${EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS}`);
     await expect(taskHeaderLabel).toHaveCount(1);
     await expect(taskHeaderLabel).toHaveAttribute('aria-label', zeroWeightLabel);
@@ -110,13 +110,13 @@ test.describe('Task Heatmap E2E journey', () => {
     await page.mouse.move(0, 0);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
 
-    const studentTwoScore = table.getByRole('button', {
+    const studentTwoScore = stickyTableBody(page).getByRole('button', {
       name: 'Student Two, Task 1, Completeness: 5',
       exact: true,
     });
     await expect(studentTwoScore).toHaveCount(1);
     await expect(
-      table.getByRole('button', {
+      stickyTableBody(page).getByRole('button', {
         name: 'Student One, Task 1, Completeness: N',
         exact: true,
       })
@@ -129,21 +129,23 @@ test.describe('Task Heatmap E2E journey', () => {
     expect(scoreBackground).not.toBe('rgba(0, 0, 0, 0)');
     expect(scoreBackground).not.toBe('transparent');
 
-    await expect(table.locator('.task-heatmap-excluded-group')).toHaveCount(METRIC_SUBCOLUMN_COUNT);
-    await expect(table.locator('.task-heatmap-excluded-first').first()).toHaveCount(1);
-    await expect(table.locator('.task-heatmap-excluded-last').first()).toHaveCount(1);
-    const firstMetricCell = table.locator('.task-heatmap-excluded-first').first();
-    const lastMetricCell = table.locator('.task-heatmap-excluded-last').first();
+    await expect(header.locator('.task-heatmap-excluded-group')).toHaveCount(
+      METRIC_SUBCOLUMN_COUNT
+    );
+    await expect(header.locator('.task-heatmap-excluded-first').first()).toHaveCount(1);
+    await expect(header.locator('.task-heatmap-excluded-last').first()).toHaveCount(1);
+    const firstMetricCell = header.locator('.task-heatmap-excluded-first').first();
+    const lastMetricCell = header.locator('.task-heatmap-excluded-last').first();
     const [firstBoxShadow, lastBoxShadow] = await Promise.all([
       firstMetricCell.evaluate((element) => getComputedStyle(element).boxShadow),
       lastMetricCell.evaluate((element) => getComputedStyle(element).boxShadow),
     ]);
     expect(firstBoxShadow).toMatch(/2(?:px 0){3}px inset/);
     expect(lastBoxShadow).toMatch(/-2(?:px 0){3}px inset/);
-    await expect(table.getByRole('columnheader', { name: 'Forename' })).not.toHaveClass(
+    await expect(header.getByRole('columnheader', { name: 'Forename' })).not.toHaveClass(
       /task-heatmap-excluded/
     );
-    await expect(table.getByRole('columnheader', { name: 'Surname' })).not.toHaveClass(
+    await expect(header.getByRole('columnheader', { name: 'Surname' })).not.toHaveClass(
       /task-heatmap-excluded/
     );
   });
@@ -154,10 +156,10 @@ test.describe('Task Heatmap E2E journey', () => {
     await openHeatmapClass(page);
 
     await expect(page.getByText('Student Averages')).toBeVisible();
-    const averagesTable = page.getByRole('table').last();
-    await expect(averagesTable).toBeVisible();
+    const averagesCard = page.locator('.ant-card').filter({ hasText: 'Student Averages' });
+    await expect(stickyTableHeaderHolder(averagesCard)).toBeVisible();
 
-    const excludedCell = averagesTable
+    const excludedCell = stickyTableBody(averagesCard)
       .locator(`[aria-label*="${EXCLUDED_METRIC_ACCESSIBLE_NAME}"]`)
       .first();
     await expect(excludedCell).toHaveCount(1);
@@ -255,11 +257,12 @@ test.describe('Task Heatmap E2E journey', () => {
     await openHeatmapClass(page);
 
     await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
-    const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
-    await expect(table).toBeVisible();
+    const header = stickyTableHeaderHolder(page);
+    const body = stickyTableBody(page);
+    await expect(body).toBeVisible();
 
     // Open the numeric range (band) filter on the first Completeness column header.
-    const completenessHeader = table.getByRole('columnheader', { name: 'Completeness' }).first();
+    const completenessHeader = header.getByRole('columnheader', { name: 'Completeness' }).first();
     await completenessHeader.getByRole('button').click();
 
     // The metric band filter renders an Ant Design range Slider inside the
@@ -288,8 +291,8 @@ test.describe('Task Heatmap E2E journey', () => {
     }
 
     // Student One (N) should disappear; a scored (green-band) student should remain.
-    await expect(table.locator('tbody tr').filter({ hasText: 'One' })).toHaveCount(0);
-    await expect(table.locator('tbody tr').filter({ hasText: 'Two' })).toHaveCount(1);
+    await expect(body.locator('tbody tr').filter({ hasText: 'One' })).toHaveCount(0);
+    await expect(body.locator('tbody tr').filter({ hasText: 'Two' })).toHaveCount(1);
   });
 
   test('surname sort reverses pre-sorted order', async ({ page }) => {
@@ -298,11 +301,11 @@ test.describe('Task Heatmap E2E journey', () => {
     await openHeatmapClass(page);
 
     await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
-    const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
-    await expect(table).toBeVisible();
+    const header = stickyTableHeaderHolder(page);
+    await expect(header).toBeVisible();
 
     // Capture the first data-row surname before any interaction.
-    const defaultFirstSurnameCell = table
+    const defaultFirstSurnameCell = stickyTableBody(page)
       .locator('tbody tr.ant-table-row')
       .first()
       .locator('td')
@@ -312,11 +315,11 @@ test.describe('Task Heatmap E2E journey', () => {
     expect(defaultFirstSurname).toBeTruthy();
 
     // Click Surname twice to reverse the derived surname sort order.
-    await table.getByRole('columnheader', { name: 'Surname' }).click();
-    await table.getByRole('columnheader', { name: 'Surname' }).click();
+    await header.getByRole('columnheader', { name: 'Surname' }).click();
+    await header.getByRole('columnheader', { name: 'Surname' }).click();
 
     // Direction-agnostic: after the toggle the order must differ from the default.
-    const afterFirstSurnameCell = table
+    const afterFirstSurnameCell = stickyTableBody(page)
       .locator('tbody tr.ant-table-row')
       .first()
       .locator('td')
@@ -332,7 +335,7 @@ test.describe('Task Heatmap E2E journey', () => {
     await openHeatmapClass(page);
 
     await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
-    await expect(page.getByRole('table', { name: HEATMAP_TABLE_NAME })).toBeVisible();
+    await expect(stickyTableHeaderHolder(page)).toBeVisible();
 
     await page.getByRole('button', { name: 'Back to Class overview' }).click();
 
@@ -351,8 +354,7 @@ test.describe('Task Heatmap E2E journey', () => {
     await classCard.getByRole('button', { name: 'View' }).click();
 
     // Loading skeleton present while the heatmap table is NOT yet rendered.
-    const heatmapTable = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
-    await expect(heatmapTable).toHaveCount(0);
+    await expect(stickyTableHeaderHolder(page)).toHaveCount(0);
     await expect(page.locator('.ant-skeleton').first()).toBeVisible();
 
     // Release deferred class and expect the class overview to reach ready.
@@ -361,7 +363,7 @@ test.describe('Task Heatmap E2E journey', () => {
 
     // Open the heatmap from the recent assignment card and expect the table.
     await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
-    await expect(heatmapTable).toBeVisible();
+    await expect(stickyTableHeaderHolder(page)).toBeVisible();
     await expect(page.locator('.ant-skeleton')).toHaveCount(0);
   });
 
@@ -372,9 +374,9 @@ test.describe('Task Heatmap E2E journey', () => {
     await openHeatmapClass(page);
     await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
 
-    const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
-    await expect(table).toBeVisible();
-    await expect(table.locator('tbody tr').filter({ hasText: 'One' })).toHaveCount(1);
+    const body = stickyTableBody(page);
+    await expect(body).toBeVisible();
+    await expect(body.locator('tbody tr').filter({ hasText: 'One' })).toHaveCount(1);
     await expect(page.getByText('No submissions yet')).toBeVisible();
   });
 
@@ -385,9 +387,9 @@ test.describe('Task Heatmap E2E journey', () => {
     await openHeatmapClass(page);
     await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
 
-    const zeroTable = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
-    await expect(zeroTable).toBeVisible();
-    await expect(zeroTable.getByRole('columnheader', { name: /task_\d/ })).toHaveCount(0);
+    const header = stickyTableHeaderHolder(page);
+    await expect(header).toBeVisible();
+    await expect(header.getByRole('columnheader', { name: /task_\d/ })).toHaveCount(0);
   });
 
   test('metric icons visible and themed in light and dark modes', async ({ page }) => {
@@ -396,13 +398,13 @@ test.describe('Task Heatmap E2E journey', () => {
     await openHeatmapClass(page);
 
     await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
-    const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
-    await expect(table).toBeVisible();
+    const header = stickyTableHeaderHolder(page);
+    await expect(header).toBeVisible();
 
     // The three metric icons render in the grouped column headers.
-    const completenessIcon = table.locator('[aria-label="Completeness"]').first();
-    const accuracyIcon = table.locator('[aria-label="Accuracy"]').first();
-    const spagIcon = table.locator('[aria-label="SPaG"]').first();
+    const completenessIcon = header.locator('[aria-label="Completeness"]').first();
+    const accuracyIcon = header.locator('[aria-label="Accuracy"]').first();
+    const spagIcon = header.locator('[aria-label="SPaG"]').first();
 
     // Light mode: every metric icon is visible.
     await expect(completenessIcon).toBeVisible();
@@ -435,15 +437,15 @@ test.describe('Task Heatmap E2E journey', () => {
     await openHeatmapClass(page);
 
     await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
-    const table = page.getByRole('table', { name: HEATMAP_TABLE_NAME });
-    await expect(table).toBeVisible();
+    const header = stickyTableHeaderHolder(page);
+    await expect(header).toBeVisible();
 
     // Each metric renders one icon per task group inside the grouped header row
     // (the body cells render their own per-cell metric icons, so scope to `thead`).
     const expectedLabels = ['Completeness', 'Accuracy', 'SPaG'];
     for (const label of expectedLabels) {
       // The aria-label is on the SVG element itself (direct createElement rendering).
-      const headerIcons = table.locator(`thead svg[aria-label="${label}"]`);
+      const headerIcons = header.locator(`thead svg[aria-label="${label}"]`);
 
       // One icon per task group column, all visible in the header cells.
       await expect(headerIcons).toHaveCount(METRIC_SUBCOLUMN_COUNT);

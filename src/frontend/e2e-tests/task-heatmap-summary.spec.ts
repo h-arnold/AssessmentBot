@@ -6,6 +6,7 @@ import {
 } from './shared/endToEndRuntimeMocks';
 import { AssignmentDefinitionPartialSchema } from '../src/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { ClassFullSchema } from '../src/services/googleClassrooms/classDetail/classDetailService.zod';
+import { stickyTableBody, stickyTableHeaderHolder } from './helpers/sticky-table-locators';
 import { buildAssignmentDefinitionPartial } from './helpers/task-heatmap-fixtures';
 import { buildClassFullDocument } from './helpers/task-heatmap-class-fixtures';
 import {
@@ -72,10 +73,9 @@ test.describe('Task Heatmap assignment summaries', () => {
     await expect(completeness.getByRole('listitem')).toHaveCount(TASK_COUNT);
     await expect(accuracy.getByRole('listitem')).toHaveCount(TASK_COUNT);
     await expectAlignedSummaryCards(page);
-    const table = page.getByRole('table', { name: 'Task Heatmap' });
-    await expect(table).toBeVisible();
+    await expect(stickyTableHeaderHolder(page)).toBeVisible();
     const cardsBox = await accuracy.boundingBox();
-    const tableBox = await table.boundingBox();
+    const tableBox = await stickyTableHeaderHolder(page).boundingBox();
     expect(cardsBox!.y + cardsBox!.height).toBeLessThan(tableBox!.y);
     await accuracy.getByRole('button', { name: 'About accuracy', exact: true }).click();
     await expect(page.getByRole('tooltip')).toContainText(
@@ -94,7 +94,7 @@ test.describe('Task Heatmap assignment summaries', () => {
     await page.keyboard.press('Escape');
     await expect(completeness).toHaveCount(0);
     await expect(accuracy).toHaveCount(0);
-    await expect(table).toHaveCount(0);
+    await expect(stickyTableHeaderHolder(page)).toHaveCount(0);
   });
 
   test('keeps both summary cards as notices for multiple assignments sharing one definition', async ({
@@ -119,12 +119,13 @@ test.describe('Task Heatmap assignment summaries', () => {
       await expect(card.getByRole('listitem')).toHaveCount(0);
       await expect(card.getByRole('button')).toHaveCount(0);
     }
-    const table = page.getByRole('table', { name: 'Task Heatmap' });
-    await expect(table).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: /shared definition/ })).toHaveCount(1);
-    await expect(table.getByRole('columnheader', { name: 'Task 1', exact: true })).toHaveCount(1);
+    const header = stickyTableHeaderHolder(page);
+    const body = stickyTableBody(page);
+    await expect(header).toBeVisible();
+    await expect(header.getByRole('columnheader', { name: /shared definition/ })).toHaveCount(1);
+    await expect(header.getByRole('columnheader', { name: 'Task 1', exact: true })).toHaveCount(1);
     await expect(
-      table.getByRole('button', { name: 'Student Two, Task 1, Completeness: 5', exact: true })
+      body.getByRole('button', { name: 'Student Two, Task 1, Completeness: 5', exact: true })
     ).toHaveCount(1);
     await page.getByRole('heading', { name: HEATMAP_CLASS_NAME, exact: true }).click();
     await testInfo.attach('standalone-summary-notices', {
@@ -139,7 +140,7 @@ test.describe('Task Heatmap assignment summaries', () => {
     await expect(completeness.getByText(notice, { exact: true })).toHaveCount(0);
     await expect(completeness.getByText('7 of 10', { exact: true })).toBeVisible();
     await expect(accuracy.getByText('2.50/5', { exact: true })).toBeVisible();
-    await expect(table.getByRole('columnheader', { name: /shared definition/ })).toHaveCount(0);
+    await expect(header.getByRole('columnheader', { name: /shared definition/ })).toHaveCount(0);
   });
 
   test('shows whole-class task evidence above the heatmap in light and dark modes', async ({
@@ -185,7 +186,7 @@ test.describe('Task Heatmap assignment summaries', () => {
       page.getByRole('tooltip', { name: /N means not attempted or not applicable/ })
     ).toBeHidden();
     const cardsBox = await completeness.boundingBox();
-    const tableBox = await page.getByRole('table', { name: 'Task Heatmap' }).boundingBox();
+    const tableBox = await stickyTableHeaderHolder(page).boundingBox();
     expect(cardsBox!.y + cardsBox!.height).toBeLessThan(tableBox!.y);
     await testInfo.attach('summary-desktop-light', {
       body: await page.screenshot({

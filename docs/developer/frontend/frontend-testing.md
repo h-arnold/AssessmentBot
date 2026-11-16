@@ -291,8 +291,8 @@ dispatcher suite:
   [Synthetic Test Data](../testing/synthetic-test-data.md#node-dispatcher-metadata-round-trip).
 
 Both browser specs use the existing runtime response queues. Keep strict dispatch:
-an unknown method or exhausted queue must still fail. The full browser suite
-currently runs **314** tests.
+an unknown method or exhausted queue must still fail. Run the full browser suite
+with `npm run test:e2e` from `src/frontend`.
 
 ### API transport and queue suites
 
@@ -305,8 +305,8 @@ exercise the actual `services/apiService.ts` owner; queue tests exercise
 Shared setup lives in `src/test/api/apiServiceTransportTestHelpers.ts`, reusing
 `apiServiceTestMocks.ts`. After `vi.resetModules()`, use `loadCallApi()` /
 `loadParseApiResponse()` for transport and `loadApiQueue()` for a fresh job
-registry. Dynamic imports use the supported owner aliases, not a stale relative
-path from the old suite location. Keep global/timer/mock cleanup in each suite.
+registry. Dynamic imports use the supported owner aliases, not a relative path
+to another suite. Keep global/timer/mock cleanup in each suite.
 
 `services/api/apiQueue.tasks.spec.ts` covers the local deferred-task extension:
 full read/await/merge/write slot reservation, mixed task/request FIFO and snapshots,
@@ -385,14 +385,17 @@ When adding test scenarios, prefer extending an existing helper before copying s
 
 Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-scoped subfolders are allowed when they keep related fixtures together, but production feature folders should stay free of shared test helpers.
 
+- Shared DOM guard helpers: `src/frontend/src/test/shared/domGuards.ts` — `requireElement` and `requireTableElement` assert-and-narrow queried DOM elements, throwing `TypeError` with a descriptive message instead of using non-null assertions. `resolveStickyTables(wrapper, surface)` resolves a sticky table's split halves to `{ headerHolder, body, headerTable, bodyTable }`, naming the `surface` in each per-element `TypeError`. The three sticky specs resolve their tables this way instead of repeating the selector block; see [Sticky student tables render as a split](#8-sticky-student-tables-render-as-a-split).
+- Shared document-order button-name helpers: `src/frontend/src/test/shared/buttonOrderingTestHelpers.ts` — `getAccessibleButtonNames()` and `getAccessibleButtonIndex(name)` read accessible button names in document order, and `expectReRunButtonOrdering()` asserts the re-run navigation-card placement shared by the class-page and heatmap specs. Use these so relative action placement is asserted against the same accessible names in every spec.
 - Data-analysis test fixtures: `src/frontend/src/test/dataAnalysis/fixtures.ts` — moved from `src/frontend/src/services/dataAnalysis/test/fixtures.ts` to the canonical shared-helpers location.
 - Data-analysis assertion helpers: `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts` — shared module exporting `expectMetricResult` and `checkMetricInvariant` (extracted from `averagingAnalyser.spec.ts`).
 - Synthetic analysis API round-trip adapter: `src/frontend/src/test/syntheticApiRoundTripAdapter.ts` — exports `createSyntheticApiRoundTripRunner(invokeRequest)`, a thin test-only adapter that composes the script-owned synthetic `apiHandler` bridge with `googleScriptRunHarness`. The bridge hands the real `apiHandler` JSON string to the harness, which passes strings through unchanged, so the envelope is serialised once by the backend and parsed once by `apiService`. The adapter also preserves raw failures and per-request callback isolation, and it imports no `scripts/` code. See [Synthetic Test Data](../testing/synthetic-test-data.md).
+- Heatmap table test fixtures: `src/frontend/src/test/taskHeatmapTableTestHelpers.ts` — exports the `buildHeatmapResult(overrides?)` and `buildCell()` composition helpers plus the pinned task-column constants, cell-preview lookups and the rendered-row/cell probes (`getRenderedRowKeys`, `getHeatmapCellByLabel`) shared by the `TaskHeatmapTable.*` and student-name-column specs.
 - Task-preview fixture selection: `src/frontend/src/test/taskHeatmap/previewFixtures.ts` — selects the canonical `small` `class-2` roster and its populated Slides `assignment-2-1` and Sheets `assignment-2-2` records through the frontend raw-JSON import convention, validates every selected full record through `ClassFullSchema` / `AssignmentFullSchema`, and derives and deep-freezes the preview identifiers, labels, metric values and content so the suites assert real record data rather than restated literals. It also exposes clone/build helpers so callers never mutate the shared records.
 - Task-preview source-action and focus-session helper: `src/frontend/src/test/taskHeatmap/previewSourceActionTestHelpers.ts` — owns the single shared contract for the issue #19 source action and the metric cell's preview focus session: the action's accessible name, the canonical editor URL derived through the production lookup, a no-source boundary cell, and a harness that renders the real `TaskMetricPreviewCell` between focusable neighbours with focus-transfer observation and overlay open/dismiss waits. The no-source boundary cell keeps the canonical per-criterion reasoning and error causes, so only the source link differs. Its four callers are `TaskPreviewCard.sourceLink.spec.tsx`, `TaskMetricPreviewContent.spec.tsx`, `TaskMetricPreviewCell.focus.spec.tsx` and `TaskMetricPreviewCell.focusSession.spec.tsx`.
 - Heatmaps hook ready-dataset mock factory: `src/frontend/src/test/taskHeatmap/hookMockFactories.ts` — exports `createReadyHeatmapsDatasetResult(datasetKey)` to build the ready query and dataset-state pair returned by the mocked `usePageDataset`, selecting `classPartials` or `assignmentDefinitionPartials` data for the requested key; shared by `useHeatmapsPageData.spec.ts`, `useHeatmapsPageData.preview.spec.ts`, `useHeatmapsPageData.knownErrorPreview.spec.ts` and `useHeatmapsPageData.postAnalysis.spec.ts`.
 - Heatmaps hook mock setup: `src/frontend/src/test/taskHeatmap/useHeatmapsPageData.mockSetup.ts` registers the `useHeatmapsPageData` hook doubles (`useQuery`, `useQueries`, `usePageDataset`, the shared query-options factories, `DataAnalysisService.analyse`, `adaptMetricsToMergedHeatmap`, `assembleMergedPreviewData`) and exports nothing, because `unicorn/no-top-level-side-effects` rejects top-level exports beside registration. Specs import it before `./useHeatmapsPageData`; `useHeatmapsPageData.knownErrorPreview.spec.ts` consumes it. The hoisted doubles are published through `useHeatmapsPageDataMockHandles.ts`, whose `heatmapsPageDataMockHandles.current` slot the setup module fills, because the class-shaped analysis-service mock cannot be reached through `vi.mocked(DataAnalysisService)`. `useHeatmapsPageDataSpecMocks.ts` binds them as `heatmapsPageDataMocks` and exports `installUseQueriesMock`, `createHeatmapsPageDataHarness` and `mockWarmupDatasetsReady`; it has no registration side effects and throws if imported before the setup module.
-- Class-page test helpers: `src/frontend/src/test/classPage/classPageFixtures.ts` exports `createReadyClassPageData(overrides?)` plus the shared class/identifier fixtures for the Class page composition specs (`ClassPage.spec.tsx`, `ClassPageContent.spec.tsx`); `useClassPageDataTestFixtures.ts` provides the pure query/dataset builders and the shared `createClassPageDataWrapper` provider wrapper for the hook suites; and `useClassPageDataMockHandles.ts` exports `createUseClassPageDataMockHandles()`, which binds typed `vi.mocked` handles for the hook's mocked dependencies (`useQuery`, `usePageDataset`, `getABClassQueryOptions`, `DataAnalysisService.analyse`, `adaptClassPageToViewModel`) for the main, blocking, and memoisation hook specs. The hook suites register their doubles through the registration-only `useClassPageData.mockSetup.ts`; `useClassPageData.assignmentQueries.spec.ts` keeps its own handle bindings, and `useClassPageData.diagnostics.spec.ts` declares local hoisted mocks and consumes only `createReadyClassQueryResult`.
+- Class-page test helpers: `src/frontend/src/test/classPage/classPageFixtures.ts` exports `createReadyClassPageData(overrides?)`, `createClassPageAdapterResult(overrides?)` and `buildStudentAverageRow(overrides?)`, plus the shared class/identifier fixtures for the Class page composition specs (`ClassPage.spec.tsx`, `ClassPageContent.spec.tsx`); `createClassPageAdapterResult` takes a `studentAverages` override, and `buildStudentAverageRow` composes one row from per-metric results, the way `buildHeatmapResult({ rows })` composes heatmap rows from `buildCell()`; `useClassPageDataTestFixtures.ts` provides the pure query/dataset builders and the shared `createClassPageDataWrapper` provider wrapper for the hook suites; and `useClassPageDataMockHandles.ts` exports `createUseClassPageDataMockHandles()`, which binds typed `vi.mocked` handles for the hook's mocked dependencies (`useQuery`, `usePageDataset`, `getABClassQueryOptions`, `DataAnalysisService.analyse`, `adaptClassPageToViewModel`) for the main, blocking, and memoisation hook specs. The hook suites register their doubles through the registration-only `useClassPageData.mockSetup.ts`; `useClassPageData.assignmentQueries.spec.ts` keeps its own handle bindings, and `useClassPageData.diagnostics.spec.ts` declares local hoisted mocks and consumes only `createReadyClassQueryResult`.
 - Classes management panel test helpers: `src/frontend/src/test/classes/classesManagementPanelMockFactories.tsx` — `createClassesManagementPanelMocks()` builds the isolated panel module mocks (management state, batch mutation, queue, progress modal, bulk create, bulk delete); registered once by `ClassesManagementPanel.mockSetup.ts` for the `ClassesManagementPanel.*.spec.tsx` specs. The sibling `src/frontend/src/test/classes/classesManagementPanelHarness.tsx` exports `createClassesManagementPanelHarness(...)`, which owns those specs' `reset()` queue/modal behaviour, binds `buildClassesManagementState` to the hook mock, dynamically renders the real panel, and exports the shared `MutableQueueState` type; `ClassesManagementPanel.mockSetup.ts` stays a separate export-free registration module.
 - Auth gate test helpers: `src/frontend/src/test/auth/appAuthGateTestHelpers.tsx` — exports the access-result fixtures (`grantedAdminAccess`, `freshInstallAccess`, `brokenConfigAccess`, `deniedAccess`), `EMPTY_STARTUP_WARMUP_RESULT`, and `createQueryWrapper()`. The auth-gate specs import them statically and register their doubles through `auth/appAuthGate.mockSetup.ts` (`AppAuthGate.auth.spec.tsx` keeps its local hoisted mocks).
 - Focused analysis input builder: `buildSingleStudentInput(assessments, additionalOverrides?)` in `src/frontend/src/test/dataAnalysis/fixtures.ts` — builds a one-class, one-student `AveragingAnalyserInput` from a criterion-score map for focused analyser/service cases.
@@ -481,7 +484,7 @@ Existing imports through `classesPageTestHelpers` stay valid. The sections below
 
 All shared fixture constants are built from two exported factory functions that provide sensible defaults and keep fixture construction concise:
 
-`createFixtureClassPartial(overrides)` — Creates a `ClassPartial` fixture. Only `classId` is required; all other fields default to the project's conventional fixture defaults (`className: 'Test Class'`, `cohortKey: null`, `courseLength: 1`, `yearGroupKey: 'default-yg'`, `classOwner: null`, `teachers: []`, `active: null`, `metadata: createCanonicalMetadataFixture()`). Every class read now requires the whole nullable metadata snapshot, so the default is a detached canonical non-null snapshot; null-metadata boundary fixtures must pass `metadata: null` explicitly.
+`createFixtureClassPartial(overrides)` — Creates a `ClassPartial` fixture. Only `classId` is required; all other fields default to the project's conventional fixture defaults (`className: 'Test Class'`, `cohortKey: null`, `courseLength: 1`, `yearGroupKey: 'default-yg'`, `classOwner: null`, `teachers: []`, `active: null`, `metadata: createCanonicalMetadataFixture()`). Every class read requires the whole nullable metadata snapshot, so the default is a detached canonical non-null snapshot; null-metadata boundary fixtures must pass `metadata: null` explicitly.
 
 `createFixtureYearGroup(key, name)` — Creates a `YearGroup` fixture with the given key and name.
 
@@ -804,20 +807,13 @@ function createStartupWarmupState(
 }
 ```
 
-## Current Structure
+## Test file layout
 
 - Unit/component tests: `src/frontend/src/**/*.spec.{ts,tsx}`
 - Shared test helpers: `src/frontend/src/test/**`
 - Test setup: `src/frontend/src/test/setup.ts`
 - E2E tests: `src/frontend/e2e-tests/**/*.spec.ts` (see `frontend-playwright-e2e.md`)
 - Playwright config: `src/frontend/playwright.config.ts`
-
-## Current Approach
-
-- Use Vitest for invisible behaviour and fast deterministic checks (this document).
-- Use Playwright for visible, user-observable behaviour in a real browser (see `frontend-playwright-e2e.md`).
-- Keep tests decoupled from implementation details.
-- Maintain a balanced pyramid: broad Vitest coverage, targeted Playwright journeys.
 
 ## CSS and Style Testing
 
@@ -1087,6 +1083,32 @@ focused combobox with explicit `key`/`code` and matching `keyCode`/`which`, wrap
 and assert `aria-activedescendant` before pressing Enter. Keep the keyboard expectation intact;
 do not replace it with a hidden-option assertion or drop the real-browser keyboard/closemotion
 coverage.
+
+### 8. Sticky student tables render as a split
+
+The Student Averages table and the Task Heatmap (embedded and standalone) enable Ant Design's
+`sticky` mode, so each renders as two tables plus a scrollbar:
+
+- `.ant-table-header.ant-table-sticky-holder` holds the header table. Base every `columnheader`
+  query here.
+- `.ant-table-body` holds the body table and owns the horizontal overflow. Base every row and
+  cell query here.
+- `.ant-table-sticky-scroll` holds the pinned scrollbar, and renders only while the body overflows
+  horizontally and its scroll region crosses the viewport bottom. `happy-dom` never measures
+  overflow, so component specs assert the holder and body structure only; the bar's behaviour
+  belongs to Playwright.
+
+Never resolve a sticky student table by accessible name. Both tables supply a label
+(`Task Heatmap`, `Student Averages`) and Ant Design copies it onto both halves, so
+`getByRole('table', { name: 'Task Heatmap' })` matches two elements and fails strict mode. Scope
+through the owning `Card` or wrapper, then use the structural bases: rows and cells
+from `.ant-table-body`, column headers from `.ant-table-header.ant-table-sticky-holder`.
+Wrapper-scoped queries remain valid only for roles whose occurrence count the split leaves
+unchanged, such as a named column header.
+
+The body `tbody` starts with an `aria-hidden` `tr.ant-table-measure-row` that repeats the column
+titles as text. Count data rows with `tbody tr.ant-table-row`; a bare `tbody tr` includes the
+measure row. For the same reason, assert headers by role rather than by text.
 
 ## `act()` Warning Avoidance
 

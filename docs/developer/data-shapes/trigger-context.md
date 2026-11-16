@@ -4,11 +4,7 @@ Internal trigger execution context store persisted via GAS Script Properties, ke
 triggerUid. Stores the method and params for a scheduled time-based trigger so the single
 public `triggerHandler()` entrypoint can validate, authorise, and dispatch on fire.
 
-> **Status: Implemented** — delivered in `src/backend/Triggers/`
-> (`TriggerController` moved from `src/backend/Utils/` + context storage
-> methods, `triggerHandler.js`, `triggerMethodHandlers.js`).
-
-Backend implementation: `src/backend/Triggers/TriggerController.js` (moved from `src/backend/Utils/TriggerController.js`)
+Backend implementation: `src/backend/Triggers/TriggerController.js`
 Persistence: `PropertiesService.getScriptProperties()` via `GASPropertiesUtils` (`src/backend/Utils/00_GASPropertiesUtils.js`)
 API handlers: Not directly callable — consumed internally by `triggerHandler()` in `src/backend/Triggers/triggerHandler.js`
 Frontend service: None — internal backend mechanism
@@ -120,14 +116,10 @@ None — TriggerContext is a pair of flat key-value properties with no embedded 
 
 ### Known discrepancies
 
-None — the contract is implemented and there is no drift. The previously documented concern
-that writing `trigger:<uid>:*` keys could suppress legacy config deserialisation no longer
-applies: the early-return interaction that enumerated other Script Property keys was removed
-(GitHub issue #296), and
-`ConfigurationManager.ensureInitialized()` now only lazily acquires the `scriptProperties`
-handle and reads/writes the single `__CONFIG_STORE_KEY__` blob. It never enumerates or reacts
-to other Script Property keys, so trigger context storage cannot collide with config
-deserialisation.
+None. Trigger context is stored under `trigger:<uid>:*` keys.
+`ConfigurationManager.ensureInitialized()` lazily acquires the `scriptProperties` handle and
+reads/writes only the single `__CONFIG_STORE_KEY__` blob. It never enumerates or reacts to other
+Script Property keys, so trigger context storage cannot collide with config deserialisation.
 
 ---
 

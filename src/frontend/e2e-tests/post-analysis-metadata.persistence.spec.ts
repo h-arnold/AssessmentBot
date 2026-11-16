@@ -10,6 +10,7 @@ import {
   installRuntimeMock,
   selectVisibleOption,
 } from './shared/endToEndRuntimeMocks';
+import { stickyTableWrapper } from './helpers/sticky-table-locators';
 
 const EXPECTED_CLASS_READ_COUNT = 3;
 const STRICT_MODE_READ_COUNT = 2;
@@ -54,7 +55,7 @@ test('persists changed post-analysis metadata for standalone Heatmaps without a 
   await expect(assignments).toBeEnabled();
   await assignments.click();
   await selectVisibleOption(page, POST_ANALYSIS_ASSIGNMENT_TITLE);
-  await expect(page.getByRole('table', { name: 'Task Heatmap' })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
 
   const calls = await getMethodCalls(page);
   expect(calls.filter((method) => method === 'updateABClass')).toHaveLength(MAX_EXPECTED_WRITES);
@@ -69,10 +70,10 @@ test('persists changed post-analysis metadata for standalone Heatmaps without a 
   // changes, exercising post-commit effects against the same loaded source.
   await assignments.click();
   await selectVisibleOption(page, POST_ANALYSIS_ASSIGNMENT_TITLE);
-  await expect(page.getByRole('table', { name: 'Task Heatmap' })).toHaveCount(0);
+  await expect(stickyTableWrapper(page)).toHaveCount(0);
   await assignments.click();
   await selectVisibleOption(page, POST_ANALYSIS_ASSIGNMENT_TITLE);
-  await expect(page.getByRole('table', { name: 'Task Heatmap' })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
   const updateCountAssertion = expect
     .poll(async () => {
       const latestCalls = await getMethodCalls(page);
@@ -95,7 +96,7 @@ test('writes a refreshed newer assignment version exactly once', async ({ page }
   await expect(assignments).toBeEnabled();
   await assignments.click();
   await selectVisibleOption(page, POST_ANALYSIS_ASSIGNMENT_TITLE);
-  await expect(page.getByRole('table', { name: 'Task Heatmap' })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
   await expect
     .poll(async () => {
       const methodCalls = await getMethodCalls(page);

@@ -9,6 +9,7 @@ import {
   installRuntimeMock,
   releaseNextDeferredSuccess,
 } from './shared/endToEndRuntimeMocks';
+import { stickyTableWrapper } from './helpers/sticky-table-locators';
 
 const SAVE_TITLE = 'Class summary not saved';
 const SAVE_DESCRIPTION =
@@ -69,7 +70,7 @@ async function selectHeatmapInputs(page: Page): Promise<void> {
  */
 async function openHeatmaps(page: Page): Promise<void> {
   await selectHeatmapInputs(page);
-  await expect(page.getByRole('table', { name: 'Task Heatmap' })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
 }
 
 /**
@@ -98,7 +99,7 @@ test('shows and dismisses persistent safe save-failure feedback on standalone He
   await expect(notice).toBeVisible();
   await expect(notice.getByText(SAVE_DESCRIPTION, { exact: true })).toHaveCount(1);
   await expect(notice).not.toContainText(BACKEND_MESSAGE);
-  await expect(page.getByRole('table', { name: 'Task Heatmap' })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Assignments', exact: true })).toBeFocused();
   const close = notice.getByRole('button', { name: /close/i });
   await expect(close).toBeVisible();
@@ -109,9 +110,9 @@ test('shows and dismisses persistent safe save-failure feedback on standalone He
   await expect(getMethodCalls(page)).resolves.toEqual(callsBefore);
   const assignments = page.getByRole('combobox', { name: 'Assignments', exact: true });
   await chooseOptionWithKeyboard(page, assignments, POST_ANALYSIS_ASSIGNMENT_TITLE);
-  await expect(page.getByRole('table', { name: 'Task Heatmap' })).toHaveCount(0);
+  await expect(stickyTableWrapper(page)).toHaveCount(0);
   await chooseOptionWithKeyboard(page, assignments, POST_ANALYSIS_ASSIGNMENT_TITLE);
-  await expect(page.getByRole('table', { name: 'Task Heatmap' })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
   await expect(notice).toHaveCount(0);
   const callsAfterReselection = await getMethodCalls(page);
   expect(callsAfterReselection.filter((method) => method === 'updateABClass')).toEqual(
@@ -139,7 +140,7 @@ test('shows persistent save-failure feedback on the Class page without replacing
   await expect(notice).toBeVisible();
   await expect(notice.getByText(SAVE_DESCRIPTION, { exact: true })).toHaveCount(1);
   await expect(notice).not.toContainText(BACKEND_MESSAGE);
-  await expect(page.getByRole('table', { name: 'Task Heatmap' })).toBeVisible();
+  await expect(stickyTableWrapper(page)).toBeVisible();
   await page.getByRole('menuitem', { name: 'Heatmaps', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: SAVE_TITLE })).toHaveCount(0);
 });
@@ -249,7 +250,7 @@ for (const viewport of [
     await chooseOptionWithKeyboard(page, classControl, POST_ANALYSIS_CLASS_NAME);
     const assignments = page.getByRole('combobox', { name: 'Assignments', exact: true });
     await chooseOptionWithKeyboard(page, assignments, POST_ANALYSIS_ASSIGNMENT_TITLE);
-    await expect(page.getByRole('table', { name: 'Task Heatmap' })).toBeVisible();
+    await expect(stickyTableWrapper(page)).toBeVisible();
     const notice = page
       .getByRole('status')
       .filter({ has: page.getByText(SAVE_TITLE, { exact: true }) });

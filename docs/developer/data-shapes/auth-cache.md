@@ -4,10 +4,6 @@ In-memory CacheService cache entry used by `GoogleGroupsAuthService._resolveAcce
 through `AuthService.checkAccess()`) to memoise Google Group membership results between API
 requests. Stored via the generic `CacheManager` methods (extended with `get`/`put`).
 
-> **Status: Implemented** — the generic `CacheManager` methods and the `AuthService`
-> provider hierarchy have landed, so both the cache access and its
-> sole producer/consumer (`GoogleGroupsAuthService`) exist.
-
 Backend implementation: `src/backend/Utils/GoogleGroupsAuthService.js` (`_resolveAccess()`)
 Cache access: `src/backend/RequestHandlers/CacheManager.js` → generic `get(key)`, `put(key, value, ttlSeconds)`
 Persistence: `CacheService.getScriptCache()` — in-memory cache with TTL, not durable storage
@@ -100,7 +96,7 @@ None — AuthCache is a single flat key-value entry with no embedded sub-entitie
 
 ### Known discrepancies
 
-None — the contract is implemented. `GoogleGroupsAuthService._resolveAccess()` derives the
+None. `GoogleGroupsAuthService._resolveAccess()` derives the
 cache key `auth:<groupEmail>:<email>` and reads/writes via the `CacheManager` generic
 methods; `ScriptPropertiesAuthService._resolveAccess()` reads the stored list fresh and
 writes no cache entry. The trigger path passes `bypassCache: true, neverClaim: true`.

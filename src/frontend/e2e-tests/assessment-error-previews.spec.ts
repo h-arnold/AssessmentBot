@@ -41,6 +41,7 @@ import {
   withClassPartialAssessmentError,
   withMissingCriterion,
 } from './helpers/assessment-error-preview-journeys';
+import { stickyTableWrapper } from './helpers/sticky-table-locators';
 import {
   SOURCE_ACTION_LABEL,
   SOURCE_LOADING_LABEL,
@@ -48,7 +49,6 @@ import {
 } from '@/features/taskHeatmap/TaskPreviewCard';
 import { LOADING_PREVIEW_LABEL as WHOLE_PREVIEW_LOADING_LABEL } from '@/features/taskHeatmap/TaskMetricPreviewContent';
 
-const TABLE_NAME = 'Task Heatmap';
 const MIXED_ASSIGNMENT_ID = 'assignment-2-4';
 const MIXED_STUDENT_NAME = 'Taylor Yundt-Hermiston';
 const SOURCE_LESS_STUDENT_NAME = 'Lou Cronin';
@@ -149,7 +149,7 @@ test.describe('Embedded heatmap — explicit assessment errors', () => {
       getAssignment: successQueue(canonicalAssignment(MIXED_ASSIGNMENT_ID)),
     });
     await openEmbeddedHeatmap(page, MIXED_ASSIGNMENT_ID);
-    await expect(page.getByRole('table', { name: TABLE_NAME })).toBeVisible();
+    await expect(stickyTableWrapper(page)).toBeVisible();
 
     const errorPopover = await openCell(page, MIXED_CELL);
     await expect(errorPopover.getByRole('status', { name: 'Completeness score: E' })).toHaveCount(
@@ -168,7 +168,7 @@ test.describe('Embedded heatmap — explicit assessment errors', () => {
     // The keyboard opening hands focus to the action once, and no app unmount
     // occurred: the table and the trigger are still mounted.
     await expect(action).toBeFocused();
-    await expect(page.getByRole('table', { name: TABLE_NAME })).toBeVisible();
+    await expect(stickyTableWrapper(page)).toBeVisible();
     await expect(page.getByRole('button', { name: MIXED_CELL })).toHaveCount(1);
 
     await page.keyboard.press('Escape');
@@ -294,7 +294,7 @@ test.describe('Embedded heatmap — explicit assessment errors', () => {
     // class partial carries E for this student, so the sibling cell shows that
     // partial E rather than a settled numeric result; the settled numeric
     // sibling is covered by journeys whose full read succeeds.
-    await expect(page.getByRole('table', { name: TABLE_NAME })).toBeVisible();
+    await expect(stickyTableWrapper(page)).toBeVisible();
     const partialSibling = page.getByRole('button', { name: HEALTHY_PARTIAL_CELL });
     await expect(partialSibling).toHaveCount(1);
     await expect(partialSibling).toHaveText('E');
@@ -381,7 +381,7 @@ test.describe('Embedded heatmap — explicit assessment errors', () => {
 
     // The refreshed read is current, so the preview shows the valid response
     // instead of the corruption notice.
-    await expect(page.getByRole('table', { name: TABLE_NAME })).toBeVisible();
+    await expect(stickyTableWrapper(page)).toBeVisible();
     const refreshedPopover = await openCell(page, MIXED_CELL);
     await expect(sourceAlert(refreshedPopover)).toHaveCount(0);
     await expect(refreshedPopover.getByText(ASSESSMENT_FAILED_REASONING)).toHaveCount(1);

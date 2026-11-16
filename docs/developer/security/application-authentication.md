@@ -60,9 +60,9 @@ fail-closed.
 - **`scriptProperties`.** The caller's email is matched against a stored `authUsers` list
   (see below). This choice removes the Google Groups dependency, which is useful for
   domains or cohorts that cannot be modelled as a single Workspace group.
-- **Removed mode.** The `authMode` value `'none'` has been removed entirely. The strict
-  resolver rejects a stored or requested `'none'` as an unrecognised mode, so the access gate
-  fails closed rather than disabling authentication.
+- **No disabled mode.** `'none'` is not a valid `authMode`. The strict resolver rejects a stored
+  or requested `'none'` as an unrecognised mode, so the access gate fails closed rather than
+  disabling authentication.
 - **Single leniency.** An absent or blank `authMode` **paired with** a non-blank
   `authGroupEmail` reads as `'googleGroups'`. This preserves legacy hand-edited or cloned
   configuration blobs that stored only a group email. Every other broken configuration —

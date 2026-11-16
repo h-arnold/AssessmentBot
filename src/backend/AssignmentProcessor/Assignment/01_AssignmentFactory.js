@@ -63,8 +63,14 @@ const AssignmentFactory = {
         );
       }
 
+      if (typeof data.assignmentName !== 'string') {
+        throw new TypeError(
+          `assignmentName must be a string in Assignment data for courseId=${data.courseId}, assignmentId=${data.assignmentId}`
+        );
+      }
+
       assignmentDefinition = new AssignmentDefinition({
-        primaryTitle: data.assignmentName || `Assignment ${data.assignmentId}`,
+        primaryTitle: data.assignmentName,
         primaryTopic: data.assignmentName || 'Assignment',
         documentType: data.documentType,
         referenceDocumentId: data.referenceDocumentId,

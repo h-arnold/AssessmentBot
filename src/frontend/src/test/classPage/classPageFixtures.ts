@@ -2,8 +2,12 @@ import { vi } from 'vitest';
 import type { UseQueryResult } from '@tanstack/react-query';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import type { ClassPageData, ClassPageSurfaceState } from '@/features/classPage/useClassPageData';
-import type { ClassPageAdapterResult } from '@/features/classPage/classPageAdapter.zod';
+import type {
+  ClassPageAdapterResult,
+  StudentAverageRowModel,
+} from '@/features/classPage/classPageAdapter.zod';
 import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFixtures';
+import { createComputedMetricResult } from '@/test/dataAnalysis/fixtures';
 
 export const DEFAULT_CLASS_ID = 'class-abc-123';
 export const CLASS_NAME = '7A1 Digital Technology 2025-2026';
@@ -13,12 +17,47 @@ export const DEFAULT_CLASS_FULL: Partial<ClassFull> = {
   metadata: createCanonicalMetadataFixture(),
 };
 
+/** Overrides for {@link buildStudentAverageRow}. */
+export type StudentAverageRowOverrides = Readonly<{
+  studentId?: string;
+  studentName?: string;
+  metrics?: Partial<StudentAverageRowModel['metrics']>;
+}>;
+
+/**
+ * Build a single Student Averages row fixture.
+ *
+ * @param {StudentAverageRowOverrides} [overrides] - Row identity and per-metric
+ * overrides.
+ * @returns {StudentAverageRowModel} A representative student-average row with
+ * computed metric results.
+ */
+export function buildStudentAverageRow(
+  overrides: StudentAverageRowOverrides = {}
+): StudentAverageRowModel {
+  return {
+    studentId: overrides.studentId ?? 'student-1',
+    studentName: overrides.studentName ?? 'Alice Smith',
+    metrics: {
+      completeness: createComputedMetricResult({ value: 4 }),
+      accuracy: createComputedMetricResult({ value: 3 }),
+      spag: createComputedMetricResult({ value: 3.5 }),
+      average: createComputedMetricResult({ value: 3.7 }),
+      ...overrides.metrics,
+    },
+  };
+}
+
 /** Creates the adapter result used by the default ready class-page fixture.
  *
+ * @param {Partial<ClassPageAdapterResult>} [overrides] - Values that replace the
+ * default adapter result, such as a populated `studentAverages` array.
  * @returns {ClassPageAdapterResult} A representative adapter result with empty
  * assignment and student collections and computed class metrics.
  */
-export function createClassPageAdapterResult(): ClassPageAdapterResult {
+export function createClassPageAdapterResult(
+  overrides: Partial<ClassPageAdapterResult> = {}
+): ClassPageAdapterResult {
   return {
     recentAssignments: [],
     studentAverages: [],
@@ -52,6 +91,7 @@ export function createClassPageAdapterResult(): ClassPageAdapterResult {
         totalDataPoints: 1,
       },
     },
+    ...overrides,
   };
 }
 

@@ -168,7 +168,7 @@ with no embedded sub-entities.
 1. **`GoogleClassroomSchema` does not use `.strict()`; `GoogleClassroomAssignmentSchema` uses `.strict()`.**
    - `GoogleClassroomSchema` tolerates extra fields (no `.strict()`).
    - `GoogleClassroomAssignmentSchema` rejects extra fields (`.strict()`).
-   - **Classification: Aligned** — The classrooms endpoint may pass through upstream fields
+   - The classrooms endpoint may pass through upstream fields
      that the frontend does not consume. The assignments endpoint deliberately rejects unknown
      fields to catch accidental data leaks (like `updateTime` which is fetched but not
      included in the transport response).
@@ -178,7 +178,7 @@ with no embedded sub-entities.
      and sorts by `updateTime` descending.
    - The transport handler maps to `{ assignmentId, title, creationTime, topicId, topicName }` —
      `updateTime` is deliberately excluded after sorting.
-   - **Classification: Aligned** — `updateTime` is needed only for server-side sorting and
+   - `updateTime` is needed only for server-side sorting and
      has no meaning for the frontend. No discrepancy exists.
 
 3. **`NonEmptyStringSchema` vs bare `z.string().min(1)` — inconsistent trimming.**
@@ -188,7 +188,7 @@ with no embedded sub-entities.
      is not a runtime issue for `classId` — but `assignmentId` and `title` are not trimmed
      in the Zod schema, meaning leading/trailing whitespace would pass frontend validation
      even though the backend does not expect it.
-   - **Classification: Fragile** — If a future upstream change introduces whitespace in
+   - **Risk:** If a future upstream change introduces whitespace in
      `assignmentId` or `title`, the assignments Zod schema would accept it while the classrooms
      schema would not. Consider adding `.trim()` to the assignments schema for consistency.
 
@@ -196,7 +196,7 @@ with no embedded sub-entities.
    - Backend `getGoogleClassrooms_()` treats `id` as a truthiness check (`!classroom.id`).
    - Frontend validates `classId` via `z.string().trim().min(1)` — a string of only whitespace
      would fail the frontend but pass the backend.
-   - **Classification: Aligned** — The backend calls `classroom.id` from the GAS `Classroom`
+   - The backend calls `classroom.id` from the GAS `Classroom`
      API which always returns a non-whitespace string when present. The frontend's stricter
      validation provides defence-in-depth.
 
