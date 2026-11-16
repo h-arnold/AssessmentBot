@@ -1,70 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { withTemporaryGlobals, withGlobalMocks } from '../helpers/globalMockManager.js';
-import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
+import { withGlobalMocks } from '../helpers/globalMockManager.js';
+import {
+  canonicalClass,
+  expectNoSkipLog,
+  expectSkippedPersist,
+  expectStoreWrites,
+  makeMatchingRoster,
+  makeRoster,
+  reorderStoredKeys,
+  writes,
+} from '../helpers/abclassRosterPersistenceTestHelpers.js';
 
-const { ABClass } = require('#backend/Models/ABClass.js');
 const { Teacher } = require('#backend/Models/Teacher.js');
-const ABClassPersistence = require('#backend/y_controllers/ABClassController/ABClassPersistence.js');
-const ABClassRoster = require('#backend/y_controllers/ABClassController/ABClassRoster.js');
-const ABClassValidation = require('#backend/y_controllers/ABClassController/ABClassValidation.js');
 
 const clone = (value) => structuredClone(value);
-const writes = ['insertOne', 'replaceOne', 'updateOne', 'save'];
-
-function createCollection(label, order, result) {
-  const collection = {
-    findOne: vi.fn((...args) => {
-      order.push(`${label}.findOne`, args);
-      return result;
-    }),
-  };
-  for (const method of writes) {
-    collection[method] = vi.fn((...args) => order.push(`${label}.${method}`, args));
-  }
-  collection.updateOne.mockImplementation((...args) => {
-    order.push(`${label}.updateOne`, args);
-    return { matchedCount: 1, modifiedCount: 1, acknowledged: true };
-  });
-  return collection;
-}
-
-function canonicalClass() {
-  const row = Object.values(loadBackendModelInputs('medium').classesById).find(
-    (candidate) => candidate.metadata !== null
-  );
-  return withTemporaryGlobals({ Teacher: () => Teacher }, () => ABClass.fromJSON(clone(row)));
-}
-
-function makeRoster({ partialRow, updateResult, failures }) {
-  const order = [];
-  const full = createCollection('full', order);
-  const partial = createCollection('partial', order, partialRow);
-  partial.updateOne.mockImplementation((...args) => {
-    order.push('partial.updateOne', args);
-    if (failures.update) throw failures.update;
-    return updateResult;
-  });
-  partial.insertOne.mockImplementation((...args) => {
-    order.push('partial.insertOne', args);
-    if (failures.insert) throw failures.insert;
-  });
-  for (const [store, target] of [
-    ['full', full],
-    ['partial', partial],
-  ]) {
-    target.save.mockImplementation(() => {
-      order.push(`${store}.save`);
-      if (failures[`${store}Save`]) throw failures[`${store}Save`];
-    });
-  }
-  const dbManager = {
-    getCollection: vi.fn((name) => (name === 'abclass_partials' ? partial : full)),
-  };
-  const validation = new ABClassValidation();
-  const persistence = new ABClassPersistence({ dbManager, validation });
-  const roster = new ABClassRoster({ dbManager, validation, persistence });
-  return { roster, persistence, full, partial, order };
-}
 
 describe('ABClassRoster field-scoped partial persistence', () => {
   let logger;
@@ -422,4 +371,129 @@ describe('ABClassRoster field-scoped partial persistence', () => {
       );
     }
   );
+
+  it('skips persistence when both stored records already match the refreshed roster', () => {
+    const abClass = canonicalClass();
+    abClass.className = 'Refreshed Roster Class';
+    expectSkippedPersist({ logger, abClass });
+  });
+
+  it('skips when stored values differ only in object key order', () => {
+    const abClass = canonicalClass();
+    abClass.className = 'Refreshed Roster Class';
+    const { existingDocument, partialRow } = makeMatchingRoster(abClass);
+    reorderStoredKeys(existingDocument, partialRow);
+    expectSkippedPersist({ logger, abClass, existingDocument, partialRow });
+  });
+
+  it('writes both stores when the stored full document has a stale student', () => {
+    const abClass = canonicalClass();
+    abClass.className = 'Refreshed Roster Class';
+    const { existingDocument, roster, full, partial } = makeMatchingRoster(abClass);
+    existingDocument.students = clone(existingDocument.students);
+    existingDocument.students[0].name = 'Stale Student';
+    roster._persistRoster(full, existingDocument, abClass);
+    expectStoreWrites(full, partial);
+    expect(full.updateOne.mock.calls[0][1].$set.students).toEqual(abClass.students);
+    expect(partial.updateOne.mock.calls[0][1].$set.teachers).toEqual(
+      abClass.toPartialJSON().teachers
+    );
+    expectNoSkipLog(logger);
+  });
+
+  it('writes when the registry row matches but the stored full document is stale', () => {
+    const abClass = canonicalClass();
+    abClass.className = 'Refreshed Roster Class';
+    const { existingDocument, roster, full, partial } = makeMatchingRoster(abClass);
+    existingDocument.classOwner = clone(existingDocument.classOwner);
+    existingDocument.classOwner.teacherName = 'Stale Owner Name';
+    roster._persistRoster(full, existingDocument, abClass);
+    expectStoreWrites(full, partial);
+    expect(full.updateOne.mock.calls[0][1].$set.classOwner).toEqual(abClass.classOwner);
+    expect(logger.info).toHaveBeenCalledWith(
+      '_persistRoster: persisting roster',
+      expect.anything()
+    );
+  });
+
+  it('writes and repairs the registry row when it has a stale teacher name', () => {
+    const abClass = canonicalClass();
+    abClass.className = 'Refreshed Roster Class';
+    const { partialRow, roster, full, partial } = makeMatchingRoster(abClass);
+    partialRow.teachers = clone(partialRow.teachers);
+    partialRow.teachers[0].teacherName = 'Stale Teacher Name';
+    roster._persistRoster(full, abClass.toJSON(), abClass);
+    expectStoreWrites(full, partial);
+    expect(partial.updateOne).toHaveBeenCalledWith(
+      { _id: 'matching-partial-id' },
+      {
+        $set: {
+          className: abClass.className,
+          classOwner: abClass.serialiseOwner(abClass.classOwner),
+          teachers: globalThis.ArrayUtils.serialiseArray(abClass.teachers),
+        },
+      }
+    );
+  });
+
+  it('writes and inserts a complete registry row when it is missing', () => {
+    const abClass = canonicalClass();
+    abClass.className = 'Refreshed Roster Class';
+    const { roster, full, partial, order } = makeMatchingRoster(abClass, { partialRow: null });
+    roster._persistRoster(full, abClass.toJSON(), abClass);
+    expect(partial.insertOne).toHaveBeenCalledTimes(1);
+    expect(partial.updateOne).not.toHaveBeenCalled();
+    expect(order.filter((entry) => typeof entry === 'string')).toEqual([
+      'partial.findOne',
+      'full.updateOne',
+      'full.save',
+      'partial.insertOne',
+      'partial.save',
+    ]);
+    expectNoSkipLog(logger);
+  });
+
+  it('does not skip a registry row that has no stored _id', () => {
+    const abClass = canonicalClass();
+    abClass.className = 'Refreshed Roster Class';
+    const { partialRow, roster, full, partial } = makeMatchingRoster(abClass);
+    delete partialRow._id;
+    let caught;
+    try {
+      roster._persistRoster(full, abClass.toJSON(), abClass);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(TypeError);
+    expect(caught.message).toMatch(/existing partial row is missing stored _id/i);
+    for (const store of [full, partial]) {
+      for (const method of writes) expect(store[method]).not.toHaveBeenCalled();
+    }
+  });
+
+  it('skips when a null class owner matches null and absent stored values', () => {
+    const abClass = canonicalClass();
+    abClass.className = 'Refreshed Roster Class';
+    abClass.classOwner = null;
+    const { existingDocument, partialRow } = makeMatchingRoster(abClass);
+    existingDocument.classOwner = null;
+    delete partialRow.classOwner;
+    expectSkippedPersist({ logger, abClass, existingDocument, partialRow });
+  });
+
+  it('writes when the same roster entries are stored in a different order', () => {
+    const abClass = canonicalClass();
+    abClass.className = 'Refreshed Roster Class';
+    abClass.teachers = [
+      new Teacher('first@example.test', 'teacher-first', 'First Teacher'),
+      new Teacher('second@example.test', 'teacher-second', 'Second Teacher'),
+    ];
+    const { existingDocument, roster, full, partial } = makeMatchingRoster(abClass);
+    existingDocument.teachers = [...abClass.toJSON().teachers].reverse();
+    existingDocument.students = [...abClass.toJSON().students].reverse();
+    roster._persistRoster(full, existingDocument, abClass);
+    expectStoreWrites(full, partial);
+    expect(full.updateOne.mock.calls[0][1].$set.teachers).toEqual(abClass.teachers);
+    expect(full.updateOne.mock.calls[0][1].$set.students).toEqual(abClass.students);
+  });
 });

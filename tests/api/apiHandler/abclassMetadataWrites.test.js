@@ -209,15 +209,11 @@ describe('ABClass metadata dispatcher success writes', () => {
       }
     }
     const rosterLoaded = controller.loadClass(context.classId);
-    expect(rosterOrder).toEqual([
-      'partial.findOne',
-      'full.updateOne',
-      'full.save',
-      'partial.updateOne',
-      'partial.save',
-    ]);
-    expect(context.full.updateOne.mock.calls[0][1].$set).not.toHaveProperty('metadata');
-    expect(context.partial.updateOne.mock.calls[0][1].$set).not.toHaveProperty('metadata');
+    // Both stores already hold the refreshed roster after the upsert and update,
+    // so the roster refresh must skip persistence and perform no store writes.
+    expect(rosterOrder).toEqual(['partial.findOne']);
+    expect(context.full.rows()[0].metadata).toStrictEqual(untouched);
+    expect(context.partial.rows()[0].metadata).toStrictEqual(untouched);
     const fullAssignmentInput = Object.values(canonical.assignmentsByKey).find(
       (assignment) => assignment.courseId === context.classId
     );
