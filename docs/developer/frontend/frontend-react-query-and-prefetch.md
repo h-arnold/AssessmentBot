@@ -118,6 +118,8 @@ Do not add startup prefetch only to exercise React Query.
 Active screens should keep stale data visible while a background refresh runs.
 The current query-client defaults support that by avoiding eager refetch on focus or reconnect and only refetching on mount when data is stale.
 
+Deferred presentation does not move fetch timing. Where a surface defers its expensive derivation from the user's selection (see [Section 4.1](frontend-loading-and-width-standards.md#41-deferred-derivation-behind-urgent-controls)), its per-assignment queries still key off the urgent selection, so fetches start on the interaction and deduplicate while the derivation waits.
+
 Current invalidation and required-refresh rules:
 
 - cohort mutations should target the shared `cohorts` query key and refresh active consumers

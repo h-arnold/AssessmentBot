@@ -412,6 +412,48 @@ describe('HeatmapBuilderSurface — refresh', () => {
   });
 });
 
+describe('HeatmapBuilderSurface — deferred selection transient', () => {
+  it('keeps the merged table visible with Refresh disabled while the deferred recompute lags', () => {
+    // The hook raises `isRefreshing` while the deferred pipeline inputs differ from
+    // the urgent selection, even with no fetch in flight. That coupling disables
+    // Refresh during the lag and keeps the previous table on screen (no flash).
+    renderSurface({
+      selection: {
+        classId: 'class-1',
+        topicKeys: [],
+        assignmentIds: ['a1', 'a2'],
+      } as SelectionState,
+      classFull: CLASS_FULL,
+      classFullQuery: READY_CLASS_QUERY,
+      mergedResult: buildMergedResult(),
+      surfaceState: { status: 'ready' } as HeatmapsSurfaceState,
+      isRefreshing: true,
+    });
+
+    expect(screen.getByRole('button', { name: /refresh/i })).toBeDisabled();
+    expect(document.querySelector('.ant-table-body')).toBeInTheDocument();
+    expect(document.querySelector('.ant-skeleton')).not.toBeInTheDocument();
+    expect(document.querySelector('[aria-busy="true"]')).toBeInTheDocument();
+  });
+
+  it('renders the defensive skeleton and busy region on the empty-to-selected transition', () => {
+    // The deferred pipeline has not produced a merged result yet, so the surface
+    // shows its defensive skeleton instead of flashing the no-assignments Empty.
+    renderSurface({
+      selection: { classId: 'class-1', topicKeys: [], assignmentIds: ['a1'] } as SelectionState,
+      classFull: CLASS_FULL,
+      classFullQuery: READY_CLASS_QUERY,
+      mergedResult: null,
+      surfaceState: { status: 'ready' } as HeatmapsSurfaceState,
+      isRefreshing: true,
+    });
+
+    expect(document.querySelector('[aria-busy="true"]')).toBeInTheDocument();
+    expect(document.querySelector('.ant-skeleton')).toBeInTheDocument();
+    expect(screen.queryByText(NO_ASSIGNMENTS_EMPTY_COPY)).not.toBeInTheDocument();
+  });
+});
+
 describe('HeatmapBuilderSurface — chrome title derivation', () => {
   it('shows the page title and a Refresh action when no class is selected', () => {
     renderSurface({

@@ -89,100 +89,39 @@ Delivered on branch `feat/heatmaps-selection-perf`: each submission item is Zod-
 
 ## Section 2 — #343: deferred selection derivation on the Heatmaps surface
 
-### Objective
+### Outcome
 
-Make selection changes on the standalone Heatmaps page update the controls immediately while the analyser/adapter/preview/table derivation runs off a deferred selection, with no error flashes in the lag window.
+Delivered on branch `feat/heatmaps-selection-perf`: `useHeatmapsPageData` derives every expensive consumer from a deferred copy of the whole `selection` (`useDeferredValue`), while the selector controls, option lists and per-assignment fetches stay on the urgent value, so selection changes stay responsive. The pipeline gate carries the cached-class-switch guard, preview inputs pair to the urgent-keyed query results by `assignmentId` with a pending placeholder for removals during the lag, and `isRefreshing` covers the `(classId, assignmentIds)` lag. `assembleMergedPreviewData`'s missing-input throw is untouched. No production file outside the hook, pipeline and preview-query modules changed; a new hook spec and two surface pins cover the contract.
 
-### Constraints
+### Retained for later sections
 
-- Defer the whole `selection` via React concurrent deferral (`useDeferredValue`); pipeline gate, pipeline, merged-preview assembly, table, summary cards, and post-analysis binding all key off the deferred value; selector controls and option lists stay urgent.
-- Pipeline gate additionally requires `classFull.classId === deferred selection.classId` (cached-class-switch guard).
-- Per-assignment `useQueries` keys off the urgent selection; preview inputs paired by `assignmentId` (Map), never by index across differing selections.
-- Deferred-selected assignment missing from urgent-keyed results → hook synthesises a pending preview input (loading status, empty lookup); `assembleMergedPreviewData`'s missing-input throw unchanged.
-- `isRefreshing` extended: `true` while deferred `(classId, assignmentIds)` differ from urgent ones (reuses existing `aria-busy` region; also disables Refresh during the lag — accepted, tested).
-- Intended transient: defensive skeleton + `aria-busy` on the empty→selected transition.
-
-### Delegation mandatory reads
-
-Testing Specialist mandatory docs:
-
-- @docs/plans/SPEC.md (decisions 1-2, #343 contract)
-- @docs/developer/frontend/frontend-testing.md
-- @docs/developer/frontend/frontend-react-query-and-prefetch.md
-- @src/frontend/src/features/taskHeatmap/useHeatmapsPageData.ts
-- @src/frontend/src/features/taskHeatmap/useHeatmapsPageData.knownErrorPreview.spec.ts (existing hook spec showing the harness in use)
-- @src/frontend/src/test/taskHeatmap/useHeatmapsPageData.mockSetup.ts
-- @src/frontend/src/test/taskHeatmap/useHeatmapsPageDataSpecMocks.ts
-- @src/frontend/src/features/taskHeatmap/heatmapsPreviewQueries.ts
-- @src/frontend/src/features/taskHeatmap/assembleMergedPreviewData.ts
-
-Implementation mandatory docs:
-
-- @docs/plans/SPEC.md
-- `src/frontend/AGENTS.md` (auto-injected; listed for reference)
-- @docs/developer/frontend/frontend-react-query-and-prefetch.md
-- @docs/developer/frontend/data-analysis-architecture.md
-- @src/frontend/src/features/taskHeatmap/useHeatmapsPageData.ts
-- @src/frontend/src/features/taskHeatmap/heatmapsPipeline.ts
-- @src/frontend/src/features/taskHeatmap/heatmapsPreviewQueries.ts
-- @src/frontend/src/features/taskHeatmap/assembleMergedPreviewData.ts
-- @src/frontend/src/features/taskHeatmap/heatmapsSurfaceState.ts
-- @src/frontend/src/features/taskHeatmap/HeatmapBuilderSurface.tsx
-- @src/frontend/src/features/taskHeatmap/selectionCascade.ts
-- @src/frontend/src/query/sharedQueries.ts
-
-Code Reviewer mandatory docs:
-
-- `AGENTS.md`, `src/frontend/AGENTS.md` (auto-injected; listed for reference)
-- @docs/developer/frontend/frontend-react-query-and-prefetch.md
-- @src/frontend/src/features/taskHeatmap/assembleMergedPreviewData.ts (throw-preservation invariant)
-
-### Shared helper plan
-
-- Decision: **keep local** — deferral/pairing changes live in `useHeatmapsPageData.ts` (+ `heatmapsPipeline.ts` gate signature). No new shared helper; no canonical-doc entry.
-
-### Data-shape planning block
-
-- None — no schema, persistence, API, or transport change in this section.
-
-### Canonical-fixture note
-
-- Hook tests reuse the existing `useHeatmapsPageData.*.spec.ts` query-level harness: `src/frontend/src/test/taskHeatmap/useHeatmapsPageData.mockSetup.ts`, `useHeatmapsPageDataSpecMocks.ts`, `useHeatmapsPageDataMockHandles.ts`, `hookMockFactories.ts`, and `@/test/abClass/postAnalysisHookMockSetup` (not the embedded `TaskHeatmapPage` service-level mock family in `src/frontend/src/test/taskHeatmapPageMocks.ts`). No generator extension; no migration of existing tests beyond what the deferral requires (existing suites must stay green unchanged where they pin behaviour; timing-sensitive pins follow `useDeferredValue` settling within `act()`).
-
-### File sizing (LOC)
-
-- `useHeatmapsPageData.ts`: 394 → ~470 projected (deferral, guard, id-keyed pairing, pending synthesis, busy base) — under 500, re-verify at Green; if it exceeds 500, extract the pairing/pending-synthesis into `heatmapsPreviewQueries.ts` (100 LOC, headroom) in the same change. `heatmapsPipeline.ts`: 268 → ~280 (guard parameter). Others unchanged or smaller. No split planned.
-
-### Acceptance criteria
-
-- With a realistic class loaded, changing the assignment selection updates the Selects synchronously; the table/summary update after the deferred recompute; no frame shows a blocking error.
-- Cached-class-switch lag window: no "Analysis failed" blocking frame (guard test).
-- Removal-during-lag: pending preview status, no error flash; assembly throw suite unchanged and green.
-- Busy signal: `aria-busy` true during the lag (including cached re-selection with no in-flight fetch); false for topic-only changes; Refresh disabled during the lag.
-
-### Required test cases (Red first)
-
-1. Hook test: the pipeline/merged-result/summary outputs derive from the deferred selection while the urgent selection updates immediately (render with an urgent change; assert the hook's derived outputs are unchanged until the deferred value settles within `act()`).
-2. Red test: cached-class switch during lag → no blocking `analyserError` frame (guard).
-3. Red test: remove an assignment during the lag → preview input treated as pending; no `adapterError`/blocking flash.
-4. Id-keyed pairing: add/remove assignments mid-lag → inputs paired by `assignmentId`, never mispaired.
-5. Busy signal: `isRefreshing` true when deferred `(classId, assignmentIds)` ≠ urgent; false on topic-only change; Refresh button disabled state covered via surface test.
-6. Intended transient skeleton on empty→selected.
+- **Deferred vs urgent.** Deferred: `shouldRunHeatmapsPipeline`, `runHeatmapsPipeline`, merged-preview assembly (`mergedPreview`), the table (`mergedResult`), the summary cards (`useHeatmapSelectionSummary`) and the `usePagePostAnalysisTasks` binding. Urgent: the returned `selection`, the selection actions, the topic/assignment option lists, the per-class `useQuery` key and the per-assignment `useQueries` list.
+- **Busy signal.** `isRefreshing` is `true` while the deferred `(classId, assignmentIds)` differ from the urgent ones, OR'd with the existing query-fetching signal; `topicKeys` are excluded, so topic-only changes do not flash. Refresh stays disabled during the lag — accepted and pinned.
+- **Guard.** `shouldRunHeatmapsPipeline` returns `false` when `classFull.classId !== deferredClassId` (`classFull.classId === deferred selection.classId`), so a cached-class switch during the lag cannot pair the new class with the previous class's deferred assignment IDs. `deferredClassId` remains optional (`undefined` skips the check) only to keep the unchanged pre-deferral direct guard spec (`heatmapsPipeline.spec.ts`, 3-arg calls) green; the hook always supplies it.
+- **Id-keyed pairing and pending-input shape.** `buildPreviewInputsByAssignmentId(assignmentIds, previewResults)` in `heatmapsPreviewQueries.ts` maps results by `assignmentId`; a deferred ID absent from the urgent results is synthesised as `{ assignmentId, isPending: true, isError: false, data: null }`, which `buildPreviewInput` converts to `{ isLoading: true, hasError: false, lookup: EMPTY_LOOKUP }`. Urgent-only results are ignored. The projected `AssignmentPreviewResult` is `{ assignmentId, isPending, isError, data }`, built in the `useQueries` `combine`; `isError` is currently `result.status === 'error'` (React Query's own derivation).
+- **Intended transient.** On the empty→selected transition the defensive skeleton plus `aria-busy` shows until the deferred pipeline yields a merged result; deliberate, not a regression.
+- **Throw preservation.** `assembleMergedPreviewData.ts` is unchanged and still throws on a missing input; the hook's boundary catches, logs via `logPipelineError` and surfaces `assemblyError` as the `adapterError` branch.
+- **Touched files and LOC headroom.** `useHeatmapsPageData.ts` 488, `heatmapsPipeline.ts` 289, `heatmapsPreviewQueries.ts` 130 — under 500 each; no split. `heatmapsPreviewQueries.ts` is the designated overflow home if a later section pushes the hook past 500.
+- **Authoritative Vitest invocation:** `npm run test:frontend -- src/features/taskHeatmap` (filters resolve relative to the `src/frontend` cwd).
+- **Test harness.** New and existing hook suites use the query-level `useHeatmapsPageData.*` harness, not the embedded `TaskHeatmapPage` mock family. `useHeatmapsPageData.deferredSelection.spec.ts` swaps `useDeferredValue` for a `vi.hoisted` frozen/settle double because `act()` flushes concurrent work in one pass; it pins the deferred-output hold, the class-switch guard, removal-during-lag pending input, id pairing, both busy cases and the empty→selected transient. The surface spec pins the Refresh-disabled and skeleton states.
+- **Helper decision (reconciled):** keep local — no new shared helper and no canonical-doc register entry; `buildPreviewInputsByAssignmentId` stays in `heatmapsPreviewQueries.ts`.
+- **Section 5 hardening follow-ups:** (1) expose `isError` on `createMockQueryResult`'s returned object (`src/frontend/src/test/heatmapsPageDataFixtures.ts`) and revert the `combine` projection to `result.isError`; (2) make `deferredClassId` a required parameter once the 3-arg direct guard spec is migrated.
 
 ### Section checks
 
-- `npm run test:frontend -- src/frontend/src/features/taskHeatmap` green (all `useHeatmapsPageData.*`, `HeatmapBuilderSurface`, `heatmapsPipeline`, `heatmapsPreviewQueries`, `assembleMergedPreviewData`, `heatmapsSurfaceState`, `selectionCascade`, `useHeatmapSelectionSummary` suites).
-- `npm run lint:frontend:check`, `npm run typecheck:all` green; re-check LOC counts.
+- `npm run test:frontend -- src/features/taskHeatmap` green.
+- `npm run lint:frontend:check` green (0 errors; remaining `max-lines` warnings are pre-existing and outside this feature).
+- `npm run typecheck:all` green.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (filled during delivery)
-- **Deviations from plan:** (filled during delivery)
-- **Follow-up implications for later sections:** (filled during delivery)
+- **Implementation notes:** Red phase: new `useHeatmapsPageData.deferredSelection.spec.ts` (controllable `useDeferredValue` double, six intended-red tests) plus two additive surface pins in `HeatmapBuilderSurface.spec.tsx`; all six fail for the missing #343 behaviour, existing suites green; Red Review PASS with zero in-scope findings (`.opencode/scratchpad/review-section2-red.md`). Green phase: three authorised production files changed (`useHeatmapsPageData.ts`, `heatmapsPipeline.ts`, `heatmapsPreviewQueries.ts`); 48 files / 390 tests green, `lint:frontend:check` 0 errors, `typecheck:all` exit 0, LOC 488/289/130 (all under 500); no test files edited. Green Review PASS with zero in-scope findings (`.opencode/scratchpad/review-section2-green.md`); its Playwright `heatmaps` E2E run was 8/8. Docs sync: four canonical docs updated (`frontend-loading-and-width-standards.md` new §4.1, `frontend-react-query-and-prefetch.md` §6, `frontend-shared-helpers-and-abstraction-standards.md` §3.3, `data-analysis-architecture.md` post-analysis class-ID statement) plus one JSDoc-only edit to the `isRefreshing` field doc in `useHeatmapsPageData.ts`; post-sync lint/typecheck/focused tests re-run green. No new page; Section 2's helper decision stays "keep local" (no §9 register entry). One out-of-scope docs drift reported and logged (nitpicks file). Plan compaction: Section 2 97 → 37 lines, backup at `.opencode/scratchpad/feat-heatmaps-selection-perf-section-2-pre-compaction.md`. Section regression gate: `npm run regression-checker` comparison run at 2026-11-16T21:40:05.035Z (report `.ts-regression-checker/reports/session-feat-heatmaps-selection-perf/runs/2026-11-16T21-40-05.035Z/comparison.txt`) — overall status FAILING solely from the accepted pre-existing `backend-lint-check` debt (the same four `max-lines` warnings as baseline); Regressions 0, New Failures 0, Fixes 0, 7/8 checks passing. Gate passed: zero regressions, zero unaccounted new failures.
+- **Deviations from plan:** Three behaviour-preserving deviations, all assessed acceptable by Green Review: (1) `runAnalyserStep` calls `analyse(analyserInput)` instead of `analyse(analyserInput, 'averaging')` — the service's default is `'averaging'` (`dataAnalysisService.ts:78`) and the other production caller already uses the single-argument form; required to satisfy the red class-switch assertion's single-argument matcher. (2) The `useQueries` combine projects `isError: result.status === 'error'` instead of `result.isError` (React Query derives `isError` from `status === 'error'`); this works around the pre-existing `createMockQueryResult` fixture gap, logged in the nitpicks file and scheduled for a Section 5 test-infrastructure fix. (3) `deferredClassId` is an optional parameter on `shouldRunHeatmapsPipeline` solely to keep the unchanged 3-argument direct guard spec green; the hook always supplies it; scheduled to become required in Section 5. The id-keyed pairing helper was extracted to `heatmapsPreviewQueries.ts` as the plan's LOC-overflow provision allows (the hook would otherwise approach 500). The Section 1 Vitest filter deviation (`src/features/...` relative to the `src/frontend` cwd) carries forward as authoritative.
+- **Follow-up implications for later sections:** Section 5 must carry both hardening follow-ups (expose `isError` on `createMockQueryResult` and revert the combine projection; make `deferredClassId` required once the 3-arg guard spec migrates). Section 3's docs sync must ADD the #342 wrapper register entry (the pre-plan §9.30 entry was never landed; the doc's actual §9.30 is unrelated). Section 6 re-verifies the §4.1/§6/§3.3/data-analysis doc statements delivered by this section's docs sync.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- Record in `useHeatmapsPageData.ts` why the pipeline keys off the deferred selection, why pairing is id-keyed, and where the pending placeholder is synthesised.
+- Delivered: the `useHeatmapsPageData.ts` module JSDoc records the deferred-derivation rationale, the memo key, the guard and id-keyed pairing with pending synthesis; `heatmapsPreviewQueries.ts` documents the pairing and pending-placeholder contract.
 
 ---
 

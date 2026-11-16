@@ -138,7 +138,7 @@ function runAnalyserStep(
       assignmentDefinitionPartials,
     };
 
-    const response = _analysisService.analyse(analyserInput, 'averaging');
+    const response = _analysisService.analyse(analyserInput);
     if (response.length === 0) {
       const error = new Error('Analyser returned empty result');
       logPipelineError('heatmapsPipeline.runAnalyserStep', error, { classId });
@@ -187,28 +187,49 @@ function runAdapterStep(
 }
 
 /**
+ * Whether the ADP dataset is failed or untrustworthy, so the pipeline must not run.
+ *
+ * @param {PageDatasetState} adpDatasetState - The ADP dataset state.
+ * @returns {boolean} `true` when the dataset cannot be trusted.
+ */
+function isAdpDatasetUnusable(adpDatasetState: PageDatasetState): boolean {
+  return (
+    adpDatasetState.isDatasetFailed ||
+    (adpDatasetState.isDatasetReady && !adpDatasetState.isDatasetTrustworthy)
+  );
+}
+
+/**
  * Decide whether the analyser/merged-adapter pipeline should run for the current
  * selection. The pipeline is gated on a selected class, at least one selected
- * assignment, and a trustworthy (or not-yet-failed) ADP dataset.
+ * assignment, a trustworthy (or not-yet-failed) ADP dataset, and — when the
+ * caller supplies it — a loaded class that belongs to the deferred selection.
  *
  * @param {ClassFull | null} classFull - The class query data.
- * @param {readonly string[]} selectedAssignmentIds - The selected assignment IDs.
+ * @param {readonly string[]} selectedAssignmentIds - The deferred selected assignment IDs.
  * @param {PageDatasetState} adpDatasetState - The ADP dataset state.
+ * @param {string | null} [deferredClassId] - The deferred selection's class ID. Omitted only by
+ *   direct pipeline tests that predate the deferral; the hook always supplies it.
  * @returns {boolean} `true` if the pipeline should run.
  */
 export function shouldRunHeatmapsPipeline(
   classFull: ClassFull | null,
   selectedAssignmentIds: readonly string[],
-  adpDatasetState: PageDatasetState
+  adpDatasetState: PageDatasetState,
+  deferredClassId?: string | null
 ): boolean {
   if (classFull === null || selectedAssignmentIds.length === 0) {
     return false;
   }
-  // Don't run on untrustworthy or failed data (parity with useClassPageData).
-  if (adpDatasetState.isDatasetFailed) {
+  // Cached-class-switch guard: while the deferred selection lags, the loaded class
+  // can belong to a newer selection. Pairing that class with the previous class's
+  // deferred assignment IDs would analyse mismatched inputs and surface a blocking
+  // "Analysis failed" frame.
+  if (deferredClassId !== undefined && classFull.classId !== deferredClassId) {
     return false;
   }
-  if (adpDatasetState.isDatasetReady && !adpDatasetState.isDatasetTrustworthy) {
+  // Don't run on untrustworthy or failed data (parity with useClassPageData).
+  if (isAdpDatasetUnusable(adpDatasetState)) {
     return false;
   }
   return true;
