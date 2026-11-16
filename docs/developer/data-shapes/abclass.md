@@ -227,7 +227,7 @@ Returns the full class document with assignments as partial summaries.
 | `documentType`              | `string\|null`               | yes                                     | `'SLIDES'` \| `'SHEETS'` or `null`.                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `submissions`               | `StudentSubmissionPartial[]` | yes                                     | Array of partial submission objects (see [Contract: Assignment](assignment.md) for full shape).                                                                                                                                                                                                                                                                                                                                                       |
 | `assignmentDefinitionKey`   | `string`                     | yes                                     | Produced only from the stored embedded definition's `definitionKey` when that value is a non-empty string; the embedded `assignmentDefinition` object is then removed. A missing embedded definition, or a missing/empty/non-string `definitionKey`, fails the whole read as a stored-integrity error rather than emitting `null` or omitting the key. The frontend resolves definition details from its own `AssignmentDefinitionPartials` registry. |
-| `assessmentContractVersion` | `1\|'legacy'`                | yes                                     | Backend emits `1` for a current result and `'legacy'` for every other stored marker, set on the read output only. `AssignmentPartialSchema` requires `assessmentContractVersion: z.union([z.literal(1), z.literal('legacy')])`, and `getABClass()` runs `normaliseClassRead()` before its final response parse.                                                                                                                                       |
+| `assessmentContractVersion` | `1\|'legacy'`                | yes                                     | Backend emits `1` for a current result and `'legacy'` for every other stored marker, set on the read output only. `AssignmentPartialSchema` requires `assessmentContractVersion: z.union([z.literal(1), z.literal('legacy')])`, and `getABClass()` parses only a root/envelope stub (`assignments: []`) and then `normaliseClassRead()` performs the single per-item validation pass.                                                                 |
 
 Key contract notes:
 
@@ -371,8 +371,9 @@ Class-read behaviour:
   [Component Shape: Student Submission § Full and partial item isolation](student-submission.md#full-and-partial-item-isolation-with-trustworthy-identities);
   ABClass adds no second domain-validator hierarchy. `PartialAssessmentEntrySchema` aliases the
   shared partial result schema and `AssignmentPartialSchema` requires
-  `assessmentContractVersion: 1 | 'legacy'`; the class-detail service runs the normaliser before its
-  final parse. The frontend validates the backend-prepared entries against the
+  `assessmentContractVersion: 1 | 'legacy'`; the class-detail service parses only a
+  root/envelope stub (`assignments: []`) and then runs the normaliser as the single
+  per-item validation pass. The frontend validates the backend-prepared entries against the
   required marker and per-item shapes. It does not generate a second legacy graph, query a
   roster, infer historical outcomes or infer coverage from the definition registry. A class-read
   wire payload that omits `assessmentContractVersion` or carries an unsupported value is an
@@ -1404,7 +1405,8 @@ Frontend:
   │       (requires ABClassMetadataSchema), ClassFullResponseSchema
   ├── src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts
   │     → normaliseAssignmentRead(), normaliseClassRead() (pure full/partial
-  │       read normaliser; invoked by both read services before their final parse)
+  │       read normaliser; each read service performs a root/envelope-only fail-fast
+  │       parse and then invokes the normaliser for the single per-item validation pass)
   ├── src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts
   │     → isValidFullItem(), isValidPartialItem(), corruptItem(), itemErrorPath() (adjacent
   │       pure item/source validation and canonical corruption construction)

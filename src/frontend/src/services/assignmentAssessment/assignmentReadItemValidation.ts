@@ -2,13 +2,17 @@ import { assessmentResultSchema, partialAssessmentResultSchema } from './assessm
 
 const criteria = ['completeness', 'accuracy', 'spag'] as const;
 const artifactTypes = new Set(['base', 'TEXT', 'TABLE', 'IMAGE', 'SPREADSHEET']);
+
+/** Parsed item fields read by the contextual source checks. */
+type ParsedItem = { artifact: unknown; assessments?: unknown };
+
+/** Structural view of an item schema's single evaluation. */
 type ItemSchema = {
-  safeParse(
-    value: unknown
-  ):
-    | { success: true; data: { artifact: unknown; assessments?: unknown } }
-    | { success: false; data?: never };
+  safeParse(value: unknown): { success: true; data: ParsedItem } | { success: false; data?: never };
 };
+
+/** Outcome of one item evaluation: the parsed item when it passes. */
+export type ItemValidationOutcome = { valid: true; item: ParsedItem } | { valid: false };
 
 /** Checks for a non-array object.
  * @param {unknown} value Candidate value.
@@ -149,29 +153,36 @@ function hasNullSourceResults(assessments: Record<string, unknown>): boolean {
   return criteria.every((criterion) => isNullSourceError(assessments[criterion]));
 }
 
-/** Validates a full item and its parent-source context.
+/** Checks the item-level context shared by both read projections.
+ * @param {unknown} item Candidate item.
+ * @param {string} taskId Canonical task identity.
+ * @returns {boolean} Whether the item is a record with its own exact criteria.
+ */
+function hasItemContext(item: unknown, taskId: string): item is Record<string, unknown> {
+  return isRecord(item) && item.taskId === taskId && hasExactCriteria(item.assessments);
+}
+
+/** Validates a full item and its parent-source context in one evaluation.
  * @param {unknown} item Candidate item.
  * @param {string} taskId Canonical task identity.
  * @param {unknown} parentDocumentId Parent submission document identity.
  * @param {ItemSchema} schema Full item schema exposing safeParse.
- * @returns {boolean} Whether the item is valid.
+ * @returns {ItemValidationOutcome} The parsed item when valid, otherwise an invalid outcome.
  */
-export function isValidFullItem(
+export function validateFullItem(
   item: unknown,
   taskId: string,
   parentDocumentId: unknown,
   schema: ItemSchema
-): boolean {
-  if (!isRecord(item) || item.taskId !== taskId || !hasExactCriteria(item.assessments))
-    return false;
+): ItemValidationOutcome {
   const parsed = schema.safeParse(item);
-  if (
-    !parsed.success ||
-    isContradictorySource(item, parentDocumentId, false) ||
-    !isSubmissionArtifact(parsed.data.artifact, taskId)
-  )
-    return false;
-  return hasValidFullSource(parsed.data.artifact, parsed.data.assessments);
+  if (!parsed.success) return { valid: false };
+  if (!hasItemContext(item, taskId)) return { valid: false };
+  const isSourceValid =
+    !isContradictorySource(item, parentDocumentId, false) &&
+    isSubmissionArtifact(parsed.data.artifact, taskId) &&
+    hasValidFullSource(parsed.data.artifact, parsed.data.assessments);
+  return isSourceValid ? { valid: true, item: parsed.data } : { valid: false };
 }
 
 /** Checks full source availability against the criterion outcomes.
@@ -191,27 +202,26 @@ function hasValidFullSource(artifactValue: unknown, assessmentsValue: unknown): 
   return true;
 }
 
-/** Validates a partial item and its parent-source context.
+/** Validates a partial item and its parent-source context in one evaluation.
  * @param {unknown} item Candidate item.
  * @param {string} taskId Canonical task identity.
  * @param {unknown} parentDocumentId Parent submission document identity.
  * @param {ItemSchema} schema Partial item schema exposing safeParse.
- * @returns {boolean} Whether the item is valid.
+ * @returns {ItemValidationOutcome} The parsed item when valid, otherwise an invalid outcome.
  */
-export function isValidPartialItem(
+export function validatePartialItem(
   item: unknown,
   taskId: string,
   parentDocumentId: unknown,
   schema: ItemSchema
-): boolean {
-  if (!isRecord(item) || item.taskId !== taskId || !hasExactCriteria(item.assessments))
-    return false;
+): ItemValidationOutcome {
   const parsed = schema.safeParse(item);
-  return (
-    parsed.success &&
+  if (!parsed.success) return { valid: false };
+  if (!hasItemContext(item, taskId)) return { valid: false };
+  const isSourceValid =
     !isContradictorySource(item, parentDocumentId, true) &&
-    isSubmissionArtifact(parsed.data.artifact, taskId)
-  );
+    isSubmissionArtifact(parsed.data.artifact, taskId);
+  return isSourceValid ? { valid: true, item: parsed.data } : { valid: false };
 }
 
 /** Returns the raw item artefact when it is a record.
@@ -221,18 +231,6 @@ export function isValidPartialItem(
 function existingArtifact(existing: unknown): Record<string, unknown> {
   if (!isRecord(existing) || !isRecord(existing.artifact)) return {};
   return existing.artifact;
-}
-
-/** Selects existing artefact fields retained by a partial replacement.
- * @param {Record<string, unknown>} artifact Existing artefact fields.
- * @param {boolean} isPartial Whether this is a partial projection.
- * @returns {Record<string, unknown>} Fields allowed on the replacement.
- */
-function retainedArtifactFields(
-  artifact: Record<string, unknown>,
-  isPartial: boolean
-): Record<string, unknown> {
-  return isPartial ? artifact : {};
 }
 
 /** Returns an individually string-typed source ID when present.
@@ -248,10 +246,38 @@ function sourceIdentity(
   return artifact[field];
 }
 
-/** Creates a base artefact for an isolated invalid item.
+/** Builds the replacement artefact fields shared by both read projections.
  * @param {string} taskId Trusted task identity.
  * @param {Record<string, unknown>} artifact Existing artefact fields.
- * @param {boolean} isPartial Whether to retain partial source projection.
+ * @param {unknown} parentDocumentId Parent submission source identity.
+ * @returns {Record<string, unknown>} Replacement fields owned by both artefact schemas.
+ */
+function replacementArtifact(
+  taskId: string,
+  artifact: Record<string, unknown>,
+  parentDocumentId: unknown
+): Record<string, unknown> {
+  const isNullParent = parentDocumentId === null;
+  return {
+    taskId,
+    role: 'submission',
+    uid: isIdentity(artifact.uid) ? artifact.uid : `corrupt-${taskId}`,
+    type: 'base',
+    pageId: isNullParent ? null : sourceIdentity(artifact, 'pageId'),
+    documentId: isNullParent ? null : sourceIdentity(artifact, 'documentId'),
+    metadata: {},
+  };
+}
+
+/** Creates a base artefact for an isolated invalid item.
+ *
+ * @remarks
+ * The replacement carries only the fields its schema owns. An invalid item can
+ * hold arbitrary keys, and the removed terminal parses used to strip them, so
+ * spreading the existing artefact would change the output.
+ * @param {string} taskId Trusted task identity.
+ * @param {Record<string, unknown>} artifact Existing artefact fields.
+ * @param {boolean} isPartial Whether to build the redacted partial projection.
  * @param {unknown} parentDocumentId Parent submission source identity.
  * @returns {Record<string, unknown>} Canonical replacement artefact.
  */
@@ -261,27 +287,17 @@ function corruptedArtifact(
   isPartial: boolean,
   parentDocumentId: unknown
 ): Record<string, unknown> {
-  const isNullParent = parentDocumentId === null;
-  return {
-    ...(!isNullParent && retainedArtifactFields(artifact, isPartial)),
-    taskId,
-    role: 'submission',
-    uid: isIdentity(artifact.uid) ? artifact.uid : `corrupt-${taskId}`,
-    type: 'base',
-    pageId: isNullParent ? null : sourceIdentity(artifact, 'pageId'),
-    documentId: isNullParent ? null : sourceIdentity(artifact, 'documentId'),
-    metadata: {},
-    ...((!isPartial || isNullParent) && { content: null, contentHash: null }),
-  };
+  const replacement = replacementArtifact(taskId, artifact, parentDocumentId);
+  return isPartial ? replacement : { ...replacement, content: null, contentHash: null };
 }
 
 /** Builds a canonical all-criterion corruption replacement.
  * @param {string} taskId Trusted task identity.
  * @param {unknown} existing Invalid item, when record-shaped.
- * @param {boolean} isPartial Whether to retain the partial artefact projection.
+ * @param {boolean} isPartial Whether to build the redacted partial projection.
  * @param {Record<string, unknown>} corruptMap Canonical corruption assessments.
  * @param {unknown} parentDocumentId Parent submission source identity.
- * @returns {Record<string, unknown>} Replacement item.
+ * @returns {Record<string, unknown>} Schema-shaped replacement item.
  */
 export function corruptItem(
   taskId: string,
@@ -291,13 +307,10 @@ export function corruptItem(
   parentDocumentId: unknown
 ): Record<string, unknown> {
   const current = isRecord(existing) ? existing : {};
-  const artifact = existingArtifact(existing);
-  const id = isIdentity(current.id) ? current.id : `corrupt-${taskId}`;
   return {
-    ...current,
-    id,
+    id: isIdentity(current.id) ? current.id : `corrupt-${taskId}`,
     taskId,
-    artifact: corruptedArtifact(taskId, artifact, isPartial, parentDocumentId),
+    artifact: corruptedArtifact(taskId, existingArtifact(existing), isPartial, parentDocumentId),
     assessments: corruptMap,
     feedback: {},
   };

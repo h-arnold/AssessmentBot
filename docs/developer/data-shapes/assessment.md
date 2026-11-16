@@ -204,11 +204,12 @@ None. This shape embeds no other shape; `error` is an inline `{ stage, code }` o
 
 3. **The shared result/cause owner is consumed by both read schemas and both read services run the normaliser.**
    `assessmentResult.zod.ts` is consumed by `assignmentAssessment.zod.ts` and
-   `classDetailService.zod.ts`. `assignmentAssessmentService.getAssignment()` calls
-   `normaliseAssignmentRead()` and `classDetailService.getABClass()` calls
-   `normaliseClassRead()` before their final `parseApiResponse` call, each preceded by a
-   root-only parse. Per-item isolation and contextual source/marker checks are active at
-   runtime.
+   `classDetailService.zod.ts`. `assignmentAssessmentService.getAssignment()` and
+   `classDetailService.getABClass()` each call `parseApiResponse` on a root/envelope stub
+   only (`submissions: []` / `assignments: []`), then call
+   `normaliseAssignmentRead()` / `normaliseClassRead()`, which performs the single
+   per-item validation pass. Per-item isolation and contextual source/marker checks are
+   active at runtime.
 
 4. **Duplicate partial score declarations are absent.**
    `classDetailService.zod.ts` declares no `MAX_ASSESSMENT_SCORE`,
@@ -453,8 +454,9 @@ Format gate and persistence preservation:
   Successful reassessment is the authorised transition to a current result.
 - The frontend normaliser validates the prepared entries and the required
   `assessmentContractVersion: 1 | 'legacy'` read field. It does not generate a second
-  legacy graph, query a roster or infer historical outcomes. Both read services invoke the
-  normaliser before their final parse.
+  legacy graph, query a roster or infer historical outcomes. Both read services parse only
+  a root/envelope stub and then invoke the normaliser as the single per-item validation
+  pass; there is no final full-tree parse.
 - An invalid root/definition or untrustworthy required identity still fails the owned
   dataset; preparation must not invent missing identities.
 
@@ -483,7 +485,7 @@ The representation mode is threaded from `Assignment.fromJSON()` through
 
 | Aspect                  | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Activation              | `assessmentContractVersion === 1` only. Newly completed runs are validated and stamped before both persistence serialisers emit the marker. Marker-less, `null` and unsupported records are retained as ordinary instance state without reconstruction; the read transport emits `'legacy'` after read preparation. Both frontend read schemas require `1 \| 'legacy'` and both read services run the normaliser before their final parse. See [Known discrepancies](#validation).                                                        |
+| Activation              | `assessmentContractVersion === 1` only. Newly completed runs are validated and stamped before both persistence serialisers emit the marker. Marker-less, `null` and unsupported records are retained as ordinary instance state without reconstruction; the read transport emits `'legacy'` after read preparation. Both frontend read schemas require `1 \| 'legacy'` and both read services parse only a root/envelope stub and then run the normaliser as the single per-item validation pass. See [Known discrepancies](#validation). |
 | Root and task list      | Validated once, before any model constructor runs: non-blank `courseId` / `assignmentId` strings, `submissions` as an array, and a non-empty embedded `assignmentDefinition.tasks`. In the full task-map form every key is non-blank and equals the embedded task's canonical `id`; an optional `taskId` must match that key. In the partial summary-array form every `taskId` is a non-empty unique string. Any failure throws and fails the owned dataset.                                                                              |
 | Shared identities       | The same task-list check runs with an empty `submissions` array, so duplicate or inconsistent definition identities cannot be hidden by having no students. A submission must carry a non-blank string `studentId` and an `assignmentId` equal to the root assignment ID. Unknown stored task keys outside the authoritative task list throw; associations are never guessed.                                                                                                                                                             |
 | Empty no-submission     | A submission with parent `documentId: null` and an empty item object remains an empty submission record. It is not expanded into placeholders or fabricated `N` items.                                                                                                                                                                                                                                                                                                                                                                    |

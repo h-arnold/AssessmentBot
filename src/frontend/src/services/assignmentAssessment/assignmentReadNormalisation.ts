@@ -9,15 +9,18 @@ import {
   ClassFullSchema,
   StudentSubmissionItemPartialSchema,
   StudentSubmissionPartialSchema,
+  type AssignmentPartial,
+  type ClassFull,
+  type StudentSubmissionPartial,
 } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import { logFrontendEvent } from '@/logging/frontendLogger';
 import {
   corruptItem,
   isIdentity,
   isRecord,
-  isValidFullItem as validateFullItem,
-  isValidPartialItem as validatePartialItem,
   itemErrorPath,
+  validateFullItem,
+  validatePartialItem,
 } from './assignmentReadItemValidation';
 
 const criteria = ['completeness', 'accuracy', 'spag'] as const;
@@ -30,6 +33,11 @@ const corruptMap = Object.fromEntries(criteria.map((key) => [key, corrupt]));
 const fullRootSchema = AssignmentFullSchema.omit({ submissions: true }).strict();
 const classRootSchema = ClassFullSchema.omit({ assignments: true });
 const fullAssignmentRootSchema = AssignmentPartialSchema.omit({ submissions: true });
+// Only `__proto__` routes through the prototype setter when copied into a plain
+// object. The removed terminal parse dropped it silently, so it is filtered out
+// before any item evaluation.
+const unsafeItemKeys = new Set(['__proto__']);
+type StudentSubmission = ReturnType<typeof StudentSubmissionSchema.parse>;
 
 /** Copies a root without its separately validated collection.
  * @param {Record<string, unknown>} value Root record.
@@ -99,28 +107,6 @@ function diagnostic(context: Record<string, string>, path: string): void {
   });
 }
 
-/**
- * Validates a full item and its contextual source state.
- * @param {unknown} item Candidate item.
- * @param {string} key Dictionary task key.
- * @param {unknown} parentDocumentId Parent source identity.
- * @returns {boolean} Whether the item is valid.
- */
-function isValidFullItem(item: unknown, key: string, parentDocumentId: unknown): boolean {
-  return validateFullItem(item, key, parentDocumentId, StudentSubmissionItemSchema);
-}
-
-/**
- * Validates a partial item and its contextual source state.
- * @param {unknown} item Candidate item.
- * @param {string} key Dictionary task key.
- * @param {unknown} parentDocumentId Parent source identity.
- * @returns {boolean} Whether the item is valid.
- */
-function isValidPartialItem(item: unknown, key: string, parentDocumentId: unknown): boolean {
-  return validatePartialItem(item, key, parentDocumentId, StudentSubmissionItemPartialSchema);
-}
-
 type FullAssignmentContext = Pick<
   AssignmentFull,
   'courseId' | 'assignmentId' | 'assessmentContractVersion'
@@ -132,7 +118,7 @@ type FullAssignmentContext = Pick<
  * @param {FullAssignmentContext} root Validated assignment context.
  * @param {Record<string, unknown>} tasks Known task dictionary.
  * @param {string[]} taskIds Known task identities.
- * @returns {Record<string, unknown>} Normalised submission.
+ * @returns {StudentSubmission} Normalised submission.
  */
 function normaliseFullSubmission(
   rawSubmission: unknown,
@@ -140,7 +126,7 @@ function normaliseFullSubmission(
   root: FullAssignmentContext,
   tasks: Record<string, unknown>,
   taskIds: string[]
-) {
+): StudentSubmission {
   const submission = StudentSubmissionSchema.omit({ items: true }).parse(rawSubmission);
   if (!isIdentity(submission.studentId) || submission.assignmentId !== root.assignmentId)
     throw new TypeError('Invalid submission identity');
@@ -167,7 +153,7 @@ function normaliseFullSubmission(
     submission.studentId,
     submission.documentId
   );
-  return { ...submission, items: outputItems };
+  return { ...submission, items: outputItems } as StudentSubmission;
 }
 
 /** Validates or replaces a single identifiable full item.
@@ -177,7 +163,7 @@ function normaliseFullSubmission(
  * @param {number} index Submission index.
  * @param {FullAssignmentContext} root Assignment context.
  * @param {string} studentId Trusted student identity.
- * @returns {unknown} Valid item or corruption replacement.
+ * @returns {unknown} The parsed item or a schema-shaped corruption replacement.
  */
 function normaliseFullItem(
   item: unknown,
@@ -187,7 +173,8 @@ function normaliseFullItem(
   root: FullAssignmentContext,
   studentId: string
 ): unknown {
-  if (isValidFullItem(item, key, documentId)) return item;
+  const validation = validateFullItem(item, key, documentId, StudentSubmissionItemSchema);
+  if (validation.valid) return validation.item;
   diagnostic(
     { classId: root.courseId, assignmentId: root.assignmentId, studentId, taskId: key },
     itemErrorPath(item, `submissions.${index}.items.${key}`, false, key)
@@ -224,10 +211,16 @@ function addMissingFullTasks(
 
 /**
  * Normalises an already-decoded full assignment read without mutating its input.
+ *
+ * @remarks
+ * The root pass omits `submissions` and the submission pass omits `items`, so
+ * the collection parsers run only at item level here. The parsed parts are
+ * reassembled as plain objects, which keeps every item evaluated exactly once
+ * per read while the declared output type still holds.
  * @param {unknown} input Decoded full assignment payload.
  * @returns {AssignmentFull | null} Normalised assignment or not-found.
  */
-export function normaliseAssignmentRead(input: unknown) {
+export function normaliseAssignmentRead(input: unknown): AssignmentFull | null {
   if (input === null) return null;
   if (!isRecord(input)) {
     // Non-object roots fail through the structured Zod parse path, mirroring
@@ -246,22 +239,29 @@ export function normaliseAssignmentRead(input: unknown) {
   const submissions = rawSubmissions.map((raw, index) =>
     normaliseFullSubmission(raw, index, root, tasks, taskIds)
   );
-  const normalised: unknown = { ...root, submissions };
-  return AssignmentFullSchema.parse(normalised as unknown as AssignmentFull);
+  return { ...root, submissions };
 }
 
 /**
  * Normalises class-embedded partial assignments, validating supplied entries only.
+ *
+ * @remarks
+ * The class and assignment root passes omit `assignments` and `submissions`, so
+ * the collection parsers run only at item level here and the parsed parts are
+ * reassembled. Unsafe dictionary keys (a stored `__proto__`) are dropped before
+ * the per-item pass: they are not items, so evaluating them would break the
+ * one-evaluation-per-item guarantee, and the removed terminal parse used to drop
+ * them silently.
  * @param {unknown} input Decoded class payload.
  * @returns {ClassFull | null} Normalised class or not-found.
  */
-export function normaliseClassRead(input: unknown) {
+export function normaliseClassRead(input: unknown): ClassFull | null {
   if (input === null) return null;
   const root = classRootSchema.parse(input);
   if (!isIdentity(root.classId)) throw new TypeError('Invalid class identity');
   const raw = input as { assignments: unknown };
   if (!Array.isArray(raw.assignments)) throw new TypeError('Invalid class assignments root');
-  const assignments = raw.assignments.map(function (candidate) {
+  const assignments = raw.assignments.map(function (candidate): AssignmentPartial {
     if (!isRecord(candidate)) throw new TypeError('Invalid partial assignment root');
     const rawAssignment = candidate as Record<string, unknown>;
     if (!Array.isArray(rawAssignment.submissions))
@@ -276,9 +276,9 @@ export function normaliseClassRead(input: unknown) {
     const submissions = rawAssignment.submissions.map((entry, index) =>
       normalisePartialSubmission(entry, index, assignmentRoot.assignmentId, root.classId)
     );
-    return AssignmentPartialSchema.parse({ ...assignmentRoot, submissions });
+    return { ...assignmentRoot, submissions };
   });
-  return ClassFullSchema.parse({ ...root, assignments });
+  return { ...root, assignments };
 }
 
 /** Normalises one provided partial submission without inferring missing entries.
@@ -286,14 +286,14 @@ export function normaliseClassRead(input: unknown) {
  * @param {number} submissionIndex Position for safe diagnostic paths.
  * @param {string} assignmentId Owning assignment identity.
  * @param {string} classId Owning class identity.
- * @returns {Record<string, unknown>} Normalised submission.
+ * @returns {StudentSubmissionPartial} Normalised submission.
  */
 function normalisePartialSubmission(
   entry: unknown,
   submissionIndex: number,
   assignmentId: string,
   classId: string
-): Record<string, unknown> {
+): StudentSubmissionPartial {
   const submission = StudentSubmissionPartialSchema.omit({ items: true }).parse(entry);
   if (!isIdentity(submission.studentId) || submission.assignmentId !== assignmentId)
     throw new TypeError('Invalid partial submission identity');
@@ -302,28 +302,23 @@ function normalisePartialSubmission(
   if (Object.keys(items).some((key) => !isIdentity(key)))
     throw new TypeError('Invalid partial task identity');
   const normalised: Record<string, unknown> = {};
-  // defineProperty keeps a stored `__proto__` key as an own property instead of
-  // triggering the prototype setter (mirrors the backend DateUtils hardening).
-  for (const [key, item] of Object.entries(items)) {
-    if (isValidPartialItem(item, key, submission.documentId)) {
-      Object.defineProperty(normalised, key, {
-        value: item,
-        enumerable: true,
-        writable: true,
-        configurable: true,
-      });
+  const safeEntries = Object.entries(items).filter(([key]) => !unsafeItemKeys.has(key));
+  for (const [key, item] of safeEntries) {
+    const validation = validatePartialItem(
+      item,
+      key,
+      submission.documentId,
+      StudentSubmissionItemPartialSchema
+    );
+    if (validation.valid) {
+      normalised[key] = validation.item;
       continue;
     }
     diagnostic(
       { classId, assignmentId, studentId: submission.studentId, taskId: key },
       itemErrorPath(item, `assignments.submissions.${submissionIndex}.items.${key}`, true, key)
     );
-    Object.defineProperty(normalised, key, {
-      value: corruptItem(key, item, true, corruptMap, submission.documentId),
-      enumerable: true,
-      writable: true,
-      configurable: true,
-    });
+    normalised[key] = corruptItem(key, item, true, corruptMap, submission.documentId);
   }
-  return { ...submission, items: normalised };
+  return { ...submission, items: normalised } as StudentSubmissionPartial;
 }

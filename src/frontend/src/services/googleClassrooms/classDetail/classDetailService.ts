@@ -17,8 +17,9 @@ const GET_AB_CLASS_METHOD = 'getABClass';
  * @remarks
  * Returns `null` when the backend reports the class does not exist
  * (ClassNotFoundError mapped to null at the transport boundary).
- * The response is normalised for item-level read corruption, then validated
- * through `ClassFullResponseSchema` (Zod).
+ * A root-only response parse fails fast on transport-shape errors, then
+ * `normaliseClassRead()` performs the single per-item validation pass and
+ * returns the typed result.
  * Existing classes retain required nullable ABClass summary `metadata`, distinct
  * from task-artifact metadata and top-level not-found `null`. Missing or malformed
  * summary metadata fails response parsing; no frontend legacy default is applied.
@@ -34,9 +35,5 @@ export async function getABClass(parameters: { classId: string }): Promise<Class
       ? null
       : { ...(responseData as Record<string, unknown>), assignments: [] };
   parseApiResponse(ClassFullResponseSchema, GET_AB_CLASS_METHOD, rootResponse);
-  return parseApiResponse(
-    ClassFullResponseSchema,
-    GET_AB_CLASS_METHOD,
-    normaliseClassRead(responseData)
-  );
+  return normaliseClassRead(responseData);
 }

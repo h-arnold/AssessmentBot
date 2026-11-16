@@ -54,85 +54,35 @@ One work unit covering GitHub issues h-arnold/AssessmentBot#342, #343, #349, and
 
 ## Section 1 — #349: single-pass read validation
 
-### Objective
+### Outcome
 
-Make each submission item be Zod-validated exactly once per read across the whole `getABClass` / `getAssignment` path, with output structurally identical to today's.
+Delivered on branch `feat/heatmaps-selection-perf`: each submission item is Zod-validated exactly once per read across `getABClass` / `getAssignment`, with output structurally identical to the previous post-strip shape. Parent passes omit the item/submission collections and reassemble the parsed item; the normaliser's terminal full-tree parses and both services' final `parseApiResponse` are removed, while the cheap root/envelope stub parses (`assignments: []` / `submissions: []`) and the not-found `null` contract stay. Corrupt replacements (`corruptItem` / `corruptedArtifact`) are constructed schema-shaped, and the partial-path copy loop drops `__proto__` before any item evaluation. New contract spec `assignmentReadSinglePass.spec.ts` with the test-only `itemSchemaEvaluationCounter.ts`; targeted suites, lint and typecheck green. Section regression gate passed (zero regressions, zero new failures — see Implementation notes).
 
-### Constraints
+### Retained for later sections
 
-- Schemas and returned shapes unchanged; only the number of parses changes.
-- Parent passes parse with item/submission collections omitted and reassemble parsed parts; the item-level pass returns the _parsed_ item.
-- Normaliser terminal full-tree parses removed (class path: `AssignmentPartialSchema.parse` and `ClassFullSchema.parse`; full path: `AssignmentFullSchema.parse`); service-level final full-tree `parseApiResponse` removed; cheap root/envelope stub parses stay (`assignments: []` / `submissions: []`) for fail-fast transport errors and the not-found `null` contract.
-- Corrupt-item replacements (`corruptItem` / `corruptedArtifact`) constructed schema-shaped — no second evaluation; output `toEqual`-equivalent to today's post-strip output.
-- Partial-path copy loop drops unsafe keys (notably `__proto__`) explicitly, before any item evaluation, in both valid and corrupt branches; the existing `__proto__` spec cases stay as pins.
-- Pre-checks (`isRecord` / `taskId` / `hasExactCriteria`) move after or fold into the single evaluation, preserving all outcomes.
-
-### Delegation mandatory reads
-
-All phases (common):
-
-- @docs/plans/SPEC.md (decisions 3-4, #349 contract)
-- @src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts
-- @src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts
-- @src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts
-- @src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts
-- @src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts
-- @src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts
-- @src/frontend/src/services/apiService.ts
-- @docs/developer/data-shapes/assignment.md, @docs/developer/data-shapes/student-submission.md, @docs/developer/data-shapes/abclass.md, @docs/developer/data-shapes/assessment.md (planned-only `Not implemented` entries in each "Planned contract changes" section)
-- @docs/developer/frontend/frontend-architecture.md
-- @docs/developer/frontend/frontend-testing.md
-
-Testing Specialist mandatory docs: @docs/developer/frontend/frontend-testing.md, @docs/developer/testing/synthetic-test-data.md
-Implementation mandatory docs: `src/frontend/AGENTS.md` (auto-injected; listed for reference), @docs/developer/frontend/frontend-architecture.md
-Code Reviewer mandatory docs: `AGENTS.md`, `src/frontend/AGENTS.md` (auto-injected; listed for reference), @docs/developer/data-shapes/INDEX.md
-Data Shapes Agent mandatory docs: @docs/developer/data-shapes/INDEX.md, @docs/developer/data-shapes/assignment.md, @docs/developer/data-shapes/student-submission.md, @docs/developer/data-shapes/abclass.md, @docs/developer/data-shapes/assessment.md
-Docs agent mandatory docs: @docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md (§3.8, §9.29)
-
-### Shared helper plan
-
-- Decision: **keep local / extend existing owners** — no new shared helper; `assignmentReadNormalisation.ts` and `assignmentReadItemValidation.ts` remain the owners (already registered in `frontend-shared-helpers-and-abstraction-standards.md` §9.29). No new canonical-doc entry needed beyond the data-shape planned entries below.
-
-### Data-shape planning block
-
-- Planned-only entries marked `Not implemented` are already recorded in `docs/developer/data-shapes/assignment.md`, `student-submission.md`, `abclass.md`, and `assessment.md` ("Planned contract changes (Not implemented)"). This section implements them; per `AGENTS.md` §5 step 7 and §7.2, the **Data Shapes Agent** removes the `Not implemented` markers and reconciles the wording in the four data-shape docs **in this section's docs-sync step, before this section's regression gate and code-review sign-off** (the read-validation chain is contractually affected). The same-timing corrections to the stale read-chain sentences in `frontend-shared-helpers-and-abstraction-standards.md` §3.8 and §9.29 entry 1 are a documentation update, so per `AGENTS.md` §7.2 they are owned by the **Docs agent** in the same docs-sync step. No schema, persistence, API, or transport shape changes.
-
-### Canonical-fixture note
-
-- New parse-count tests clone the canonical synthetic views the existing suites already use: `@synthetic/small/classesById.json?raw` (partial), `@synthetic/small/assignmentsByKey.json?raw` (full), `@synthetic/medium/...` (legacy suites), plus local corruption probes. No generator extension needed. Opportunistic migration: none — existing normalisation suites stay as the equivalence contract, unchanged.
-
-### File sizing (LOC)
-
-- `assignmentReadNormalisation.ts`: 329 → ~345 (restructure; net small). `assignmentReadItemValidation.ts`: 404 → ~415 (schema-shaped replacements). `classDetailService.ts`: 42 → ~38. `assignmentAssessmentService.ts`: 50 → ~46. All well under 500; no split.
-
-### Acceptance criteria
-
-- Every existing `assignmentReadNormalisation.*.spec.ts` case (legacy, corruption-repair, `__proto__`) passes unchanged, as do `classDetailService.spec.ts` and `assignmentAssessmentService.spec.ts`.
-- Instrumented test (test-only attempt-counting wrapper rebuilt into the schema modules, instrumenting the same item-schema instances the parent schemas reference): exactly one item-schema evaluation attempt per item per whole service call — valid → one success; schema-corrupt → one failure, zero successes; contextually-corrupt → one success then contextual rejection.
-- Service wrappers no longer perform a final full-tree parse; stub parses and `null` handling intact.
-
-### Required test cases (Red first)
-
-1. Instrumented parse-count test for `getABClass` over the small canonical class view: exactly one attempt per item, with the valid/corrupt breakdown.
-2. Same for `getAssignment` over the small canonical assignment view, including a corruption probe (schema-corrupt and contextually-corrupt items).
-3. Equivalence: existing normalisation + service suites run unchanged (no edits to their assertions).
-4. `__proto__` partial-path case: unsafe key dropped before evaluation; output excludes the own key; zero evaluations for the unsafe-keyed entry.
+- **Read chain:** exactly one item-schema evaluation per item per whole service call — valid → one success; schema-corrupt → one failure and zero successes; contextually corrupt → one success then contextual rejection; `__proto__`-keyed entries get zero evaluations and are absent from output. The existing `assignmentReadNormalisation.*.spec.ts`, `classDetailService.spec.ts` and `assignmentAssessmentService.spec.ts` remain the unchanged output-equivalence contract.
+- **Touched files:** `services/assignmentAssessment/assignmentReadNormalisation.ts`, `assignmentReadItemValidation.ts` and `assignmentAssessmentService.ts` (with `assignmentAssessment.zod.ts`), plus `services/googleClassrooms/classDetail/classDetailService.ts` (with its zod module). All stay under 500 LOC; no file split.
+- **Vitest invocation:** `npm run test:frontend -- src/services/assignmentAssessment src/services/googleClassrooms`; filters resolve relative to the `src/frontend` cwd.
+- **Baseline and regression:** regression-checker session `feat/heatmaps-selection-perf` (baseline report under `.ts-regression-checker/reports/session-feat-heatmaps-selection-perf/baseline/`); the only baseline failure is the accepted pre-existing `backend-lint-check` debt (four `max-lines` warnings in backend test files untouched by this frontend-only plan).
+- **Helper ownership:** unchanged — `assignmentReadNormalisation.ts` and `assignmentReadItemValidation.ts` remain the §9.29 owners in `frontend-shared-helpers-and-abstraction-standards.md`; no new shared helper.
+- **Data-shape docs:** the four docs (`assignment.md`, `student-submission.md`, `abclass.md`, `assessment.md`) describe the delivered single-pass chain; the pre-plan `Not implemented` entries were removed upstream in commit `85b1199d` (the #355 reconciliation), so this section's docs sync folded the chain into the canonical statements instead of de-labelling a planning block. §3.8 read-chain sentence corrected; the planned §9.29 entry-1 sentence no longer exists (also removed upstream) — §3.8 carries the sole canonical chain description. Helper ownership unchanged.
+- **Canonical fixtures:** the new spec clones the existing small-profile views (`@synthetic/small/classesById.json?raw`, `assignmentsByKey.json?raw`) plus local corruption probes; the legacy suites keep the medium profile. No generator extension; existing normalisation suites stay unchanged as the equivalence contract.
 
 ### Section checks
 
 - `npm run test:frontend -- src/frontend/src/services/assignmentAssessment src/frontend/src/services/googleClassrooms` green.
 - `npm run lint:frontend:check`, `npm run typecheck:all` green.
-- Data-shape planned entries finalised in this section's docs sync: `Not implemented` markers removed from all four data-shape docs and the entries describe the delivered single-pass chain; §3.8/§9.29 read-chain sentences corrected. Data Shapes Agent sign-off recorded before this section's code-review sign-off.
+- Data-shape docs describe the delivered single-pass chain with no stale markers and no stale "final parse" sentences (the pre-plan `Not implemented` entries were removed upstream in `85b1199d`; the delivered chain was folded into the canonical statements); §3.8/§9.29 read-chain sentences reconciled. Data Shapes Agent sign-off recorded before this section's code-review sign-off.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (filled during delivery)
-- **Deviations from plan:** (filled during delivery)
-- **Follow-up implications for later sections:** (filled during delivery)
+- **Implementation notes:** Baseline established 2026-11-16 on branch `feat/heatmaps-selection-perf` (regression-checker session `feat/heatmaps-selection-perf`, mode baseline, report `.ts-regression-checker/reports/session-feat-heatmaps-selection-perf/baseline/baseline.txt`). Overall status FAILING with 1 pre-existing failure: `backend-lint-check` (4 `max-lines` warnings at line 501 in `tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`; exit code 1 from warnings). Accepted technical debt: backend test files untouched by this frontend-only plan. All other 7 checks passing. Section 1 Red phase started. Red phase complete: new spec `src/frontend/src/services/assignmentAssessment/assignmentReadSinglePass.spec.ts` + test-only helper `src/frontend/src/test/assignmentAssessment/itemSchemaEvaluationCounter.ts`; intended-red inventory confirmed (class path 4 item evaluations/item, full path 3, `__proto__` 1-then-dropped); all 21 pre-existing suites (270 tests) green unchanged; red review PASS with zero red-phase findings (`.opencode/scratchpad/review-section1-red.md`), two non-blocking green-phase notes: (1) pre-check relocation for taskId-mismatch items is pinned by plan text only, no extra probe; (2) `__proto__` zero-eval pin covers the valid branch, corrupt-branch output pinned by existing untouched suites. Green phase complete: the four authorised production files changed; targeted suites 22 files / 273 tests all green; lint, typecheck green; LOC 324/417/39/50 (all under 500); green review PASS with zero findings (`.opencode/scratchpad/review-section1-green.md`). Docs sync complete (both delegations returned): Data Shapes Agent reconciled the delivered chain into the four data-shape docs (`assignment.md`, `student-submission.md`, `abclass.md`, `assessment.md` — 32 insertions / 26 deletions, all chain-description sentences; the pre-plan `Not implemented` entries were removed upstream in commit `85b1199d`, so no markers existed to remove) — Data Shapes Agent sign-off recorded here before code-review sign-off; Docs agent corrected the §3.8 read-chain sentence in `frontend-shared-helpers-and-abstraction-standards.md` (one line; the planned §9.29 entry-1 sentence no longer exists, also removed upstream in `85b1199d`, leaving §3.8 as the sole canonical chain description). Plan compaction complete: Section 1 84 → 34 lines, one hunk, pre-compaction backup at `.opencode/scratchpad/feat-heatmaps-selection-perf-section-1-pre-compaction.md`. Section regression gate: `npm run regression-checker` comparison run at 2026-11-16T19:48:52.164Z (report `.ts-regression-checker/reports/session-feat-heatmaps-selection-perf/runs/2026-11-16T19-48-52.164Z/comparison.txt`) — overall status FAILING solely from the accepted pre-existing `backend-lint-check` debt (the same four `max-lines` warnings as baseline); Regressions 0, New Failures 0, Fixes 0, 7/8 checks passing. Gate passed: zero regressions, zero unaccounted new failures.
+- **Deviations from plan:** Vitest test filters are resolved relative to the `src/frontend` package cwd, so the plan's `npm run test:frontend -- src/frontend/src/services/...` form finds no files; the working equivalent is `npm run test:frontend -- src/services/assignmentAssessment src/services/googleClassrooms` (same scope, path prefix dropped). Recorded here as the authoritative invocation for all later sections; the plan's command lines are otherwise unchanged.
+- **Follow-up implications for later sections:** Section 3's docs sync must ADD the helper-register entry for the #342 wrapper (the pre-plan §9.30 entry was never landed; doc's actual §9.30 is unrelated) and Section 6 re-verifies the data-shape chain descriptions and §3.8 sentence as amended above. The deferred `assessment.md:529` merge-conflict-URL corruption awaits a user decision (recorded in the plan's deferred table).
 
 ### Optional `@remarks` JSDoc follow-through
 
-- Record in `assignmentReadNormalisation.ts` why parent passes omit and reassemble collections (single-evaluation guarantee) and why the unsafe-key drop must precede evaluation.
+- Delivered: `assignmentReadNormalisation.ts` records why parent passes omit and reassemble collections and why the unsafe-key drop precedes evaluation; `corruptedArtifact` carries a schema-shaped-construction remark; both service wrappers' `@remarks` describe the delivered chain.
 
 ---
 
@@ -243,7 +193,7 @@ Add the select all / select none header to the Topics and Assignments dropdowns 
 
 ### Constraints
 
-- One feature-local wrapper component under `features/taskHeatmap` renders the two multi-selects, owns the controlled `showSearch.searchValue` per Select, and supplies `popupRender` with the header (Checkbox "Select all" left, `Button type="link"` "Select none" right, space-between row, `APP_GAP_SM` spacing, `Divider` only with the header). Registered as planned `Not implemented` entry §9.30.
+- One feature-local wrapper component under `features/taskHeatmap` renders the two multi-selects, owns the controlled `showSearch.searchValue` per Select, and supplies `popupRender` with the header (Checkbox "Select all" left, `Button type="link"` "Select none" right, space-between row, `APP_GAP_SM` spacing, `Divider` only with the header). Registered as planned `Not implemented` entry §9.30. (Premise correction recorded in Section 1 wrap-up: the pre-plan §9.30 entry was never landed — the doc's actual §9.30 is the unrelated always-fixed student-name-columns entry — so Section 3's docs sync must ADD a new register entry, e.g. §9.31, rather than flip a marker.)
 - Header shown only when the control's options array (post-cascade, pre-search) has >1 entry.
 - Select all unions shown options (search-query-matching via the configured `optionFilterProp: 'label'` filtering; Assignments also topic-cascade-narrowed) into the existing selection via `changeTopics`/`changeAssignments`. Select none clears the control's full selection.
 - Controlled query reset only via `onSelect` (option selection); kept on deselect-toggle, tag removal, allow-clear, close/Escape, and header clicks.
@@ -288,7 +238,7 @@ Playwright mandatory docs:
 
 - Helper: select-all dropdown header wrapper under `src/frontend/src/features/taskHeatmap/` — decision **keep local (new feature-local component)**, owning controlled query state, scope computation, checked/indeterminate derivation, dispatch, mousedown guard.
 - Owning path: new file in `features/taskHeatmap/`; call sites: the Topics and Assignments Selects in `HeatmapSelectionBar.tsx`.
-- Canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` §9.30 — planned entry already recorded as `Not implemented`; flip to `Implemented` in Section 6 with the wrapper description (renders the two multi-selects, owns per-Select controlled query state).
+- Canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` — the pre-plan §9.30 planned entry was never landed (the doc's actual §9.30 is the unrelated always-fixed student-name-columns entry); Section 3's docs sync ADDS the wrapper register entry (next free number, e.g. §9.31) with the wrapper description (renders the two multi-selects, owns per-Select controlled query state), and Section 6 re-verifies it.
 
 ### Data-shape planning block
 
@@ -450,8 +400,8 @@ Finalise the planned-only entries and keep canonical docs consistent with the de
 
 ### Acceptance criteria
 
-- Cross-section re-verification: the four data-shape docs' planned entries describe the delivered single-pass chain with `Not implemented` markers removed, and `frontend-shared-helpers-and-abstraction-standards.md` §3.8/§9.29 read-chain sentences are corrected.
-- `frontend-shared-helpers-and-abstraction-standards.md` §9.30 flipped to `Implemented` with the wrapper description (renders the two multi-selects, owns per-Select controlled query state).
+- Cross-section re-verification: the four data-shape docs (`assignment.md`, `student-submission.md`, `abclass.md`, `assessment.md`) describe the delivered single-pass chain with no stale "final parse" or `Not implemented` wording, and `frontend-shared-helpers-and-abstraction-standards.md` §3.8 carries the corrected read-chain sentence (the pre-plan planned entries and the §9.29 chain sentence were removed upstream in `85b1199d`; Section 1 folded the delivered chain into the canonical statements).
+- Cross-section re-verification (Section 6): `frontend-shared-helpers-and-abstraction-standards.md` helper-register entry for the #342 wrapper is `Implemented` with the wrapper description (renders the two multi-selects, owns per-Select controlled query state). NOTE: the pre-plan §9.30 planned entry was never landed in the doc — the doc's actual §9.30 is the unrelated always-fixed student-name-columns entry — so Section 3's docs sync must ADD the wrapper entry (next free number, e.g. §9.31) rather than flip a marker.
 - No other doc changes; no migration or rollout dependency.
 
 ### Required checks
@@ -490,10 +440,11 @@ Docs agent mandatory docs: @docs/developer/frontend/frontend-shared-helpers-and-
 
 ## Deferred and Out-of-Scope Findings
 
-| Finding                                                                                                     | Severity                                 | Scope rationale                                                                                                                                                | Evidence                                                                        | Disposition | User decision                                |
-| ----------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------- | -------------------------------------------- |
-| #350 — re-key post-analysis effect on data inputs + attempt identity                                        | minor (CPU-only redundancy)              | Touches shared `usePagePostAnalysisTasks.ts`/`usePostAnalysisTasks.ts` used beyond the heatmaps surface; its issue states it deserves its own change and tests | GitHub issue #350; `useHeatmapsPageData.ts:342-348`                             | noted       | Excluded from this unit by user, 13 Nov 2026 |
-| #351 — pipeline gates must follow `isDatasetRenderable` (loading dead-end for failed-but-recovered dataset) | material (user-visible endless skeleton) | Touches `useClassPageData.ts` too and requires a warm-up-retry reachability investigation first                                                                | GitHub issue #351; `heatmapsPipeline.ts:208-210`, `useClassPageData.ts:264-276` | noted       | Excluded from this unit by user, 13 Nov 2026 |
-| #323 — merged-heatmap keyboard journey + nine coverage polish items                                         | minor                                    | Test-coverage polish, unrelated to this unit's contracts                                                                                                       | GitHub issue #323                                                               | disregarded | Out of scope, 13 Nov 2026                    |
-| #344 — sticky bottom scrollbar                                                                              | minor                                    | Different surface behaviour (tables), separate SPEC.md at repo root already drafted                                                                            | GitHub issue #344; root `SPEC.md`                                               | disregarded | Out of scope, 13 Nov 2026                    |
-| #348 — Collapse items-prop migration                                                                        | nitpick                                  | Unrelated component migration                                                                                                                                  | GitHub issue #348                                                               | disregarded | Out of scope, 13 Nov 2026                    |
+| Finding                                                                                                                   | Severity                                 | Scope rationale                                                                                                                                                | Evidence                                                                                       | Disposition | User decision                                |
+| ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------- | -------------------------------------------- |
+| #350 — re-key post-analysis effect on data inputs + attempt identity                                                      | minor (CPU-only redundancy)              | Touches shared `usePagePostAnalysisTasks.ts`/`usePostAnalysisTasks.ts` used beyond the heatmaps surface; its issue states it deserves its own change and tests | GitHub issue #350; `useHeatmapsPageData.ts:342-348`                                            | noted       | Excluded from this unit by user, 13 Nov 2026 |
+| #351 — pipeline gates must follow `isDatasetRenderable` (loading dead-end for failed-but-recovered dataset)               | material (user-visible endless skeleton) | Touches `useClassPageData.ts` too and requires a warm-up-retry reachability investigation first                                                                | GitHub issue #351; `heatmapsPipeline.ts:208-210`, `useClassPageData.ts:264-276`                | noted       | Excluded from this unit by user, 13 Nov 2026 |
+| #323 — merged-heatmap keyboard journey + nine coverage polish items                                                       | minor                                    | Test-coverage polish, unrelated to this unit's contracts                                                                                                       | GitHub issue #323                                                                              | disregarded | Out of scope, 13 Nov 2026                    |
+| #344 — sticky bottom scrollbar                                                                                            | minor                                    | Different surface behaviour (tables), separate SPEC.md at repo root already drafted                                                                            | GitHub issue #344; root `SPEC.md`                                                              | disregarded | Out of scope, 13 Nov 2026                    |
+| #348 — Collapse items-prop migration                                                                                      | nitpick                                  | Unrelated component migration                                                                                                                                  | GitHub issue #348                                                                              | disregarded | Out of scope, 13 Nov 2026                    |
+| Merge-conflict URL pasted mid-line in the File Index entry (corrupts the entry; casualty of the #355 docs reconciliation) | material (docs-only)                     | `docs/developer/data-shapes/assessment.md` File Index is outside this section's change surface; content repair is a separate docs fix                          | `docs/developer/data-shapes/assessment.md:529`; Section 1 docs sync (Data Shapes Agent return) | noted       | (pending user decision)                      |

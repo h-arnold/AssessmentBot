@@ -32,9 +32,10 @@ export async function startAssessmentRun(input: StartAssessmentRunRequest): Prom
  * Fetches the fully rehydrated Assignment for a single assignment.
  *
  * @remarks Wraps the backend `getAssignment` method (dispatches internally to `getAssignment_`). The response is the full
- * rehydrated `Assignment.toReadJSON()` shape (not a partial), normalised before
- * final response-schema parsing. `null` means the
- * assignment document was not found.
+ * rehydrated `Assignment.toReadJSON()` shape (not a partial). A root-only
+ * response parse fails fast on transport-shape errors, then
+ * `normaliseAssignmentRead()` performs the single per-item validation pass and
+ * returns the typed result. `null` means the assignment document was not found.
  *
  * @param {GetAssignmentRequest} input Request payload with `courseId` and `assignmentId`.
  * @returns {Promise<AssignmentFullResponse>} Promise resolving to the full assignment, or `null` if not found.
@@ -45,6 +46,5 @@ export async function getAssignment(input: GetAssignmentRequest): Promise<Assign
   const rootResponse =
     response === null ? null : { ...(response as Record<string, unknown>), submissions: [] };
   parseApiResponse(AssignmentFullResponseSchema, GET_ASSIGNMENT_METHOD, rootResponse);
-  const normalisedResponse = normaliseAssignmentRead(response);
-  return parseApiResponse(AssignmentFullResponseSchema, GET_ASSIGNMENT_METHOD, normalisedResponse);
+  return normaliseAssignmentRead(response);
 }
