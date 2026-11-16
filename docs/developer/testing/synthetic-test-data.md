@@ -186,7 +186,15 @@ The helper adds no profile, view or model-input adapter. The bullet notes below 
 generated version-1 corpus, which this derivation leaves untouched.
 
 - **Artefact types.** The existing definition and submission builders cycle `TEXT`, `IMAGE` and
-  `SPREADSHEET` bodies using their existing deterministic index arithmetic. IMAGE bodies are
+  `SPREADSHEET` bodies using deterministic index arithmetic, applied by two different formulas:
+  keyed-task definition artefacts use `(definitionIndex + taskIndex) % 3`
+  (`generateAssignmentDefinitions.js`), while submission item artefacts use
+  `(taskPosition + studentIndex) % 3` (`generateSubmissions.js`), so a submission item's type
+  varies per student. The TEXT guarantee is task-count dependent: at two tasks a definition
+  carries at most one TEXT task; at four tasks only definitions with `definitionIndex % 3 === 0`
+  carry two; at six, ten and fifteen tasks every full definition carries two, three to four and
+  five TEXT-typed tasks respectively. Any consumer that gates on TEXT must match both the
+  definition and the item, not just one. IMAGE bodies are
   genuine PNG bytes (signature, IHDR, deflated IDAT, IEND) encoded as
   `data:image/png;base64,` data URLs and derived only from the text seed. SPREADSHEET bodies are
   raw 2D grids, not encoded strings; each full definition's reference grid carries an assessable
@@ -460,7 +468,9 @@ The test path exercises the complete production transport chain — `callApi`, s
 
 **Canonical-fixture directive:** All new or changed tests must use an appropriate canonical synthetic fixture when the synthetic fixture system provides data for the scenario. If the required realistic data is not yet supported, the test may use a local realistic fixture only when the owning feature work records a generator-extension plan. Deliberately invalid or boundary fixtures remain local. When you otherwise touch an existing test, migrate it to a canonical fixture opportunistically. This policy is intentionally broader than the analysis graph: it applies automatically as later domains are added, and it does not require a wholesale fixture migration.
 
-**Exception and extension path:** A local realistic fixture is permitted only when no canonical profile or view covers the required scenario. The owning feature work must then record a generator-extension plan — which profile, view, or generator stage to add and where — before or alongside the test, so the gap is tracked rather than hidden. Invalid-data, boundary, and narrowly targeted cases never need canonical fixtures.
+**Exception and extension path:** A local realistic fixture is permitted only when no canonical profile or view covers the required scenario. The owning feature work must then record a generator or corpus plan — which profile, view, or generator stage to add and where, or which existing profile to rescale — before or alongside the test, so the gap is tracked rather than hidden. The plan is not limited to adding a profile or view: rescaling an existing profile's parameters (for example tasks per definition) and regenerating through the CLI is the preferred response where the existing profiles can carry the required realism; a new profile is warranted only for a distinct corpus shape. Any such plan must be measurement-anchored — generate the largest affected profile under `--expose-gc` and observe generation time and `process.memoryUsage()`, and record the stress-project timeout and any heap or RAM implications — before committing to one. Regeneration rewrites committed fixture bytes, so put the options and measured costs to the user before committing to a plan. Invalid-data, boundary, and narrowly targeted cases never need canonical fixtures.
+
+**Regeneration is the intended response to legitimate corpus change.** When a generator or profile change deliberately alters fixture bytes, re-run `npm run fixtures:synthetic` (or the full CLI where applicable) and commit the changed files; `syntheticCommittedFixtureRegeneration.test.ts` re-pins the committed bytes mechanically. Failures surfaced elsewhere afterwards are signal, to be triaged as potential defects. Do not weaken generator output, relax invariant or type-matching gates in shared harnesses, re-anchor assertions to the old bytes to make them pass, hand-edit JSON, or design a competing realistic builder to avoid the regeneration.
 
 ## CI and stress policy
 

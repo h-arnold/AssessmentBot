@@ -54,6 +54,15 @@ against the current specification first.
   - Location: `toTransportPartialRow_` in `src/backend/z_Api/assignmentDefinitionTransport.js`
   - Note: Transport-boundary helper that accepts a model instance or plain object, calls `definition.toPartialJSON()`, defensively strips `yearGroup`, and normalises Date fields.
 
+- LLM seed partition helper (`Not implemented` — planned for issue #309)
+  - Owning layer/path: `src/backend/RequestHandlers/`, dedicated sibling module (for example `LLMSeedPhase.js`).
+  - Behaviour: derives the ephemeral `{ seeds, remainder }` split of generated LLM requests after the existing input guards; seeds are the first eligible request per `TaskDefinition.getId()` in generation order; both arrays preserve order; fails loudly on duplicate UID, missing `uidIndex` route entry and missing `taskDefinition` (messages name the offending UID). Called once from `LLMRequestManager.processStudentResponses()`; no persistence or transport surface.
+  - Status: `Not implemented` — reconcile when the two-phase dispatch lands.
+- LLM shared batch-outcome consumer (`Not implemented` — planned for issue #309)
+  - Owning layer/path: `src/backend/RequestHandlers/` — final placement (same sibling module or retained in `LLMRequestManager.js`) decided by the action plan from the recorded LOC constraint (post-change `LLMRequestManager.js` must be ≤ 500 lines).
+  - Behaviour: single consumer for seed-phase and remainder-phase batch outcomes; keeps accepted-first sort, assigned/cached writeback, error mapping, stop-status detection, shared `runStopped`, progress update and exactly-once UID routing. Implemented once and shared; no duplicate consumer per phase.
+  - Status: `Not implemented` — reconcile when the two-phase dispatch lands.
+
 ## ABClass metadata helpers
 
 > `upsertABClass` and `updateABClass` accept an optional `metadata` field and report
