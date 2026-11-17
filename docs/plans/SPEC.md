@@ -75,7 +75,7 @@ This unit is **not** intended to:
 - The header is present only when the dropdown's full option list has more than one entry.
 - "Select all" unions the options matching the current search query (further narrowed by the active topic cascade for Assignments) into the existing selection; the header-side scope computation mirrors Ant Design's default `optionFilterProp: 'label'` filtering (case-insensitive label match) so the scope is exactly the options the dropdown renders. "Select none" clears the control's full selection.
 - Clicking a header action must not close the dropdown (`onMouseDown` with `preventDefault()` and `stopPropagation()` inside `popupRender`).
-- The header logic (search tracking, scope computation, checked/indeterminate derivation, `mousedown` guard) is built once as a feature-local component under `features/taskHeatmap` and shared by the two Selects (keep-local decision, registered as a planned `Not implemented` entry in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`).
+- The header logic (search tracking, scope computation, checked/indeterminate derivation, `mousedown` guard) is built once as a feature-local component under `features/taskHeatmap` and shared by the two Selects (keep-local decision, recorded as implemented decision §9.33 in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`).
 - The Class dropdown does not gain the header (single-select).
 
 ### #352 — lookup equivalence
@@ -145,7 +145,7 @@ None.
 
 ## Documentation and rollout notes
 
-- Record the feature-local dropdown-header helper as a planned `Not implemented` entry in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
+- Recorded the feature-local dropdown-header helper as implemented decision §9.33 in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
 - Update the read-validation chain description in the canonical data-shape docs `assignment.md`, `student-submission.md`, `abclass.md`, and `assessment.md` (planned-only entries marked `Not implemented`, finalised during delivery), and the two stale chain descriptions in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (§3.8 and the §9.29 entry 1 sentence "Both read services invoke the normaliser before unchanged final `parseApiResponse` validation").
 - No migration or rollout dependency; pure frontend behaviour change.
 
