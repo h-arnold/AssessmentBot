@@ -100,18 +100,23 @@ export function buildAssignmentDefinitionPartial(
 }
 
 /**
- * Build the second assignment-definition partial used by the select-all
- * dropdown-header journey.
+ * Build the second assignment-definition partial used by the dropdown-header
+ * journeys.
  *
  * The partial mirrors {@link buildAssignmentDefinitionPartial} but carries a
  * distinct primary title and definition key, so the Assignments dropdown lists
- * two options whose labels a search query can tell apart.
+ * two options whose labels a search query can tell apart. Its topic now comes
+ * from the canonical multi-topic corpus so the Topics dropdown also has two
+ * options and renders its dropdown header.
  * @returns {Record<string, unknown>} Definition partial payload.
  */
 export function buildDistinctSecondAssignmentDefinitionPartial(): Record<string, unknown> {
   return {
     ...buildAssignmentDefinitionPartial(false, false),
     primaryTitle: HEATMAP_SECOND_ASSIGNMENT_DISPLAY_TITLE,
+    primaryTopic: HEATMAP_SECOND_TOPIC_NAME,
+    primaryTopicKey: HEATMAP_SECOND_TOPIC_KEY,
+    alternateTopics: [HEATMAP_SECOND_TOPIC_NAME],
     definitionKey: HEATMAP_SECOND_DEFINITION_KEY,
   };
 }
@@ -145,10 +150,46 @@ const canonicalAssignments = assignmentsByKeyRaw as Record<
   string,
   {
     tasks: Record<string, CanonicalTask>;
-    assignmentDefinition: { tasks: Record<string, CanonicalTask> };
+    assignmentDefinition: {
+      tasks: Record<string, CanonicalTask>;
+      primaryTopicKey: string;
+      primaryTopic: string;
+    };
     submissions: Array<{ items: Record<string, { artifact: CanonicalSourceArtifact }> }>;
   }
 >;
+
+/** Zero-based index of the second distinct topic in the corpus first-seen order. */
+const SECOND_DISTINCT_TOPIC_INDEX = 1;
+
+/**
+ * Collect distinct corpus topics in first-seen order, deduplicated by topic key.
+ * @returns {Array<{ key: string; name: string }>} Distinct topic key and name pairs.
+ */
+function distinctCorpusTopics(): Array<{ key: string; name: string }> {
+  const seen = new Set<string>();
+  const topics: Array<{ key: string; name: string }> = [];
+  for (const assignment of Object.values(canonicalAssignments)) {
+    const definition = assignment.assignmentDefinition;
+    if (seen.has(definition.primaryTopicKey)) {
+      continue;
+    }
+    seen.add(definition.primaryTopicKey);
+    topics.push({ key: definition.primaryTopicKey, name: definition.primaryTopic });
+  }
+  return topics;
+}
+
+const corpusTopics = distinctCorpusTopics();
+const secondCorpusTopic = corpusTopics[SECOND_DISTINCT_TOPIC_INDEX];
+if (!secondCorpusTopic) {
+  throw new Error('Canonical corpus has fewer than two distinct topics.');
+}
+
+/** Name of the second distinct topic in the canonical multi-topic corpus. */
+export const HEATMAP_SECOND_TOPIC_NAME = secondCorpusTopic.name;
+/** Key of the second distinct topic in the canonical multi-topic corpus. */
+export const HEATMAP_SECOND_TOPIC_KEY = secondCorpusTopic.key;
 
 /**
  * Find an actual usable body and paired source hash for a canonical artefact type.

@@ -13,6 +13,7 @@ import {
   CLASS_CONTROL_INDEX,
   TOPICS_CONTROL_INDEX,
 } from './helpers/shell-controls';
+import { HEATMAP_SECOND_TOPIC_NAME } from './helpers/task-heatmap-fixtures';
 
 const HEATMAPS_LABEL = pageContent.heatmaps.heading;
 const TOPIC_LABEL = 'Earth';
@@ -253,5 +254,48 @@ test.describe('Heatmaps builder', () => {
       selectedAssignmentTags.filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE })
     ).toHaveCount(0);
     await expect(assignmentsCombobox).toHaveValue(HEATMAP_SEARCH_QUERY);
+  });
+
+  test('selects all topics from the dropdown header and clears them with select none', async ({
+    page,
+  }) => {
+    await installRuntimeMock(page, createHeatmapScenario({ distinctSecondAssignmentTitle: true }));
+    await openHeatmaps(page);
+    await selectClass(page);
+
+    const topicsCombobox = page.getByRole('combobox').nth(TOPICS_CONTROL_INDEX);
+    const topicsDropdown = page.locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)');
+    const selectedTopicTags = page
+      .locator('.ant-select')
+      .nth(TOPICS_CONTROL_INDEX)
+      .locator('.ant-select-selection-item');
+
+    // Both fixture topics are listed before any header interaction.
+    await topicsCombobox.click();
+    await expect(
+      topicsDropdown.locator('.ant-select-item-option').filter({ hasText: TOPIC_LABEL })
+    ).toHaveCount(1);
+    await expect(
+      topicsDropdown
+        .locator('.ant-select-item-option')
+        .filter({ hasText: HEATMAP_SECOND_TOPIC_NAME })
+    ).toHaveCount(1);
+
+    const selectAll = topicsDropdown.getByRole('checkbox', { name: 'Select all topics' });
+    const selectNone = topicsDropdown.getByRole('button', { name: 'Select none topics' });
+    await expect(selectAll).toBeVisible();
+    await expect(selectNone).toBeVisible();
+
+    // Select all unions every shown topic into the selection and keeps the dropdown open.
+    await selectAll.click();
+    await expect(topicsDropdown).toBeVisible();
+    await expect(selectedTopicTags.filter({ hasText: TOPIC_LABEL })).toHaveCount(1);
+    await expect(selectedTopicTags.filter({ hasText: HEATMAP_SECOND_TOPIC_NAME })).toHaveCount(1);
+
+    // Select none clears the whole topic selection.
+    await selectNone.click();
+    await expect(topicsDropdown).toBeVisible();
+    await expect(selectedTopicTags.filter({ hasText: TOPIC_LABEL })).toHaveCount(0);
+    await expect(selectedTopicTags.filter({ hasText: HEATMAP_SECOND_TOPIC_NAME })).toHaveCount(0);
   });
 });
