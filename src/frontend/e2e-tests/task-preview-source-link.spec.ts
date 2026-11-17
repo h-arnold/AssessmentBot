@@ -28,8 +28,12 @@
  * @see docs/developer/frontend/frontend-playwright-e2e.md — runtime mocks, StrictMode rule
  */
 
-import { expect, test } from '@playwright/test';
-import { getMethodCalls } from './shared/endToEndRuntimeMocks';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import {
+  getMethodCalls,
+  releaseNextDeferredSuccess,
+  type ResponseItem,
+} from './shared/endToEndRuntimeMocks';
 import { stickyTableWrapper } from './helpers/sticky-table-locators';
 import {
   GOOGLE_DOCS_STUB_TEXT,
@@ -48,11 +52,13 @@ import {
   createMergedAssignmentQueue,
 } from './helpers/task-preview-source-link-scenarios';
 import {
+  CANONICAL_SHEETS_ASSIGNMENT,
   CANONICAL_SLIDES_ASSIGNMENT,
   withNumericSheetsPageId,
   withSourceLocationOverride,
 } from './helpers/task-preview-source-link-fixtures';
 import { SOURCE_ACTION_LABEL } from '../src/features/taskHeatmap/TaskPreviewCard';
+import { LOADING_PREVIEW_LABEL } from '../src/features/taskHeatmap/TaskMetricPreviewContent';
 import {
   CANONICAL_SHEETS_CELL,
   CANONICAL_SLIDES_CELL,
@@ -247,5 +253,108 @@ test.describe('Task preview source link — source URL boundaries', () => {
     const action = sourceDocumentAction(popover);
     await expect(action).toBeVisible();
     await expect(action).toHaveAttribute('href', cell.expectedSourceUrl);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Merged keyboard journey
+// ---------------------------------------------------------------------------
+
+/**
+ * Merged `getAssignment` queue that holds the Slides full read open.
+ *
+ * @remarks
+ * The merged builder issues one `getAssignment` per selected assignment in
+ * selection order — Slides first, then Sheets — and React Query deduplicates the
+ * StrictMode replay, so only the first slot is deferred. The tail sentinel keeps
+ * an unexpected third request a named failure rather than a stray index error.
+ * This is a queue override for the existing scenario factory, not a competing
+ * mock: `enterMergedJourney` still installs `createSourceLinkScenario` around it.
+ *
+ * @returns {ResponseItem[]} The deferred Slides merged queue.
+ */
+function createDeferredSlidesMergedQueue(): ResponseItem[] {
+  return [
+    { kind: 'deferredSuccess', data: CANONICAL_SLIDES_ASSIGNMENT },
+    { kind: 'success', data: CANONICAL_SHEETS_ASSIGNMENT },
+    {
+      kind: 'transportFailure',
+      code: 'QUEUE_UNDERSIZED',
+      message: 'QUEUE_UNDERSIZED: getAssignment — the source-link queue ended early',
+    },
+  ];
+}
+
+/**
+ * Locate the preview dialog for the canonical Slides cell.
+ *
+ * @remarks
+ * The pointer-driven builder can leave a hover-opened popover for another cell
+ * in the DOM, so a generic "last visible popover" locator is ambiguous on this
+ * surface. The preview dialog's accessible name is the cell's own label, which
+ * scopes every assertion to the preview this journey opened.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @returns {Locator} The Slides cell's preview dialog locator.
+ */
+function slidesPreviewDialog(page: Page): Locator {
+  return page.getByRole('dialog', { name: slidesCell.cellAccessibleLabel });
+}
+
+test.describe('Task preview source link — merged keyboard journey', () => {
+  test('Enter hands focus to the source action and Escape restores it to the trigger', async ({
+    page,
+  }) => {
+    await enterMergedJourney(page, createMergedAssignmentQueue());
+
+    const trigger = metricTrigger(page, slidesCell.cellAccessibleLabel);
+    await expect(trigger).toHaveCount(1);
+    await trigger.focus();
+    await expect(trigger).toBeFocused();
+
+    await page.keyboard.press('Enter');
+
+    const popover = slidesPreviewDialog(page);
+    await expect(popover).toBeVisible();
+    const action = sourceDocumentAction(popover);
+    // The real portal renders and focuses the action, and the focused action
+    // opens its tooltip — browser facts the focus harness cannot observe.
+    await expect(action).toBeFocused();
+    await expect(visibleTooltip(page)).toHaveText(SOURCE_ACTION_LABEL);
+
+    // Escape from inside the portal closes the popover and returns focus to the
+    // cell that opened it, rather than dropping it when the body unmounts.
+    await page.keyboard.press('Escape');
+    await expect(slidesPreviewDialog(page)).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
+  test('keeps focus on the trigger until the deferred merged preview resolves', async ({
+    page,
+  }) => {
+    await enterMergedJourney(page, createDeferredSlidesMergedQueue());
+
+    const trigger = metricTrigger(page, slidesCell.cellAccessibleLabel);
+    await expect(trigger).toHaveCount(1);
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+
+    const popover = slidesPreviewDialog(page);
+    await expect(popover).toBeVisible();
+    // While the Slides full read is held open the whole body is a busy skeleton:
+    // no ready source action exists yet, so the armed transfer cannot be spent
+    // and focus remains where the keyboard left it.
+    await expect(popover.getByLabel(LOADING_PREVIEW_LABEL)).toHaveCount(1);
+    await expect(sourceDocumentAction(popover)).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+
+    // Releasing the deferred read lets the ready card mount. The opening focus
+    // intent is then spent on the first focusable action this session offers.
+    await releaseNextDeferredSuccess(page);
+    const action = sourceDocumentAction(popover);
+    await expect(action).toBeVisible();
+    await expect(popover.getByLabel(LOADING_PREVIEW_LABEL)).toHaveCount(0);
+    await expect(action).toBeFocused();
+    await expect(visibleTooltip(page)).toHaveText(SOURCE_ACTION_LABEL);
   });
 });

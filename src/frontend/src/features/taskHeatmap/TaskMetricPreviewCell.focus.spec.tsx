@@ -109,6 +109,22 @@ describe('TaskMetricPreviewCell keyboard activation and focus ownership', () => 
     expect(harness.sourceFocusCount()).toBe(1);
   });
 
+  it('ignores a key that is neither activation nor Escape at the trigger', () => {
+    harness = renderPreviewCell();
+    harness.trigger.focus();
+    expect(harness.trigger).toHaveFocus();
+
+    // The trigger's keydown handler returns before preventDefault for every key
+    // outside Enter, Space and Escape, so an unrelated key must leave both the
+    // event and the preview state untouched.
+    const event = dispatchCancelableKeydown(harness.trigger, 'a');
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.querySelector('.ant-popover-content')).toBeNull();
+    expect(harness.sourceFocusCount()).toBe(0);
+    expect(harness.trigger).toHaveFocus();
+  });
+
   it.each(['Enter', ' '] as const)(
     're-arms source focus when %s is pressed after pointer-opening the preview',
     async (key) => {

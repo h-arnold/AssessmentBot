@@ -46,6 +46,7 @@ import userEvent from '@testing-library/user-event';
 import type { PreviewCellHarness } from '@/test/taskHeatmap/previewSourceActionTestHelpers';
 import {
   buildCanonicalCellWithoutSourceUrl,
+  CANONICAL_SOURCE_URL,
   findSourceAction,
   renderPreviewCell,
   waitForPreviewContent,
@@ -105,7 +106,13 @@ describe('TaskMetricPreviewCell deferred readiness focus session', () => {
       expect(action).toHaveFocus();
     });
     // Exactly one transfer for this session, no matter how often the ready card
-    // renders afterwards.
+    // renders afterwards: a second render of the already-ready card must not
+    // revive the spent intent.
+    await harness.rerenderCell({ isLoading: false });
+    const stillReadyAction = await findSourceAction();
+    await waitFor(() => {
+      expect(stillReadyAction).toHaveFocus();
+    });
     expect(harness.sourceFocusCount()).toBe(1);
   });
 
@@ -230,7 +237,13 @@ describe('TaskMetricPreviewCell deferred readiness focus session', () => {
     await waitFor(() => {
       expect(harness.sourceFocusCount()).toBe(TWO_SESSION_FOCUS_TRANSFERS);
     });
-    // The second session's action, not the first one, now owns focus.
-    expect(document.activeElement).toHaveAccessibleName(SOURCE_ACTION_LABEL);
+    // The source link, not merely an element with the same name, now owns
+    // focus. Pin the focused element beyond its accessible name: it is a
+    // native anchor carrying the canonical derived editor URL in a new tab.
+    const secondSessionAction = document.activeElement;
+    expect(secondSessionAction).toHaveAccessibleName(SOURCE_ACTION_LABEL);
+    expect(secondSessionAction).toHaveAttribute('href', CANONICAL_SOURCE_URL);
+    expect(secondSessionAction).toHaveAttribute('target', '_blank');
+    expect(secondSessionAction?.tagName).toBe('A');
   });
 });

@@ -12,13 +12,11 @@ import { describe, it, expect } from 'vitest';
 import { assembleTaskPreviewData } from './assembleTaskPreviewData';
 import type { CellPreviewData } from './buildCellPreviewLookup';
 import { createComputedMetricResult } from '@/test/dataAnalysis/fixtures';
+import { CANONICAL_SOURCE_URL } from '@/test/taskHeatmap/previewSourceActionTestHelpers';
 
 // ===========================================================================
 // Fixture constants
 // ===========================================================================
-
-/** Editor source URL carried by the populated carry-through fixtures. */
-const SOURCE_URL = 'https://docs.google.com/presentation/d/doc-preview/edit#slide=id.7';
 
 /** Score value used by the carry-through fixture metrics. */
 const CARRY_THROUGH_SCORE = 4;
@@ -45,7 +43,7 @@ const CONTENT_SOURCE_URL_CELLS: ReadonlyArray<{ label: string; cell: CellPreview
       artifactContent: 'Essay body',
       reasoning: { completeness: 'Covered the brief', accuracy: null, spag: null },
       errors: NO_CELL_ERRORS,
-      sourceUrl: SOURCE_URL,
+      sourceUrl: CANONICAL_SOURCE_URL,
     },
   },
   {
@@ -55,7 +53,7 @@ const CONTENT_SOURCE_URL_CELLS: ReadonlyArray<{ label: string; cell: CellPreview
       artifactContent: '| A | B |\n|---|---|\n| 1 | 2 |',
       reasoning: { completeness: null, accuracy: 'Accurate values', spag: null },
       errors: NO_CELL_ERRORS,
-      sourceUrl: SOURCE_URL,
+      sourceUrl: CANONICAL_SOURCE_URL,
     },
   },
   {
@@ -65,7 +63,7 @@ const CONTENT_SOURCE_URL_CELLS: ReadonlyArray<{ label: string; cell: CellPreview
       artifactContent: 'data:image/png;base64,iVBORw0KGgo=',
       reasoning: { completeness: null, accuracy: null, spag: 'Clear labels' },
       errors: NO_CELL_ERRORS,
-      sourceUrl: SOURCE_URL,
+      sourceUrl: CANONICAL_SOURCE_URL,
     },
   },
   {
@@ -78,7 +76,7 @@ const CONTENT_SOURCE_URL_CELLS: ReadonlyArray<{ label: string; cell: CellPreview
       ],
       reasoning: { completeness: 'Complete grid', accuracy: null, spag: null },
       errors: NO_CELL_ERRORS,
-      sourceUrl: SOURCE_URL,
+      sourceUrl: CANONICAL_SOURCE_URL,
     },
   },
   {
@@ -88,7 +86,7 @@ const CONTENT_SOURCE_URL_CELLS: ReadonlyArray<{ label: string; cell: CellPreview
       artifactContent: null,
       reasoning: { completeness: null, accuracy: null, spag: null },
       errors: NO_CELL_ERRORS,
-      sourceUrl: SOURCE_URL,
+      sourceUrl: CANONICAL_SOURCE_URL,
     },
   },
 ];
@@ -108,7 +106,7 @@ describe('assembleTaskPreviewData sourceUrl carry-through', () => {
         'task-source-1'
       );
 
-      expect(result.sourceUrl).toBe(SOURCE_URL);
+      expect(result.sourceUrl).toBe(CANONICAL_SOURCE_URL);
     }
   );
 
@@ -123,7 +121,7 @@ describe('assembleTaskPreviewData sourceUrl carry-through', () => {
         'task-source-2'
       );
 
-      expect(result.sourceUrl).toBe(SOURCE_URL);
+      expect(result.sourceUrl).toBe(CANONICAL_SOURCE_URL);
     }
   });
 

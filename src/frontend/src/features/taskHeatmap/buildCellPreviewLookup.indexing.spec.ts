@@ -143,12 +143,28 @@ describe('buildCellPreviewLookup indexing', () => {
       },
     ]);
 
+    // Give the two duplicate items distinct stored IDs so their derived source
+    // URLs differ: the winning URL then identifies which item was indexed,
+    // rather than both items yielding the same unusable URL.
+    assignment.documentType = 'SLIDES';
+    const [firstItem, secondItem] = Object.values(assignment.submissions[0].items);
+    firstItem.artifact.documentId = 'first-document';
+    firstItem.artifact.pageId = 'first-page';
+    secondItem.artifact.documentId = 'second-document';
+    secondItem.artifact.pageId = 'second-page';
+
     const lookup: CellPreviewLookup = buildCellPreviewLookup(assignment);
     const cellData = lookup.get('student-1')?.get('test-def::task-dup');
 
     expect(cellData).toBeDefined();
     expect(cellData!.artifactContent).toBe('First encounter');
     expect(cellData!.reasoning.completeness).toBe('First version');
+    expect(cellData!.sourceUrl).toBe(
+      buildExpectedSourceUrl('SLIDES', 'first-document', 'first-page')
+    );
+    expect(cellData!.sourceUrl).not.toBe(
+      buildExpectedSourceUrl('SLIDES', 'second-document', 'second-page')
+    );
   });
 
   // -----------------------------------------------------------------------
