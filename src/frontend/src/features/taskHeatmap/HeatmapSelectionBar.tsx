@@ -69,57 +69,16 @@ export type HeatmapSelectionBarProperties = Readonly<{
 }>;
 
 /**
- * Build a map of assignmentId → resolved primaryTopicKey for cascade clearing.
+ * One class assignment paired with its resolved warm-up definition partial.
  *
- * @param {ClassFull | null} classFull - The loaded class.
- * @param {AssignmentDefinitionPartialsResponse | null} assignmentDefinitionPartials - The
- *   warm-up partials dataset (label + topic resolution).
- * @returns {Map<string, string>} assignmentId → primaryTopicKey (present entries only).
+ * @remarks
+ * `partial` is `null` when the assignment's `definitionKey` has no resolvable
+ * partial; such assignments are omitted from the selectors and warned about.
  */
-function buildAssignmentTopicKeys(
-  classFull: ClassFull | null,
-  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null
-): Map<string, string> {
-  const map = new Map<string, string>();
-  if (classFull === null || assignmentDefinitionPartials === null) {
-    return map;
-  }
-  for (const assignment of classFull.assignments) {
-    const partial = getAssignmentDefinitionPartial(
-      assignmentDefinitionPartials,
-      assignment.assignmentDefinitionKey
-    );
-    if (partial !== null) {
-      map.set(assignment.assignmentId, partial.primaryTopicKey);
-    }
-  }
-  return map;
-}
-
-/**
- * Resolve a single assignment to an option entry, or `null` when it must be omitted.
- *
- * @param {ClassFull['assignments'][number]} assignment - The assignment to resolve.
- * @param {ReturnType<typeof getAssignmentDefinitionPartial>} partial - Resolved partial
- *   (or `null` when the `definitionKey` has no resolvable partial).
- * @param {string | undefined} topicKey - Resolved primary topic key (or `undefined`).
- * @param {Set<string>} activeTopics - Currently active topic keys (empty = no filter).
- * @returns {{ value: string; label: string } | null} The option entry, or `null` to omit.
- */
-function resolveAssignmentOption(
-  assignment: ClassFull['assignments'][number],
-  partial: ReturnType<typeof getAssignmentDefinitionPartial>,
-  topicKey: string | undefined,
-  activeTopics: Set<string>
-): { value: string; label: string } | null {
-  if (partial === null || topicKey === undefined) {
-    return null;
-  }
-  if (activeTopics.size > 0 && !activeTopics.has(topicKey)) {
-    return null;
-  }
-  return { value: assignment.assignmentId, label: partial.primaryTitle };
-}
+type AssignmentPartialEntry = Readonly<{
+  assignmentId: string;
+  partial: ReturnType<typeof getAssignmentDefinitionPartial>;
+}>;
 
 /**
  * Render the three labelled selector controls for the Heatmaps builder surface.
@@ -136,30 +95,43 @@ export function HeatmapSelectionBar({
   onChangeTopics,
   onChangeAssignments,
 }: HeatmapSelectionBarProperties): JSX.Element {
-  const assignmentTopicKeys = useMemo(
-    () => buildAssignmentTopicKeys(classFull, assignmentDefinitionPartials),
-    [classFull, assignmentDefinitionPartials]
-  );
+  // Single O(A) pass: resolve each assignment's definition partial exactly once, then
+  // derive every selector input below from this ordered entry list. Guarded on
+  // `assignmentDefinitionPartials` being present so resolution happens only once the
+  // warm-up data has resolved (not during the still-loading phase).
+  const assignmentPartialEntries = useMemo<AssignmentPartialEntry[]>(() => {
+    if (classFull === null || assignmentDefinitionPartials === null) {
+      return [];
+    }
+    return classFull.assignments.map((assignment) => {
+      return {
+        assignmentId: assignment.assignmentId,
+        partial: getAssignmentDefinitionPartial(
+          assignmentDefinitionPartials,
+          assignment.assignmentDefinitionKey
+        ),
+      };
+    });
+  }, [classFull, assignmentDefinitionPartials]);
+
+  // Map of assignmentId → resolved primaryTopicKey for the cascade clear path.
+  const assignmentTopicKeys = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const entry of assignmentPartialEntries) {
+      if (entry.partial !== null) {
+        map.set(entry.assignmentId, entry.partial.primaryTopicKey);
+      }
+    }
+    return map;
+  }, [assignmentPartialEntries]);
 
   // Assignments whose `definitionKey` has no resolvable partial are omitted from the
   // topic/assignment selectors; SPEC requires these omissions to be logged as warnings.
-  // Guarded on `assignmentDefinitionPartials` being present so we only warn once the
-  // warm-up data has resolved (not during the still-loading phase).
   const omittedAssignmentIds = useMemo(() => {
-    const ids: string[] = [];
-    if (classFull !== null && assignmentDefinitionPartials !== null) {
-      for (const assignment of classFull.assignments) {
-        const partial = getAssignmentDefinitionPartial(
-          assignmentDefinitionPartials,
-          assignment.assignmentDefinitionKey
-        );
-        if (partial === null) {
-          ids.push(assignment.assignmentId);
-        }
-      }
-    }
-    return ids;
-  }, [classFull, assignmentDefinitionPartials]);
+    return assignmentPartialEntries
+      .filter((entry) => entry.partial === null)
+      .map((entry) => entry.assignmentId);
+  }, [assignmentPartialEntries]);
 
   // Idempotency guard: warn for each omitted id only once, even if the memo above
   // recomputes (e.g. on unrelated re-renders), per logging policy §3 (no double-logging).
@@ -210,48 +182,38 @@ export function HeatmapSelectionBar({
   );
 
   const topicOptions = useMemo(() => {
-    if (classFull === null || assignmentDefinitionPartials === null) {
-      return [];
-    }
     const seen = new Set<string>();
     const collected: { value: string; label: string }[] = [];
-    for (const assignment of classFull.assignments) {
-      const partial = getAssignmentDefinitionPartial(
-        assignmentDefinitionPartials,
-        assignment.assignmentDefinitionKey
-      );
-      if (partial === null || seen.has(partial.primaryTopicKey)) {
+    for (const entry of assignmentPartialEntries) {
+      if (entry.partial === null || seen.has(entry.partial.primaryTopicKey)) {
         continue;
       }
-      seen.add(partial.primaryTopicKey);
-      collected.push({ value: partial.primaryTopicKey, label: partial.primaryTopic });
+      seen.add(entry.partial.primaryTopicKey);
+      collected.push({
+        value: entry.partial.primaryTopicKey,
+        label: entry.partial.primaryTopic,
+      });
     }
     return collected.toSorted((left, right) => left.label.localeCompare(right.label));
-  }, [classFull, assignmentDefinitionPartials]);
+  }, [assignmentPartialEntries]);
 
   const assignmentOptions = useMemo(() => {
-    if (classFull === null || assignmentDefinitionPartials === null) {
-      return [];
-    }
     const activeTopics = new Set(selection.topicKeys);
     const collected: { value: string; label: string }[] = [];
-    for (const assignment of classFull.assignments) {
-      const partial = getAssignmentDefinitionPartial(
-        assignmentDefinitionPartials,
-        assignment.assignmentDefinitionKey
-      );
-      // The topic key is already resolved by the memoised `assignmentTopicKeys` map
-      // (built from the same `getAssignmentDefinitionPartial` lookup); reuse it instead of re-deriving.
-      const topicKey = assignmentTopicKeys.get(assignment.assignmentId);
-      const option = resolveAssignmentOption(assignment, partial, topicKey, activeTopics);
-      if (option !== null) {
-        collected.push(option);
+    for (const entry of assignmentPartialEntries) {
+      if (entry.partial === null) {
+        continue;
       }
+      const topicKey = entry.partial.primaryTopicKey;
+      if (activeTopics.size > 0 && !activeTopics.has(topicKey)) {
+        continue;
+      }
+      collected.push({ value: entry.assignmentId, label: entry.partial.primaryTitle });
     }
     // Preserve `ClassFull.assignments` order (layout spec §8.2 forbids re-sorting by
     // title); the cascade filter above already narrows by the active topic set.
     return collected;
-  }, [classFull, assignmentDefinitionPartials, assignmentTopicKeys, selection.topicKeys]);
+  }, [assignmentPartialEntries, selection.topicKeys]);
 
   const handleTopicsChange = (value: string[]): void => {
     onChangeTopics(value, assignmentTopicKeys);
