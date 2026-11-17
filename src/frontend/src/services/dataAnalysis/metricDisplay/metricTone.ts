@@ -139,9 +139,6 @@ function clampUnit(value: number): number {
  */
 function resolveNormalisedPosition(value: number, range: MetricToneRange): number {
   const span = range.upper - range.lower;
-  if (span <= 0) {
-    return 0;
-  }
   return clampUnit((value - range.lower) / span);
 }
 
@@ -275,7 +272,7 @@ export function resolveMetricTone(
     case 'error': {
       return {
         color: errorColor,
-        cellStyle: resolveDiscreteCellStyle(errorColor),
+        cellStyle: METRIC_TONE_CELL_STYLE[errorColor],
         muted: false,
       };
     }
@@ -288,16 +285,6 @@ export function resolveMetricTone(
       };
     }
   }
-}
-
-/**
- * Resolve the preset cell style for a discrete (non-gradient) tone token.
- *
- * @param {MetricToneColor} token - The discrete tone token.
- * @returns {CSSProperties} The matching preset cell style.
- */
-function resolveDiscreteCellStyle(token: MetricToneColor): CSSProperties {
-  return METRIC_TONE_CELL_STYLE[token];
 }
 
 /**
