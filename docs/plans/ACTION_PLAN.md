@@ -231,40 +231,33 @@ Delivered on branch `feat/heatmaps-selection-perf`: resolved the two Section 2 h
 
 ## Documentation and rollout notes
 
-### Objective
+### Outcome
 
-Finalise the planned-only entries and keep canonical docs consistent with the delivered behaviour.
+Docs-only finalisation: re-verified both Section 1 docs-sync delegations, confirmed the delivered §9.33 helper-register entry and its three layout-spec references, and retired the two planned-only SPEC.md sentences (lines 78, 148) to implemented §9.33 wording. Green doc review PASS with zero findings (`.opencode/scratchpad/review-section6-spec-docs.md`). No production code changed.
 
-### Constraints
+### Retained for later sections
 
-- Only touch docs relevant to the changed areas. The data-shape planned entries (Data Shapes Agent) and the §3.8/§9.29 read-chain sentences (Docs agent) were already finalised in Section 1's docs sync (per `AGENTS.md` §5 step 7 and §7.2); this section only re-verifies them plus the §9.30 register entry flip (Docs agent).
+- **Helper register:** the #342 wrapper is recorded as implemented decision §9.33 under "Delivered decisions" in `frontend-shared-helpers-and-abstraction-standards.md` — not §9.30. §9.30 is the unrelated always-fixed student-name-columns entry; §9.31/§9.32 are rejected designs. The plan's stale §9.30-flip / "e.g. §9.31" planning framing was corrected to §9.33.
+- **Layout spec:** `HEATMAP_SELECTION_LAYOUT.md` cites §9.33 in three places.
+- **Read-chain docs:** the four data-shape docs (`assignment.md`, `student-submission.md`, `abclass.md`, `assessment.md`) and helper-standards §3.8 carry the delivered single-pass chain (root/envelope stub parse then one per-item normaliser pass), with no stale "final parse" / `Not implemented` wording; §9.29's stale chain sentence was removed upstream in `85b1199d`.
+- **No rollout dependency:** pure frontend behaviour change delivered in Sections 1–5; no migration or rollout dependency.
 
-### Acceptance criteria
+### Section checks
 
-- Cross-section re-verification: the four data-shape docs (`assignment.md`, `student-submission.md`, `abclass.md`, `assessment.md`) describe the delivered single-pass chain with no stale "final parse" or `Not implemented` wording, and `frontend-shared-helpers-and-abstraction-standards.md` §3.8 carries the corrected read-chain sentence (the pre-plan planned entries and the §9.29 chain sentence were removed upstream in `85b1199d`; Section 1 folded the delivered chain into the canonical statements).
-- Cross-section re-verification (Section 6): `frontend-shared-helpers-and-abstraction-standards.md` helper-register entry for the #342 wrapper is `Implemented` with the wrapper description (renders the two multi-selects, owns per-Select controlled query state). NOTE: the pre-plan §9.30 planned entry was never landed in the doc — the doc's actual §9.30 is the unrelated always-fixed student-name-columns entry — so Section 3's docs sync must ADD the wrapper entry (next free number, e.g. §9.31) rather than flip a marker.
-- No other doc changes; no migration or rollout dependency.
-
-### Required checks
-
-1. Re-verify the Section 1 docs sync landed for both delegations separately: Data Shapes Agent reconciliation of the four data-shape docs, and Docs agent correction of the §3.8/§9.29 read-chain sentences.
-2. Docs agent pass on the helper register §9.30 flip.
-3. Confirm SPEC/layout companion references are satisfied.
-
-### Delegation mandatory reads
-
-Data Shapes Agent mandatory docs (re-verification): @docs/developer/data-shapes/INDEX.md, @docs/developer/data-shapes/assignment.md, @docs/developer/data-shapes/student-submission.md, @docs/developer/data-shapes/abclass.md, @docs/developer/data-shapes/assessment.md
-Docs agent mandatory docs: @docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md (§3.8, §9.29, §9.30)
+- Data Shapes Agent re-verification PASS on all four data-shape docs (correct single-pass chain, no stale wording, no out-of-scope drift); Docs agent re-verification PASS (§3.8 read-chain sentence, absent §9.29 sentence, §9.33 register entry, three layout-spec §9.33 references).
+- Green doc review PASS with zero findings; SPEC.md lines 78/148 retired to §9.33 wording; SPEC/layout companion references confirmed satisfied.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (filled during delivery)
-- **Deviations from plan:** (filled during delivery)
-- **Follow-up implications for later sections:** (filled during delivery)
+- **Implementation notes:** This is a docs-only section: no executable Red/Green TDD phases apply. Re-verification of Section 1's two docs-sync delegations: Data Shapes Agent returned PASS on all four data-shape docs (`assignment.md`, `student-submission.md`, `abclass.md`, `assessment.md`) — each describes the delivered single-pass chain (root/envelope stub parse then one per-item normaliser pass) with no stale "final parse"/"second full-tree parse" or `Not implemented` wording, and no out-of-scope drift. Docs agent returned PASS re-verifying §3.8's corrected read-chain sentence, the absence of the stale §9.29 sentence, the §9.33 helper-register entry under "Delivered decisions" (§9.30 is the unrelated student-name entry; §9.31/§9.32 are rejected designs), and the layout spec's three §9.33 references. The two planned-only SPEC.md sentences (lines 78, 148) were retired to implemented §9.33 wording; Green doc review PASS with zero findings (`.opencode/scratchpad/review-section6-spec-docs.md`). SPEC/layout companion references confirmed satisfied. Out-of-scope drift was recorded in the nitpicks log, not actioned (Section 6 forbids other doc changes).
+- **Deviations from plan:** None in the delivered edits. The plan's stale planning framing for the register entry (§9.30 flip / "e.g. §9.31") was corrected to the delivered §9.33; Sections 3 and 5 already recorded that §9.31/§9.32 are taken by rejected designs.
+- **Follow-up implications for later sections:** None — final section. No migration or rollout dependency; pure frontend behaviour change already delivered in Sections 1–5.
+- **Section regression gate:** First comparison at 2026-11-17T05-46-55.317Z flagged 1 regression / 1 new failure from a flaky E2E visual assertion (`post-analysis-metadata.feedback.spec.ts`, `toHaveClass` failed on attempt 0 then passed on retry; E2E check exit 0, 351 expected / 0 unexpected / flaky 1) — confirmed flaky, unrelated to the SPEC.md prose edit, no rework. Authoritative re-run at 2026-11-17T06-01-38.152Z (report `.ts-regression-checker/reports/session-feat-heatmaps-selection-perf/runs/2026-11-17T06-01-38.152Z/comparison.txt`) — Regressions 0, New Failures 0, Fixes 0, 7/8 checks passing, E2E passing with flaky 0 (352 expected / 0 unexpected); sole failure = accepted pre-existing `backend-lint-check` debt. Gate passed.
+- **Commit record (Section 6):** branch `feat/heatmaps-selection-perf`; commit `8949ec8d` — exact message `docs(#342): retire planned helper wording in SPEC.md` (1 file changed, 2 insertions, 2 deletions). `git push` succeeded (`af141e86..8949ec8d` on `origin/feat/heatmaps-selection-perf`).
 
 ### Optional `@remarks` JSDoc review
 
-- Verify the `@remarks` planned in Sections 1-3 exist in the code; record `None` where not needed.
+- Verified: the `@remarks` planned in Sections 1–3 exist in code — `assignmentReadNormalisation.ts` (parent-pass and unsafe-key remarks), `assignmentReadItemValidation.ts`, both service wrappers, and `SelectAllDropdownHeader.tsx` (controlled query-state remarks). Section 5 changed one existing JSDoc only (required `deferredClassId` parameter); Section 6 is docs-only. `None` new needed.
 
 ---
 
