@@ -222,7 +222,8 @@ The generic lifecycle, feedback and invalidation coverage is split by responsibi
   `features/taskHeatmap/useHeatmapsPageData.postAnalysis.spec.ts` (7 cases): mock
   only the lower-level lifecycle hook and prove each feature's shared page hook passes
   the complete unsliced class, live definitions, the successful averaging result, the
-  committed selected class ID and the stable descriptor list from the canonical factory,
+  appropriate class ID — committed for the class page, deferred for Heatmaps — and the
+  stable descriptor list from the canonical factory,
   or `null` for loading/failure/adaptation-blocking surfaces. Both include a
   memoised-context identity case so an unstable object cannot re-attach the effect
   each render. These bind features only; lifecycle contracts stay in the hook suites.

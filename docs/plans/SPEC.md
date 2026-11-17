@@ -40,7 +40,7 @@ This unit is **not** intended to:
 
 ### Current data-shape constraints
 
-- The validation _schemas_ and the _returned shapes_ do not change. What changes is the documented read-validation chain: the data-shape docs currently describe the normaliser as "invoked by both read services before their final response parse" (`docs/developer/data-shapes/assignment.md`, `student-submission.md`, `abclass.md`, and `assessment.md`). That chain is updated in this unit (planned-only entries marked `Not implemented` recorded in all four docs before the action plan is finalised, then implemented during delivery): the service-level final full-tree parse is removed and the normaliser performs the single per-item pass.
+- The validation _schemas_ and the _returned shapes_ do not change. What changes is the documented read-validation chain: the data-shape docs formerly described the normaliser as "invoked by both read services before their final response parse" (`docs/developer/data-shapes/assignment.md`, `student-submission.md`, `abclass.md`, and `assessment.md`). The chain is now documented as delivered: the service-level final full-tree parse is removed and the normaliser performs the single per-item pass.
 
 ### Frontend or consumer architecture constraints
 
@@ -128,7 +128,7 @@ None.
 ## Planning handoff notes
 
 - A dedicated layout spec is required for #342 because it changes the dropdown structure of the selection bar: `docs/plans/HEATMAP_SELECTION_LAYOUT.md`.
-- Data-shape docs: the read-validation chain description in `docs/developer/data-shapes/assignment.md`, `student-submission.md`, `abclass.md`, and `assessment.md` changes; planned-only entries marked `Not implemented` are recorded in all four before the action plan is finalised.
+- Data-shape docs: the read-validation chain description in `docs/developer/data-shapes/assignment.md`, `student-submission.md`, `abclass.md`, and `assessment.md` was updated to the delivered single-pass chain.
 - Canonical fixtures: the existing partial normalisation suites clone the canonical synthetic small-profile class data (`@synthetic/small/classesById.json?raw`) and the full suites clone `@synthetic/small/assignmentsByKey.json?raw` (the legacy suites also use the medium profile), plus local corruption probes; the new #349 parse-count tests reuse those same canonical views. #342 component tests reuse the existing `HeatmapSelectionBar.spec.tsx` fixtures; the E2E journey reuses the existing heatmap scenario helpers. No synthetic-generator extension is needed — recorded explicitly per `docs/developer/testing/synthetic-test-data.md`.
 - Module sizing: current and projected LOC for every touched file are recorded per action-plan section; all projected to stay under 500 LOC, so no file separation is planned.
 - #350 and #351 are deliberately excluded; they are recorded as deferred findings in the action plan's deferred table, not as open questions.
@@ -146,7 +146,7 @@ None.
 ## Documentation and rollout notes
 
 - Recorded the feature-local dropdown-header helper as implemented decision §9.33 in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
-- Update the read-validation chain description in the canonical data-shape docs `assignment.md`, `student-submission.md`, `abclass.md`, and `assessment.md` (planned-only entries marked `Not implemented`, finalised during delivery), and the two stale chain descriptions in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (§3.8 and the §9.29 entry 1 sentence "Both read services invoke the normaliser before unchanged final `parseApiResponse` validation").
+- Updated the read-validation chain description in the canonical data-shape docs `assignment.md`, `student-submission.md`, `abclass.md`, and `assessment.md`, and reconciled §3.8 of `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`, to the delivered single-pass chain; §9.29's stale chain sentence was removed upstream in `85b1199d`.
 - No migration or rollout dependency; pure frontend behaviour change.
 
 ## V1 scope recommendation

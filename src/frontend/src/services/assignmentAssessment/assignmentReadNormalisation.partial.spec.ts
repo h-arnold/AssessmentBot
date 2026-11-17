@@ -413,10 +413,10 @@ describe('normaliseClassRead partial payload', () => {
   });
 
   it('keeps a stored __proto__ item out of the parsed partial output while preserving siblings', () => {
-    // A stored document can carry a prototype-poisoning key as an own property
-    // of the items dictionary. The normaliser's copy loop keeps it as an own
-    // property (never triggering the prototype setter), and the partial schema
-    // parse then drops it, so the poisoning key never reaches the output.
+    // A stored document can carry a prototype-poisoning `__proto__` key as an own
+    // property of the items dictionary. The normaliser drops unsafe item keys
+    // before reassembly, so the poisoning key never reaches the output while
+    // its sibling tasks are preserved.
     const input = probe();
     const submission = selectedAssignment(input).submissions.find(
       (entry) => entry.documentId !== null

@@ -23,7 +23,7 @@
  * The component is declarative and fully controlled by the owning hook
  * (`useHeatmapsPageData`); it holds no selection state of its own.
  *
- * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §3.7
+ * @see docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md §9.19/§9.33
  */
 
 import type { JSX } from 'react';

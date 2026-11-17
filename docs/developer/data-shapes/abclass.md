@@ -54,7 +54,7 @@ Key notes:
 - `assignments` serialisation is representation-aware
   (`ABClass._serialiseAssignmentsForClass()`): an embedded assignment whose definition carries a
   task-summary array (partial definition) keeps its redacted `toPartialJSON()` output, while a
-  genuine full assignment keeps full `toJSON()` output and its serializer errors propagate
+  genuine full assignment keeps full `toJSON()` output and its serialiser errors propagate
   unchanged. `AssignmentDefinition.toJSON()` remains strict and still rejects a partial
   definition. `Assignment.toJSON()` gates its definition branch solely on
   `Array.isArray(definition.tasks)`: a restored partial definition (tasks as an array) is emitted
@@ -66,8 +66,8 @@ Key notes:
   stored body from ordinary instance state. Production write/read flows never reach the
   partial-definition state: `persistAssignmentRun()` rejects a partial definition before any
   write, `_ensureFullDefinition()` replaces one before read serialisation, and the class
-  serializer routes partial-definition assignments through `toPartialJSON()`. The class serializer
-  performs no fetch, definition fabrication or assignment removal, adds no second serializer and
+  serialiser routes partial-definition assignments through `toPartialJSON()`. The class serialiser
+  performs no fetch, definition fabrication or assignment removal, adds no second serialiser and
   uses no catch-and-fallback.
 - Class-embedded assignments are normally partial-hydration instances; fully hydrated records live
   in separate `assign_full_*` collections. Whatever representation the model currently holds is
@@ -380,7 +380,7 @@ Class-read behaviour:
   invalid root, not a legacy-result signal; the backend `_toReadView()` read preparation is the sole
   legacy owner and always emits the required `1 | 'legacy'` field.
 - ABClass persistence itself is unchanged; the marker is produced by the embedded `Assignment`
-  partial serializer, not by a second ABClass-side projection.
+  partial serialiser, not by a second ABClass-side projection.
 
 ### `upsertABClass` (write)
 
@@ -1006,7 +1006,7 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
   non-object partial document, or a `teachers` field that is not an array. It enforces no plain
   prototype, so an array document is not rejected on that basis (it still needs an array
   `teachers` field); nullable fields are then null-defaulted as described above.
-- ABClass model construction, restoration, explicit metadata replacement and both serializers enforce the shared strict metadata-domain contract. The stored-read gates (`ABClass.fromJSON()`, `ABClassResponseMapper._normaliseClassPartial()`) convert revived `Date` values in a present stored `metadata` value through `DateUtils.deepConvertDates()` before validation; request and in-memory paths take no `Date`. The response mappers (`_normaliseClassPartial()`, `_buildClassSummary()`, `_toReadView()`) project validated, detached `metadata` on partial-list, mutation-summary and full-read responses. `ABClassValidation._validateRequestMetadata()` validates explicitly supplied request `metadata` before any read/roster/write and tags only those failures with request provenance. The transport boundary (`abclassMutations.js` → `adaptMetadataRequestError_`) adapts only a request-provenance typed metadata failure to `ApiValidationError`/`INVALID_REQUEST`; stored/model, projection, persistence, upstream and wiring failures remain generic `INTERNAL_ERROR`. See [§ Sub-entity: ABClassMetadata](#sub-entity-abclassmetadata).
+- ABClass model construction, restoration, explicit metadata replacement and both serialisers enforce the shared strict metadata-domain contract. The stored-read gates (`ABClass.fromJSON()`, `ABClassResponseMapper._normaliseClassPartial()`) convert revived `Date` values in a present stored `metadata` value through `DateUtils.deepConvertDates()` before validation; request and in-memory paths take no `Date`. The response mappers (`_normaliseClassPartial()`, `_buildClassSummary()`, `_toReadView()`) project validated, detached `metadata` on partial-list, mutation-summary and full-read responses. `ABClassValidation._validateRequestMetadata()` validates explicitly supplied request `metadata` before any read/roster/write and tags only those failures with request provenance. The transport boundary (`abclassMutations.js` → `adaptMetadataRequestError_`) adapts only a request-provenance typed metadata failure to `ApiValidationError`/`INVALID_REQUEST`; stored/model, projection, persistence, upstream and wiring failures remain generic `INTERNAL_ERROR`. See [§ Sub-entity: ABClassMetadata](#sub-entity-abclassmetadata).
 
 ### Mutation schemas and queued services
 

@@ -336,7 +336,7 @@ rejects, before marker stamping, serialisation or any collection mutation:
 Only after that validation succeeds does `persistAssignmentRun()` set
 `assignment.assessmentContractVersion = 1`, then serialise detached full and partial
 assignment payloads and prepare the prospective full class and partial-registry payloads.
-Both assignment serializers consequently emit marker `1` on newly completed/reassessed
+Both assignment serialisers consequently emit marker `1` on newly completed/reassessed
 results. Legacy records are untouched by this write path: their stored body and exact
 marker presence/value are re-emitted from ordinary instance state, and read-time
 preparation never enters persistence. Genuine no-submission (null parent document and empty item map) remains
