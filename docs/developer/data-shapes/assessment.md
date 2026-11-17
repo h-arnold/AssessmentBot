@@ -526,7 +526,7 @@ Assessment-stage LLM:      src/backend/RequestHandlers/
   ├── LLMRequestManager.js               — terminal assessment outcomes, run-stop
   │                                        terminalisation, shared live/cache numeric
   │                                        validation and versioned internal cache
-  │                                        identity retained through writebackhttps://github.com/h-arnold/AssessmentBot/pull/355/conflict?name=docs%252Fdeveloper%252Fdata-shapes%252Fassessment.md&ancestor_oid=395fe8c3395945797659a2659b1352bc0921a293&base_oid=697657fd04fc7b98104c8cdbbb356284acfe8736&head_oid=e59f10fc83481695a37bca36daee6e89fa52d76a
+  │                                        identity retained through writeback
   └── CacheManager.js                    — generic best-effort get/put and shared
                                            CACHE_EXPIRY_SECONDS
 
