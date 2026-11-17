@@ -202,34 +202,30 @@ Delivered on branch `feat/heatmaps-selection-perf`: `resolveDiscreteCellStyle` i
 
 ## Regression and contract hardening
 
-### Objective
+### Outcome
 
-Prove no behaviour regressed across every touched module and the read-path equivalence contract.
+Delivered on branch `feat/heatmaps-selection-perf`: resolved the two Section 2 hardening follow-ups with behaviour-preserving changes and re-ran the full gate across every touched module. No contract, documented behaviour, data shape or config changed. Canonical docs were untouched (JSDoc updated in the same Green change; docs sync skipped), so Section 6 has no doc re-verification obligation arising from this section.
 
-### Constraints
+### Retained for later sections
 
-- Focused runs first, then the full frontend gate.
-
-### Acceptance criteria
-
-- All suites named in `SPEC.md` Testing expectations green, including `assignmentReadNormalisation.*`, `classDetailService.spec.ts`, `assignmentAssessmentService.spec.ts`, `useHeatmapsPageData.*`, `HeatmapBuilderSurface.spec.tsx`, `HeatmapSelectionBar.spec.tsx`, `heatmapsPipeline.spec.ts`, `heatmapsPreviewQueries.spec.ts`, `assembleMergedPreviewData.*`, `heatmapsSurfaceState.spec.ts`, `useHeatmapSelectionSummary.spec.ts`, `selectionCascade.spec.ts`, and the `metricTone` suites.
-- `npm run lint:frontend:check`, `npm run typecheck:all`, and `npm run run-all-checks` green.
-
-### Required test cases/checks
-
-1. `npm run test:frontend -- src/frontend/src/services/assignmentAssessment src/frontend/src/services/googleClassrooms src/frontend/src/features/taskHeatmap src/frontend/src/services/dataAnalysis`
-2. `npm run test:frontend:e2e -- heatmaps`
-3. `npm run lint:check`, `npm run typecheck:all`, `npm run run-all-checks`
+- **Fixture and spec.** `createMockQueryResult` in `src/frontend/src/test/heatmapsPageDataFixtures.ts` now exposes `isError: status === 'error'` on its returned `UseQueryResult`; the new `src/frontend/src/test/heatmapsPageDataFixtures.spec.ts` pins it. `src/frontend/src/features/taskHeatmap/heatmapsPipeline.spec.ts` migrated five direct `shouldRunHeatmapsPipeline` calls to pass a 4th `deferredClassId` argument.
+- **Final guard signature.** `shouldRunHeatmapsPipeline(classFull: ClassFull | null, selectedAssignmentIds: readonly string[], adpDatasetState: PageDatasetState, deferredClassId: string | null): boolean` in `src/frontend/src/features/taskHeatmap/heatmapsPipeline.ts`. `deferredClassId` is a required 4th parameter with an unconditional `classFull.classId !== deferredClassId` guard; the old `!== undefined` skip branch and its JSDoc wording are gone.
+- **Combine projection.** The `useQueries` `combine` in `src/frontend/src/features/taskHeatmap/useHeatmapsPageData.ts` uses `isError: result.isError` (reverted from `result.status === 'error'`). Section 2's retained notes (lines 100, 101, 120, 121) still describe `deferredClassId` as optional and the `status === 'error'` projection as live — pre-Section-5 state, now resolved; the Section 2 follow-up pointer (line 108) is discharged.
+- **Authoritative commands (`src/frontend`-relative).** `npm run test:frontend -- src/services/assignmentAssessment src/services/googleClassrooms src/features/taskHeatmap src/services/dataAnalysis` (Section 1 deviation: filters resolve against the `src/frontend` cwd); `npm run test:frontend:e2e -- heatmaps`; `npm run lint:frontend:check`, `npm run lint:builder:check`, `npm run lint:synthetic:check`, `npm run typecheck:all`, `npm run test:coverage`, `npm run build:production`.
+- **Lint interpretation.** `lint:check` exits 1 solely from the four accepted pre-existing backend `max-lines` warnings (0 errors): GREEN MODULO ACCEPTED DEBT per the decision below. That decision governs any later full-gate interpretation; backend test files stay out of scope and the lint rule is not relaxed.
+- **LOC.** Five touched files: `heatmapsPageDataFixtures.ts` 209, `heatmapsPageDataFixtures.spec.ts` 27, `heatmapsPipeline.spec.ts` 421, `heatmapsPipeline.ts` 288, `useHeatmapsPageData.ts` 488 — all under 500; no split.
 
 ### Section checks
 
-- All commands above green; LOC counts re-verified for every touched file.
+- Focused `test:frontend` four-area run 123 files / 1173 tests and E2E `heatmaps` 9/9 passed; `lint:frontend:check`, `lint:builder:check`, `lint:synthetic:check`, `test:coverage`, `typecheck:all` and `build:production` exit 0; `lint:check` exit 1 solely from the accepted backend debt (0 errors). Red and Green reviews PASS with zero findings. LOC re-verified for all five touched files.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (filled during delivery)
-- **Deviations from plan:** (filled during delivery)
-- **Follow-up implications for later sections:** (filled during delivery)
+- **Implementation notes:** User decision (2026-11-17): Section 5's `npm run lint:check` is treated as GREEN MODULO ACCEPTED DEBT — verify frontend/builder/synthetic lint green and zero new backend findings beyond the four accepted pre-existing `max-lines` warnings; backend test files remain out of scope and the lint rule is not relaxed. This resolves the conflict between Section 5's required `lint:check` and the baseline debt accepted in Section 1. Red phase: test-only changes exposing `isError` on `createMockQueryResult` (new co-located pin spec, intended-RED confirmed against HEAD) and migrating five direct guard calls to 4 args; Red Review PASS with zero in-scope findings (`.opencode/scratchpad/review-section5-red.md`). Green phase: two behaviour-preserving production changes (required `deferredClassId` with unconditional guard; `combine` reverted to `result.isError`); all six call sites verified 4-arg; Green Review PASS with zero findings (`.opencode/scratchpad/review-s5-green.md`). Docs sync SKIPPED: Section 5 changed only internal test infrastructure and behaviour-preserving production code — no documented behaviour, public API contract, data shape or config changed; the only stale descriptions (`deferredClassId` optional, `status === 'error'` projection) live in plan notes (compaction-owned), not canonical docs, and the JSDoc was updated in the same Green change. No existing document needed reconciliation. Plan compaction: Section 5 32 → 26 lines, backup at `.opencode/scratchpad/feat-heatmaps-selection-perf-section-5-pre-compaction.md`.
+- **Deviations from plan:** None. The `lint:check`/`run-all-checks` interpretation is governed by the recorded user decision, not a deviation.
+- **Follow-up implications for later sections:** Section 6 has no doc re-verification obligation from Section 5 (no canonical docs changed); the GREEN-MODULO-ACCEPTED-DEBT full-gate interpretation governs its final checks. Section 2's retained notes describing `deferredClassId` as optional and the `status === 'error'` projection (lines 100, 101, 120, 121) are resolved by this section; the line-108 follow-up is discharged.
+- **Section regression gate:** First comparison at 2026-11-17T05-10-52.566Z FAILED with 1 regression / 1 new failure from a flaky E2E visual assertion (`task-preview-source-link.visual.spec.ts`, `toHaveClass(/ant-select-item-option-active/)` timed out on attempt 0 then passed on retry; E2E check exit 0, 351 expected / 0 unexpected / flaky 1). Investigated and confirmed flaky and unrelated to Section 5's behaviour-preserving changes (Section 4 gate also had a flaky E2E that passed; baseline had none); no source rework was made. Authoritative re-run at 2026-11-17T05-26-45.470Z (report `.ts-regression-checker/reports/session-feat-heatmaps-selection-perf/runs/2026-11-17T05-26-45.470Z/comparison.txt`) — Regressions 0, New Failures 0, Fixes 0, 7/8 checks passing, E2E passing with flaky 0 (352 expected / 0 unexpected); sole failure = the accepted pre-existing `backend-lint-check` debt (the same four `max-lines` warnings). Gate passed: zero regressions, zero unaccounted new failures.
+- **Commit record (Section 5):** branch `feat/heatmaps-selection-perf`; commit `27c0b61c` — exact message `test(heatmaps): harden fixture and pipeline guard contracts` (5 files changed, 41 insertions, 12 deletions). `git push` succeeded (`d3472afd..27c0b61c` on `origin/feat/heatmaps-selection-perf`).
 
 ---
 
