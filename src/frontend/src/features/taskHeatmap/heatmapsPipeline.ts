@@ -187,19 +187,6 @@ function runAdapterStep(
 }
 
 /**
- * Whether the ADP dataset is failed or untrustworthy, so the pipeline must not run.
- *
- * @param {PageDatasetState} adpDatasetState - The ADP dataset state.
- * @returns {boolean} `true` when the dataset cannot be trusted.
- */
-function isAdpDatasetUnusable(adpDatasetState: PageDatasetState): boolean {
-  return (
-    adpDatasetState.isDatasetFailed ||
-    (adpDatasetState.isDatasetReady && !adpDatasetState.isDatasetTrustworthy)
-  );
-}
-
-/**
  * Decide whether the analyser/merged-adapter pipeline should run for the current
  * selection. The pipeline is gated on a selected class, at least one selected
  * assignment, a trustworthy (or not-yet-failed) ADP dataset, and a loaded class
@@ -228,9 +215,8 @@ export function shouldRunHeatmapsPipeline(
     return false;
   }
   // Don't run on untrustworthy or failed data (parity with useClassPageData).
-  if (isAdpDatasetUnusable(adpDatasetState)) {
-    return false;
-  }
+  if (adpDatasetState.isDatasetFailed) return false;
+  if (adpDatasetState.isDatasetReady && !adpDatasetState.isDatasetTrustworthy) return false;
   return true;
 }
 

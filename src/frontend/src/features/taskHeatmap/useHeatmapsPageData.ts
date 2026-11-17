@@ -52,13 +52,16 @@
  * **Per-assignment preview queries.** Enabled only for urgently selected
  * assignments. They are driven through `useQueries` (a single hook call over the
  * selection array) so the dynamic list of queries never violates the React
- * rules-of-hooks invariant that `useQuery` must not be called inside a loop. The
- * deferred selection's preview inputs are paired to those results by
- * `assignmentId` (a Map), never by array index across two different selections.
- * When a deferred-selected assignment has no urgent-keyed result yet (for example
- * it was removed during the lag), the `buildPreviewInputsByAssignmentId` helper
- * (in `heatmapsPreviewQueries.ts`) synthesises a pending preview input — loading
- * status with an empty lookup — so assembly never sees a missing input.
+ * rules-of-hooks invariant that `useQuery` must not be called inside a loop. A
+ * deferred copy of the preview results is paired to the deferred assignment IDs
+ * by `assignmentId` (a Map), never by array index across two different selections.
+ * Keying the assembly on that deferred copy keeps the urgent render from
+ * rebuilding the expensive merged lookup. When a deferred-selected assignment has
+ * no matching result in the deferred copy yet (for example the deferred selection
+ * advances to an assignment whose committed preview result has not settled), the
+ * `buildPreviewInputsByAssignmentId` helper (in `heatmapsPreviewQueries.ts`)
+ * synthesises a pending preview input — loading status with an empty lookup — so
+ * assembly never sees a missing input.
  * `assembleMergedPreviewData`'s missing-input throw remains the fail-loud wiring
  * invariant.
  */
@@ -166,25 +169,6 @@ function isAnyHeatmapQueryFetching(
 }
 
 /**
- * Report whether the deferred pipeline inputs still lag the urgent selection.
- *
- * @param {SelectionState} urgent - The urgent selection state.
- * @param {SelectionState} deferred - The deferred selection state.
- * @returns {boolean} `true` while the class or assignment inputs differ.
- */
-function hasPipelineInputLag(urgent: SelectionState, deferred: SelectionState): boolean {
-  if (
-    urgent.classId !== deferred.classId ||
-    urgent.assignmentIds.length !== deferred.assignmentIds.length
-  ) {
-    return true;
-  }
-  return urgent.assignmentIds.some(
-    (assignmentId, index) => assignmentId !== deferred.assignmentIds[index]
-  );
-}
-
-/**
  * Derive the global refresh-busy signal from the owned query families and the
  * deferral lag.
  *
@@ -204,7 +188,11 @@ function isHeatmapsRefreshing(
 ): boolean {
   return (
     isAnyHeatmapQueryFetching(classFullQuery, adpQuery, assignmentQueryResults) ||
-    hasPipelineInputLag(urgent, deferred)
+    urgent.classId !== deferred.classId ||
+    urgent.assignmentIds.length !== deferred.assignmentIds.length ||
+    urgent.assignmentIds.some(
+      (assignmentId, index) => assignmentId !== deferred.assignmentIds[index]
+    )
   );
 }
 
@@ -315,12 +303,12 @@ export function useHeatmapsPageData(): HeatmapsPageData {
   //
   // The `combine` callback projects each per-assignment `UseQueryResult` into the minimal
   // `AssignmentPreviewResult` payload the merged-preview assembly actually consumes. React Query
-  // applies `replaceEqualDeep` structural sharing to the combined value, so
-  // `assignmentPreviewCombined` is referentially stable when the underlying query data and status
-  // are deep-equal — the merged-preview memo keys on it (plus `mergedResult` and the deferred
-  // assignment IDs) without a manual per-render signature, and only rebuilds the expensive
-  // merged-lookup Map when a per-assignment payload or status genuinely changes. The raw
-  // `UseQueryResult`s are also surfaced (under `rawResults`) for `refetch` / busy derivation.
+  // applies `replaceEqualDeep` structural sharing to the combined value, so `previewResults` is
+  // referentially stable when the underlying query data and status are deep-equal. The
+  // merged-preview assembly keys on a deferred copy of `previewResults` (plus the deferred
+  // pipeline inputs) rather than the urgent combined value, so the urgent render never rebuilds
+  // the expensive merged-lookup Map. The raw `UseQueryResult`s stay urgent and are surfaced (under
+  // `rawResults`) for `refetch` / busy derivation.
   const assignmentPreviewCombined: AssignmentPreviewCombined = useQueries({
     queries: selectedAssignmentIds.map(
       (assignmentId: string): UseQueryOptions<AssignmentFull | null, Error> => {
@@ -353,15 +341,23 @@ export function useHeatmapsPageData(): HeatmapsPageData {
     },
   });
 
+  // The urgent preview results above start fetches immediately, but the expensive
+  // merged-preview assembly must not rebuild on the urgent render. A deferred copy
+  // lets that assembly depend only on deferred inputs; pairing is by `assignmentId`,
+  // so a deferred-selected assignment with no matching result yet is synthesised as
+  // pending by `buildPreviewInputsByAssignmentId`.
+  const deferredPreviewResults = useDeferredValue(assignmentPreviewCombined.previewResults);
+
   // -----------------------------------------------------------------------
   // 7. Merged preview lookup + status assembly
   // -----------------------------------------------------------------------
 
-  // Assemble the merged preview lookup + status map from the deferred selection,
-  // pairing each deferred assignment with its urgent-keyed result by ID. A deferred
-  // assignment with no urgent result is synthesised as pending by
-  // `buildPreviewInputsByAssignmentId`, so assembly's missing-input throw stays a
-  // wiring-regression invariant rather than a removal-during-lag failure.
+  // Assemble the merged preview lookup + status map from deferred inputs only, so
+  // the urgent render never rebuilds the expensive O(m·S·I) lookup. Pairing is by
+  // `assignmentId` against the deferred preview results; a deferred assignment with
+  // no matching result is synthesised as pending by `buildPreviewInputsByAssignmentId`,
+  // so assembly's missing-input throw stays a wiring-regression invariant rather
+  // than a removal-during-lag failure.
   // `buildCellPreviewLookup` fails fast (throws) when an `AssignmentFull` is missing
   // `assignmentDefinition`; that throw is caught here, logged, and surfaced as the
   // feature's `adapterError` branch rather than escaping to the app-level error
@@ -377,7 +373,7 @@ export function useHeatmapsPageData(): HeatmapsPageData {
     try {
       const inputs = buildPreviewInputsByAssignmentId(
         deferredAssignmentIds,
-        assignmentPreviewCombined.previewResults
+        deferredPreviewResults
       );
       return {
         mergedPreview: assembleMergedPreviewData(inputs, mergedResult.taskColumns),
@@ -389,7 +385,7 @@ export function useHeatmapsPageData(): HeatmapsPageData {
       });
       return { mergedPreview: null, assemblyError: toError(error) };
     }
-  }, [mergedResult, deferredAssignmentIds, assignmentPreviewCombined, deferredClassId]);
+  }, [mergedResult, deferredAssignmentIds, deferredPreviewResults, deferredClassId]);
 
   // -----------------------------------------------------------------------
   // 8. Surface state — error precedence, then loading, then ready

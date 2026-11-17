@@ -2,16 +2,11 @@
  * Deferred selection-derivation contract for the standalone Heatmaps hook.
  *
  * @remarks
- * Derived outputs stay on the committed selection until its deferred copy settles;
- * a class switch during the lag cannot pair the loaded class with the previous
- * class's deferred selection; a removed assignment becomes a pending preview input;
- * preview inputs pair by `assignmentId`; `isRefreshing` covers the lag for pipeline
- * inputs only; and empty → selected exposes its intended transient.
- *
- * `act()` flushes React's concurrent work in one boundary, so a real
- * `useDeferredValue` lag is not observable. The spec replaces it with a controllable
- * double: frozen, it returns the last committed value; `settleDeferredSelection`
- * releases it and flushes the observing render. Assertions read only public results.
+ * Derived outputs stay committed until the deferred copy settles; a class switch cannot pair
+ * the loaded class with the previous deferred selection; removed/reordered assignments keep
+ * their deferred preview entries; pairing is by `assignmentId`; `isRefreshing` covers pipeline
+ * lag only. A controllable double tracks both deferred values in independent slots and freezes
+ * /settles them together; `act()` flushes the observing render.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -48,7 +43,12 @@ const {
 const deferredControl = vi.hoisted(() => {
   return {
     frozen: false,
-    settled: undefined as unknown,
+    /** Last committed value per deferred slot: selection first, then preview results. */
+    settledValues: [] as unknown[],
+    /** Monotonic call counter; each render calls `useDeferredValue` in a fixed order. */
+    nextSlot: 0,
+    /** Number of `useDeferredValue` call sites in the hook under test. */
+    slotCount: 2,
   };
 });
 
@@ -57,11 +57,13 @@ vi.mock('react', async (importOriginal) => {
   return {
     ...actual,
     useDeferredValue: <T>(value: T): T => {
+      const slot = deferredControl.nextSlot % deferredControl.slotCount;
+      deferredControl.nextSlot += 1;
       if (!deferredControl.frozen) {
-        deferredControl.settled = value;
+        deferredControl.settledValues[slot] = value;
         return value;
       }
-      return deferredControl.settled as T;
+      return deferredControl.settledValues[slot] as T;
     },
   };
 });
@@ -94,18 +96,22 @@ type QueryScenario = Readonly<{
   previews?: ReadonlyMap<string, PreviewQueryState>;
 }>;
 
-/** Shape returned by the query-options doubles. */
-type QueryOptionsDouble = Readonly<{ queryKey: ReadonlyArray<string> }>;
-
 type HeatmapsView = RenderHookResult<ReturnType<typeof useHeatmapsPageData>, void>;
 
-/** Freeze the deferred value at its last committed snapshot. */
+/** Reset the deferred double to its unfrozen, empty-snapshot state. */
+function resetDeferredControl(): void {
+  deferredControl.frozen = false;
+  deferredControl.settledValues = [];
+  deferredControl.nextSlot = 0;
+}
+
+/** Freeze both deferred values at their last committed snapshots. */
 function freezeDeferredSelection(): void {
   deferredControl.frozen = true;
 }
 
 /**
- * Release the frozen deferred value and flush the render that observes it.
+ * Release the frozen deferred values and flush the render that observes them.
  *
  * @param {() => void} rerender - The hook's rerender trigger.
  * @returns {Promise<void>} Resolves after the render commits.
@@ -125,16 +131,6 @@ async function settleDeferredSelection(rerender: () => void): Promise<void> {
  */
 async function runSelectionAction(action: () => void): Promise<void> {
   await act(async () => action());
-}
-
-/**
- * Build query options for one query key.
- *
- * @param {ReadonlyArray<string>} queryKey - The scoped query key.
- * @returns {QueryOptionsDouble} The options the hook receives.
- */
-function buildQueryOptionsDouble(queryKey: ReadonlyArray<string>): QueryOptionsDouble {
-  return { queryKey };
 }
 
 /**
@@ -168,12 +164,16 @@ function resolveMockQueryResult(
  * @param {QueryScenario} scenario - Class and preview fixtures by identifier.
  */
 function installQueryResults(scenario: QueryScenario): void {
-  mockGetABClassQueryOptions.mockImplementation((classId: string) =>
-    buildQueryOptionsDouble(['abClass', classId])
-  );
-  mockGetAssignmentQueryOptions.mockImplementation((_classId: string, assignmentId: string) =>
-    buildQueryOptionsDouble(['assignment', assignmentId])
-  );
+  mockGetABClassQueryOptions.mockImplementation((classId: string) => {
+    return {
+      queryKey: ['abClass', classId],
+    };
+  });
+  mockGetAssignmentQueryOptions.mockImplementation((_classId: string, assignmentId: string) => {
+    return {
+      queryKey: ['assignment', assignmentId],
+    };
+  });
   mockUseQuery.mockImplementation((queryOptions: { queryKey: ReadonlyArray<unknown> }) =>
     resolveMockQueryResult(queryOptions.queryKey, scenario)
   );
@@ -289,19 +289,17 @@ async function selectReadyClassWithAssignments(
 let wrapper: ReturnType<typeof createHeatmapsPageDataHarness>['wrapper'];
 
 beforeEach(() => {
-  deferredControl.frozen = false;
-  deferredControl.settled = undefined;
+  resetDeferredControl();
   ({ wrapper } = createHeatmapsPageDataHarness());
 });
 
 afterEach(() => {
-  deferredControl.frozen = false;
-  deferredControl.settled = undefined;
+  resetDeferredControl();
   vi.resetAllMocks();
 });
 
 describe('useHeatmapsPageData — deferred selection derivation', () => {
-  it('keeps the analyser and merged result on the committed selection until the deferred selection settles', async () => {
+  it('keeps the analyser, merged result and merged preview on the committed selection until the deferred selection settles', async () => {
     installReadyScenario(['a1']);
 
     const view: HeatmapsView = renderHook(() => useHeatmapsPageData(), { wrapper });
@@ -312,6 +310,7 @@ describe('useHeatmapsPageData — deferred selection derivation', () => {
     expect(mergedBefore).not.toBeNull();
     mockAnalyse.mockClear();
     mockAdaptMergedHeatmap.mockClear();
+    mockAssembleMergedPreviewData.mockClear();
 
     freezeDeferredSelection();
     await runSelectionAction(() => view.result.current.changeAssignments(['a1', 'a2']));
@@ -322,10 +321,11 @@ describe('useHeatmapsPageData — deferred selection derivation', () => {
     expect(view.result.current.analyserResult).toBe(analyserBefore);
     expect(view.result.current.mergedResult).toBe(mergedBefore);
     expect(mockAnalyse).not.toHaveBeenCalled();
+    // Assembly depends only on deferred inputs, so the urgent render does not rebuild it.
+    expect(mockAssembleMergedPreviewData).not.toHaveBeenCalled();
     expect(view.result.current.surfaceState).toEqual({ status: 'ready' });
 
     await settleDeferredSelection(view.rerender);
-
     expect(mockAnalyse).toHaveBeenCalledTimes(1);
     expect(mockAdaptMergedHeatmap).toHaveBeenCalledWith(
       expect.anything(),
@@ -333,6 +333,8 @@ describe('useHeatmapsPageData — deferred selection derivation', () => {
       ['a1', 'a2'],
       expect.anything()
     );
+    expect(mockAssembleMergedPreviewData).toHaveBeenCalledTimes(1);
+    expect(latestPreviewInputs().map((input) => input.assignmentId)).toEqual(['a1', 'a2']);
     expect(view.result.current.mergedResult).not.toBe(mergedBefore);
     expect(
       view.result.current.mergedResult?.sourceAssignments.map(
@@ -366,7 +368,6 @@ describe('useHeatmapsPageData — cached-class switch during the deferral lag', 
     expect(view.result.current.surfaceState.status).not.toBe('blocking');
 
     await settleDeferredSelection(view.rerender);
-
     expect(mockAnalyse).toHaveBeenCalledTimes(1);
     expect(mockAnalyse).toHaveBeenCalledWith(
       expect.objectContaining({ filter: expect.objectContaining({ classIds: [OTHER_CLASS_ID] }) })
@@ -378,7 +379,7 @@ describe('useHeatmapsPageData — cached-class switch during the deferral lag', 
 });
 
 describe('useHeatmapsPageData — assignment removal during the deferral lag', () => {
-  it('treats a deferred assignment missing from the urgent queries as a pending preview input', async () => {
+  it('keeps the removed assignment at its deferred preview entry until the deferred selection settles', async () => {
     installReadyScenario(['a1', 'a2']);
 
     const view: HeatmapsView = renderHook(() => useHeatmapsPageData(), { wrapper });
@@ -388,11 +389,12 @@ describe('useHeatmapsPageData — assignment removal during the deferral lag', (
     await runSelectionAction(() => view.result.current.changeAssignments(['a1']));
 
     expect(view.result.current.selection.assignmentIds).toEqual(['a1']);
-    // The deferred two-assignment derivation still drives assembly; the removed
-    // assignment is pending rather than an error (loading status, empty lookup).
+    // Assembly consumes the deferred preview results, so the removed assignment keeps its
+    // real settled entry (not a synthesised pending one) with no error flash, and the visible
+    // data stays on the settled snapshot until the deferred selection catches up.
     expect(latestPreviewInputs().map((input) => input.assignmentId)).toEqual(['a1', 'a2']);
     expect(latestPreviewInput('a1')).toMatchObject({ isLoading: false, hasError: false });
-    expect(latestPreviewInput('a2')).toMatchObject({ isLoading: true, hasError: false });
+    expect(latestPreviewInput('a2')).toMatchObject({ isLoading: false, hasError: false });
     expect(latestPreviewInput('a2')?.lookup.size).toBe(0);
     expect(view.result.current.error).toBeNull();
     expect(view.result.current.surfaceState.status).not.toBe('blocking');
@@ -405,27 +407,29 @@ describe('useHeatmapsPageData — assignment removal during the deferral lag', (
 });
 
 describe('useHeatmapsPageData — id-keyed preview pairing', () => {
-  it('pairs preview inputs by assignment id when the urgent selection shrinks during the lag', async () => {
+  it('pairs preview inputs by assignment id from the deferred selection when the urgent selection reorders during the lag', async () => {
     installReadyScenario(['a1', 'a2']);
 
     const view: HeatmapsView = renderHook(() => useHeatmapsPageData(), { wrapper });
     await selectReadyClassWithAssignments(view, ['a1', 'a2']);
 
     freezeDeferredSelection();
-    await runSelectionAction(() => view.result.current.changeAssignments(['a2']));
+    await runSelectionAction(() => view.result.current.changeAssignments(['a2', 'a1']));
 
-    // Deferred selection is still ['a1', 'a2']; the urgent query list only has a2.
-    // Index pairing would hand a1 the a2 result and leave a2 without an input.
+    // Assembly consumes the deferred selection and preview results, both still in the committed
+    // order after the urgent reorder. Pairing by assignmentId keeps each on its own settled
+    // entry rather than borrowing the other's by position.
+    expect(view.result.current.selection.assignmentIds).toEqual(['a2', 'a1']);
     expect(latestPreviewInputs().map((input) => input.assignmentId)).toEqual(['a1', 'a2']);
+    expect(latestPreviewInput('a1')).toMatchObject({ isLoading: false, hasError: false });
     expect(latestPreviewInput('a2')).toMatchObject({ isLoading: false, hasError: false });
-    expect(latestPreviewInput('a1')).toMatchObject({ isLoading: true, hasError: false });
-    expect(latestPreviewInput('a1')?.lookup.size).toBe(0);
     expect(view.result.current.error).toBeNull();
     expect(view.result.current.surfaceState.status).not.toBe('blocking');
 
     await settleDeferredSelection(view.rerender);
 
-    expect(latestPreviewInputs().map((input) => input.assignmentId)).toEqual(['a2']);
+    expect(latestPreviewInputs().map((input) => input.assignmentId)).toEqual(['a2', 'a1']);
+    expect(view.result.current.error).toBeNull();
   });
 });
 
@@ -489,7 +493,6 @@ describe('useHeatmapsPageData — empty to selected transition', () => {
     expect(view.result.current.surfaceState).toEqual({ status: 'ready' });
 
     await settleDeferredSelection(view.rerender);
-
     expect(view.result.current.analyserResult).not.toBeNull();
     expect(view.result.current.mergedResult).not.toBeNull();
     expect(view.result.current.isRefreshing).toBe(false);
