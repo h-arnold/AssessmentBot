@@ -7,11 +7,16 @@ import { ClassFullSchema } from '@/services/googleClassrooms/classDetail/classDe
 import {
   buildAssignmentDefinitionPartial,
   buildAssignmentFullDocument,
+  buildDistinctSecondAssignmentDefinitionPartial,
   buildGoogleClassroomAssignment,
   HEATMAP_CLASS_ID,
   HEATMAP_CLASS_NAME,
 } from './task-heatmap-fixtures';
-import { addSecondAssignment, buildClassFullDocument } from './task-heatmap-class-fixtures';
+import {
+  addSecondAssignment,
+  applyDistinctDefinitionToSecondAssignment,
+  buildClassFullDocument,
+} from './task-heatmap-class-fixtures';
 
 export {
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
@@ -19,6 +24,7 @@ export {
   HEATMAP_CLASS_ID,
   HEATMAP_CLASS_NAME,
   HEATMAP_DEFINITION_KEY,
+  HEATMAP_SECOND_ASSIGNMENT_DISPLAY_TITLE,
   HEATMAP_UPDATED_CLASSROOM_TITLE,
 } from './task-heatmap-fixtures';
 
@@ -34,6 +40,11 @@ export interface CreateHeatmapScenarioOptions {
   zeroTasks?: boolean;
   /** When true, include a second assignment sharing the fixture definition. */
   multipleAssignments?: boolean;
+  /**
+   * When true, include a second assignment resolving its own definition
+   * partial, so its dropdown option label differs from the first assignment's.
+   */
+  distinctSecondAssignmentTitle?: boolean;
   /** When true, selecting the fixture class returns a retryable query failure. */
   classFailure?: boolean;
   /** When true, set only the live assignment-definition weighting to zero. */
@@ -132,7 +143,12 @@ export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}
   };
 
   const classDocument = buildClassFullDocument(scenarioOptions.emptySubmissions ?? false);
-  if (scenarioOptions.multipleAssignments) addSecondAssignment(classDocument);
+  if (scenarioOptions.multipleAssignments || scenarioOptions.distinctSecondAssignmentTitle) {
+    addSecondAssignment(classDocument);
+  }
+  if (scenarioOptions.distinctSecondAssignmentTitle) {
+    applyDistinctDefinitionToSecondAssignment(classDocument);
+  }
 
   // Hold this fixture's metadata version equal to its class document; it is not an analysis oracle.
   applyEqualVersionMetadataBoundary(classDocument);
@@ -142,6 +158,10 @@ export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}
     scenarioOptions.zeroTasks,
     scenarioOptions.zeroWeightAssignment
   );
+  const definitionPartials: Array<Record<string, unknown>> = [partial];
+  if (scenarioOptions.distinctSecondAssignmentTitle) {
+    definitionPartials.push(buildDistinctSecondAssignmentDefinitionPartial());
+  }
 
   return {
     hasScriptAuthorisation: [{ kind: 'success', data: true }],
@@ -173,7 +193,7 @@ export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}
       { kind: 'success', data: [{ key: '00000000-0000-0000-0000-000000000002', name: '7' }] },
     ],
     getAssignmentTopics: [{ kind: 'success', data: [] }],
-    getAssignmentDefinitionPartials: [{ kind: 'success', data: [partial] }],
+    getAssignmentDefinitionPartials: [{ kind: 'success', data: definitionPartials }],
     // React 19 StrictMode replays the assignment-loading effect. Keep two
     // identical entries so the warm-up queue is not exhausted by that replay.
     getAssignment: [

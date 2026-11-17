@@ -128,103 +128,40 @@ Delivered on branch `feat/heatmaps-selection-perf`: `useHeatmapsPageData` derive
 
 ## Section 3 — #342: select all / select none dropdown header
 
-### Objective
+### Outcome
 
-Add the select all / select none header to the Topics and Assignments dropdowns on the standalone Heatmaps page, per the layout spec, plus one E2E journey.
+Delivered on branch `feat/heatmaps-selection-perf`: a new feature-local `SelectAllDropdownHeader.tsx` renders both the Topics and Assignments multi-selects (two call sites in `HeatmapSelectionBar.tsx`), owns each Select's controlled search query, and supplies the `popupRender` header (Checkbox "Select all" left, `Button type="link"` "Select none" right, `Divider` below; hidden when the control has fewer than two options). Select-all unions the options the dropdown currently shows into the existing selection through `changeTopics`/`changeAssignments`, so `selectionCascadeReducer` stays the only selection state machine; select-none clears that control's whole selection. The Class dropdown is unchanged. One merged Playwright journey covers select-all with and without an active query.
 
-### Constraints
+### Retained for later sections
 
-- One feature-local wrapper component under `features/taskHeatmap` renders the two multi-selects, owns the controlled `showSearch.searchValue` per Select, and supplies `popupRender` with the header (Checkbox "Select all" left, `Button type="link"` "Select none" right, space-between row, `APP_GAP_SM` spacing, `Divider` only with the header). Registered as planned `Not implemented` entry §9.30. (Premise correction recorded in Section 1 wrap-up: the pre-plan §9.30 entry was never landed — the doc's actual §9.30 is the unrelated always-fixed student-name-columns entry — so Section 3's docs sync must ADD a new register entry, e.g. §9.31, rather than flip a marker.)
-- Header shown only when the control's options array (post-cascade, pre-search) has >1 entry.
-- Select all unions shown options (search-query-matching via the configured `optionFilterProp: 'label'` filtering; Assignments also topic-cascade-narrowed) into the existing selection via `changeTopics`/`changeAssignments`. Select none clears the control's full selection.
-- Controlled query reset only via `onSelect` (option selection); kept on deselect-toggle, tag removal, allow-clear, close/Escape, and header clicks.
-- `onMouseDown` `preventDefault()` + `stopPropagation()` on the header so clicks neither close the dropdown nor steal focus.
-- Checkbox states: checked = all shown selected; indeterminate = some; unchecked/not-indeterminate on zero search matches.
-- Accessible names: "Select all topics" / "Select none topics" / "Select all assignments" / "Select none assignments"; visible text "Select all" / "Select none".
-- Class dropdown unchanged.
-
-### Delegation mandatory reads
-
-Testing Specialist mandatory docs:
-
-- @docs/plans/SPEC.md (decision 5, #342 contract)
-- @docs/plans/HEATMAP_SELECTION_LAYOUT.md
-- @docs/developer/frontend/frontend-testing.md
-- @src/frontend/src/features/taskHeatmap/HeatmapSelectionBar.tsx
-- @src/frontend/src/features/taskHeatmap/selectionCascade.ts
-
-Implementation mandatory docs:
-
-- @docs/plans/SPEC.md
-- @docs/plans/HEATMAP_SELECTION_LAYOUT.md
-- `src/frontend/AGENTS.md` (auto-injected; listed for reference)
-- @docs/developer/frontend/frontend-architecture.md (new feature file)
-- @docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md (§9.30 planned entry)
-- @docs/developer/frontend/frontend-spacing-and-padding-standards.md
-- @src/frontend/src/features/taskHeatmap/HeatmapSelectionBar.tsx
-- @src/frontend/src/features/taskHeatmap/HeatmapBuilderSurface.tsx
-- @docs/developer/frontend/ant-design-docs-cache/select.md
-
-Code Reviewer mandatory docs:
-
-- `AGENTS.md`, `src/frontend/AGENTS.md` (auto-injected; listed for reference)
-- @docs/plans/HEATMAP_SELECTION_LAYOUT.md
-
-Playwright mandatory docs:
-
-- @docs/developer/frontend/frontend-playwright-e2e.md
-- @docs/plans/HEATMAP_SELECTION_LAYOUT.md
-
-### Shared helper plan
-
-- Helper: select-all dropdown header wrapper under `src/frontend/src/features/taskHeatmap/` — decision **keep local (new feature-local component)**, owning controlled query state, scope computation, checked/indeterminate derivation, dispatch, mousedown guard.
-- Owning path: new file in `features/taskHeatmap/`; call sites: the Topics and Assignments Selects in `HeatmapSelectionBar.tsx`.
-- Canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` — the pre-plan §9.30 planned entry was never landed (the doc's actual §9.30 is the unrelated always-fixed student-name-columns entry); Section 3's docs sync ADDS the wrapper register entry (next free number, e.g. §9.31) with the wrapper description (renders the two multi-selects, owns per-Select controlled query state), and Section 6 re-verifies it.
-
-### Data-shape planning block
-
-- None — UI-only change; no schema, persistence, API, or transport change.
-
-### Canonical-fixture note
-
-- Component tests reuse the existing `HeatmapSelectionBar.spec.tsx` fixtures (181 LOC spec) and mock setup. E2E reuses the existing heatmap scenario helpers (`src/frontend/e2e-tests/helpers/task-heatmap-end-to-end-helpers.ts`, `task-heatmap-fixtures.ts`, `task-heatmap-class-fixtures.ts`) consumed by the existing journeys (`src/frontend/e2e-tests/heatmaps.spec.ts`, `heatmaps-layout.spec.ts`). No generator extension.
-
-### File sizing (LOC)
-
-- New wrapper file: ~150-180 LOC projected. `HeatmapSelectionBar.tsx`: 364 → ~330-390 projected depending on how much moves into the wrapper — under 500 either way; re-verify at Green and split the wrapper out if the bar itself would exceed 500 (it will not).
-
-### Acceptance criteria
-
-- Header presence, union select-all scope (search + topic cascade), select-none, dropdown-stays-open, checked/indeterminate states, and the four query-outcome assertions all behave per layout spec.
-- Cascade intact: topic select-all still clears assignments whose topic dropped out; clearing all topics keeps the assignment selection.
-- E2E journey green: select-all in the Assignments dropdown on the standalone Heatmaps page, including with an active search query.
-
-### Required test cases (Red first)
-
-1. Header hidden when ≤1 option; shown when >1.
-2. Select all with no query: unions all options (assignments respect topic cascade); dispatches through the reducer.
-3. Select all with active query: unions only query-matching options; query kept after the header click.
-4. Select none clears the full selection; query kept.
-5. Query outcomes: cleared after option selection; kept after deselect-toggle; kept after Escape-close-reopen; kept after tag removal with active query.
-6. Dropdown stays open on header clicks; checkbox checked/indeterminate/unchecked incl. zero-match case.
-7. Topic select-all cascade: assignments whose topic dropped out are cleared; select-none on topics keeps assignments.
-8. E2E (Playwright agent): merged Heatmaps journey — select-all in Assignments dropdown, with and without an active search query.
+- **Wrapper and register entry.** Keep the wrapper feature-local; no promotion to a shared helper. `frontend-shared-helpers-and-abstraction-standards.md` §9.33 records it (two call sites). Premise correction: the pre-plan §9.30 entry was never landed (the actual §9.30 is the unrelated always-fixed student-name-columns entry) and §9.31/§9.32 are taken by rejected designs, so §9.33 is the delivered number; the three layout-spec references in `HEATMAP_SELECTION_LAYOUT.md` now cite §9.33.
+- **Controlled query contract.** `showSearch.searchValue` + `onSearch` keep the tracked value an exact mirror of the rendered query. The query is reset **only** from `onSelect` (option selection) and is kept on deselect-toggle, tag removal, allow-clear, close/Escape and header clicks — a deliberate divergence from `autoClearSearchValue`, user-confirmed 13 November 2026. Mechanism: `autoClearSearchValue: false` plus the controlled value neutralise rc-select's clearing on deselect-toggle and blur, and `onClear` arms a one-shot suppression of the empty `onSearch` the allow-clear control emits (armed only when a query exists, so it never swallows the next typed character). `onChange` cannot discriminate the reset because it also fires for tag removal and allow-clear.
+- **Select-all scope.** Header shown only when the control's options array (post-cascade, pre-search) has more than one entry. Scope is exactly the options the dropdown renders: `optionFilterProp: 'label'` case-insensitive match against the controlled query, further narrowed for Assignments by the active topic cascade. Select-all unions into the existing selection (never shrinks) and dispatches the full result through the owning callback; select-none clears regardless of query; clearing all topics leaves assignments intact. Checkbox state: checked = every shown option selected, indeterminate = some, unchecked/not-indeterminate on zero query matches.
+- **Interaction and accessibility.** `onMouseDown` `preventDefault()` + `stopPropagation()` on the header keeps the dropdown open and focus in place. Accessible names "Select all topics" / "Select none topics" / "Select all assignments" / "Select none assignments" over visible text "Select all" / "Select none". Header actions stay pointer-operated (Ant Design does not move focus into the portal popup); native option toggling remains keyboard-operable.
+- **E2E journey and fixture additions.** `src/frontend/e2e-tests/heatmaps.spec.ts` gains "selects all assignments from the dropdown header with and without a search query": both options listed, select-all unions, select-none clears, then with query `Spreadsheet` select-all adds only the matching option while query and dropdown persist. Fixtures: `distinctSecondAssignmentTitle` scenario option, `HEATMAP_SECOND_DEFINITION_KEY`, `HEATMAP_SECOND_ASSIGNMENT_DISPLAY_TITLE` ('9. Spreadsheet Model'), `buildDistinctSecondAssignmentDefinitionPartial()` and `applyDistinctDefinitionToSecondAssignment()` — a second definition partial so a query can tell the two labels apart. No synthetic-generator extension.
+- **Escape deviation.** The "Escape-close-reopen" query case is pinned via Tab (focus loss) then reopen: rc-select reads legacy `which`/`keyCode`, which `user-event` leaves at zero in happy-dom, so Escape does not close the dropdown. The contract "query kept across close" is unchanged.
+- **`post-analysis-metadata.feedback.spec.ts` rework.** The controlled query is kept on keyboard deselect-toggle, so the helper's second consecutive `keyboard.type(label)` appended to the residual query and matched no option. The test's local `chooseOptionWithKeyboard` helper now clears first with `ControlOrMeta+a` + Backspace **only when `inputValue() !== ''`** (guarded because, on an empty multiple-mode input, antd treats Backspace as "remove last selected tag"). Production code and the product contract were **not** changed: the residual-query behaviour is the delivered, user-confirmed contract, and the spec's assumption was the defect.
+- **LOC.** `SelectAllDropdownHeader.tsx` 247 (over the 150–180 projection because of the required `@remarks` and lint-mandated JSDoc/typed helpers), `HeatmapSelectionBar.tsx` 327, `HeatmapSelectionBar.spec.tsx` 425, `HeatmapSelectionBar.selectAllHeader.spec.tsx` 438 — all under the 500 early-warning and 550 decomposition thresholds; no split.
+- **Commands (authoritative, `src/frontend`-relative).** `npm run test:frontend -- src/features/taskHeatmap`; `npm run test:frontend:e2e -- heatmaps`; `npm run lint:frontend:check`; `npm run typecheck:all`.
 
 ### Section checks
 
-- `npm run test:frontend -- src/frontend/src/features/taskHeatmap/HeatmapSelectionBar.spec.tsx` (plus new wrapper spec) green.
-- `npm run test:frontend:e2e -- heatmaps` green (Playwright agent).
-- `npm run lint:frontend:check`, `npm run typecheck:all` green; LOC re-check.
+- Focused component specs 22/22 green (`HeatmapSelectionBar.selectAllHeader.spec.tsx` plus the additive `HeatmapSelectionBar.spec.tsx` cases).
+- E2E heatmaps 9/9 green, including the new select-all journey.
+- `post-analysis-metadata.feedback.spec.ts` 8/8 green after the gate rework.
+- `npm run lint:frontend:check` 0 errors; `npm run typecheck:all` exit 0; every touched file under 500 LOC.
+- Section regression gate passed on re-run at 2026-11-17T00:52:09.015Z: 0 regressions, 0 new failures, sole failure the accepted pre-existing `backend-lint-check` debt.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (filled during delivery)
-- **Deviations from plan:** (filled during delivery)
-- **Follow-up implications for later sections:** (filled during delivery)
+- **Implementation notes:** Red phase ran two test owners in parallel: Testing Specialist (new `HeatmapSelectionBar.selectAllHeader.spec.tsx` + additive `HeatmapSelectionBar.spec.tsx`) and Playwright (merged `heatmaps.spec.ts` journey + three E2E helper additions). Initial Red Review FAIL with two in-scope findings — (1) topic-select-all clearing dropped-topic assignments not pinned through the bar, (2) missing E2E enabled+focused assertions before typing — both fixed by their owners; Red re-review PASS (`.opencode/scratchpad/review-section3-red-re-review.md`). Green phase: new `SelectAllDropdownHeader.tsx` instantiated twice from the bar; 22/22 component tests, 49 files / 410 taskHeatmap tests, E2E heatmaps 9/9, lint 0 errors, typecheck exit 0. Initial Green Review FAIL with one JSDoc-wording nitpick on `handleClear`; fixed (comment-only); Green re-review PASS (`.opencode/scratchpad/review-section3-green-rereview.md`). Separately-wrapper requirement verified structurally: one component, two call sites, no header logic in the bar. Docs sync: added the §9.33 register entry and updated three layout-spec references from the stale §9.30/Not-implemented marker; no source JSDoc edits; no new page. Two out-of-scope docs drift items reported and logged in the nitpicks file. Plan compaction: Section 3 102 → 34 lines, backup at `.opencode/scratchpad/feat-heatmaps-selection-perf-section-3-pre-compaction.md`.
+- **Section regression gate (rework path):** First gate at 2026-11-17T00:03:48.333Z (report `.ts-regression-checker/reports/session-feat-heatmaps-selection-perf/runs/2026-11-17T00-03-48.333Z/comparison.txt`) FAILED with 1 regression + 1 new failure in `frontend-e2e-check`: `post-analysis-metadata.feedback.spec.ts` test `shows and dismisses persistent safe save-failure feedback on standalone Heatmaps`. Cause: the delivered controlled `searchValue` is kept after a keyboard deselect-toggle (`onSelect`-only reset, a user-confirmed contract), so the test's second consecutive `keyboard.type(label)` appended to the residual query (`Synthetic Assignment Definition 2Synthetic Assignment Definition 2`), matching no option. Production contract unchanged; a minimal 8-line guarded keyboard-clear was added to the test's local `chooseOptionWithKeyboard` helper (`ControlOrMeta+a` + Backspace only when `inputValue() !== ''`), reviewed PASS (`.opencode/scratchpad/review-s3-gate-rework.md`; 8/8 focused, 5/5 repeat-each, no flakiness). Reworked gate at 2026-11-17T00:52:09.015Z (report `.ts-regression-checker/reports/session-feat-heatmaps-selection-perf/runs/2026-11-17T00-52-09.015Z/comparison.txt`): Regressions 0, New Failures 0, Fixes 0, 7/8 checks passing (sole failure = accepted pre-existing `backend-lint-check` debt). Gate passed.
+- **Deviations from plan:** (1) The plan's "Escape-close-reopen" query case is pinned via Tab (focus loss) then reopen, because rc-select reads legacy `which`/`keyCode` that `user-event` leaves at zero in happy-dom, so Escape does not close the dropdown; the contract "query kept across close" is unchanged. (2) The wrapper is 247 LOC versus the 150–180 projection (required `@remarks` and lint-mandated JSDoc/typed helpers); well under the 500/550 thresholds, no split. (3) The plan's suggested register entry "e.g. §9.31" was wrong — §9.31 and §9.32 are already taken by rejected designs — so docs sync used the next free number §9.33. (4) The Section 1 Vitest/E2E filter deviation (`src/features/...` relative to the `src/frontend` cwd) carries forward as authoritative.
+- **Follow-up implications for later sections:** Section 6 must (a) retire SPEC.md's two "planned Not implemented entry" sentences (lines 78, 148) now that §9.33 is delivered, (b) update its own references from "§9.30 register entry flip" to §9.33 and re-verify the §9.33 register entry and layout-spec references, and (c) re-check the controlled-query contract in the regression-hardening pass. Sections 4 and 5 are unaffected by this section.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- Record in the wrapper why the query state is controlled (exact mirror of the rendered query) and why the reset is discriminated via `onSelect`.
+- Delivered: the wrapper's `@remarks` records why the query state is controlled (exact mirror of the rendered query), why the reset is discriminated via `onSelect`, and why the `autoClearSearchValue: false` / `onClear` suppression is needed.
 
 ---
 

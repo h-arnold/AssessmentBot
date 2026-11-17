@@ -39,6 +39,14 @@ async function chooseOptionWithKeyboard(
   await expect(control).toBeEnabled();
   await control.focus();
   await expect(control).toBeFocused();
+  // The controlled searchValue is kept on deselect-toggle, so clear any residual
+  // search text before typing. Backspace is guarded: on an empty multiple-mode
+  // input antd treats Backspace as "remove last selected tag", which would
+  // silently deselect the option this helper is about to select.
+  if ((await control.inputValue()) !== '') {
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('Backspace');
+  }
   await page.keyboard.type(label);
   await expect(
     page

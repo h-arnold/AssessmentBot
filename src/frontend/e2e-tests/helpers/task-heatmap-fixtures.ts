@@ -28,6 +28,10 @@ export const HEATMAP_UPDATED_CLASSROOM_TITLE =
 
 export const HEATMAP_ASSIGNMENT_ID = '100000000037';
 export const HEATMAP_DEFINITION_KEY = '00000000-0000-0000-0000-000000000004';
+/** Definition key of the distinct second-assignment fixture variant. */
+export const HEATMAP_SECOND_DEFINITION_KEY = '00000000-0000-0000-0000-000000000005';
+/** Distinct display title of the second-assignment fixture variant's option. */
+export const HEATMAP_SECOND_ASSIGNMENT_DISPLAY_TITLE = '9. Spreadsheet Model';
 /** Task identifiers shared by the class snapshot builders and preview payloads. */
 export const HEATMAP_TASK_IDS = ['task_001', 'task_002', 'task_003'] as const;
 
@@ -92,6 +96,23 @@ export function buildAssignmentDefinitionPartial(
         }),
     createdAt: '2026-07-07T07:45:23.916Z',
     updatedAt: '2026-07-07T07:49:06.791Z',
+  };
+}
+
+/**
+ * Build the second assignment-definition partial used by the select-all
+ * dropdown-header journey.
+ *
+ * The partial mirrors {@link buildAssignmentDefinitionPartial} but carries a
+ * distinct primary title and definition key, so the Assignments dropdown lists
+ * two options whose labels a search query can tell apart.
+ * @returns {Record<string, unknown>} Definition partial payload.
+ */
+export function buildDistinctSecondAssignmentDefinitionPartial(): Record<string, unknown> {
+  return {
+    ...buildAssignmentDefinitionPartial(false, false),
+    primaryTitle: HEATMAP_SECOND_ASSIGNMENT_DISPLAY_TITLE,
+    definitionKey: HEATMAP_SECOND_DEFINITION_KEY,
   };
 }
 

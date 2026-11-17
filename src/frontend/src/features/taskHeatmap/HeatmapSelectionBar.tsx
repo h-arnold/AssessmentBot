@@ -11,16 +11,14 @@
  *   checkbox-style options. They stay disabled until a class is loaded and
  *   expose their disabled reason via a DOM-present `aria-describedby` node (the
  *   green-phase binding directive I2: the reason is discoverable by assistive
- *   tech, never tooltip-only).
+ *   tech, never tooltip-only). Both are rendered by the feature-local
+ *   `SelectAllDropdownHeader`, which owns the controlled search query and the
+ *   select-all / select-none header for each control (#342).
  *
  * Option labels are RESOLVED from `assignmentDefinitionPartials`: topic labels
  * use `primaryTopic`, assignment labels use the resolved `primaryTitle`.
  * Assignments whose `definitionKey` has no resolvable partial are omitted, and
- * the assignment set narrows to the active topic selection (cascade). The
- * rendered Checkbox `checked` state is derived from membership of the option's
- * `value` in the surface's controlled selected-values array — antd v6.6.7's
- * `optionRender` exposes NO `selected` flag, so we read `oriOption.value`
- * (pinned by the red contract).
+ * the assignment set narrows to the active topic selection (cascade).
  *
  * The component is declarative and fully controlled by the owning hook
  * (`useHeatmapsPageData`); it holds no selection state of its own.
@@ -30,7 +28,7 @@
 
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef } from 'react';
-import { Checkbox, Flex, Select, Space, Tooltip, Typography } from 'antd';
+import { Flex, Select, Tooltip, Typography } from 'antd';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import type { ClassPartial } from '@/services/googleClassrooms/classPartialsService';
 import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
@@ -38,6 +36,7 @@ import { getAssignmentDefinitionPartial } from '@/services/assignmentDefinition/
 import { pageContent } from '@/pages/pageContent';
 import { logFrontendEvent } from '@/logging/frontendLogger';
 import type { SelectionState } from './selectionCascade';
+import { SelectAllDropdownHeader } from './SelectAllDropdownHeader';
 import { APP_GAP_MD, APP_GAP_SM } from '@/theme/spacing';
 
 /** Stable DOM id for the disabled-reason description node (I2). */
@@ -188,14 +187,6 @@ export function HeatmapSelectionBar({
     : undefined;
   const disabledDescribedBy = areDependentsDisabled ? DISABLED_REASON_ID : undefined;
 
-  // Memoised membership sets (P-N4): O(1) `has` lookups in option renders and the
-  // class-value selector instead of O(n) `includes`/`some` rescans on every repaint.
-  const selectedTopicKeys = useMemo(() => new Set(selection.topicKeys), [selection.topicKeys]);
-  const selectedAssignmentIds = useMemo(
-    () => new Set(selection.assignmentIds),
-    [selection.assignmentIds]
-  );
-
   const classOptions = useMemo(() => {
     if (classPartials === null) {
       return [];
@@ -297,30 +288,16 @@ export function HeatmapSelectionBar({
           <Typography.Text id="heatmap-topics-label">Topics</Typography.Text>
           <Tooltip title={disabledTooltipTitle}>
             <span style={{ width: '100%' }}>
-              <Select
-                aria-labelledby="heatmap-topics-label"
-                aria-describedby={disabledDescribedBy}
+              <SelectAllDropdownHeader
+                labelledBy="heatmap-topics-label"
+                describedBy={disabledDescribedBy}
                 disabled={areDependentsDisabled}
-                mode="multiple"
-                allowClear
-                showSearch={{ optionFilterProp: 'label' }}
-                maxTagCount="responsive"
-                popupMatchSelectWidth={false}
                 placeholder={TOPICS_PLACEHOLDER}
-                value={[...selection.topicKeys]}
-                options={topicOptions}
-                onChange={(value: string[]) => handleTopicsChange(value)}
                 notFoundContent="No topics available"
-                optionRender={(oriOption): JSX.Element => {
-                  const isChecked = selectedTopicKeys.has(String(oriOption.value));
-                  return (
-                    <Space>
-                      <Checkbox checked={isChecked} />
-                      <span>{oriOption.label}</span>
-                    </Space>
-                  );
-                }}
-                style={{ width: '100%' }}
+                controlName="topics"
+                options={topicOptions}
+                selectedValues={selection.topicKeys}
+                onSelectionChange={handleTopicsChange}
               />
             </span>
           </Tooltip>
@@ -330,30 +307,16 @@ export function HeatmapSelectionBar({
           <Typography.Text id="heatmap-assignments-label">Assignments</Typography.Text>
           <Tooltip title={disabledTooltipTitle}>
             <span style={{ width: '100%' }}>
-              <Select
-                aria-labelledby="heatmap-assignments-label"
-                aria-describedby={disabledDescribedBy}
+              <SelectAllDropdownHeader
+                labelledBy="heatmap-assignments-label"
+                describedBy={disabledDescribedBy}
                 disabled={areDependentsDisabled}
-                mode="multiple"
-                allowClear
-                showSearch={{ optionFilterProp: 'label' }}
-                maxTagCount="responsive"
-                popupMatchSelectWidth={false}
                 placeholder={ASSIGNMENTS_PLACEHOLDER}
-                value={[...selection.assignmentIds]}
-                options={assignmentOptions}
-                onChange={(value: string[]) => onChangeAssignments(value)}
                 notFoundContent="No assignments available"
-                optionRender={(oriOption): JSX.Element => {
-                  const isChecked = selectedAssignmentIds.has(String(oriOption.value));
-                  return (
-                    <Space>
-                      <Checkbox checked={isChecked} />
-                      <span>{oriOption.label}</span>
-                    </Space>
-                  );
-                }}
-                style={{ width: '100%' }}
+                controlName="assignments"
+                options={assignmentOptions}
+                selectedValues={selection.assignmentIds}
+                onSelectionChange={onChangeAssignments}
               />
             </span>
           </Tooltip>

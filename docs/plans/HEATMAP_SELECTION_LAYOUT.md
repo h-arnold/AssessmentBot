@@ -66,7 +66,7 @@ The standalone Heatmaps page is the only entry point for this layout; no other s
 #### Components
 
 - Existing `Flex` rows of labelled `Select`s; the Class `Select` is unchanged (single-select, no header).
-- The Topics and Assignments `Select`s are rendered by the single feature-local header wrapper component (`frontend-shared-helpers-and-abstraction-standards.md` §9.30, `Not implemented`), which owns the controlled `showSearch.searchValue` state for each multi-select and passes `popupRender` containing the header described below; the wrapper guarantees one query state per Select.
+- The Topics and Assignments `Select`s are rendered by the single feature-local header wrapper component (`SelectAllDropdownHeader`; `frontend-shared-helpers-and-abstraction-standards.md` §9.33), which owns the controlled `showSearch.searchValue` state for each multi-select and passes `popupRender` containing the header described below; the wrapper guarantees one query state per Select.
 
 #### Dropdown popup structure (Topics and Assignments)
 
@@ -92,7 +92,7 @@ popupRender(originNode = default option list)
 
 - Header clicks must not close the dropdown or steal focus: `onMouseDown` with both `preventDefault()` and `stopPropagation()` on the header container (Ant Design FAQ).
 - The header-side scope computation mirrors the Selects' configured `showSearch.optionFilterProp: 'label'` filtering (case-insensitive label match) against the controlled `searchValue`, narrowed by the active topic cascade for Assignments.
-- The header is implemented once as a feature-local component under `features/taskHeatmap` and shared by the two Selects (see `frontend-shared-helpers-and-abstraction-standards.md` §9.30, `Not implemented`).
+- The header is implemented once as a feature-local component (`SelectAllDropdownHeader` under `features/taskHeatmap`) and shared by the two Selects (see `frontend-shared-helpers-and-abstraction-standards.md` §9.33).
 
 ### 2. Content region busy signal (#343)
 
@@ -125,7 +125,7 @@ popupRender(originNode = default option list)
 ## Implementation guardrails
 
 - Do not use the deprecated `dropdownRender` or top-level `onSearch`/`searchValue` props; use `popupRender` and the `showSearch` object.
-- Do not duplicate header logic across the two Selects; use the single feature-local header component (§9.30).
+- Do not duplicate header logic across the two Selects; use the single feature-local header component (§9.33).
 - Do not add a second selection state machine; dispatch through `selectionCascadeReducer` actions only.
 - Do not re-key the pipeline on the urgent selection for table/summary rendering; #343's deferral contract lives in `SPEC.md`.
 - Keep the change within `features/taskHeatmap/**`; no imports from `features/classPage/**`.

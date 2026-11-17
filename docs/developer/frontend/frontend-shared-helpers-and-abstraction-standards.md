@@ -224,6 +224,7 @@ Rules for new entries:
 ### Delivered decisions
 
 - **9.30 Always-fixed student-name columns** — no caller needs a non-fixed variant; do not add a column-options parameter or a `sticky`-style option to `studentNameTableColumns.tsx`.
+- **9.33 Select-all dropdown header (issue #342)** — `src/frontend/src/features/taskHeatmap/SelectAllDropdownHeader.tsx` wraps the Topics and Assignments multi-selects in `HeatmapSelectionBar.tsx` (two call sites), owns each Select's controlled `showSearch.searchValue`, and supplies the `popupRender` header. Keep it feature-local; do not promote it to a shared helper without a cross-feature caller.
 
 ### Cross-referenced decisions
 
