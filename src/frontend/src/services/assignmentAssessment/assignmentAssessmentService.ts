@@ -1,5 +1,6 @@
 import { callApi, parseApiResponse } from '../apiService';
 import { normaliseAssignmentRead } from './assignmentReadNormalisation';
+import { logFrontendError } from '@/logging/frontendLogger';
 import {
   StartAssessmentRunRequestSchema,
   StartAssessmentRunResponseSchema,
@@ -46,5 +47,12 @@ export async function getAssignment(input: GetAssignmentRequest): Promise<Assign
   const rootResponse =
     response === null ? null : { ...(response as Record<string, unknown>), submissions: [] };
   parseApiResponse(AssignmentFullResponseSchema, GET_ASSIGNMENT_METHOD, rootResponse);
-  return normaliseAssignmentRead(response);
+  try {
+    return normaliseAssignmentRead(response);
+  } catch (error: unknown) {
+    logFrontendError('services/assignmentAssessment.getAssignment', error, {
+      method: GET_ASSIGNMENT_METHOD,
+    });
+    throw error;
+  }
 }

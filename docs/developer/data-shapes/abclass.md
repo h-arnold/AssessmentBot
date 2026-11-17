@@ -916,6 +916,7 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
   - `ClassPartialsResponseSchema` — `z.array(ClassPartialSchema)`.
   - `TeacherSummarySchema` — validates teacher summary objects (classOwner, teachers entries).
 - `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts`:
+  - `GetABClassRequestSchema` (`.strict()`) — validates `getABClass` request parameters (required string `classId`) before `callApi`.
   - `ClassFullSchema` — validates the `getABClass` response and requires `metadata: ABClassMetadataSchema`.
   - `ClassFullResponseSchema` — `ClassFullSchema.nullable()` (handles null for not-found).
   - `StudentSummarySchema` — validates student objects.
@@ -1398,11 +1399,11 @@ Frontend:
   ├── src/frontend/src/services/googleClassrooms/classPartialsService.ts
   │     → getABClassPartials()
   ├── src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts
-  │     → TeacherSummarySchema, StudentSummarySchema, AssignmentPartialSchema,
-  │       StudentSubmissionPartialSchema, StudentSubmissionItemPartialSchema,
-  │       BaseTaskArtifactPartialSchema, PartialAssessmentEntrySchema (aliases the shared
-  │       partialAssessmentResultSchema), ClassFullSchema
-  │       (requires ABClassMetadataSchema), ClassFullResponseSchema
+  │     → GetABClassRequestSchema, TeacherSummarySchema, StudentSummarySchema,
+  │       AssignmentPartialSchema, StudentSubmissionPartialSchema,
+  │       StudentSubmissionItemPartialSchema, BaseTaskArtifactPartialSchema,
+  │       PartialAssessmentEntrySchema (aliases the shared partialAssessmentResultSchema),
+  │       ClassFullSchema (requires ABClassMetadataSchema), ClassFullResponseSchema
   ├── src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts
   │     → normaliseAssignmentRead(), normaliseClassRead() (pure full/partial
   │       read normaliser; each read service performs a root/envelope-only fail-fast

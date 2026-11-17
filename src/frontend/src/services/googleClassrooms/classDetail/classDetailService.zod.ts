@@ -161,3 +161,10 @@ export type ClassFull = z.infer<typeof ClassFullSchema>;
 export const ClassFullResponseSchema = ClassFullSchema.nullable();
 
 export type ClassFullResponse = z.infer<typeof ClassFullResponseSchema>;
+
+/**
+ * Request schema for `getABClass`. Requires `classId` as a string.
+ */
+export const GetABClassRequestSchema = z.object({ classId: z.string() }).strict();
+
+export type GetABClassRequest = z.infer<typeof GetABClassRequestSchema>;

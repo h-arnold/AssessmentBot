@@ -226,11 +226,10 @@ export function normaliseAssignmentRead(input: unknown): AssignmentFull | null {
     // Non-object roots fail through the structured Zod parse path, mirroring
     // normaliseClassRead; parse cannot return for a non-record root.
     fullRootSchema.parse(input);
-    throw new TypeError('Invalid assignment submissions root');
   }
   const rawSubmissions = (input as { submissions: unknown }).submissions;
   if (!Array.isArray(rawSubmissions)) throw new TypeError('Invalid assignment submissions root');
-  const rootInput = withoutField(input, 'submissions');
+  const rootInput = withoutField(input as Record<string, unknown>, 'submissions');
   const root = fullRootSchema.parse(rootInput);
   if (!hasConsistentFullRoot(root))
     throw new TypeError('Invalid assignment identity or task definition');
