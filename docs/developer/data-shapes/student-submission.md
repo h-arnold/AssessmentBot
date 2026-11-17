@@ -177,7 +177,7 @@ This shape embeds [Contract: BaseTaskArtifact](base-task-artifact.md) and
   normalisers; each read service performs a root/envelope-only fail-fast parse and then
   invokes the normaliser for the single per-item validation pass.
 - `src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts` →
-  `isValidFullItem()`, `isValidPartialItem()`, `corruptItem()`, `itemErrorPath()` —
+  `validateFullItem()`, `validatePartialItem()`, `corruptItem()`, `itemErrorPath()` —
   item, artefact-association and parent-source contextual validation plus canonical
   corruption construction.
 
@@ -719,5 +719,5 @@ Frontend:
   ├── src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts
   │     → normaliseAssignmentRead(), normaliseClassRead()
   └── src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts
-        → isValidFullItem(), isValidPartialItem(), corruptItem(), itemErrorPath()
+        → validateFullItem(), validatePartialItem(), corruptItem(), itemErrorPath()
 ```

@@ -1408,7 +1408,7 @@ Frontend:
   │       read normaliser; each read service performs a root/envelope-only fail-fast
   │       parse and then invokes the normaliser for the single per-item validation pass)
   ├── src/frontend/src/services/assignmentAssessment/assignmentReadItemValidation.ts
-  │     → isValidFullItem(), isValidPartialItem(), corruptItem(), itemErrorPath() (adjacent
+  │     → validateFullItem(), validatePartialItem(), corruptItem(), itemErrorPath() (adjacent
   │       pure item/source validation and canonical corruption construction)
   ├── src/frontend/src/services/googleClassrooms/classDetail/classDetailService.ts
   │     → getABClass()
