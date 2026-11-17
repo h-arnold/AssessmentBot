@@ -4,7 +4,13 @@ import { StartAssessmentRunResponseSchema } from './assignmentAssessment.zod';
 import type { AssignmentFull } from './assignmentAssessment.zod';
 import type * as ApiService from '../apiService';
 
-const { callApiMock } = await vi.hoisted(() => ({ callApiMock: vi.fn() }));
+const { callApiMock, mockLogFrontendError } = await vi.hoisted(() => {
+  return {
+    callApiMock: vi.fn(),
+    mockLogFrontendError:
+      vi.fn<(context: string, error: unknown, metadata?: Record<string, unknown>) => void>(),
+  };
+});
 const INDEPENDENT_ASSIGNMENT_READ_COUNT = 2;
 
 vi.mock('../apiService', async (importOriginal) => {
@@ -12,6 +18,13 @@ vi.mock('../apiService', async (importOriginal) => {
   return {
     ...actual,
     callApi: callApiMock,
+  };
+});
+
+vi.mock('@/logging/frontendLogger', () => {
+  return {
+    logFrontendError: mockLogFrontendError,
+    logFrontendEvent: vi.fn(),
   };
 });
 
@@ -151,6 +164,7 @@ async function loadAssignmentAssessmentService() {
 describe('assignmentAssessmentService', () => {
   afterEach(() => {
     callApiMock.mockReset();
+    mockLogFrontendError.mockReset();
     vi.resetModules();
   });
 
@@ -416,6 +430,39 @@ describe('assignmentAssessmentService', () => {
         getAssignment({ assignmentId: 'assign-1' } as Parameters<typeof getAssignment>[0])
       ).rejects.toBeInstanceOf(ZodError);
       expect(callApiMock).not.toHaveBeenCalled();
+    });
+
+    it('logs a normaliser failure once at the service boundary and rethrows the original error', async () => {
+      const payload = structuredClone(validFullAssignment);
+      const submission = payload.submissions[0]! as unknown as Record<string, unknown>;
+      submission.items = [];
+      callApiMock.mockResolvedValueOnce(payload);
+
+      const { getAssignment } = await loadAssignmentAssessmentService();
+      const request = { courseId: 'course-1', assignmentId: 'assign-1' };
+
+      let thrownError: unknown;
+      try {
+        await getAssignment(request);
+      } catch (error: unknown) {
+        thrownError = error;
+      }
+
+      expect(thrownError).toBeInstanceOf(TypeError);
+      expect((thrownError as Error).message).toBe('Invalid submission items');
+      expect(callApiMock).toHaveBeenCalledTimes(1);
+      expect(callApiMock).toHaveBeenCalledWith('getAssignment', request);
+
+      expect(mockLogFrontendError).toHaveBeenCalledTimes(1);
+      const [context, loggedError, metadata] = mockLogFrontendError.mock.calls[0]!;
+      expect(context).toBe('services/assignmentAssessment.getAssignment');
+      expect(loggedError).toBe(thrownError);
+      expect(metadata).toEqual({ method: 'getAssignment' });
+      expect(
+        mockLogFrontendError.mock.calls.some(
+          ([callContext]) => callContext === 'services/apiService.parseApiResponse'
+        )
+      ).toBe(false);
     });
   });
 });

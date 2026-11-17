@@ -1,3 +1,4 @@
+import { ZodError } from 'zod';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import smallClassesRaw from '@synthetic/small/classesById.json?raw';
 import { CANONICAL_NON_NULL_METADATA } from '@/test/abClass/abClassMetadataFixtures';
@@ -8,6 +9,12 @@ import type {
   StudentSubmissionPartial,
 } from './classDetailService.zod';
 
+const { mockLogFrontendError } = vi.hoisted(() => {
+  return {
+    mockLogFrontendError:
+      vi.fn<(context: string, error: unknown, metadata?: Record<string, unknown>) => void>(),
+  };
+});
 const callApiMock = vi.fn();
 
 vi.mock('@/services/apiService', async () => {
@@ -15,6 +22,13 @@ vi.mock('@/services/apiService', async () => {
   return {
     ...actual,
     callApi: callApiMock,
+  };
+});
+
+vi.mock('@/logging/frontendLogger', () => {
+  return {
+    logFrontendError: mockLogFrontendError,
+    logFrontendEvent: vi.fn(),
   };
 });
 
@@ -223,5 +237,59 @@ describe('classDetailService.getABClass', () => {
     const { getABClass } = await import('./classDetailService');
 
     await expect(getABClass({ classId: 'class-1' })).rejects.toThrow('Transport failure');
+  });
+
+  const invalidRequests: ReadonlyArray<readonly [string, unknown]> = [
+    ['classId is missing', {}],
+    ['classId is not a string', { classId: 123 }],
+    ['the request has an extra field', { classId: 'class-1', unexpected: true }],
+  ];
+
+  it.each(invalidRequests)(
+    'rejects %s through the request schema before calling callApi',
+    async (_case, request) => {
+      const { getABClass } = await import('./classDetailService');
+
+      await expect(getABClass(request as Parameters<typeof getABClass>[0])).rejects.toBeInstanceOf(
+        ZodError
+      );
+      expect(callApiMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it('logs a class normaliser failure once at the service boundary and rethrows the original error', async () => {
+    const payload = structuredClone(validClassFull);
+    const submission = payload.assignments[0]!.submissions[0]! as unknown as Record<
+      string,
+      unknown
+    >;
+    submission.items = [];
+    callApiMock.mockResolvedValueOnce(payload);
+
+    const { getABClass } = await import('./classDetailService');
+    const request = { classId: 'class-1' };
+
+    let thrownError: unknown;
+    try {
+      await getABClass(request);
+    } catch (error: unknown) {
+      thrownError = error;
+    }
+
+    expect(thrownError).toBeInstanceOf(TypeError);
+    expect((thrownError as Error).message).toBe('Invalid partial items');
+    expect(callApiMock).toHaveBeenCalledTimes(1);
+    expect(callApiMock).toHaveBeenCalledWith('getABClass', request);
+
+    expect(mockLogFrontendError).toHaveBeenCalledTimes(1);
+    const [context, loggedError, metadata] = mockLogFrontendError.mock.calls[0]!;
+    expect(context).toBe('services/classDetailService.getABClass');
+    expect(loggedError).toBe(thrownError);
+    expect(metadata).toEqual({ method: 'getABClass' });
+    expect(
+      mockLogFrontendError.mock.calls.some(
+        ([callContext]) => callContext === 'services/apiService.parseApiResponse'
+      )
+    ).toBe(false);
   });
 });
