@@ -30,7 +30,7 @@
  * @see docs/plans/HEATMAP_SELECTION_LAYOUT.md
  */
 
-import type { JSX, MouseEvent } from 'react';
+import type { JSX, MouseEvent, ReactNode } from 'react';
 import { useMemo, useRef, useState } from 'react';
 import { Button, Checkbox, Divider, Flex, Select, Space } from 'antd';
 import { APP_GAP_SM } from '@/theme/spacing';
@@ -64,7 +64,21 @@ export type SelectAllDropdownHeaderProperties = Readonly<{
 const HEADER_MINIMUM_OPTIONS = 2;
 
 /**
- * Filter options by the query using the dropdown's configured label match.
+ * Match an option label against the search query.
+ *
+ * This is the single label-match rule shared by the dropdown's own option filter and
+ * the header's derivation of the shown options, so the two cannot drift apart.
+ *
+ * @param {ReactNode} label - The label rendered by the Select for an option.
+ * @param {string} query - The controlled search query.
+ * @returns {boolean} Whether the label matches the query, ignoring case.
+ */
+function isLabelMatch(label: ReactNode, query: string): boolean {
+  return typeof label === 'string' && label.toUpperCase().includes(query.toUpperCase());
+}
+
+/**
+ * Filter options by the query using the shared label match.
  *
  * @param {readonly SelectAllDropdownHeaderOption[]} options - Full option list.
  * @param {string} query - The controlled search query.
@@ -74,8 +88,7 @@ function filterShownOptions(
   options: readonly SelectAllDropdownHeaderOption[],
   query: string
 ): SelectAllDropdownHeaderOption[] {
-  const upperQuery = query.toUpperCase();
-  return options.filter((option) => option.label.toUpperCase().includes(upperQuery));
+  return options.filter((option) => isLabelMatch(option.label, query));
 }
 
 /**
@@ -185,7 +198,7 @@ export function SelectAllDropdownHeader({
       mode="multiple"
       allowClear
       showSearch={{
-        optionFilterProp: 'label',
+        filterOption: (inputValue, option) => isLabelMatch(option?.label, inputValue),
         searchValue: query,
         autoClearSearchValue: false,
         onSearch: handleSearch,
