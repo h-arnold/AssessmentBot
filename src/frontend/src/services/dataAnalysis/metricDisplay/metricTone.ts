@@ -297,23 +297,7 @@ export function resolveMetricTone(
  * @returns {CSSProperties} The matching preset cell style.
  */
 function resolveDiscreteCellStyle(token: MetricToneColor): CSSProperties {
-  switch (token) {
-    case 'red': {
-      return METRIC_TONE_CELL_STYLE.red;
-    }
-    case 'gold': {
-      return METRIC_TONE_CELL_STYLE.gold;
-    }
-    case 'green': {
-      return METRIC_TONE_CELL_STYLE.green;
-    }
-    case 'volcano': {
-      return METRIC_TONE_CELL_STYLE.volcano;
-    }
-    case 'default': {
-      return METRIC_TONE_CELL_STYLE.default;
-    }
-  }
+  return METRIC_TONE_CELL_STYLE[token];
 }
 
 /**

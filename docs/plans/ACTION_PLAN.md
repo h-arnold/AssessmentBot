@@ -168,69 +168,34 @@ Delivered on branch `feat/heatmaps-selection-perf`: a new feature-local `SelectA
 
 ## Section 4 — #352: metric tone lookup tidy
 
-### Objective
+### Outcome
 
-Replace the five-case `resolveDiscreteCellStyle` switch with a `METRIC_TONE_CELL_STYLE` record lookup, identical return values.
+Delivered on branch `feat/heatmaps-selection-perf`: `resolveDiscreteCellStyle` is now a single total lookup (`METRIC_TONE_CELL_STYLE[token]`), replacing the five-case switch with identical return values for every tone. The function stays module-private, the exported record and its JSDoc are unchanged, and no public API, documented behaviour, data shape or config moved — so docs sync was not required. `metricTone.ts` 337 → 321 LOC.
 
-### Constraints
+### Retained for later sections
 
-- Pure refactor in `src/frontend/src/services/dataAnalysis/metricDisplay/metricTone.ts`; no behaviour change.
-
-### Delegation mandatory reads
-
-Testing Specialist mandatory docs:
-
-- @docs/plans/SPEC.md (decision 6)
-- @docs/developer/frontend/frontend-testing.md
-- @src/frontend/src/services/dataAnalysis/metricDisplay/metricTone.ts
-
-Implementation mandatory docs:
-
-- @docs/plans/SPEC.md
-- `src/frontend/AGENTS.md` (auto-injected; listed for reference)
-- @src/frontend/src/services/dataAnalysis/metricDisplay/metricTone.ts
-
-Code Reviewer mandatory docs:
-
-- `AGENTS.md`, `src/frontend/AGENTS.md` (auto-injected; listed for reference)
-
-### Shared helper plan
-
-- Decision: **reuse existing** — `METRIC_TONE_CELL_STYLE` already exists at `metricTone.ts:82`; no new helper, no canonical-doc entry.
-
-### Data-shape planning block
-
-- None.
-
-### Canonical-fixture note
-
-- Existing `metricTone` suites cover the tones; add a lookup-equivalence case per tone if not already asserted. No generator involvement.
-
-### File sizing (LOC)
-
-- `metricTone.ts`: 337 → ~330. Under 500; no split.
-
-### Acceptance criteria
-
-- `resolveDiscreteCellStyle(token)` returns `METRIC_TONE_CELL_STYLE[token]` for every tone; existing metric-display suites green.
-
-### Required test cases (Red first)
-
-1. Per-tone equivalence: resolver output `toBe` the record entry for each `MetricToneColor`. Note: this is a pre-refactor pin — the current switch already returns the record entries, so the test is green before and after the refactor; the Red gate for this section is satisfied by the pin existing and staying green through the refactor.
+- **Single style source.** `METRIC_TONE_CELL_STYLE` (`Readonly<Record<MetricToneColor, CSSProperties>>`) is the sole source of discrete cell styles; `resolveDiscreteCellStyle` adds no branch and no fallback, and its `'default'` entry remains an ordinary record key.
+- **Regression guard.** The new per-tone `it.each` pin in `metricTone.spec.ts` asserts `result.cellStyle` is the shared record entry by reference (`toBe`) for all five `MetricToneColor` tokens. It was green before and after the refactor, which is this section's Red contract: a pure tidy has no intended-red state.
+- **Authoritative Vitest invocation (`src/frontend`-relative):** `npm run test:frontend -- src/services/dataAnalysis/metricDisplay`.
+- **Measured LOC:** `metricTone.ts` 321, `metricTone.spec.ts` 375 — both under 500; no split.
+- **No helper register or doc entry changed:** the module-private function and the existing exported record remain outside the shared-helper register, so Section 6 has nothing to re-verify for this section.
 
 ### Section checks
 
-- `npm run test:frontend -- src/frontend/src/services/dataAnalysis/metricDisplay` green; lint and typecheck green.
+- Focused `metricDisplay` suites 7 files / 107 tests green.
+- `npm run lint:frontend:check` 0 errors (16 pre-existing warnings elsewhere); `npm run typecheck:all` exit 0.
+- Full frontend coverage 329 files / 3189 tests green.
+- Red Review PASS (green-before-and-after pin, per this section's Red contract); Green Review PASS with zero findings.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** (filled during delivery)
-- **Deviations from plan:** (filled during delivery)
-- **Follow-up implications for later sections:** (filled during delivery)
+- **Implementation notes:** Red phase: Testing Specialist added a per-tone reference-identity pin in `metricTone.spec.ts` (all five `MetricToneColor` tokens via the public `resolveMetricTone` error branch to the private resolver), green before and after the refactor as the plan's special Red contract; Red Review PASS (`.opencode/scratchpad/review-section4-red.md`). Green phase: the five-case `resolveDiscreteCellStyle` switch became `return METRIC_TONE_CELL_STYLE[token];`; focused 7 files / 107 tests, full frontend coverage 329 files / 3189 tests, lint 0 errors, typecheck exit 0; Green Review PASS with zero findings (`.opencode/scratchpad/review-section4-green.md`). Docs sync SKIPPED: pure internal refactor of a module-private function with unchanged JSDoc and no documented behaviour, public API, data-shape or config change — no existing document needs reconciliation. Plan compaction: Section 4 65 → 30 lines, backup at `.opencode/scratchpad/feat-heatmaps-selection-perf-section-4-pre-compaction.md`. Section regression gate: `npm run regression-checker` comparison run at 2026-11-17T01:56:38.774Z (report `.ts-regression-checker/reports/session-feat-heatmaps-selection-perf/runs/2026-11-17T01-56-38.774Z/comparison.txt`) — Regressions 0, New Failures 0, Fixes 0, 7/8 checks passing (sole failure = accepted pre-existing `backend-lint-check` debt). Gate passed.
+- **Deviations from plan:** None. The plan's projected ~330 LOC was conservative; measured `metricTone.ts` is 321. No new helper, no canonical register entry, no config or doc change.
+- **Follow-up implications for later sections:** Section 5 re-exercises this suite in its full frontend gate; Section 6 has no doc re-verification obligation for this section (no helper register or documented behaviour changed).
 
 ### Optional `@remarks` JSDoc follow-through
 
-- None.
+- None — delivered as planned: the lookup keeps its existing minimal JSDoc and adds no `@remarks`.
 
 ---
 
