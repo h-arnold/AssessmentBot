@@ -278,7 +278,7 @@ Docs-only finalisation: re-verified both Section 1 docs-sync delegations, confir
 | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------- | -------------------------------------------- |
 | #350 — re-key post-analysis effect on data inputs + attempt identity                                                      | minor (CPU-only redundancy)              | Touches shared `usePagePostAnalysisTasks.ts`/`usePostAnalysisTasks.ts` used beyond the heatmaps surface; its issue states it deserves its own change and tests | GitHub issue #350; `useHeatmapsPageData.ts:342-348`                                            | noted       | Excluded from this unit by user, 13 Nov 2026 |
 | #351 — pipeline gates must follow `isDatasetRenderable` (loading dead-end for failed-but-recovered dataset)               | material (user-visible endless skeleton) | Touches `useClassPageData.ts` too and requires a warm-up-retry reachability investigation first                                                                | GitHub issue #351; `heatmapsPipeline.ts:208-210`, `useClassPageData.ts:264-276`                | noted       | Excluded from this unit by user, 13 Nov 2026 |
-| #323 — merged-heatmap keyboard journey + nine coverage polish items                                                       | minor                                    | Test-coverage polish, unrelated to this unit's contracts                                                                                                       | GitHub issue #323                                                                              | disregarded | Out of scope, 13 Nov 2026                    |
+| #323 — merged-heatmap keyboard journey + nine coverage polish items                                                       | minor                                    | Test-coverage polish, unrelated to this unit's contracts                                                                                                       | GitHub issue #323                                                                              | approved    | User authorised fix, 17 Nov 2026 (Batch 1)   |
 | #344 — sticky bottom scrollbar                                                                                            | minor                                    | Different surface behaviour (tables), separate SPEC.md at repo root already drafted                                                                            | GitHub issue #344; root `SPEC.md`                                                              | disregarded | Out of scope, 13 Nov 2026                    |
 | #348 — Collapse items-prop migration                                                                                      | nitpick                                  | Unrelated component migration                                                                                                                                  | GitHub issue #348                                                                              | disregarded | Out of scope, 13 Nov 2026                    |
 | Merge-conflict URL pasted mid-line in the File Index entry (corrupts the entry; casualty of the #355 docs reconciliation) | material (docs-only)                     | `docs/developer/data-shapes/assessment.md` File Index is outside this section's change surface; content repair is a separate docs fix                          | `docs/developer/data-shapes/assessment.md:529`; Section 1 docs sync (Data Shapes Agent return) | noted       | (pending user decision)                      |
@@ -291,3 +291,70 @@ Docs-only finalisation: re-verified both Section 1 docs-sync delegations, confir
 - **Final post-cleanup regression comparison (§5.1):** the cleanup changed files, so the final gate was run at 2026-11-17T06:23:10.234Z (report `.ts-regression-checker/reports/session-feat-heatmaps-selection-perf/runs/2026-11-17T06:23:10.234Z/comparison.txt`) — Regressions 0, New Failures 0, Fixes 0, 7/8 checks passing, E2E `flaky: 0` (352 expected / 0 unexpected); sole failure = the accepted pre-existing `backend-lint-check` debt. Clean; branch ready for documentation sync.
 - **Final documentation pass (§5.2):** no reconciliation edits needed — all per-section doc syncs internally consistent with each other and the delivered code across module `AGENTS.md`, JSDoc, `docs/developer/*`, public API and testing docs; no new page created. Out-of-scope drift reported (stale SPEC.md planning lines, pre-existing US "serializer" spellings, transient flaky E2E assertions) and either already logged in the nitpicks file or recorded there.
 - **Cleanup commit:** branch `feat/heatmaps-selection-perf`; commit `501038f1` — exact message `docs: correct renamed validator references in data-shape docs` (3 files changed, 5 insertions, 5 deletions). `git push` succeeded (`d1833fae..501038f1` on `origin/feat/heatmaps-selection-perf`).
+
+---
+
+## Batch 1 — #323 merged-heatmap keyboard journey + nine coverage items
+
+### Outcome
+
+Delivered as a test-only coverage batch for GitHub issue #323 on branch `feat/heatmaps-selection-perf`: appended a real-browser merged-heatmap keyboard journey (Enter→focus transfer with tooltip, Escape restore to the trigger, deferred readiness) to the source-link E2E spec and addressed all nine recorded coverage-polish items across six Vitest specs plus one new synthetic spec. No production code changed — no new test exposed a contract gap. Red Review PASS with zero findings. All checks green; eight touched/new files, all under 500 LOC. Docs sync skipped (test-only; no documented behaviour, public API, data-shape or config change).
+
+### Retained for later sections
+
+- **#323 closure:** the merged-heatmap keyboard journey — previously the open #323 gap — is now covered, and all nine coverage-polish items are addressed. Issue #323's old line numbers and helper names were stale; the helpers live in `src/frontend/e2e-tests/helpers/task-preview-source-link-helpers.ts`.
+- **Layer split preserved:** DOM-level contract assertions at Vitest level; browser-only cases (real portal Escape, real tooltip, real new-tab navigation) at Playwright E2E.
+- **E2E journey:** `src/frontend/e2e-tests/task-preview-source-link.spec.ts` gains `enterMergedJourney` + `createMergedAssignmentQueue()` covering Enter→focus transfer plus tooltip, Escape restore, and deferred readiness (busy skeleton holds focus until the deferred Slides read resolves). `createDeferredSlidesMergedQueue()` holds the Slides read open with a tail sentinel.
+- **Scoped-dialog rationale:** local `slidesPreviewDialog(page)` scopes assertions by the cell's accessible name because production renders the popover body as `<dialog aria-label={accessibleLabel}>`, while the generic `openPreviewPopover` helper uses `.last()` over non-hidden `.ant-popover` nodes — ambiguous when a leaving popover lingers.
+- **Nine coverage items:** focus identity beyond name (href/target/tag pins); focus-once across a second post-ready render; negative-key guard; duplicate-item first-wins `sourceUrl`; parent-ID trim/encode plus absent-key parent; balance-span presence/absence via `data-testid="task-preview-header-balance"`; duplicate accessible-name assertion removed; canonical derived URL constant; synthetic student-ID segment composition.
+- **Touched files:** `src/frontend/e2e-tests/task-preview-source-link.spec.ts`, `src/frontend/src/features/taskHeatmap/TaskMetricPreviewCell.focus.spec.tsx`, `TaskMetricPreviewCell.focusSession.spec.tsx`, `TaskPreviewCard.sourceLink.spec.tsx`, `assembleTaskPreviewData.sourceUrl.spec.ts`, `buildCellPreviewLookup.indexing.spec.ts`, `buildCellPreviewLookup.sourceLink.spec.ts` (the six Vitest specs under `features/taskHeatmap/`), plus the new `tests/synthetic-analysis/syntheticStudentIdSegmentComposition.test.ts`.
+- **Commands (authoritative, `src/frontend`-relative):** focused Vitest on the taskHeatmap suites and the synthetic spec; `npm run test:frontend:e2e -- task-preview-source-link`; `npm run lint:frontend:check`, `npm run lint:synthetic:check`, `npm run typecheck:all`.
+- **Docs sync skipped:** test-only batch — no documented behaviour, public API, data-shape or config change.
+
+### Section checks
+
+- taskHeatmap Vitest 413 passed.
+- Synthetic `syntheticStudentIdSegmentComposition` 4 passed.
+- E2E `task-preview-source-link` 29 passed; repeat-each flakiness check 10 passed.
+- `npm run lint:frontend:check` 0 errors; `npm run lint:synthetic:check` clean; `npm run typecheck:all` exit 0.
+- Red Review PASS with zero findings; all eight touched/new files under 500 LOC.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** User-authorised follow-up (2026-11-17), previously `disregarded` in the deferred ledger and now `approved`. Red phase run by two test owners in parallel on disjoint files: Playwright (merged keyboard E2E journey) and Testing Specialist (nine Vitest coverage items); both test-only, both expected-PASS as coverage additions. Playwright repaired a stale-popover locator defect with a scoped `<dialog>` locator, confirmed not a production gap; flakiness check 10/10. Red Review PASS with zero findings (`.opencode/scratchpad/review-batch1-red.md`). No Green production phase — no new test exposed a contract gap. Docs sync SKIPPED: test-only batch, no documented behaviour, public API, data shape or config change. Plan compaction: Batch 1 30 → 26 lines, backup at `.opencode/scratchpad/feat-heatmaps-selection-perf-batch1-pre-compaction.md`.
+- **Deviations from plan:** Issue #323's stale line numbers and helper names were resolved against the current tree — helpers live in `e2e-tests/helpers/task-preview-source-link-helpers.ts`, and the balance hook is `data-testid="task-preview-header-balance"` (the `HEADER_BALANCE_CLASS` name exists only in stale plan prose).
+- **Follow-up implications for later sections:** None — this closes #323; Batch 2 handles the nitpicks log separately.
+- **Section regression gate:** `npm run regression-checker` comparison run at 2026-11-17T07:56:20.200Z (report `.ts-regression-checker/reports/session-feat-heatmaps-selection-perf/runs/2026-11-17T07:56:20.200Z/comparison.txt`) — Regressions 0, New Failures 0, Fixes 0, 7/8 checks passing, E2E `flaky: 0` (354 expected / 0 unexpected — the two new merged-journey tests); sole failure = accepted pre-existing `backend-lint-check` debt. Gate passed.
+- **Commit record (Batch 1):** branch `feat/heatmaps-selection-perf`; commit `4f4262b2` — exact message `test(#323): cover merged keyboard journey and nine coverage items` (8 files changed, 306 insertions, 20 deletions). `git push` succeeded (`92c62d8a..4f4262b2` on `origin/feat/heatmaps-selection-perf`).
+
+---
+
+## Batch 2 — clear the nine nitpicks-log rows
+
+> User-authorised follow-up (2026-11-17). All nine nitpick rows were previously `disregarded`; dispositions flipped to `approved`. B3 (`createMockQueryResult.isError`) and B5 (SPEC.md 78/148) were already resolved by Sections 5 and 6 and are verification-only.
+
+### Objective
+
+Clear the remaining nitpicks-log rows (B1–B9): fix the genuinely stale comments/docs/wording, and verify the two already-resolved items.
+
+### Constraints
+
+- Comment/doc/test-wording fixes only; no production behaviour change.
+- Minimal, localised edits in British English.
+- B3 and B5: verify resolution in code/docs and close; make no new edit if already correct.
+
+### Acceptance criteria
+
+- B1 stale `__proto__` mechanism comment removed/updated; B2 dangling §9.29 cross-reference resolved; B4 `frontend-testing.md` class-ID wording corrected; B6 `HeatmapSelectionBar` module `@see` updated to §9.19/§9.33; B7 SPEC.md:149 and B8 SPEC.md:43/131 planning framing retired; B9 pre-existing "serializer" spellings normalised to British "serialiser" in the listed files.
+- B3 and B5 confirmed already resolved; no duplicate fixes.
+- All nine rows dispositioned `approved` and marked done in the nitpicks log.
+
+### Required checks
+
+1. Grep verification for removed stale strings.
+2. Scoped lint/typecheck if any code comment file changes.
+3. Section regression gate.
+
+### Implementation notes / deviations / follow-up
+
+- (filled during delivery)
