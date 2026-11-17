@@ -343,23 +343,25 @@ describe('heatmapsPipeline — shouldRunHeatmapsPipeline guard branches (T-6)', 
   });
 
   it('returns false when classFull is null', () => {
-    expect(shouldRunHeatmapsPipeline(null, selected, ready)).toBe(false);
+    expect(shouldRunHeatmapsPipeline(null, selected, ready, classFull.classId)).toBe(false);
   });
 
   it('returns false when the selection is empty', () => {
-    expect(shouldRunHeatmapsPipeline(classFull, [], ready)).toBe(false);
+    expect(shouldRunHeatmapsPipeline(classFull, [], ready, classFull.classId)).toBe(false);
   });
 
   it('returns false when the dataset is failed', () => {
-    expect(shouldRunHeatmapsPipeline(classFull, selected, failed)).toBe(false);
+    expect(shouldRunHeatmapsPipeline(classFull, selected, failed, classFull.classId)).toBe(false);
   });
 
   it('returns false when the dataset is untrustworthy', () => {
-    expect(shouldRunHeatmapsPipeline(classFull, selected, untrustworthy)).toBe(false);
+    expect(shouldRunHeatmapsPipeline(classFull, selected, untrustworthy, classFull.classId)).toBe(
+      false
+    );
   });
 
   it('returns true for a valid class + non-empty selection + trustworthy dataset', () => {
-    expect(shouldRunHeatmapsPipeline(classFull, selected, ready)).toBe(true);
+    expect(shouldRunHeatmapsPipeline(classFull, selected, ready, classFull.classId)).toBe(true);
   });
 });
 

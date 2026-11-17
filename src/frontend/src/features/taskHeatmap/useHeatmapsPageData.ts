@@ -344,7 +344,7 @@ export function useHeatmapsPageData(): HeatmapsPageData {
           return {
             assignmentId: selectedAssignmentIds[index],
             isPending: result.isPending,
-            isError: result.status === 'error',
+            isError: result.isError,
             data: result.data ?? null,
           };
         }),
