@@ -178,6 +178,23 @@ function combobox(name: RegExp): HTMLElement {
 }
 
 /**
+ * Resolve the allow-clear control of a labelled multi-select.
+ *
+ * @param {RegExp} name - Accessible-name pattern of the combobox.
+ * @returns {HTMLElement} The allow-clear control.
+ */
+function allowClearControl(name: RegExp): HTMLElement {
+  const wrapper = requireElement(
+    combobox(name).closest('.ant-select'),
+    'Expected the Select wrapper.'
+  );
+  return requireElement(
+    wrapper.querySelector('.ant-select-clear'),
+    'Expected the allow-clear control.'
+  );
+}
+
+/**
  * Assert a string array without depending on dispatch order.
  *
  * @param {readonly string[]} actual - The observed values.
@@ -434,5 +451,45 @@ describe('HeatmapSelectionBar — select-all checkbox state', () => {
     const checkbox = screen.getByRole('checkbox', { name: SELECT_ALL_TOPICS });
     expect(checkbox).not.toBeChecked();
     expect(checkbox).not.toBePartiallyChecked();
+  });
+
+  it('checks select-all for query-matching options only and excludes hidden options from the union', async () => {
+    renderSelectionBar({
+      initialSelection: { classId: CLASS_ID, topicKeys: ['topic-algebra'], assignmentIds: [] },
+    });
+
+    const topics = combobox(/topics/i);
+    await user.click(topics);
+    await user.type(topics, 'ALGEBRA');
+
+    // The same label match drives the visible options, the select-all scope and the checkbox state.
+    expect(screen.getByRole('option', { name: 'Algebra' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Geometry' })).not.toBeInTheDocument();
+
+    const checkbox = screen.getByRole('checkbox', { name: SELECT_ALL_TOPICS });
+    expect(checkbox).toBeChecked();
+    expect(checkbox).not.toBePartiallyChecked();
+
+    await user.click(checkbox);
+
+    expect(readSelection().topicKeys).toEqual(['topic-algebra']);
+  });
+});
+
+describe('HeatmapSelectionBar — search query handling', () => {
+  it('retains characters typed after clearing the selection while the query is empty', async () => {
+    renderSelectionBar({
+      initialSelection: { classId: CLASS_ID, topicKeys: ['topic-algebra'], assignmentIds: [] },
+    });
+
+    const topics = combobox(/topics/i);
+    await user.click(topics);
+    expect(topics).toHaveValue('');
+
+    await user.click(allowClearControl(/topics/i));
+    await user.type(topics, 'algebra');
+
+    // The empty-query clear must not arm suppression, so the first typed character survives.
+    expect(topics).toHaveValue('algebra');
   });
 });
