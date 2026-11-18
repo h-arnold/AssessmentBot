@@ -14,6 +14,7 @@ import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPage
 import type { ClassPageViewModel } from './classPageModel';
 import type { FilterDropdownProps } from 'antd/es/table/interface';
 import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { BaselineAvailability } from '@/features/shared/baselineAvailability';
 import type * as studentAveragesTableColumnsModule from './studentAveragesTableColumns';
 import { BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL } from '@/services/dataAnalysis/metricDisplay/metricTone';
 import {
@@ -90,6 +91,12 @@ const FORENAME_ASC_SORT = { column: 'forename', direction: 'asc' } as const;
 
 /** Sentinel for accessing the last element of an array. */
 const LAST_CALL_INDEX = -1;
+
+/** Accessible name of the shared mode control hosted in the card head. */
+const MODE_CONTROL_LABEL = 'Averages basis';
+
+/** Minimal ready availability for the supplied-mode-props render. */
+const READY_AVAILABILITY: BaselineAvailability = { status: 'ready', reason: null };
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -188,12 +195,16 @@ afterEach(() => {
  * @param {object} [options] - Render options.
  * @param {Partial<ClassPageAdapterResult>} [options.adapterResult] - Adapter result overrides.
  * @param {AnalysisMode} [options.analysisMode] - The page's analysis mode forwarded to the column builder.
+ * @param {(mode: AnalysisMode) => void} [options.onAnalysisModeChange] - Mode-change handler.
+ * @param {BaselineAvailability} [options.baselineAvailability] - Baseline availability.
  * @returns {ReturnType<typeof render>} The render result.
  */
 function renderCard(
   options: {
     adapterResult?: Partial<ClassPageAdapterResult>;
     analysisMode?: AnalysisMode;
+    onAnalysisModeChange?: (mode: AnalysisMode) => void;
+    baselineAvailability?: BaselineAvailability;
   } = {}
 ): ReturnType<typeof render> {
   const adapterResult = createClassPageAdapterResult({
@@ -202,7 +213,12 @@ function renderCard(
   });
 
   return render(
-    <StudentAveragesTableCard adapterResult={adapterResult} analysisMode={options.analysisMode} />
+    <StudentAveragesTableCard
+      adapterResult={adapterResult}
+      analysisMode={options.analysisMode}
+      onAnalysisModeChange={options.onAnalysisModeChange}
+      baselineAvailability={options.baselineAvailability}
+    />
   );
 }
 
@@ -218,6 +234,21 @@ describe('StudentAveragesTableCard', () => {
     renderCard();
 
     expect(screen.getByText('Student Averages')).toBeInTheDocument();
+  });
+
+  it('hosts a single Averages basis control in the card head extra when all mode props are supplied', () => {
+    const { container } = renderCard({
+      analysisMode: 'absolute',
+      onAnalysisModeChange: vi.fn(),
+      baselineAvailability: READY_AVAILABILITY,
+    });
+
+    const controls = screen.getAllByRole('radiogroup', { name: MODE_CONTROL_LABEL });
+    expect(controls).toHaveLength(1);
+
+    const extra = container.querySelector(':scope .ant-card-head .ant-card-extra');
+    expect(extra).not.toBeNull();
+    expect(extra).toContainElement(controls[0]);
   });
 
   // -----------------------------------------------------------------------

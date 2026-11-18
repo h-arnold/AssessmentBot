@@ -24,19 +24,19 @@
  */
 
 import { useState, type JSX } from 'react';
-import { Flex } from 'antd';
+import { Card, Flex } from 'antd';
 import { ClassPageContent } from './ClassPageContent';
 import { ClassPageHeaderActions } from './ClassPageHeaderActions';
-import { ClassPageModeControl } from './ClassPageModeControl';
 import { useClassPageData } from './useClassPageData';
 import { AssessTaskModal } from '@/features/classes/AssessTaskModal/AssessTaskModal';
 import { pageContent } from '@/pages/pageContent';
 import { useClassSelection } from '@/ClassSelectionContext';
 import { APP_GAP_MD } from '@/theme/spacing';
 import { PageTitleCard, PageNavCard } from '@/components/PageHeader/PageHeader';
+import { AveragesBasisControl } from '@/components/AveragesBasisControl/AveragesBasisControl';
 import type { ReRunContext } from '../shared/reRunAssessmentContext';
+import type { BaselineAvailability } from '../shared/baselineAvailability';
 import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
-import type { BaselineAvailability } from './useClassPageData.helpers';
 
 type ClassPageProperties = Readonly<{
   /** The class ID to fetch data for. */
@@ -48,6 +48,8 @@ type ClassPageHeaderProperties = Readonly<{
   className: string;
   /** Whether the overview view is active (controls the parent nav card). */
   isOverview: boolean;
+  /** Whether the surface is blocked, so the fallback mode control is needed. */
+  isBlocked: boolean;
   /** The current analysis mode (the mode control's selected value). */
   analysisMode: AnalysisMode;
   /** Change the analysis mode (page-owned state). */
@@ -63,18 +65,21 @@ type ClassPageHeaderProperties = Readonly<{
 /**
  * Render the Class page header.
  *
- * Always shows the class-name {@link PageTitleCard} and the analysis-mode
- * control slot ({@link ClassPageModeControl}, third stacked element, rendered
- * in every non-loading state so the escape route back to `absolute` stays
- * reachable — docs/pedagogy/data-analysis-scoring.md § Averages basis). The
- * parent {@link PageNavCard}
- * ("Back to Classes") is shown only in the overview view; when a child view
+ * Always shows the class-name {@link PageTitleCard}. In ready states the
+ * control lives inside the averaging table card (see
+ * `StudentAveragesTableCard` / `TaskHeatmapPage`), so the header shows only the
+ * title card and, in the overview view, the parent {@link PageNavCard}
+ * ("Back to Classes"). While `isBlocked`, a fallback card hosting
+ * {@link AveragesBasisControl} is inserted after the title card so the escape
+ * route back to `absolute` stays reachable (see
+ * docs/pedagogy/data-analysis-scoring.md § Averages basis). When a child view
  * (heatmap) is active, the child page renders its own navigation card so that
  * only the most-junior nav card is visible.
  *
  * @param {ClassPageHeaderProperties} properties - Component properties.
  * @param {string} properties.className - The class name to display.
  * @param {boolean} properties.isOverview - Whether the overview view is active.
+ * @param {boolean} properties.isBlocked - Whether the surface is blocked.
  * @param {AnalysisMode} properties.analysisMode - The current analysis mode.
  * @param {(mode: AnalysisMode) => void} properties.onAnalysisModeChange - Mode-change handler.
  * @param {BaselineAvailability} properties.baselineAvailability - Baseline availability.
@@ -85,6 +90,7 @@ type ClassPageHeaderProperties = Readonly<{
 function ClassPageHeader({
   className,
   isOverview,
+  isBlocked,
   analysisMode,
   onAnalysisModeChange,
   baselineAvailability,
@@ -94,11 +100,15 @@ function ClassPageHeader({
   return (
     <>
       <PageTitleCard title={className || pageContent.classDetail.heading} titleLevel={2} />
-      <ClassPageModeControl
-        analysisMode={analysisMode}
-        onAnalysisModeChange={onAnalysisModeChange}
-        baselineAvailability={baselineAvailability}
-      />
+      {isBlocked && (
+        <Card size="small">
+          <AveragesBasisControl
+            analysisMode={analysisMode}
+            onAnalysisModeChange={onAnalysisModeChange}
+            baselineAvailability={baselineAvailability}
+          />
+        </Card>
+      )}
       {isOverview && (
         <PageNavCard
           onBack={onNavigateToClasses}
@@ -204,6 +214,7 @@ export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
           <ClassPageHeader
             className={className}
             isOverview={isOverview}
+            isBlocked={surfaceState.status === 'blocking'}
             analysisMode={analysisMode}
             onAnalysisModeChange={setAnalysisMode}
             baselineAvailability={baselineAvailability}
@@ -228,6 +239,8 @@ export function ClassPage({ classId }: ClassPageProperties): JSX.Element {
           onNavigateToClasses={onNavigateToClasses}
           onRetry={refetch}
           analysisMode={analysisMode}
+          onAnalysisModeChange={setAnalysisMode}
+          baselineAvailability={baselineAvailability}
         />
       </Flex>
 

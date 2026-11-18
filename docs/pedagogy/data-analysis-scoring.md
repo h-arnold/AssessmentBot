@@ -130,7 +130,7 @@ It is important to know that a single task showing **E** does **not** ruin the w
 
 ## Averages basis: all tasks or baseline tasks
 
-The Class page has an **Averages basis** control with two options: **All tasks** (the default) and **Baseline tasks**. It changes which tasks feed the Class page's averages — the Recent Assignment cards and the Student Averages table. It never changes an individual task score.
+The Class page has an **Averages basis** control with two options: **All tasks** (the default) and **Baseline tasks**. It changes which tasks feed the Class page's averages — the Recent Assignment cards and the Student Averages table. It never changes an individual task score. You'll find the control at the top-right of the Student Averages table and, when you open an assignment's heatmap from the Class page, at the top-right of that heatmap table.
 
 ### Why a baseline helps
 
@@ -162,11 +162,11 @@ The control is disabled, with the reason available on hover and to screen reader
 - the class has fewer than 3 students; or
 - fewer than 2 students attempted any of the work in the selected assignments.
 
-If the most-engaged students attempted no task in common, there is no baseline to average over: the analysis shows an error, and the control stays available so you can switch back to **All tasks**.
+If the most-engaged students attempted no task in common, there is no baseline to average over: the analysis shows an error, and the control stays available in a small card above the error so you can switch back to **All tasks**.
 
 ### Limits to keep in mind
 
-- The choice belongs to the Class page alone and is not remembered: leaving the class or reloading the page returns it to **All tasks**.
+- The choice belongs to the Class page alone — it is available in both the overview and the embedded heatmap view — and is not remembered: leaving the class or reloading the page returns it to **All tasks**.
 - It never rescales or re-marks anyone's work. A task outside the baseline keeps its scores; these averages simply do not count it.
 - Each class works out its own baseline from its own students.
 

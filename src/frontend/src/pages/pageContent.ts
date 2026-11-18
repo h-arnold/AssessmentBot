@@ -33,7 +33,7 @@ export const pageContent = {
     recentAssignmentsEmpty: 'No recent assessments yet',
     searchEmpty: 'No students match your search',
     // Attempt-baseline mode-control copy (layout spec "Copy homes": header
-    // copy lives here; consumed by ClassPageModeControl).
+    // copy lives here; consumed by AveragesBasisControl).
     modeControlLabel: 'Averages basis',
     absoluteModeOptionLabel: 'All tasks',
     baselineModeOptionLabel: 'Baseline tasks',

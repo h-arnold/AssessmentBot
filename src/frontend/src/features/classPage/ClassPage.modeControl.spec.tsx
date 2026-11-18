@@ -1,17 +1,14 @@
 /**
- * Mode-control slot specs for the Class page header (`ClassPage`).
+ * Averages-basis control placement specs for the Class page (`ClassPage`).
  *
- * Covers the attempt-baseline mode control's DOM contract in the always-rendered
- * header slot (attempt-baseline layout specification, "Class-page header —
- * mode-control slot"): the slot placement between the title card and the nav
- * card, the two labelled options with the current mode selected, the mode-change
- * wiring into `useClassPageData`, the slot's presence in the blocking view and
- * the embedded heatmap view, and the disabled-state affordances (root disabled
- * class and disabled radio inputs rather than an `aria-disabled` attribute, the
- * always-rendered sr-only description node, and the `aria-describedby` binding
- * that is present exactly while the control is disabled), and the
- * ineligible-state escape route (the control stays enabled while only the
- * baseline option is disabled, carrying the reason in its tooltip).
+ * Pins the mount point per state: ready overview → Student Averages card's
+ * top-right `extra`; ready heatmap → the `TaskHeatmapTable` card's `extra`;
+ * blocking → the header fallback, preserving the `All tasks` escape. One
+ * control mounts at a time (the page-scoped E2E locator is strict).
+ *
+ * Also covers the a11y contract: labelled options, mode wiring, the hidden
+ * label preserving `aria-labelledby`, disabled affordances (root class, disabled
+ * radios, sr-only description, `aria-describedby` while disabled), and the ineligible escape.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -22,7 +19,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ClassPage } from './ClassPage';
 import type { ClassPageAdapterResult, RecentAssignmentCardModel } from './classPageAdapter.zod';
 import type { ClassPageError } from './useClassPageData';
-import type { StudentAveragesTableCardProperties } from './StudentAveragesTableCard';
 import {
   analyserResultFixture,
   buildDefaultAssignmentFixture,
@@ -34,11 +30,15 @@ const CLASS_PAGE_CLASS_ID = 'class-1';
 const CLASS_NAME = 'Class A';
 const RECENT_ASSIGNMENT_NAME = 'Assignment One';
 
-// Visible control copy pinned by the attempt-baseline layout specification
+// Control copy pinned by the attempt-baseline layout specification
 // (copy home: `pageContent` under `classDetail`).
 const MODE_CONTROL_LABEL = 'Averages basis';
 const ABSOLUTE_OPTION_LABEL = 'All tasks';
 const BASELINE_OPTION_LABEL = 'Baseline tasks';
+
+// Stable DOM ids owned by the control (the Class page mounts once per class).
+const MODE_CONTROL_LABEL_ID = 'class-page-mode-control-label';
+const MODE_CONTROL_DESCRIPTION_ID = 'class-page-mode-control-description';
 
 // Availability-driven disabled-state copy produced by the hook (specification
 // decision 6): the neutral awaiting-data reason.
@@ -47,15 +47,11 @@ const AWAITING_DATA_REASON = 'Waiting for class data';
 /** Number of options the mode control presents. */
 const MODE_OPTION_COUNT = 2;
 
-/** Sentinel for accessing the last element of an array. */
-const LAST_CALL_INDEX = -1;
-
 const {
   mockUseClassPageData,
   mockAssessTaskModal,
   mockUseClassSelection,
   mockGetAssignment,
-  mockStudentAveragesTableCard,
   mockTaskHeatmapTable,
 } = vi.hoisted(() => {
   return {
@@ -72,9 +68,6 @@ const {
       };
     }),
     mockGetAssignment: vi.fn(),
-    mockStudentAveragesTableCard: vi.fn(function MockStudentAveragesTableCard() {
-      return createElement('div', { 'data-testid': 'student-averages-table-card' });
-    }),
     mockTaskHeatmapTable: vi.fn(function MockTaskHeatmapTable() {
       return createElement('div', { 'data-testid': 'task-heatmap-table' });
     }),
@@ -82,36 +75,22 @@ const {
 });
 
 vi.mock('./useClassPageData', () => ({ useClassPageData: mockUseClassPageData }));
-
 vi.mock('../classes/AssessTaskModal/AssessTaskModal', () => {
   return {
     AssessTaskModal: mockAssessTaskModal,
   };
 });
-
-vi.mock('@/ClassSelectionContext', () => {
-  return {
-    useClassSelection: mockUseClassSelection,
-  };
-});
-
+vi.mock('@/ClassSelectionContext', () => ({ useClassSelection: mockUseClassSelection }));
 vi.mock('@/services/assignmentAssessment/assignmentAssessmentService', () => {
   return {
     getAssignment: mockGetAssignment,
   };
 });
 
-vi.mock('./StudentAveragesTableCard', () => {
-  return {
-    StudentAveragesTableCard: mockStudentAveragesTableCard,
-  };
-});
+// `StudentAveragesTableCard` is unmocked so placement is asserted against its
+// real card head. Only the heavy heatmap table is mocked; its head lives in `TaskHeatmapPage`.
 
-vi.mock('../taskHeatmap/TaskHeatmapTable', () => {
-  return {
-    TaskHeatmapTable: mockTaskHeatmapTable,
-  };
-});
+vi.mock('../taskHeatmap/TaskHeatmapTable', () => ({ TaskHeatmapTable: mockTaskHeatmapTable }));
 
 /** Zero-data display metric used by the recent-assignment card fixture. */
 const NO_DATA_METRIC: ClassPageAdapterResult['studentAverages'][number]['metrics']['completeness'] =
@@ -209,17 +188,28 @@ async function openHeatmapView(user: ReturnType<typeof userEvent.setup>): Promis
 }
 
 /**
- * Locates the mode-control card that hosts the labelled control.
+ * Resolves the nearest `.ant-card` ancestor: the Student Averages card (ready
+ * overview), the `TaskHeatmapTable` card (ready heatmap), or the blocking fallback.
  *
  * @param {HTMLElement} control - The mode-control radiogroup.
- * @returns {Element} The card element wrapping the control slot.
+ * @returns {HTMLElement} The nearest card ancestor hosting the control.
  */
-function getModeControlCard(control: HTMLElement): Element {
+function getModeControlCard(control: HTMLElement): HTMLElement {
   const card = control.closest('.ant-card');
-  if (!(card instanceof Element)) {
-    throw new TypeError('Mode-control slot is not hosted in a card');
+  if (!(card instanceof HTMLElement)) {
+    throw new TypeError('Mode control is not hosted in a card');
   }
   return card;
+}
+
+/**
+ * Locates the sr-only description node by its stable id; the label is also
+ * sr-only, so a bare `.sr-only` query would select the wrong element.
+ *
+ * @returns {Element | null} The description node, or null when absent.
+ */
+function getDescriptionNode(): Element | null {
+  return document.querySelector(`#${MODE_CONTROL_DESCRIPTION_ID}`);
 }
 
 beforeEach(() => {
@@ -231,25 +221,31 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
-describe('ClassPage — mode-control slot', () => {
-  it('renders the labelled mode control between the title card and the nav card in the overview view', () => {
+describe('ClassPage — Averages basis control', () => {
+  it('places the control in the Student Averages card header in the overview view', () => {
     renderClassPage();
 
     const control = screen.getByRole('radiogroup', { name: MODE_CONTROL_LABEL });
+    expect(screen.getAllByRole('radiogroup', { name: MODE_CONTROL_LABEL })).toHaveLength(1);
 
-    const titleCard = screen.getByRole('heading', { name: CLASS_NAME }).closest('.ant-card');
     const controlCard = getModeControlCard(control);
+    // The control belongs to the Student Averages card, not a header slot.
+    expect(within(controlCard).getByText('Student Averages')).toBeInTheDocument();
+    const extra = controlCard.querySelector(':scope .ant-card-head .ant-card-extra');
+    expect(extra).not.toBeNull();
+    expect(extra).toContainElement(control);
+
+    // The hosting card now sits below both header cards, not between them.
+    const titleCard = screen.getByRole('heading', { name: CLASS_NAME }).closest('.ant-card');
     const navCard = screen.getByLabelText('Back to Classes').closest('.ant-card');
     if (!(titleCard instanceof Element) || !(navCard instanceof Element)) {
       throw new TypeError('Class page header cards are missing');
     }
-
-    // The slot sits between PageTitleCard and PageNavCard in the stacked header.
     expect(
       titleCard.compareDocumentPosition(controlCard) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(
-      navCard.compareDocumentPosition(controlCard) & Node.DOCUMENT_POSITION_PRECEDING
+      navCard.compareDocumentPosition(controlCard) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
   });
 
@@ -275,17 +271,21 @@ describe('ClassPage — mode-control slot', () => {
     expect(mockUseClassPageData).toHaveBeenLastCalledWith(CLASS_PAGE_CLASS_ID, 'topDecileBaseline');
   });
 
-  it('passes the selected mode through to the student averages card', async () => {
+  it('keeps the control in the Student Averages card header after switching mode', async () => {
     const user = userEvent.setup();
     renderClassPage();
 
     await user.click(screen.getByRole('radio', { name: BASELINE_OPTION_LABEL }));
 
-    // React renders function components with a trailing legacy-context
-    // argument; the props are read off the typed call tuple.
-    const lastCall = mockStudentAveragesTableCard.mock.calls.at(LAST_CALL_INDEX) as
-      [StudentAveragesTableCardProperties] | undefined;
-    expect(lastCall?.[0]).toEqual(expect.objectContaining({ analysisMode: 'topDecileBaseline' }));
+    // Placement is stable across mode changes: the real card still hosts the
+    // control in its head `extra`, with a single control mounted.
+    const control = screen.getByRole('radiogroup', { name: MODE_CONTROL_LABEL });
+    expect(screen.getAllByRole('radiogroup', { name: MODE_CONTROL_LABEL })).toHaveLength(1);
+    const controlCard = getModeControlCard(control);
+    expect(within(controlCard).getByText('Student Averages')).toBeInTheDocument();
+    expect(controlCard.querySelector(':scope .ant-card-head .ant-card-extra')).toContainElement(
+      control
+    );
   });
 
   it('keeps the mode control rendered above the blocking result and enabled on retained evidence', () => {
@@ -304,14 +304,29 @@ describe('ClassPage — mode-control slot', () => {
     renderClassPage();
 
     const control = screen.getByRole('radiogroup', { name: MODE_CONTROL_LABEL });
+    expect(screen.getAllByRole('radiogroup', { name: MODE_CONTROL_LABEL })).toHaveLength(1);
     const resultTitle = screen.getByText("Couldn't compute averages");
 
-    // The control precedes the blocking result in the stacked header.
+    // The header fallback precedes the blocking result in the stacked header.
     expect(
       control.compareDocumentPosition(resultTitle) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     // Retained evidence from the last successful result keeps the control enabled.
     expect(control).not.toHaveClass('ant-segmented-disabled');
+  });
+
+  it('hides the visible label while preserving the radiogroup accessible name', () => {
+    renderClassPage();
+
+    // No visual clutter: the label is visually hidden via `sr-only` but keeps
+    // its stable id so the accessible name still resolves.
+    const labelElement = screen.getByText(MODE_CONTROL_LABEL);
+    expect(labelElement).toHaveClass('sr-only');
+    expect(labelElement.id).toBe(MODE_CONTROL_LABEL_ID);
+
+    const control = screen.getByRole('radiogroup', { name: MODE_CONTROL_LABEL });
+    expect(control).toBeInTheDocument();
+    expect(control.getAttribute('aria-labelledby')).toBe(MODE_CONTROL_LABEL_ID);
   });
 
   it('disables the control and binds the reason while data is awaited', () => {
@@ -340,16 +355,16 @@ describe('ClassPage — mode-control slot', () => {
       expect(radio).toBeDisabled();
     }
 
-    // The visible group label is bound via aria-labelledby.
+    // The group label is bound via aria-labelledby.
     const labelElement = screen.getByText(MODE_CONTROL_LABEL);
     expect(control.getAttribute('aria-labelledby')).toBe(labelElement.id);
 
     // The reason is discoverable without hover: the sr-only description node
     // carries it and the control references it while disabled.
-    const descriptionNode = document.querySelector('.sr-only');
+    const descriptionNode = getDescriptionNode();
     expect(descriptionNode).not.toBeNull();
     expect(descriptionNode).toHaveTextContent(AWAITING_DATA_REASON);
-    expect(descriptionNode?.id).toBeTruthy();
+    expect(descriptionNode?.id).toBe(MODE_CONTROL_DESCRIPTION_ID);
     expect(control.getAttribute('aria-describedby')).toBe(descriptionNode?.id);
   });
 
@@ -435,7 +450,7 @@ describe('ClassPage — mode-control slot', () => {
     const control = screen.getByRole('radiogroup', { name: MODE_CONTROL_LABEL });
 
     // The description node always exists and carries the reason for ineligible.
-    const descriptionNode = getModeControlCard(control).querySelector('.sr-only');
+    const descriptionNode = getDescriptionNode();
     expect(descriptionNode).not.toBeNull();
     expect(descriptionNode).toHaveTextContent(ROSTER_REASON);
 
@@ -458,16 +473,27 @@ describe('ClassPage — mode-control slot', () => {
     expect(control).not.toHaveAttribute('aria-describedby');
 
     // The description node itself is always rendered — empty while enabled.
-    const descriptionNode = getModeControlCard(control).querySelector('.sr-only');
+    const descriptionNode = getDescriptionNode();
     expect(descriptionNode).not.toBeNull();
     expect(descriptionNode).toHaveTextContent('');
   });
 
-  it('keeps the mode control rendered in the embedded heatmap view', async () => {
+  it('places the control in the heatmap table card header in the embedded heatmap view', async () => {
     const user = userEvent.setup();
     renderClassPage();
     await openHeatmapView(user);
 
-    expect(screen.getByRole('radiogroup', { name: MODE_CONTROL_LABEL })).toBeInTheDocument();
+    const control = screen.getByRole('radiogroup', { name: MODE_CONTROL_LABEL });
+    expect(screen.getAllByRole('radiogroup', { name: MODE_CONTROL_LABEL })).toHaveLength(1);
+
+    // The control belongs to the card wrapping the Task Heatmap table.
+    const heatmapTable = screen.getByTestId('task-heatmap-table');
+    const tableCard = heatmapTable.closest('.ant-card');
+    if (!(tableCard instanceof Element)) {
+      throw new TypeError('Task Heatmap table is not hosted in a card');
+    }
+    const extra = tableCard.querySelector('.ant-card-extra');
+    expect(extra).not.toBeNull();
+    expect(extra).toContainElement(control);
   });
 });

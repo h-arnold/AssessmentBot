@@ -15,8 +15,10 @@ import { RefreshCw, RotateCcw } from 'lucide-react';
 import { APP_GAP_MD } from '@/theme/spacing';
 
 import type { ReRunContext } from '../shared/reRunAssessmentContext';
+import type { BaselineAvailability } from '../shared/baselineAvailability';
+import { renderAveragesBasisControlExtra } from '@/components/AveragesBasisControl/renderAveragesBasisControlExtra';
 
-import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { AnalysisMode, AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type {
   AssignmentPartial,
   ClassFull,
@@ -84,6 +86,12 @@ type TaskHeatmapPageProperties = Readonly<{
   refetch: () => void;
   /** Callback invoked when the user clicks Re-run Assessment (renders only when supplied). */
   onReRunAssessment?: (context: ReRunContext) => void;
+  /** The Class page's current analysis mode (host card's mode control). */
+  analysisMode?: AnalysisMode;
+  /** Change the analysis mode; supplied with the other mode props by the Class page. */
+  onAnalysisModeChange?: (mode: AnalysisMode) => void;
+  /** Baseline availability; supplied with the other mode props by the Class page. */
+  baselineAvailability?: BaselineAvailability;
 }>;
 
 /** Status tag text shown for a legacy assignment on the navigation card. */
@@ -260,6 +268,9 @@ function HeatmapSummary({
  * @param {() => void} properties.refetch - Refresh callback.
  * @param {(context: ReRunContext) => void} [properties.onReRunAssessment] -
  *   Re-run Assessment callback; the action renders only when supplied.
+ * @param {AnalysisMode} [properties.analysisMode] - The Class page's analysis mode.
+ * @param {(mode: AnalysisMode) => void} [properties.onAnalysisModeChange] - Mode-change handler.
+ * @param {BaselineAvailability} [properties.baselineAvailability] - Baseline availability.
  * @returns {JSX.Element | null} The rendered heatmap page, an error `Alert`,
  *   or `null` on generic error (after navigation).
  */
@@ -271,6 +282,9 @@ export function TaskHeatmapPage({
   onBack: backCallback,
   onReRunAssessment,
   refetch,
+  analysisMode,
+  onAnalysisModeChange,
+  baselineAvailability,
 }: TaskHeatmapPageProperties): JSX.Element | null {
   const state = useMemo<HeatmapPageState>(
     () =>
@@ -436,6 +450,15 @@ export function TaskHeatmapPage({
 
   // Valid heatmap rendering, including optional summary failures.
   const { heatmapResult, summary, summaryError } = state;
+
+  // Standalone heatmaps render no mode control: the Class page supplies all
+  // three mode props together when it embeds this surface.
+  const modeControlExtra = renderAveragesBasisControlExtra({
+    analysisMode,
+    onAnalysisModeChange,
+    baselineAvailability,
+  });
+
   return (
     <Flex vertical gap={APP_GAP_MD}>
       <PageTitleCard title={heatmapResult!.assignmentName} />
@@ -452,7 +475,11 @@ export function TaskHeatmapPage({
         classId={classFull.classId}
         assignmentId={assignmentId}
       />
-      <Card size="small">
+      <Card
+        size="small"
+        classNames={{ header: 'app-card-header--controls' }}
+        extra={modeControlExtra}
+      >
         <TaskHeatmapTable
           heatmapResult={heatmapResult!}
           cellPreviewLookup={cellPreviewLookup}

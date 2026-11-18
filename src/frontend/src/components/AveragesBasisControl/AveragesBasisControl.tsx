@@ -1,17 +1,21 @@
 /**
- * Mode-control slot for the Class page header (attempt-baseline layout spec,
- * "Class-page header — mode-control slot").
+ * Shared "Averages basis" control for the Class page's two averaging views.
  *
  * @remarks
- * A `Segmented` control toggling the Class page's analysis mode between
- * `absolute` ("All tasks") and `topDecileBaseline` ("Baseline tasks"), hosted
- * in a `Card size="small"` as the header's third stacked element so the
- * control stays reachable in every non-loading state — including blocking
- * failures, where the escape route back to `absolute` lives (see
+ * A `Segmented` control toggling the analysis mode between `absolute`
+ * ("All tasks") and `topDecileBaseline` ("Baseline tasks"). It carries no card
+ * chrome of its own: the host table card renders it in its top-right `extra`
+ * and owns the surrounding `Card`. While a baseline failure blocks the page,
+ * the host renders this control in a fallback header card instead, so the
+ * escape route back to `absolute` stays reachable (see
  * docs/pedagogy/data-analysis-scoring.md § Averages basis).
  *
+ * The group label is visually hidden (`sr-only`) to keep the card header
+ * uncluttered, but stays in the accessibility tree and remains the
+ * `aria-labelledby` target, so the accessible name "Averages basis" survives.
+ *
  * DOM contract:
- * - the control's accessible name is the visible group label via
+ * - the control's accessible name is the visually hidden group label via
  *   `aria-labelledby`, overriding the underlying hard-coded
  *   `aria-label="segmented control"`;
  * - the control itself is disabled only while availability is `awaiting-data`
@@ -38,9 +42,9 @@
  */
 
 import type { JSX } from 'react';
-import { Card, Flex, Segmented, Tooltip, Typography } from 'antd';
+import { Flex, Segmented, Tooltip, Typography } from 'antd';
 import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
-import type { BaselineAvailability } from './useClassPageData.helpers';
+import type { BaselineAvailability } from '@/features/shared/baselineAvailability';
 import { pageContent } from '@/pages/pageContent';
 import { APP_GAP_SM } from '@/theme/spacing';
 
@@ -48,7 +52,7 @@ import { APP_GAP_SM } from '@/theme/spacing';
 const MODE_CONTROL_LABEL_ID = 'class-page-mode-control-label';
 const MODE_CONTROL_DESCRIPTION_ID = 'class-page-mode-control-description';
 
-type ClassPageModeControlProperties = Readonly<{
+type AveragesBasisControlProperties = Readonly<{
   /** The currently selected analysis mode. */
   analysisMode: AnalysisMode;
   /** Change the analysis mode (page-owned state; no persistence). */
@@ -83,19 +87,19 @@ function resolveBaselineOptionTooltip(availability: BaselineAvailability): strin
 }
 
 /**
- * Render the Class page's analysis-mode control slot.
+ * Render the shared analysis-mode control for a host card's `extra` slot.
  *
- * @param {ClassPageModeControlProperties} properties - Component properties.
+ * @param {AveragesBasisControlProperties} properties - Component properties.
  * @param {AnalysisMode} properties.analysisMode - Current analysis mode.
  * @param {(mode: AnalysisMode) => void} properties.onAnalysisModeChange - Mode-change handler.
  * @param {BaselineAvailability} properties.baselineAvailability - Availability state.
- * @returns {JSX.Element} The rendered mode-control card.
+ * @returns {JSX.Element} The rendered mode control.
  */
-export function ClassPageModeControl({
+export function AveragesBasisControl({
   analysisMode,
   onAnalysisModeChange,
   baselineAvailability,
-}: ClassPageModeControlProperties): JSX.Element {
+}: AveragesBasisControlProperties): JSX.Element {
   const isControlDisabled = baselineAvailability.status === 'awaiting-data';
   const isBaselineOptionDisabled = baselineAvailability.status !== 'ready';
   const baselineOptionTooltip = resolveBaselineOptionTooltip(baselineAvailability);
@@ -113,31 +117,29 @@ export function ClassPageModeControl({
   ];
 
   return (
-    <Card size="small">
-      <Flex wrap align="center" gap={APP_GAP_SM}>
-        <Typography.Text id={MODE_CONTROL_LABEL_ID}>
-          {pageContent.classDetail.modeControlLabel}
-        </Typography.Text>
-        {/* Always present so the `aria-describedby` target is reachable
-            while disabled (HeatmapSelectionBar precedent). */}
-        <span id={MODE_CONTROL_DESCRIPTION_ID} className="sr-only">
-          {baselineAvailability.reason ?? ''}
-        </span>
-        <Tooltip
-          title={isControlDisabled ? baselineAvailability.reason : undefined}
-          trigger={['hover', 'focus']}
-        >
-          <Segmented
-            size="small"
-            value={analysisMode}
-            onChange={onAnalysisModeChange}
-            options={options}
-            disabled={isControlDisabled}
-            aria-labelledby={MODE_CONTROL_LABEL_ID}
-            aria-describedby={isControlDisabled ? MODE_CONTROL_DESCRIPTION_ID : undefined}
-          />
-        </Tooltip>
-      </Flex>
-    </Card>
+    <Flex wrap align="center" gap={APP_GAP_SM}>
+      <Typography.Text id={MODE_CONTROL_LABEL_ID} className="sr-only">
+        {pageContent.classDetail.modeControlLabel}
+      </Typography.Text>
+      {/* Always present so the `aria-describedby` target is reachable
+          while disabled (HeatmapSelectionBar precedent). */}
+      <span id={MODE_CONTROL_DESCRIPTION_ID} className="sr-only">
+        {baselineAvailability.reason ?? ''}
+      </span>
+      <Tooltip
+        title={isControlDisabled ? baselineAvailability.reason : undefined}
+        trigger={['hover', 'focus']}
+      >
+        <Segmented
+          size="small"
+          value={analysisMode}
+          onChange={onAnalysisModeChange}
+          options={options}
+          disabled={isControlDisabled}
+          aria-labelledby={MODE_CONTROL_LABEL_ID}
+          aria-describedby={isControlDisabled ? MODE_CONTROL_DESCRIPTION_ID : undefined}
+        />
+      </Tooltip>
+    </Flex>
   );
 }

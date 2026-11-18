@@ -16,9 +16,12 @@ import { stickyTableWrapper } from './helpers/sticky-table-locators';
 
 const CLASSES_NAV_LABEL = 'Classes';
 
-// The Class page's attempt-baseline mode control (issue #305): always rendered
-// in the Class-page header once loading finishes, never on the Heatmaps
-// builder surface. The re-captured baselines must include it.
+// The Class page's attempt-baseline mode control (issue #305): rendered in the
+// top-right corner of the Student Averages card (overview) or the embedded
+// heatmap's table card, falling back to the page header only while blocked. It
+// never appears on the Heatmaps builder surface. Its visible label is sr-only,
+// so the accessible name below still resolves. The re-captured baselines must
+// include it in its new position.
 const MODE_CONTROL_LABEL = 'Averages basis';
 const ABSOLUTE_OPTION_LABEL = 'All tasks';
 
@@ -62,8 +65,9 @@ test.describe('Navigation screenshot tests', () => {
     // Wait for the Class Page ready state
     await expect(page.getByText('Recent Assignments')).toBeVisible();
 
-    // The attempt-baseline mode control joins the header slot in both captured
-    // baselines; assert it before capturing so the re-capture is deliberate.
+    // The attempt-baseline mode control now sits in the Student Averages
+    // card's top-right corner; assert it before capturing so the re-capture is
+    // deliberate.
     const modeControl = page.getByRole('radiogroup', { name: MODE_CONTROL_LABEL });
     await expect(modeControl).toBeVisible();
     await expect(modeControl.getByRole('radio', { name: ABSOLUTE_OPTION_LABEL })).toBeChecked();
@@ -79,7 +83,7 @@ test.describe('Navigation screenshot tests', () => {
     await installRuntimeMock(page, scenario);
     await openTaskHeatmap(page);
 
-    // The mode control stays rendered above the embedded heatmap view.
+    // The mode control now sits in the embedded heatmap's table-card header.
     await expect(page.getByRole('radiogroup', { name: MODE_CONTROL_LABEL })).toBeVisible();
 
     // Take screenshot of the Task Heatmap with PageHeader

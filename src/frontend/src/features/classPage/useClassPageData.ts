@@ -50,7 +50,8 @@ import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDet
 import type { AnalysisMode, AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
-import type { BaselineAvailability, ClassPageError } from './useClassPageData.helpers';
+import type { BaselineAvailability } from '../shared/baselineAvailability';
+import type { ClassPageError } from './useClassPageData.helpers';
 import {
   computeQueryBlockingError,
   computeDatasetBlockingError,

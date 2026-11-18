@@ -118,9 +118,11 @@ metric value. `includedInAverage` is true exactly when `effectiveWeight > 0`.
 ## Attempt-baseline mode (post-accumulation)
 
 The attempt-baseline analysis mode (issue #305) changes which tasks the
-Class-page aggregates rest on. The Class page owns the mode state; the Heatmaps
-page and the assignment-summary analyser never enter baseline mode. Its
-pipeline placement is fixed:
+Class-page aggregates rest on. The Class page owns the mode state and hosts the
+shared `AveragesBasisControl` in both averaging table cards (Student Averages
+overview and embedded heatmap); the standalone Heatmaps surface renders no mode
+control and never enters baseline mode, as does the assignment-summary analyser.
+Its pipeline placement is fixed:
 
 1. **Accumulation is mode-independent.** Both modes accumulate every observed
    (student, task) pair identically, and `perStudentTaskMetrics` is projected

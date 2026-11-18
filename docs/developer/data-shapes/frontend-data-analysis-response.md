@@ -1142,10 +1142,10 @@ The top-decile attempt-baseline analysis mode adds a required filter field, a re
 optional baseline block, plus the analyser's baseline-mode behaviour (post-accumulation baseline
 selection, baseline-restricted aggregation, the baseline-mode per-student `excluded` conversion
 and the `attemptBaseline` echo). The heatmap column projection, the summary reconciliation, the
-Class-page mode control and its availability resolver, the mode threading to Class-page display
-labels, the embedded heatmap's baseline marking and caption, and the E2E browser coverage are
-described below. The explicit-`E` analyser input and the preview `sourceUrl` field are covered in
-the sections above.
+shared `AveragesBasisControl` in the Class-page table cards and its availability resolver, the
+mode threading to Class-page display labels, the embedded heatmap's baseline marking and caption,
+and the E2E browser coverage are described below. The explicit-`E` analyser input and the preview
+`sourceUrl` field are covered in the sections above.
 
 1. **`AnalysisFilterSchema.analysisMode`** — required enum field
    `z.enum(['absolute', 'topDecileBaseline'])` on the existing strict filter
@@ -1311,8 +1311,9 @@ the sections above.
    `ClassPageReady` → `StudentAveragesTableCard` →
    `buildStudentAveragesTableColumns(filters, analysisMode)` → the resolver for
    the students-table `aria-label` — so excluded pills and table cells announce
-   both causes under baseline mode; the embedded heatmap view receives no mode
-   prop.
+   both causes under baseline mode; the embedded heatmap view receives the mode
+   props only to host `AveragesBasisControl` in its card head, not for
+   excluded-label wording.
 
 8. **Heatmap projection addition:** `HeatmapTaskColumn` gains `includedInAttemptBaseline: boolean`, set in
    `heatmapAdapter.ts` from a required second `buildTaskColumns` parameter

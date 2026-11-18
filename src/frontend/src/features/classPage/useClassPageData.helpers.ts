@@ -16,32 +16,12 @@ import {
   isAttemptBaselineEligible,
 } from '@/services/dataAnalysis/analysers/attemptBaselineSelection';
 import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { BaselineAvailability } from '../shared/baselineAvailability';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
 
 // ---------------------------------------------------------------------------
 // Exported types
 // ---------------------------------------------------------------------------
-
-/**
- * Availability of the attempt-baseline analysis mode on the Class page
- * (shared-helpers register §9.27 in
- * docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md).
- *
- * - `ready`: both eligibility conditions hold — the control is enabled.
- * - `awaiting-data`: no usable attempt evidence yet (no successful analysis
- *   result in this mount, a result without `perStudentTaskMetrics`, or no
- *   class roster). Never produced by an eligibility failure.
- * - `ineligible`: the class cannot use baseline mode; `reason` names the
- *   unmet condition.
- *
- * `reason` is the display copy feeding the mode control's tooltip and its
- * sr-only description node; it is populated for both disabled statuses and
- * `null` only for `ready`.
- */
-export type BaselineAvailability = Readonly<{
-  status: 'ready' | 'awaiting-data' | 'ineligible';
-  reason: string | null;
-}>;
 
 /**
  * Structured error type for the class page.
@@ -169,7 +149,9 @@ export function isClassPageLoading(
 }
 
 // ---------------------------------------------------------------------------
-// Attempt-baseline availability (shared-helpers register §9.27)
+// Attempt-baseline availability (shared-helpers register §9.27). The
+// `BaselineAvailability` type is owned by `features/shared/baselineAvailability`;
+// only the resolver remains here.
 // ---------------------------------------------------------------------------
 
 /** Neutral copy for the awaiting-data availability state. */
