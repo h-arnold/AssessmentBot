@@ -45,6 +45,7 @@ Before providing any feedback, you must:
 3. **Identify the module(s) in scope** and apply only the checks relevant to those modules. Do not apply backend rules to frontend code or vice versa.
 4. **Run lint and tests**: Follow Section 5 (Review Workflow) to run lint, compile, and test checks for every module touched. Do not proceed with manual review until automated checks complete. Run each check once per session and record the outcome in `.opencode/scratchpad/` — see the prime directives.
 5. **Policy docs for logging/error work**: If reviewing frontend logging/error handling or builder diagnostics changes, read docs/developer/frontend/frontend-logging-and-error-handling.md and docs/developer/builder/builder-script.md and treat them as canonical policy references.
+6. **Documentation reviews**: If the change touches docs, read docs/developer/documentation-style-guide.md and apply it to prose, structure, ownership and delivery narrative.
 
 ## 1. Codebase Overview
 
@@ -111,6 +112,7 @@ Consult these resources before and during review. Local docs contain project-spe
 
 - [AGENTS.md](../../AGENTS.md)
 - [CONTRIBUTING.md](../../CONTRIBUTING.md)
+- [Documentation Style Guide](../../docs/developer/documentation-style-guide.md) — writing rules for canonical docs, ADRs and review exclusions
 - [Synthetic Test Data](../../docs/developer/testing/synthetic-test-data.md) — canonical architecture, canonical-fixture policy and the test-only legacy scenario derivation for the deterministic synthetic analysis corpus
 - [Known Flaky Tests](../../docs/developer/known-flaky-tests.md) — catalogue of known flaky tests and root causes
 

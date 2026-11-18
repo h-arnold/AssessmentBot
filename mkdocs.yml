@@ -43,6 +43,8 @@ markdown_extensions:
 
 exclude_docs: |
   developer/frontend/ant-design-docs-cache/*
+  # Queued action plans and specs are working artefacts, not published docs.
+  plans/
 
 nav:
   - Home: README.md
@@ -54,6 +56,7 @@ nav:
       - Overview: howTos/README.md
       - Rehydration: howTos/rehydration.md
   - Developer:
+      - Documentation Style Guide: developer/documentation-style-guide.md
       - Backend:
           - API Layer: developer/backend/api-layer.md
           - Assessment Flow: developer/backend/AssessmentFlow.md
@@ -122,6 +125,7 @@ nav:
       - Data Analysis and Scoring: pedagogy/data-analysis-scoring.md
   - Release Notes:
       - Releases: releaseNotes/RELEASES.md
+      - v1.2.0: releaseNotes/v1.2.0_release_notes.md
       - v1.1.0: releaseNotes/v1.1.0_release_notes.md
       - v1.0.0: releaseNotes/v1.0.0_release_notes.md
       - v0.7.9: releaseNotes/v0.7.9_release_notes.md

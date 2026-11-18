@@ -1,12 +1,12 @@
-# Google Slides AI Assessor Documentation
+# AssessmentBot Documentation
 
-This documentation provides comprehensive guidance on using, setting up, and understanding the pedagogical foundations of the Google Slides AI Assessor.
+This documentation provides comprehensive guidance on using, setting up, and understanding the pedagogical foundations of AssessmentBot.
 
 ---
 
 ## 📘 Using the Assessor
 
-[**Guide**](./howTos/README.md) – Step-by-step instructions for the day-to-day usage of the Google Slides AI Assessor.
+[**Guide**](./howTos/README.md) – Step-by-step instructions for the day-to-day usage of AssessmentBot.
 
 [**Assignment Persistence and Rehydration**](./howTos/rehydration.md) – How to persist and rehydrate assignments with the split persistence model.
 
@@ -14,13 +14,13 @@ This documentation provides comprehensive guidance on using, setting up, and und
 
 ## ⚙️ Setup
 
-[**Setup Instructions**](./setup/README.md) – Detailed guidance on setting up the Google Slides AI Assessor for seamless workflow integration.
+[**Setup Instructions**](./setup/README.md) – Detailed guidance on setting up AssessmentBot for seamless workflow integration.
 
 ---
 
 ## 🎓 Pedagogy
 
-[**Pedagogical Overview**](./pedagogy/README.md) – An explanation of the teaching principles supporting the Google Slides AI Assessor and how it can enhance classroom practices.
+[**Pedagogical Overview**](./pedagogy/README.md) – An explanation of the teaching principles supporting AssessmentBot and how it can enhance classroom practices.
 
 ---
 
@@ -83,6 +83,10 @@ Technical documentation for developers contributing to the AssessmentBot codebas
 - [**Builder Script**](./developer/builder/builder-script.md) – How to use the build pipeline and how each stage works internally
 - [**Regression Checker How-To**](./developer/builder/regression-checker-how-to.md) – Configure, run, compare, and troubleshoot deterministic lint/test/compile regression checks
 - [**TypeScript and Lint Config Hierarchy**](./developer/builder/TypeScriptAndLintConfigHierarchy.md) – TypeScript and ESLint configuration hierarchy
+
+### Documentation standards
+
+- [**Documentation Style Guide**](./developer/documentation-style-guide.md) – Writing rules for canonical docs, ADRs and review exclusions
 
 ### Templates
 
