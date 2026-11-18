@@ -30,7 +30,7 @@
  * @see docs/plans/HEATMAP_SELECTION_LAYOUT.md
  */
 
-import type { JSX, MouseEvent, ReactNode } from 'react';
+import type { JSX, MouseEvent, ReactElement, ReactNode } from 'react';
 import { useMemo, useRef, useState } from 'react';
 import { Button, Checkbox, Divider, Flex, Select, Space } from 'antd';
 import { APP_GAP_SM } from '@/theme/spacing';
@@ -100,6 +100,97 @@ function filterShownOptions(
 function handleHeaderMouseDown(event: MouseEvent<HTMLDivElement>): void {
   event.preventDefault();
   event.stopPropagation();
+}
+
+/** A Select option carrying its current selection membership for the option renderer. */
+type HeaderOption = SelectAllDropdownHeaderOption & Readonly<{ selected: boolean }>;
+
+/**
+ * Render one dropdown option as a checkbox row.
+ *
+ * @remarks
+ * Defined at module scope so Ant Design receives a stable renderer rather than a
+ * component recreated on every parent render. Selection membership travels with the
+ * option data, so the renderer needs no closure over component state.
+ *
+ * @param {object} option - The flattened option supplied by Ant Design.
+ * @param {ReactNode} option.label - The label shown beside the checkbox.
+ * @param {HeaderOption} option.data - The source option including its selection flag.
+ * @returns {JSX.Element} The checkbox and label row.
+ */
+function renderHeaderOption({
+  label,
+  data,
+}: Readonly<{
+  label?: ReactNode;
+  data: HeaderOption;
+}>): JSX.Element {
+  return (
+    <Space>
+      <Checkbox checked={data.selected} />
+      <span>{label}</span>
+    </Space>
+  );
+}
+
+/** State and actions needed by the select-all header above the dropdown options. */
+type HeaderPopupConfiguration = Readonly<{
+  hasHeader: boolean;
+  hasAllShownSelected: boolean;
+  hasSomeShownSelected: boolean;
+  controlName: string;
+  onSelectAll: () => void;
+  onSelectNone: () => void;
+}>;
+
+/**
+ * Build a dropdown popup renderer bound to the current header state and actions.
+ *
+ * @remarks
+ * The factory and the renderer it returns both live at module scope, so no component
+ * is declared inside {@link SelectAllDropdownHeader}. Every dynamic value arrives
+ * through `configuration`, keeping the renderer free of React state closures.
+ *
+ * @param {HeaderPopupConfiguration} configuration - Header state and actions.
+ * @returns {(originNode: ReactElement) => JSX.Element} Renderer for the dropdown popup.
+ */
+function makeHeaderPopupRenderer(
+  configuration: HeaderPopupConfiguration
+): (originNode: ReactElement) => JSX.Element {
+  return function renderHeaderPopup(originNode: ReactElement): JSX.Element {
+    return (
+      <>
+        {configuration.hasHeader ? (
+          <div role="presentation" onMouseDown={handleHeaderMouseDown}>
+            <Flex
+              justify="space-between"
+              align="center"
+              gap={APP_GAP_SM}
+              style={{ padding: APP_GAP_SM }}
+            >
+              <Checkbox
+                checked={configuration.hasAllShownSelected}
+                indeterminate={configuration.hasSomeShownSelected}
+                onChange={configuration.onSelectAll}
+                aria-label={`Select all ${configuration.controlName}`}
+              >
+                Select all
+              </Checkbox>
+              <Button
+                type="link"
+                onClick={configuration.onSelectNone}
+                aria-label={`Select none ${configuration.controlName}`}
+              >
+                Select none
+              </Button>
+            </Flex>
+            <Divider style={{ margin: 0 }} />
+          </div>
+        ) : null}
+        {originNode}
+      </>
+    );
+  };
 }
 
 /**
@@ -207,53 +298,25 @@ export function SelectAllDropdownHeader({
       popupMatchSelectWidth={false}
       placeholder={placeholder}
       value={[...selectedValues]}
-      options={[...options]}
+      options={options.map((option) => {
+        return {
+          ...option,
+          selected: selectedValueSet.has(option.value),
+        };
+      })}
       onChange={onSelectionChange}
       onSelect={handleSelect}
       onClear={handleClear}
       notFoundContent={notFoundContent}
-      optionRender={(option): JSX.Element => {
-        return (
-          <Space>
-            <Checkbox checked={selectedValueSet.has(String(option.value))} />
-            <span>{option.label}</span>
-          </Space>
-        );
-      }}
-      popupRender={(originNode) => {
-        return (
-          <>
-            {hasHeader ? (
-              <div onMouseDown={handleHeaderMouseDown}>
-                <Flex
-                  justify="space-between"
-                  align="center"
-                  gap={APP_GAP_SM}
-                  style={{ padding: APP_GAP_SM }}
-                >
-                  <Checkbox
-                    checked={hasAllShownSelected}
-                    indeterminate={hasSomeShownSelected}
-                    onChange={handleSelectAll}
-                    aria-label={`Select all ${controlName}`}
-                  >
-                    Select all
-                  </Checkbox>
-                  <Button
-                    type="link"
-                    onClick={handleSelectNone}
-                    aria-label={`Select none ${controlName}`}
-                  >
-                    Select none
-                  </Button>
-                </Flex>
-                <Divider style={{ margin: 0 }} />
-              </div>
-            ) : null}
-            {originNode}
-          </>
-        );
-      }}
+      optionRender={renderHeaderOption}
+      popupRender={makeHeaderPopupRenderer({
+        hasHeader,
+        hasAllShownSelected,
+        hasSomeShownSelected,
+        controlName,
+        onSelectAll: handleSelectAll,
+        onSelectNone: handleSelectNone,
+      })}
       style={{ width: '100%' }}
     />
   );
