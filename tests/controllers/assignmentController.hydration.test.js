@@ -242,9 +242,9 @@ describe('AssignmentController - completed-run failed-item counting', () => {
     const controller = new AssignmentController();
     const assignment = restoreCanonicalAssignment();
 
-    // Canonical medium assignment-0-4 carries four all-three-E items and twelve E
+    // Canonical medium assignment-0-4 carries twelve all-three-E items and thirty-six E
     // criteria in total, so this pins once-per-item counting rather than per-criterion.
-    expect(controller._countFailedSubmissionItems(assignment)).toBe(4);
+    expect(controller._countFailedSubmissionItems(assignment)).toBe(12);
   });
 
   it('fails loudly when the submissions structure is missing', () => {

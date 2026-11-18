@@ -131,6 +131,8 @@ npm test
 
 When a test needs realistic analysis-domain data, use the deterministic synthetic corpus. All new or changed tests must use a canonical synthetic fixture when the corpus covers the scenario. For the directive, its exception path and the generator-extension process, see [Synthetic Test Data](../testing/synthetic-test-data.md#policy-canonical-fixtures-for-tests).
 
+New and newly touched tests must use corpus fixture data rather than hard-coded literals and derive expectations from the corpus; see [Writing tests against the regenerated corpus](../testing/synthetic-test-data.md#writing-tests-against-the-regenerated-corpus) and [canonical-fixture policy](../testing/synthetic-test-data.md#policy-canonical-fixtures-for-tests).
+
 Load a committed view with `loadSyntheticAnalysisProfile(profileName, viewName)` from `scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js`. Views are deeply frozen; clone before adapting or mutating. For corpus topology, profile and view selection, mutation isolation and commands, see [Synthetic Test Data](../testing/synthetic-test-data.md).
 
 ### Backend model-input adapter
@@ -183,7 +185,7 @@ Most suites are self-describing. The following splits are not obvious from filen
 - **Reference-data controller** cases are split by responsibility into `referenceDataController.test.js` (cohorts) and the `yearGroups`, `assignmentTopics` and `transportResponses` companions, with setup helpers in `referenceDataTestSupport.js`.
 - **Backend configuration transport** is covered by `tests/api/backendConfigApi.test.js`. Keep broader dispatcher and allowlist coverage in `tests/api/apiHandler/`.
 - **Assignment persistence completion gate** is split across `tests/controllers/ABClassController/ABClassAssignmentOps.unit.test.js` and `ABClassAssignmentOps.completionGate.test.js`. The unit file owns the criterion-map, coverage and shared-artefact rejection rows plus the prepared write-projection and write-order cases. The completion-gate companion owns the marker-1 graph/source contradictions the gate must reject itself: task/submission identity mismatches, unknown-task items, an emptied task list, missing structure, null-content hash contradictions, artefact identity/role faults, null-parent placeholder metadata/feedback, and the pre-write class-save rejection. Its rows restore the `small` canonical assignment, mutate one local invariant, and assert no store operation, no marker stamp and no serializer call before the hard rejection, so a rejection cannot be satisfied by a later partial-construction or wiring fault.
-- **Completed-run failed-task counting** is covered by the `completed-run failed-item counting` block in `tests/controllers/assignmentController.hydration.test.js`. It restores the `medium` canonical assignment and pins once-per-item counting (four failed items across twelve error criteria), plus loud failures for missing submissions, items and assessments structures. The end-to-end completion feedback path, including the separate `N tasks failed.` progress detail, is covered by `tests/controllers/assignmentRunCompletion.test.js`.
+- **Completed-run failed-task counting** is covered by the `completed-run failed-item counting` block in `tests/controllers/assignmentController.hydration.test.js`. It restores the `medium` canonical assignment and pins once-per-item counting (twelve all-three-E items across thirty-six E criteria), plus loud failures for missing submissions, items and assessments structures. The end-to-end completion feedback path, including the separate `N tasks failed.` progress detail, is covered by `tests/controllers/assignmentRunCompletion.test.js`.
 
 ## Test Conventions
 
@@ -219,6 +221,8 @@ Most suites are self-describing. The following splits are not obvious from filen
 Remaining helpers are domain-specific and belong with their own suites: `assignmentDefinition*TestHelpers.js`, `backendConfigTestHelpers.js`, `controllerTestHelpers.js`, `driveManagerFacadeMocks.js`, `feedbackTestHelpers.js`, `imageManagerTestHelpers.js`, `slidesParserTestHarness.js` and `validationTestHelpers.js`.
 
 `imageManagerTestHelpers.js` owns the shared setup for the eight `imageManager*.test.js` suites: the dummy and real `BaseRequestManager` global installers, `loadImageManager()`, `buildManager(overrides)`, the `imageArtifact`, `httpOutcome` and `networkOutcome` factories, the global-mock `beforeEach`/`afterEach` registrars, and the shared LLM-bypass expectation.
+
+`llmRunStopHarness.js` keeps single-task candidate selection as its default. The opt-in `selectionMode: 'multi-task'` (or `createMultiTaskRunStopAssignment`) requires numeric-healthy TEXT candidates on at least two tasks of one assignment for same-batch-survivor scenarios; both modes use the unchanged type-matching realism gate and fail loudly when no qualifying assignment exists. See the helper's JSDoc for the full API.
 
 See the JSDoc in each helper for its API. Do not duplicate that reference here.
 

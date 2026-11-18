@@ -48,7 +48,7 @@ describe('legacy read preparation healthy preservation', () => {
 
     for (const [taskId, storedItem] of Object.entries(source.items)) {
       const preparedItem = preparedSubmission.items[taskId];
-      expect(preparedItem.artifact.content).toBe(storedItem.artifact.content);
+      expect(preparedItem.artifact.content).toEqual(storedItem.artifact.content);
       expect(preparedItem.artifact.contentHash).toBe(storedItem.artifact.contentHash);
       expect(preparedItem.artifact.documentId).toBe(storedItem.artifact.documentId);
       expect(preparedItem.artifact.pageId).toBe(storedItem.artifact.pageId);

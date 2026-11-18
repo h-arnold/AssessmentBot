@@ -1,5 +1,14 @@
 # Feature Delivery Plan (TDD-First) — LLM request cache warming (issue #309)
 
+## Delivery State (orchestrator bookkeeping)
+
+- **Branch:** `feat/issue-309-cache-seeding`; starting HEAD `9157a556` (plan's `85b1199d` is stale text; `85b1199d` is an ancestor and current `origin/main` is `9157a556`).
+- **Deferred-findings log:** `.opencode/scratchpad/feat-issue-309-cache-seeding-deferred-findings.md` (plan's `detached-head-85b1199d-…` path adapted to the actual branch; link updated in the deferred section below).
+- **Planning-time edits:** the spec describes two "uncommitted" edits, but they are already committed in `47729c48` and present in the tree (verified: `synthetic-test-data.md` artefact/allocation text, `planner.md` bullets, `api-layer.md` helper entries). § 1 must verify their presence and must not re-apply or duplicate them.
+- **Baseline gate (passed with documented debt):** session ID `feat-issue-309-cache-seeding`; report `.ts-regression-checker/reports/session-feat-issue-309-cache-seeding/baseline/baseline.txt`; overall FAILING with 7/8 checks passing; **0 regressions, 0 new failures**. The sole failing check is `backend-lint-check` with 4 pre-existing `max-lines` warnings (each an unrelated 501-line test file last touched by `4a0a3418`): `tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`. These are **accepted technical debt** for this plan: out of scope, untouched by the plan, and must not be "fixed" opportunistically. All other checks (frontend/builder lint, backend/frontend/builder coverage, E2E, typecheck) pass. Every section regression gate must show these same 4 warnings and no new failures.
+- **Gate command (user direction, 2026-11-18):** the regression checker is the authoritative gate and runs **only once at the end of each section**; `npm run run-all-checks` is not used as a gate because it is slow and stops on the accepted baseline lint debt. Between phases use focused/section-scoped tests and lints only. (The §1 acceptance-criterion wording "run-all-checks passes" is read through this direction: the equivalent section evidence is targeted green tests/lints plus a clean section regression-gate comparison.)
+- **§2+§3 combined delivery (user decision, 2026-11-18):** the plan requires §§2 and 3 to land as one green unit (§2 leaves deliberately expected-red suites that §3 migrates). Keep separate RED/GREEN loops and separate plan-section records, but run **one authoritative regression gate and one combined commit after §3**. §2 records its expected-red inventory in Implementation notes and has no standalone clean gate. Do not push an interim commit that claims feature completion before §3 lands.
+
 ## Read-First Context
 
 Before writing or executing this plan:
@@ -88,86 +97,41 @@ Additional per-phase and per-section reads are listed in each section.
 
 ## Section 1 — Synthetic corpus regeneration and corpus-wide regression gate
 
-### Objective
+### Outcome (compacted)
 
-- Regenerate the canonical corpus so a single assignment carries ≥ 2 TEXT-typed tasks with dispatch-eligible numeric candidates, rescale the large-full profile to a realistic school shape, re-pinned committed fixtures, and prove the whole repository is green before any LLM migration begins.
+- Regenerated the canonical synthetic corpus, re-pinned committed fixtures and re-derived every consuming expectation, then proved the repository green before LLM migration. All §1 checks pass and the final regression gate re-run is clean: 0 regressions, 0 new failures, 7/8 checks (the only failing check is the 4 accepted baseline `max-lines` warnings). The first gate run's 10 stale frontend corpus pins were reworked into corpus-regeneration-independent tests rather than re-pinned; gate reports and remediation detail are in **Implementation notes / deviations / follow-up**.
 
-### Constraints
+### Retained for later sections
 
-- Per-profile tasks per definition: `small` 4, `medium` 6, `large-representative` 10, `large-full` 15; keep the `ARTEFACT_BODY_TYPES` cycle unchanged.
-- `large-full`: 8 year groups (YG 7–14), 48 classes (6 per year group), 50 assignments per class; stays uncommitted/on-demand.
-- Submission bands at 50 indices: `[0,3)` / `[3,8)` / `[8,43)` / `[43,50)` → 3/5/35/7 assignments per class (shares 6/10/70/14); `LARGE_FULL_COMPLETION_BANDS`, `sharePercent` and `assertCompletionBands` derivation must move together — the validator currently equates counts with `sharePercent` directly, which only works at 100 assignments.
-- Committed profiles regenerated through `npm run fixtures:synthetic` only; never hand-edit JSON; `syntheticCommittedFixtureRegeneration.test.ts` re-pins committed bytes.
-- Re-budget the stress project `testTimeout` from 30,000 ms to ≥ 120,000 ms and update the stale `vitest.config.js` "3,000-student / 10,000-assignment" comment; record any heap flag or machine-RAM requirement in `synthetic-test-data.md`.
-- LOC / file separation: `profileDefinitions.js` 102, `generateAssignmentDefinitions.js` 238, `resolveSubmissionCount.js` 67, `validateProfileInvariants.js` 146, `generateSyntheticAnalysisFixtures.js` 258 — all far below 500 and projected to gain only a handful of lines each; no file separation required.
-- This section is the canonical-fixture capability work for the whole feature: no competing realistic builder, no new profile or view, no gate relaxation.
-- The uncommitted `synthetic-test-data.md` edits disclosed in the spec must land in this section's doc update (the artefact-type formulas, per-student variation, per-count TEXT guarantee, regeneration-as-intended-response paragraph and rescale-preferred extension path).
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `@docs/plans/issue-309/SPEC.md`, `@docs/developer/backend/backend-testing.md`, `@docs/developer/testing/synthetic-test-data.md`
-- `@tests/synthetic-analysis/syntheticCommittedFixtureRegeneration.test.ts`, `@tests/helpers/llmRunStopHarness.js`
-
-Implementation mandatory docs:
-
-- `@docs/plans/issue-309/SPEC.md`, `@docs/developer/testing/synthetic-test-data.md`
-- `@scripts/synthetic-test-data/profileDefinitions.js`, `@scripts/synthetic-test-data/generateAssignmentDefinitions.js`
-- `@scripts/synthetic-test-data/resolveSubmissionCount.js`, `@scripts/synthetic-test-data/validateProfileInvariants.js`
-- `@scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js`, `@vitest.config.js`
-
-Code Reviewer mandatory docs:
-
-- `@docs/plans/issue-309/SPEC.md`, `@docs/developer/testing/synthetic-test-data.md`, `@docs/developer/backend/backend-testing.md`
-
-Docs mandatory docs (if used):
-
-- `@docs/developer/testing/synthetic-test-data.md`, `@docs/plans/issue-309/SPEC.md`
-
-### Shared helper plan
-
-- No production shared helpers; the run-stop harness gains its opt-in multi-task selector here (corpus-verification capability), because § 1's capability probe depends on it. Helper decision: `extend` on `tests/helpers/llmRunStopHarness.js` (test helper; no canonical production-helper entry). Generator internals stay local.
-
-### Acceptance criteria
-
-- Every committed profile regenerates deterministically at its new task count; `syntheticCommittedFixtureRegeneration.test.ts` passes against the new committed bytes.
-- `large-full` generates on demand with the rescaled entity counts and band shares; the stress project passes within the re-budgeted timeout and recorded RAM/heap settings.
-- Verification at regeneration time confirms numeric-healthy TEXT candidates spanning ≥ 2 tasks in the regenerated `medium` `assignment-0-1` and `assignment-0-3` (or records a loud harness failure and the plan adjusts the host assignments).
-- Canonical-pinned expectations across all consuming suites are re-derived (loader importers, direct `@synthetic` raw-import fixtures and `readSyntheticFixture` consumers), including the confirmed mixed-E row (`assignment-0-4`, `expect(countItems(stored, true)).toBe(4)` / `expect(countItems(stored, false)).toBe(6)`) updated for the new 30-item shape. Any E2E fixture drift found by the § 1 E2E subset is triaged as signal, not papered over.
-- `npm run run-all-checks` passes after this section and before § 2 begins; the corpus-consuming E2E subset is run once (if the environment cannot run it, record the residual risk explicitly in `Implementation notes`).
-
-### Required test cases (Red first)
-
-Synthetic generator/validation tests:
-
-1. A failing test asserting the new per-profile tasks-per-definition constants and the TEXT counts they imply (4 → only `definitionIndex % 3 === 0` definitions have two; 6 → exactly two per full definition; 10 → three to four; 15 → exactly five).
-2. A failing stress assertion for 48 classes / 8 year groups / 50 assignments and the 3/5/35/7 band counts derived from the new shares.
-3. A failing committed-fixture comparison until the CLI regeneration lands; then re-run `syntheticCommittedFixtureRegeneration.test.ts` against the new bytes.
-4. A failing harness capability probe that collects ≥ 2 TEXT-typed numeric-healthy candidates across tasks of one regenerated `medium` assignment — single-task mode remains the harness default; the opt-in multi-task selector is added to `llmRunStopHarness.js` in this section, so the probe is executable here and § 3 only consumes it.
-
-Backend regressions:
-
-5. Re-derive the mixed-E row's pinned counts and add a boundary probe proving the failed/non-E split for `assignment-0-4` after regeneration.
-6. Add a corpus-wide sweep task: re-run the 63 files importing `loadBackendModelInputs` / `loadSyntheticAnalysisProfile` (50 outside the synthetic projects), the direct `@synthetic` raw-import fixtures (`previewFixtures.ts`, `abClassMetadataFixtures.ts`, `abClassMetadataSharedFixtures.ts`, `metadataRefreshFixtures.ts`, `abClassMutationFixtures.ts`, `legacyAssessmentParityOracle.ts`, `AssessTaskModal.recovery-helpers.ts`), and the 21 frontend unit specs raw-importing committed views (for example `dataAnalysis.mediumBaselineRoundTrip.spec.ts`, `heatmapsPreviewQueries.spec.ts`, `assignmentReadNormalisation.*.spec.ts`, and the taskHeatmap/assignmentWizard/classDetailService specs — these are netted by the § 1 `run-all-checks` gate but must be triaged as signal, not silently re-anchored). The E2E subset is the transitive closure of `readSyntheticFixture` consumers: the seven named callers, including `task-preview-source-link-fixtures.ts` (three task-preview-source-link specs) and `issue-320-layout.spec.ts`, plus the task-heatmap, assessment-error-preview, class-metadata, post-analysis-metadata and stale-recovery consumers. Run it with `npm run test:frontend:e2e -- <specs>` once after regeneration, or record the residual risk. Triage each failure as signal; no blanket expectation edits.
-
-### Section checks
-
-- `npm run fixtures:synthetic` then `npm run test:synthetic`; `npm run test:synthetic:stress` with the new timeout/heap configuration.
-- `npm run run-all-checks` green, recorded before § 2 starts; E2E subset run once or residual risk recorded (see acceptance criteria).
-- Mandatory-read evidence gate passed for all delegated handoffs in this section.
-- Docs sync outcome recorded (profile table, bands, year groups, large-full numbers, stress note, artefact-type description, vitest comment, stress budget).
-- Completed section compacted; future-relevant detail retained in **Retained for later sections** (regenerated fixture IDs and harness capability result).
-
-### Optional `@remarks` JSDoc follow-through
-
-- Add `@remarks` to the band validator only if the new share-to-count derivation is non-obvious from the code; otherwise `None`.
+- **Corpus shape (assumed by §§2–4):** tasks per definition `small` 4 / `medium` 6 / `large-representative` 10 / `large-full` 15, `ARTEFACT_BODY_TYPES` cycle unchanged (≥2 TEXT tasks only at 6/10/15). `large-full` on demand/uncommitted: 8 year groups (YG 7–14), 48 classes (6 per YG), 50 assignments/class, 30 students/class (~1.08M items). Bands over 50 indices `[0,3)/[3,8)/[8,43)/[43,50)` → 3/5/35/7 per class (shares 6/10/70/14); `LARGE_FULL_COMPLETION_BANDS` sharePercent, the `assertCompletionBands` count derivation and the band docs move as one.
+- **Commands and paths:** regenerate committed profiles only with `npm run fixtures:synthetic` (never hand-edit JSON); `syntheticCommittedFixtureRegeneration.test.ts` re-pins committed bytes. Validate with `npm run test:synthetic` and `npm run test:synthetic:stress`. Generators: `profileDefinitions.js`, `generateAssignmentDefinitions.js`, `resolveSubmissionCount.js`, `validateProfileInvariants.js`, `generateSyntheticAnalysisFixtures.js`, `fixtureWriter.js` (stream/chunk fallback). No file separation needed (all well under 500 lines); `vitest.config.js` stress `testTimeout` is 120,000 ms with the stale comment updated.
+- **Stress requirement:** `NODE_OPTIONS="--max-old-space-size=8192 --expose-gc"` (~8 GB heap plus GC; Node's default heap is too low), 120 s timeout, and the `fixtureWriter.js` streaming fallback for the ~1.2 GB `assignmentsByKey.json`; recorded in `synthetic-test-data.md` and the `test:synthetic:stress` script.
+- **Harness interface (§3 consumes):** `tests/helpers/llmRunStopHarness.js` exports `createRunStopAssignment(profile, numericCount, { selectionMode })` (single-task default) and `createMultiTaskRunStopAssignment(profile, numericCount)` (opt-in multi-task); the TEXT/numeric realism gate is intact. Decision: `extend` (test helper, no production canonical-helper entry), generator internals local. Multi-task hosts are `assignment-0-1` / `assignment-0-3`; the capability probe passes.
+- **Re-derived pins for later sections:** `assignment-0-4` mixed-E row = 30 items / 12 E / 18 non-E (§3 reuses the 12/18 pin); §3 consumes the harness selector and the probe result.
+- **Corpus-fixture rule (full text in Implementation notes and `docs/developer/testing/synthetic-test-data.md`):** new and newly touched tests draw fixtures from the shared corpus (`@synthetic/*` raw imports, canonical loaders/harnesses), never inline literals; expectations derive from the data shape, never pinned to corpus-derived literals. Two exceptions: realism gap (local realistic fixture plus a generator/corpus plan) and algorithmic boundary (minimal local input plus inline justification).
+- **Frontend spec rewrite pattern:** derive expected keys from the composed input (Pattern A) or use an independent oracle over the raw committed corpus view (Pattern B, `deriveCorpusBaseline()` with the `isAttemptItem` predicate); never pinned task-key lists or counts; fixture preconditions use a structural guard, not exact regenerated keys.
+- **Data shapes / scope:** none added or changed — no schema, persistence, API or transport change, no new profile or view, no realism-gate relaxation.
+- **Outstanding @remarks:** §1 band-validator share-to-count derivation note if non-obvious from code (otherwise `None`); §§2–5 @remarks items remain in their own sections.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** none yet.
-- **Deviations from plan:** none yet.
-- **Follow-up implications for later sections:** § 2 assumes the regenerated corpus and the harness capability probe result; if the probe fails loudly, resolve the fixture selection with the harness owner before starting § 3.
+- **Implementation notes:**
+  - RED phase complete and reviewed clean after three rounds (`review-s1-red-issue-309.md`, `-r2.md`, `-r3.md`): 5 required cases encoded; 3 in-scope Nitpicks fixed (harness default parameter, `editableDefinitions.json` byte-for-byte pin, import route).
+  - GREEN milestone 1 delivered: profile/generator/band/validator changes, stress timeout 30,000→120,000 ms and stale comment, harness opt-in multi-task selector, and CLI regeneration of 13 committed JSON paths. `npm run fixtures:synthetic`, `npm run test:synthetic` (56 files / 778 tests), the harness capability + mixed-E backend tests (2 files / 13 tests), synthetic/builder lint all PASS; backend lint shows only the 4 accepted baseline warnings.
+  - **Stress blocker (in-scope surface expansion):** the mandated rescale (48×50×30×15 = 1.08M items) makes `assignmentsByKey.json` ~1.2 GB; `fixtureWriter.js::serialiseView` builds one `JSON.stringify` string and exceeds V8's max string length (`RangeError: Invalid string length`). 2 of 17 stress tests fail; without heap flags a worker also SIGABRTs. `fixtureWriter.js` was NOT in the plan's named file list, but this is a defect introduced by this section's own diff and blocks the acceptance criterion "stress project passes" — scope test criterion 1 and 2 both apply. The §1 GREEN authorised surface is expanded to include `scripts/synthetic-test-data/fixtureWriter.js` (stream/chunk serialisation, preserve committed bytes and staged-write safety) and `package.json` (record the stress heap requirement in the `test:synthetic:stress` script). Excluding the write-safety pair or revisiting the rescale was rejected as gate relaxation / a user-approved product change.
+  - **Heap/RAM observations for docs:** Node v24.22.3 default heap 2,240 MB is too low; `NODE_OPTIONS="--max-old-space-size=8192 --expose-gc"` makes the generation-heavy stress files pass (`syntheticFullLargeProfile.test.ts` 12/12 in ~114 s, `syntheticClassMetadataFullLarge.test.ts` 3/3 in ~54 s), full parallel stress 15/17 in ~162 s. Machine 15 GiB total / ~10 GiB available. Docs agent must record the 8 GB / `--expose-gc` requirement in `synthetic-test-data.md`.
+- **Deviations from plan:**
+  - `tests/synthetic-analysis/syntheticGraphValidation.test.ts`: `UNIT_BANDS` `sharePercent` 1→25 for a 4-assignment class, encoding the mandated share-to-count derivation (1 of 4 = 25%). Test not in the original RED inventory but required by the section's validator contract change.
+  - `tests/helpers/llmRunStopHarness.js`: beyond the stub replacement, added a shared distinct-student collector (the regenerated corpus gives each student 2 TEXT items, so first-N traversal tripped the existing duplicate-student guard in both modes) and exposed `getType()` as a non-enumerable `type` field on restored fixture artefacts for the RED probe's `.type` assertions. Realism gates, default single-task mode and serialisation unchanged. Needs Code Reviewer confirmation.
+- **Follow-up implications for later sections:** § 2 assumes the regenerated corpus and the harness capability probe result; the probe now passes and the multi-task hosts are `assignment-0-1`/`assignment-0-3`. § 3 consumes the harness selector and the re-derived `assignment-0-4` 12/18 pin.
+  - **Docs sync outcome:** `docs/developer/testing/synthetic-test-data.md` reconciled with the regenerated corpus (profile table/bands/year groups/large-full numbers, stress timeout and 8 GB `--expose-gc` requirement, streaming-fallback note); planning-time edits verified present and not duplicated. `docs/developer/backend/backend-testing.md` gained the multi-task harness API note and the re-derived 12-E/36-criteria count. No new pages; no data-shape doc changed.
+  - **Both recorded deviations accepted** by the GREEN review (`review-s1-green-issue-309.md`); the "Needs Code Reviewer confirmation" wording above is satisfied.
+  - **Plan compaction:** § 1 was compacted from 91 to 47 lines before the first gate; the body was restored verbatim for the § 2.6 gate-failure rework and re-compacted after the passing gate to 40 lines from 99 (fresh pre-compaction backup retained at `feat-issue-309-cache-seeding-section-1-pre-compaction.md`). Retained detail and the authoritative Implementation notes were verified intact.
+  - **Section regression gate — FAILED (first run):** report `.ts-regression-checker/reports/session-feat-issue-309-cache-seeding/runs/2026-11-18T18-41-56.663Z/comparison.txt`; overall FAILING, 6/8 checks, 0 fixes. `backend-lint-check` shows only the 4 accepted baseline `max-lines` warnings. `frontend-test-coverage-check` has 10 regressions / 10 new failures — all stale corpus-pinned expectations from the regeneration (task-key lists 2→4, baseline counts 7→19 / 9→25, outside-baseline pairs 2→6). Evidence in `.opencode/scratchpad/s1-frontend-failures.txt`. These are in-scope (criterion 2) and must be made corpus-independent before § 1 closes; no assertion may be weakened or skipped.
+  - **Frontend test rework (gate-failure remediation):** the 10 failing specs were made corpus-regeneration-independent rather than re-pinned. Files 1–3 derive expected task keys from the composed input; `classDetailService.spec.ts` uses a destructure-and-falsy structural guard (a literal `2` would trip `no-magic-numbers`); `dataAnalysis.mediumBaselineRoundTrip.spec.ts` replaces all pinned counts/key lists with `deriveCorpusBaseline()`, an independent oracle over the raw committed view using the unchanged `isAttemptItem` predicate. No assertion weakened, no production code changed. Targeted 5 specs 55/55, full frontend project 330 files / 3212 tests, lint/typed gates clean. The one leftover count pin found by review (`EXPECTED_ERROR_ROSTER_PARTICIPATION = 5`) was replaced with `toBeGreaterThan(0)` invariants; final Code Reviewer re-review PASS (`review-s1-testrework-rereview-issue-309.md`, full coverage 330 files / 3212 tests, 95.84% stmts, exit 0).
+  - **User-directed rule (2026-11-18), added to this section's change surface:** (a) New tests, and any newly touched test, must draw fixture data from the shared synthetic corpus (`@synthetic/*` raw imports, canonical loaders or harnesses) rather than hard-coding fixture literals inline — the corpus is the single source of truth for data shapes, so corpus-backed tests stay current on regeneration and fail only when production needs to handle a new shape. Existing hard-coded fixtures are tolerated only until their test is touched, then ported in the same change. A genuine boundary case the corpus cannot express may use a minimal local input with an inline justification. (b) Expectations must be derived from the data shape (expected keys from the composed input, or an independent oracle over the raw corpus view), never pinned to corpus-derived literals (task-key lists, counts, exact-key fixture preconditions), because such pins break on every regeneration without signalling a production defect. A derived expectation must be independent of the production path under test, or the test becomes self-fulfilling. The Docs agent codifies this in the Testing Specialist instructions, the testing docs and a single enforcement checklist item in the Code Reviewer instructions, and adds a reusable inventory of corpus-derived assertion helpers plus two copyable patterns (derive-from-composed-input; independent raw-corpus oracle) to `docs/developer/testing/synthetic-test-data.md`; this is a user-authorised expansion beyond the original § 1 file list. Two distinct exceptions are retained and documented: a realism gap (local realistic fixture plus a generator/corpus plan) and an algorithmic boundary (minimal local input plus inline justification).
+  - **Rule-codification docs outcome:** the user-directed rule was written into `.opencode/agents/testing-specialist.md`, `.opencode/agents/code-reviewer.md` (one enforcement checklist item), `docs/developer/testing/synthetic-test-data.md` (full rule + verified helper inventory + two patterns + two-exception distinction), `docs/developer/frontend/frontend-testing.md` and `docs/developer/backend/backend-testing.md` (brief pointers). All Prettier-clean; no new pages; ACTION_PLAN.md and spec/test files untouched by the Docs agent. The unrelated pre-existing typo "documenation" in `code-reviewer.md` line 331 was recorded as a disregarded nitpick in the deferred log, not fixed.
+  - **Section regression gate — RE-RUN PASSED (supersedes the failed first run):** report `.ts-regression-checker/reports/session-feat-issue-309-cache-seeding/runs/2026-11-18T19-58-45.530Z/comparison.txt`; overall FAILING **only** because of the 4 accepted baseline `max-lines` warnings in the same unrelated test files. **Regressions Count: 0, New Failures Count: 0, Fixes Count: 0**; 7/8 checks pass, including `frontend-test-coverage-check`, `frontend-e2e-check` and `typescript-compile-check`. §1 is clean for progression.
 
 ---
 
@@ -455,4 +419,4 @@ Implementation/Code Reviewer mandatory docs:
 | Configuration toggle / feature flag for seeding                                           | Scope       | Explicitly excluded — always-on reordering of existing dispatches                              | `docs/plans/issue-309/SPEC.md` Purpose, decision 8                         | approved    | User chose always-on, no configuration (2026-11-05)                    |
 | Planning-time policy edits to `planner.md` and `synthetic-test-data.md`                   | Planning    | Not production behaviour; user-authorised during planning                                      | `docs/plans/issue-309/SPEC.md` worktree-provenance disclosure              | approved    | User approved edits A1–A3 and B1+B2 via the question tool (2026-11-05) |
 
-Nitpicks are logged separately in `.opencode/scratchpad/detached-head-85b1199d-deferred-findings.md` (link for traceability). No nitpicks were logged at planning time; the orchestrating agent creates the file before recording the first row.
+Nitpicks are logged separately in `.opencode/scratchpad/feat-issue-309-cache-seeding-deferred-findings.md` (link for traceability; path adapted from the plan's stale `detached-head-85b1199d-…` name to the actual branch). No nitpicks were logged at planning time; the orchestrating agent creates the file before recording the first row. The 4 pre-existing `max-lines` baseline warnings are recorded there as accepted technical debt (see Delivery State above).

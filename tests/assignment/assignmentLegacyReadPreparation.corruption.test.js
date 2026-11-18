@@ -85,7 +85,9 @@ describe('legacy read preparation per-task corruption isolation', () => {
     expectCorruptPlaceholder(submission.items[HEAD_TASK_ID]);
     expect(submission.items[SIBLING_TASK_ID].assessments).toEqual(sibling.assessments);
     expect(submission.items[SIBLING_TASK_ID].artifact.content).toBe(sibling.artifact.content);
-    expect(Object.keys(submission.items).sort()).toEqual([HEAD_TASK_ID, SIBLING_TASK_ID]);
+    expect(Object.keys(submission.items).sort()).toEqual(
+      [...embeddedTaskIds(restoreLegacy(healthyFullRecord()))].sort()
+    );
     // The stored record is never rewritten by preparation.
     expect(record).toEqual(before);
   });
@@ -165,7 +167,9 @@ describe('legacy read preparation malformed item maps and missing tasks', () => 
     expect(prepared[0].items[HEAD_TASK_ID].assessments).toEqual(
       record.submissions[0].items[HEAD_TASK_ID].assessments
     );
-    expect(Object.keys(prepared[0].items).sort()).toEqual([HEAD_TASK_ID, SIBLING_TASK_ID]);
+    expect(Object.keys(prepared[0].items).sort()).toEqual(
+      [...embeddedTaskIds(restoreLegacy(healthyFullRecord()))].sort()
+    );
   });
 
   it('covers a non-empty null-parent submission that is missing stored items', () => {

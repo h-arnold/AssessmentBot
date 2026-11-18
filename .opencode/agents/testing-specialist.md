@@ -205,6 +205,25 @@ If you add or modify tests, run the smallest targeted command first, then widen 
 - Select an explicit profile and view with `loadSyntheticAnalysisProfile`; clone a loaded view before local mutation because loaded views are deep-frozen.
 - Generate the full-large profile only for an explicitly requested stress task through the opt-in stress project, never in the default suites.
 
+### Fixture sourcing and expectations for regenerated synthetic data
+
+**New and newly touched tests must use synthetic corpus fixture data rather than hard-coded fixtures.** Draw fixtures from `@synthetic/*` raw imports, canonical loaders (`loadSyntheticAnalysisProfile`, `loadBackendModelInputs`) or harnesses built on them. The corpus is the single source of truth for data shapes: corpus-backed tests stay current when it is regenerated and fail only when production code needs to handle a new shape, whereas hard-coded fixtures are stale by construction.
+
+Existing tests with hard-coded fixtures are tolerated only until they are touched; when a test is touched, port its fixture data to the corpus in the same change. This keeps the rule forward-looking without demanding a retroactive rewrite.
+
+Two complementary exceptions to this default are defined in `docs/developer/testing/synthetic-test-data.md` (§ Policy: canonical fixtures for tests): a realism gap, which requires a recorded generator/corpus extension plan, and an algorithmic boundary, which permits a minimal local input with an inline justification. Neither permits ordinary hard-coded fixtures.
+
+**Expectation rule:** given corpus-backed fixture data, derive expectations from the data shape or from a small controlled input whose values are known by construction (fixture sourcing still follows the rule above). Do not pin corpus-derived literals — specific task-key lists, counts, or fixture preconditions asserting exact regenerated keys. Such pins are vacuous: they break on every corpus regeneration without signalling a production defect, defeating the corpus's purpose of staying current with data shapes and failing only when production code needs updating to handle a new shape.
+
+Use one of two patterns:
+
+1. **Derive from the composed input.** Compute the expected value from the input payload (for example `providedTaskKeys = Object.keys(submission.items)` after mutation), then assert the output matches it and that removed keys are absent. This expresses an invariant such as "no task is materialised or inferred".
+2. **Independent raw-corpus oracle.** Compute expectations from the raw committed JSON view with an independent predicate (for example an item-level attempt predicate over raw items). Never derive them from the analyser or production output under test, which would make the test self-fulfilling.
+
+A fixture precondition must assert a structural guard (for example "at least two tasks exist") with `if (...) throw ...`, not an exact regenerated key list.
+
+If a regeneration reveals that production genuinely mishandles a new shape, report it as a real defect. Do not re-anchor the expectation to make the test pass. See the reusable-helper inventory and copyable patterns in `docs/developer/testing/synthetic-test-data.md` (§ Writing tests against the regenerated corpus).
+
 ## 8. TDD Red Phase: Minimal Stubs for Unimplemented Code
 
 When writing tests **before** implementation (red phase of TDD), you **MUST** create minimal stubs for code that does not yet exist to ensure tests fail for the **right reason** — that is, the test fails because the expected behaviour is missing, not because of import errors or missing dependencies.

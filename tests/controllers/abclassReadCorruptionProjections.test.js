@@ -44,6 +44,8 @@ const CLASS_ID = 'class-0';
 const ASSIGNMENT_ID = 'assignment-0-1';
 const CORRUPT_TASK_ID = 'task-1-0';
 const SIBLING_TASK_ID = 'task-1-1';
+// The regenerated small corpus carries four tasks per definition.
+const ALL_TASK_IDS = ['task-1-0', 'task-1-1', 'task-1-2', 'task-1-3'];
 const HEALTHY_SUBMISSION_INDEX = 1;
 
 /** Exact validation/CORRUPT_RECORD catalogue entry (detached copy each call). */
@@ -165,9 +167,7 @@ describe('ABClassController.readClass corruption isolation', () => {
     expectCorruptPlaceholder(corruptSubmission.items[CORRUPT_TASK_ID]);
     // Its healthy sibling survives the class-partial projection unchanged.
     expect(corruptSubmission.items[SIBLING_TASK_ID].assessments).toEqual(siblingBefore.assessments);
-    expect(Object.keys(corruptSubmission.items).sort()).toEqual(
-      [CORRUPT_TASK_ID, SIBLING_TASK_ID].sort()
-    );
+    expect(Object.keys(corruptSubmission.items).sort()).toEqual([...ALL_TASK_IDS].sort());
     // Every other submission in the class is served untouched.
     expect(assignment.submissions).toHaveLength(embedded.submissions.length);
     const healthyAfter = submissionOf(assignment, healthyBefore.studentId);

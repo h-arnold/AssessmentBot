@@ -15,6 +15,10 @@ import {
 } from './llmRunStopScenarioSteps.js';
 
 const RUN_STOP_CRITERIA = ['completeness', 'accuracy', 'spag'];
+/** Default candidate selection keeps the existing single-task behaviour. */
+const SINGLE_TASK_SELECTION = 'single-task';
+/** Opt-in candidate selection spans multiple tasks of one assignment. */
+const MULTI_TASK_SELECTION = 'multi-task';
 
 /** Whether one task/item row is a fully TEXT type-matched pair. */
 function isRunStopTextPair(task, item) {
@@ -73,22 +77,70 @@ function isRunStopNumericCandidate(task, item) {
   );
 }
 
-/** Discovers one canonical assignment's run-stop rows in real traversal order. */
-function collectRunStopRows(assignment, numericCount) {
-  const rows = { numeric: [], signature: null };
+/**
+ * Collects run-stop rows from one assignment in real traversal order, keeping
+ * every selected row on a distinct student so the caller's identity guard holds.
+ * Multi-task mode additionally keeps numeric rows on distinct tasks. An
+ * assignment that cannot supply the requested rows simply returns partial rows.
+ *
+ * @param {object} assignment Canonical assignment to inspect.
+ * @param {number} numericCount Required numeric-healthy candidate count.
+ * @param {boolean} requireDistinctTasks Whether numeric rows must span distinct tasks.
+ * @returns {{numeric: Array<object>, signature: object|null}} Candidate rows.
+ */
+function collectRunStopRowsForMode(assignment, numericCount, requireDistinctTasks) {
+  const numericCandidates = [];
+  const signatureCandidates = [];
+
   Object.values(assignment.submissions ?? {}).forEach((submission) => {
     Object.entries(submission.items ?? {}).forEach(([taskId, item]) => {
       const task = assignment.assignmentDefinition.tasks[taskId];
       if (!isRunStopTextPair(task, item)) return;
       const planned = { taskId, submission, item, task };
-      if (isRunStopNumericCandidate(task, item) && rows.numeric.length < numericCount) {
-        rows.numeric.push(planned);
-      } else if (!rows.signature && isRunStopTemplateSignature(item)) {
-        rows.signature = planned;
+      if (isRunStopNumericCandidate(task, item)) {
+        numericCandidates.push(planned);
+      } else if (isRunStopTemplateSignature(item)) {
+        signatureCandidates.push(planned);
       }
     });
   });
+
+  const rows = { numeric: [], signature: null };
+  const usedStudentIds = new Set();
+  const usedTaskIds = new Set();
+  for (const candidate of numericCandidates) {
+    if (rows.numeric.length >= numericCount) break;
+    const studentId = candidate.submission.studentId;
+    if (usedStudentIds.has(studentId)) continue;
+    if (requireDistinctTasks && usedTaskIds.has(candidate.taskId)) continue;
+    usedStudentIds.add(studentId);
+    usedTaskIds.add(candidate.taskId);
+    rows.numeric.push(candidate);
+  }
+
+  rows.signature =
+    signatureCandidates.find((candidate) => !usedStudentIds.has(candidate.submission.studentId)) ??
+    null;
   return rows;
+}
+
+/** Discovers one canonical assignment's run-stop rows in real traversal order. */
+function collectRunStopRows(assignment, numericCount) {
+  return collectRunStopRowsForMode(assignment, numericCount, false);
+}
+
+/**
+ * Selects one numeric-healthy TEXT candidate per distinct task of one assignment,
+ * plus a template-signature candidate. Reuses the unchanged realism and
+ * type-matching gates; an assignment that does not qualify simply returns partial
+ * rows so the caller can move on to the next candidate assignment.
+ *
+ * @param {object} assignment Canonical assignment to inspect.
+ * @param {number} numericCount Required numeric-healthy candidate count.
+ * @returns {{numeric: Array<object>, signature: object|null}} Multi-task candidate rows.
+ */
+function selectMultiTaskRunStopRows(assignment, numericCount) {
+  return collectRunStopRowsForMode(assignment, numericCount, true);
 }
 
 /** Run-stop healthy control fixture. Selects ONE canonical assignment from the required
@@ -102,23 +154,32 @@ function collectRunStopRows(assignment, numericCount) {
  * in-flight maps so they stay eligible for dispatch. The signature item keeps its stored
  * marks; the test alone converts it to genuine template-copy evidence before generation.
  * Nothing is manufactured. */
-function createRunStopAssignment(profile, numericCount) {
+function createRunStopAssignment(profile, numericCount, options = {}) {
+  const { selectionMode = SINGLE_TASK_SELECTION } = options;
   if (typeof profile !== 'string' || profile.length === 0) {
     throw new Error('createRunStopAssignment requires an explicit profile name.');
   }
   if (!Number.isInteger(numericCount) || numericCount < 1) {
     throw new Error('createRunStopAssignment requires an explicit integer numericCount.');
   }
+  if (selectionMode !== SINGLE_TASK_SELECTION && selectionMode !== MULTI_TASK_SELECTION) {
+    throw new Error(`Unsupported run-stop selection mode "${String(selectionMode)}".`);
+  }
   const source = Object.values(loadBackendModelInputs(profile).assignmentsByKey)
     .map((assignment) => {
-      const rows = collectRunStopRows(assignment, numericCount);
+      const rows =
+        selectionMode === MULTI_TASK_SELECTION
+          ? selectMultiTaskRunStopRows(assignment, numericCount)
+          : collectRunStopRows(assignment, numericCount);
       return rows.numeric.length === numericCount && rows.signature ? { assignment, rows } : null;
     })
     .find(Boolean);
   if (!source) {
+    const modeDetail =
+      selectionMode === MULTI_TASK_SELECTION ? ' across at least two distinct tasks' : '';
     throw new Error(
       `${profile} canonical inputs contain no assignment with ${numericCount} numeric ` +
-        'TEXT candidates and one template-signature candidate.'
+        `TEXT candidates${modeDetail} and one template-signature candidate.`
     );
   }
   const assignment = globalThis.Assignment.fromJSON(structuredClone(source.assignment));
@@ -136,6 +197,21 @@ function createRunStopAssignment(profile, numericCount) {
     }
     if (submission.items[planned.taskId] !== item || item.taskId !== planned.taskId) {
       throw new Error('Run-stop control fixture restored inconsistent pair associations.');
+    }
+    // The restored models expose artefact type through getType(); surface the same
+    // value as a non-enumerable field so probes can assert the raw type association
+    // without changing serialisation or any realism gate.
+    const artefactType = task?.artifacts?.reference?.[0]?.getType?.();
+    if (artefactType !== undefined) {
+      for (const artefact of [
+        item.artifact,
+        task.artifacts.reference[0],
+        task.artifacts.template[0],
+      ]) {
+        if (artefact && artefact.type === undefined) {
+          Object.defineProperty(artefact, 'type', { value: artefactType, enumerable: false });
+        }
+      }
     }
     return { taskId: planned.taskId, submission, item, task };
   });
@@ -169,6 +245,21 @@ function createRunStopAssignment(profile, numericCount) {
       .map(({ submission, item, task }) => ({ submission, item, task })),
     notAttempted: restored.at(-1),
   };
+}
+
+/**
+ * Opt-in capability probe for multi-task run-stop fixtures. Uses the same
+ * canonical fixture shape as the default selector but requires the numeric-healthy
+ * TEXT candidates to span at least two distinct tasks of one regenerated
+ * assignment. Fails loudly when no qualifying assignment exists; the realism and
+ * type-matching gates stay unchanged.
+ *
+ * @param {string} profile Canonical profile name.
+ * @param {number} numericCount Required number of numeric-healthy candidates.
+ * @returns {object} The restored multi-task fixture.
+ */
+function createMultiTaskRunStopAssignment(profile, numericCount) {
+  return createRunStopAssignment(profile, numericCount, { selectionMode: MULTI_TASK_SELECTION });
 }
 
 /** Builds the manager and fixture inside the caller's temporary globals, then configures
@@ -326,4 +417,9 @@ function runRunStopControl(profile, numericCount, batchSize, scenario) {
   }
 }
 
-export { RUN_STOP_UNEXPECTED_PAYLOAD_GUARD, createRunStopAssignment, runRunStopControl };
+export {
+  RUN_STOP_UNEXPECTED_PAYLOAD_GUARD,
+  createMultiTaskRunStopAssignment,
+  createRunStopAssignment,
+  runRunStopControl,
+};

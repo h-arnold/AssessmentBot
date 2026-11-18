@@ -47,15 +47,23 @@ const PROFILE_VIEW_FILE_NAMES = [
   'manifest.json',
   'classPartials.json',
   'assignmentDefinitionPartials.json',
+  'editableDefinitions.json',
   'classesById.json',
   'assignmentsByKey.json',
 ] as const;
 
 const FULL_LARGE_CANONICAL_PARAMETERS = {
-  classCount: 100,
+  classCount: 48,
   studentsPerClass: 30,
-  assignmentsPerClass: 100,
-  yearGroupCount: 24,
+  assignmentsPerClass: 50,
+  yearGroupCount: 8,
+} as const;
+
+/** Task counts the committed editable definitions must carry after regeneration. */
+const COMMITTED_TASKS_PER_DEFINITION = {
+  small: 4,
+  medium: 6,
+  'large-representative': 10,
 } as const;
 
 const temporaryRoots: string[] = [];
@@ -245,6 +253,29 @@ describe('committed synthetic analysis profile manifests', () => {
       FULL_LARGE_CANONICAL_PARAMETERS.classCount *
         FULL_LARGE_CANONICAL_PARAMETERS.assignmentsPerClass
     );
+  });
+});
+
+describe('committed synthetic analysis definition task counts', () => {
+  it('commits every editable definition at its profile task count', () => {
+    for (const [profileName, expectedTaskCount] of Object.entries(COMMITTED_TASKS_PER_DEFINITION)) {
+      const definitions = JSON.parse(
+        readFileSync(
+          join(REPOSITORY_ROOT, COMMITTED_FIXTURE_ROOT, profileName, 'editableDefinitions.json'),
+          'utf8'
+        )
+      ) as Record<string, { tasks: Record<string, unknown> }>;
+
+      expect(
+        Object.keys(definitions).length,
+        `${profileName} editable definitions`
+      ).toBeGreaterThan(0);
+      for (const [definitionKey, definition] of Object.entries(definitions)) {
+        expect(Object.keys(definition.tasks), `${profileName}/${definitionKey}`).toHaveLength(
+          expectedTaskCount
+        );
+      }
+    }
   });
 });
 

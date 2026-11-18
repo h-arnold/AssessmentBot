@@ -85,10 +85,10 @@ const EXPECTED_PROFILE_NAMES = [
   LARGE_FULL_PROFILE,
 ];
 
-const FULL_LARGE_CLASS_COUNT = 100;
+const FULL_LARGE_CLASS_COUNT = 48;
 const FULL_LARGE_STUDENTS_PER_CLASS = 30;
-const FULL_LARGE_ASSIGNMENTS_PER_CLASS = 100;
-const FULL_LARGE_YEAR_GROUP_COUNT = 24;
+const FULL_LARGE_ASSIGNMENTS_PER_CLASS = 50;
+const FULL_LARGE_YEAR_GROUP_COUNT = 8;
 
 const representativeGraph = generateSyntheticAnalysisGraph(
   LARGE_REPRESENTATIVE_PROFILE
@@ -148,7 +148,7 @@ describe('synthetic analysis profile definitions', () => {
     expect(new Set(seeds).size).toBe(seeds.length);
   });
 
-  it('models the canonical large profile as 100 classes of 30 students with 100 assignments', () => {
+  it('models the canonical large profile as 48 classes of 30 students with 50 assignments', () => {
     const full = getProfileDefinition(LARGE_FULL_PROFILE) as GeneratedProfileDefinition;
 
     expect(full.classCount).toBe(FULL_LARGE_CLASS_COUNT);

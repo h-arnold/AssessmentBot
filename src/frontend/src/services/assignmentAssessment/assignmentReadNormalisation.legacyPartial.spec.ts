@@ -203,12 +203,16 @@ describe('normaliseClassRead legacy partial payload', () => {
     const assignment = selectedAssignment(input);
     const submission = assignment.submissions[0];
     if (!submission) throw new Error('Expected a canonical submission');
-    const [retained, absent] = twoItemKeys(submission);
+    const [, absent] = twoItemKeys(submission);
     delete submission.items[absent];
     const providedTaskIds = assignment.submissions.map((entry) => Object.keys(entry.items));
     const transport = vi.spyOn(apiService, 'callApi');
     const normalised = selectedNormalisedAssignment(normaliseClassRead(input));
-    expect(normalised.submissions.map((entry) => Object.keys(entry.items))[0]).toEqual([retained]);
+    const firstItems = normalised.submissions[0]?.items;
+    if (!firstItems) throw new Error('Expected normalised items');
+    // No absent task is materialised for a legacy read; the exact provided keys survive.
+    expect(Object.keys(firstItems)).toEqual(providedTaskIds[0]);
+    expect(Object.keys(firstItems)).not.toContain(absent);
     for (const [index, entry] of normalised.submissions.entries()) {
       expect(Object.keys(entry.items)).toEqual(providedTaskIds[index]);
     }

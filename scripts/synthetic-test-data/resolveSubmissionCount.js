@@ -1,8 +1,8 @@
 const LARGE_FULL_SUBMISSION_BANDS = Object.freeze([
-  { startIndex: 0, endIndex: 5, basePercent: 20, stepPercent: 4, stepCount: 5 },
-  { startIndex: 5, endIndex: 15, basePercent: 50, stepPercent: 6, stepCount: 5 },
-  { startIndex: 15, endIndex: 85, basePercent: 80, stepPercent: 3, stepCount: 5 },
-  { startIndex: 85, endIndex: 100, basePercent: 96, stepPercent: 4, stepCount: 2 },
+  { startIndex: 0, endIndex: 3, basePercent: 20, stepPercent: 4, stepCount: 5 },
+  { startIndex: 3, endIndex: 8, basePercent: 50, stepPercent: 6, stepCount: 5 },
+  { startIndex: 8, endIndex: 43, basePercent: 80, stepPercent: 3, stepCount: 5 },
+  { startIndex: 43, endIndex: 50, basePercent: 96, stepPercent: 4, stepCount: 2 },
 ]);
 const PERCENT_SCALE = 100;
 const COMPACT_SMALL_SUBMISSION_COUNT = 2;
@@ -33,7 +33,7 @@ const COMPACT_SUBMISSION_PLANS = Object.freeze({
  *
  * @remarks
  * For the large-full profile the completion band is fixed by assignment index,
- * so the exact 5/10/70/15 distribution is preserved. The percentage within that
+ * so the 6/10/70/14 distribution is preserved. The percentage within that
  * band is drawn from the seeded Faker instance, so changing the supplied profile
  * seed changes completion counts without moving any assignment between bands.
  *

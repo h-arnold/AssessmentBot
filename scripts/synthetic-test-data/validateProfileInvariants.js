@@ -126,20 +126,21 @@ function countAssignmentsByBand(classId, classFull, rosterSize, bands) {
  * @param {Array<{sharePercent: number, minCompletedPercent: number, maxCompletedPercent: number}>} bands Documented completion bands.
  */
 export function assertCompletionBands(classesById, bands) {
-  const expectedShares = bands.map((band) => band.sharePercent);
-
   for (const [classId, classFull] of Object.entries(classesById)) {
     const rosterSize = classFull.students.length;
     if (rosterSize === 0) {
       fail(`Class "${classId}" has an empty roster so completion cannot be derived.`);
     }
 
+    const expectedCounts = bands.map((band) =>
+      Math.round((band.sharePercent / PERCENT_SCALE) * classFull.assignments.length)
+    );
     const bandCountByIndex = countAssignmentsByBand(classId, classFull, rosterSize, bands);
-    const actualShares = expectedShares.map((_, index) => bandCountByIndex.get(index) ?? 0);
+    const actualCounts = expectedCounts.map((_, index) => bandCountByIndex.get(index) ?? 0);
 
-    if (!actualShares.every((count, index) => count === expectedShares.at(index))) {
+    if (!actualCounts.every((count, index) => count === expectedCounts.at(index))) {
       fail(
-        `Class "${classId}" completion distribution ${JSON.stringify(actualShares)} does not match the required distribution ${JSON.stringify(expectedShares)}.`
+        `Class "${classId}" completion distribution ${JSON.stringify(actualCounts)} does not match the required distribution ${JSON.stringify(expectedCounts)}.`
       );
     }
   }

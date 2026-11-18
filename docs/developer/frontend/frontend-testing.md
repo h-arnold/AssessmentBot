@@ -346,6 +346,8 @@ Use the deterministic synthetic analysis corpus when a test needs realistic anal
 
 All new or changed tests must use a canonical synthetic fixture when the corpus covers the scenario; for the directive, its exception path and the generator-extension process, see [Synthetic Test Data](../testing/synthetic-test-data.md#policy-canonical-fixtures-for-tests).
 
+New and newly touched tests must use corpus fixture data rather than hard-coded literals and derive expectations from the corpus; see [Writing tests against the regenerated corpus](../testing/synthetic-test-data.md#writing-tests-against-the-regenerated-corpus) and [canonical-fixture policy](../testing/synthetic-test-data.md#policy-canonical-fixtures-for-tests).
+
 For frontend service round-trip tests, the Node integration spec composes the script-owned dispatcher bridge with the frontend adapter and supplies `callApi`, the service Zod schemas, and `DataAnalysisService` input. For the corpus topology, profile/view selection, commands and failure behaviour, see the canonical guide: [Synthetic Test Data](../testing/synthetic-test-data.md).
 
 ### Importing canonical fixtures

@@ -10,28 +10,28 @@
 /** Canonical large-full profile name. */
 export const LARGE_FULL_PROFILE_NAME = 'large-full';
 /** Canonical large-full class count. */
-export const LARGE_FULL_CLASS_COUNT = 100;
+export const LARGE_FULL_CLASS_COUNT = 48;
 /** Canonical large-full students per class. */
 export const LARGE_FULL_STUDENTS_PER_CLASS = 30;
 /** Canonical large-full assignments per class. */
-export const LARGE_FULL_ASSIGNMENTS_PER_CLASS = 100;
-/** Number of Year Groups 7-30 represented by the large-full profile. */
-export const LARGE_FULL_YEAR_GROUP_COUNT = 24;
+export const LARGE_FULL_ASSIGNMENTS_PER_CLASS = 50;
+/** Number of Year Groups 7–14 represented by the large-full profile. */
+export const LARGE_FULL_YEAR_GROUP_COUNT = 8;
 
 /**
  * The documented large-full completion bands.
  *
  * @remarks
- * Each band records its share of a class's 100 assignments and the derived
+ * Each band records its share of a class's 50 assignments and the derived
  * completion-percentage range (submitting students divided by the class roster).
  * Completion is always derived from the generated submissions, never stored as a
  * persistence or transport field.
  */
 export const LARGE_FULL_COMPLETION_BANDS = Object.freeze([
-  Object.freeze({ sharePercent: 5, minCompletedPercent: 20, maxCompletedPercent: 49 }),
+  Object.freeze({ sharePercent: 6, minCompletedPercent: 20, maxCompletedPercent: 49 }),
   Object.freeze({ sharePercent: 10, minCompletedPercent: 50, maxCompletedPercent: 79 }),
   Object.freeze({ sharePercent: 70, minCompletedPercent: 80, maxCompletedPercent: 95 }),
-  Object.freeze({ sharePercent: 15, minCompletedPercent: 96, maxCompletedPercent: 100 }),
+  Object.freeze({ sharePercent: 14, minCompletedPercent: 96, maxCompletedPercent: 100 }),
 ]);
 
 const SEED_SMALL = 17_031;

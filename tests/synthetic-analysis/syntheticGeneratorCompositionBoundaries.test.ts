@@ -141,7 +141,7 @@ describe('large-full submission band composition', () => {
       Math.round((assignment.submissions.length / STUDENTS_PER_CLASS) * PERCENT_SCALE)
     );
     for (const [index, percent] of completionPercents.entries()) {
-      const isBandOne = index >= 5;
+      const isBandOne = index >= 3;
       expect(percent).toBeGreaterThanOrEqual(
         isBandOne ? BAND_ONE_MIN_PERCENT : BAND_ZERO_MIN_PERCENT
       );
@@ -149,11 +149,44 @@ describe('large-full submission band composition', () => {
     }
   });
 
+  it('places large-full assignment indices in the rescaled completion bands', () => {
+    const profileDefinition = { ...COMPACT_LARGE_FULL_PROFILE, assignmentsPerClass: 50 };
+    const referenceData = generateReferenceData(profileDefinition) as GeneratedReferenceData;
+    const assignmentDefinitions = generateAssignmentDefinitions({
+      profileDefinition,
+      referenceData,
+    }) as GeneratedAssignmentDefinitions;
+    const { assignments } = generateAssignments({
+      profileDefinition,
+      referenceData,
+      assignmentDefinitions,
+    }) as { assignments: Array<{ submissions: unknown[] }> };
+
+    expect(assignments).toHaveLength(50);
+    const bands = [
+      { endIndex: 3, minPercent: 20, maxPercent: 49 },
+      { endIndex: 8, minPercent: 50, maxPercent: 79 },
+      { endIndex: 43, minPercent: 80, maxPercent: 95 },
+      { endIndex: 50, minPercent: 96, maxPercent: 100 },
+    ];
+    let startIndex = 0;
+    for (const band of bands) {
+      for (const assignment of assignments.slice(startIndex, band.endIndex)) {
+        const percent = Math.round(
+          (assignment.submissions.length / STUDENTS_PER_CLASS) * PERCENT_SCALE
+        );
+        expect(percent).toBeGreaterThanOrEqual(band.minPercent);
+        expect(percent).toBeLessThanOrEqual(band.maxPercent);
+      }
+      startIndex = band.endIndex;
+    }
+  });
+
   it('rejects a large-full assignment index that no completion band covers', () => {
     const profileDefinition = {
       ...COMPACT_LARGE_FULL_PROFILE,
       studentsPerClass: 1,
-      assignmentsPerClass: 101,
+      assignmentsPerClass: 51,
     };
     const referenceData = generateReferenceData(profileDefinition) as GeneratedReferenceData;
     const assignmentDefinitions = generateAssignmentDefinitions({
@@ -163,7 +196,7 @@ describe('large-full submission band composition', () => {
 
     expect(() =>
       generateAssignments({ profileDefinition, referenceData, assignmentDefinitions })
-    ).toThrow(/No large-full completion band covers assignment index 100/u);
+    ).toThrow(/No large-full completion band covers assignment index 50/u);
   });
 
   it('rejects class assignment generation when no full definition is available', () => {

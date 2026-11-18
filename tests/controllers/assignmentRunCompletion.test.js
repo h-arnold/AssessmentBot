@@ -128,8 +128,34 @@ describe('AssignmentController processSelectedAssignment run completion', () => 
     const flow = createCompletedRun('medium', 'assignment-0-4');
     flow.run();
     const stored = fullRecordOf(flow);
-    expect(countItems(stored, true)).toBe(4);
-    expect(countItems(stored, false)).toBe(6);
+    expect(countItems(stored, true)).toBe(12);
+    expect(countItems(stored, false)).toBe(18);
+  });
+
+  it('derives the regenerated medium mixed-E split from six tasks and five submitters', () => {
+    const flow = createCompletedRun('medium', 'assignment-0-4');
+    flow.run();
+    const stored = fullRecordOf(flow);
+    const submissions = stored.submissions.filter(
+      (submission) => Object.keys(submission.items ?? {}).length > 0
+    );
+    const tasksPerDefinition = 6;
+    const failedSubmitters = submissions.filter((submission) =>
+      Object.values(submission.items).some((item) =>
+        Object.values(item.assessments ?? {}).some((entry) => entry.score === 'E')
+      )
+    );
+
+    expect(submissions).toHaveLength(5);
+    expect(failedSubmitters).toHaveLength(2);
+    for (const submission of failedSubmitters) {
+      expect(Object.keys(submission.items)).toHaveLength(tasksPerDefinition);
+    }
+    expect(countItems(stored, true)).toBe(failedSubmitters.length * tasksPerDefinition);
+    expect(countItems(stored, false)).toBe(
+      (submissions.length - failedSubmitters.length) * tasksPerDefinition
+    );
+    expect(countItems(stored, true) + countItems(stored, false)).toBe(30);
   });
 
   it('reports the exact completion-with-errors message as the final progress update and toast', () => {

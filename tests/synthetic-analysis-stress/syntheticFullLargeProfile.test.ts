@@ -85,10 +85,12 @@ type GeneratedSyntheticAnalysisGraph = {
 };
 
 const LARGE_FULL_PROFILE = 'large-full';
-const FIVE_CLASS_YEAR_GROUP_COUNT = 4;
+const CLASSES_PER_YEAR_GROUP = 6;
 const YEAR_GROUP_MIN = 7;
-const YEAR_GROUP_MAX = 30;
+const YEAR_GROUP_MAX = 14;
 const PERCENT_SCALE = 100;
+const EXPECTED_BAND_SHARES = [6, 10, 70, 14];
+const EXPECTED_BAND_COUNTS = [3, 5, 35, 7];
 
 const largeFullGraph = generateSyntheticAnalysisGraph(
   LARGE_FULL_PROFILE
@@ -123,7 +125,20 @@ function deriveCompletionPercent(classFull: ClassFull, assignment: AssignmentPar
 }
 
 /**
- * Asserts the exact 5/10/70/15 completion-band distribution for every class in a
+ * Derives each band's expected assignment count from its share of a class's
+ * assignments rather than equating count with percentage, which only holds at
+ * one hundred assignments per class.
+ *
+ * @returns Expected assignment counts keyed by band index.
+ */
+function expectedBandCounts(): number[] {
+  return COMPLETION_BANDS.map((band) =>
+    Math.round((band.sharePercent / PERCENT_SCALE) * LARGE_FULL_ASSIGNMENTS_PER_CLASS)
+  );
+}
+
+/**
+ * Asserts the 6/10/70/14 completion-band distribution for every class in a
  * generated large-full graph.
  *
  * @param graph The generated graph whose derived completion distribution is checked.
@@ -132,6 +147,7 @@ function deriveCompletionPercent(classFull: ClassFull, assignment: AssignmentPar
 function assertCompletionBands(graph: GeneratedSyntheticAnalysisGraph): number[] {
   const classes = parseClassFullViews(graph);
   expect(classes).toHaveLength(LARGE_FULL_CLASS_COUNT);
+  const expectedCounts = expectedBandCounts();
 
   const completionCounts: number[] = [];
 
@@ -153,7 +169,7 @@ function assertCompletionBands(graph: GeneratedSyntheticAnalysisGraph): number[]
           (percent) => percent >= band.minCompletedPercent && percent <= band.maxCompletedPercent
         ).length
     );
-    expect(bandCounts).toEqual(COMPLETION_BANDS.map((band) => band.sharePercent));
+    expect(bandCounts, `class ${classFull.classId} completion bands`).toEqual(expectedCounts);
 
     for (const percent of completionPercents) {
       const matchingBands = COMPLETION_BANDS.filter(
@@ -167,7 +183,14 @@ function assertCompletionBands(graph: GeneratedSyntheticAnalysisGraph): number[]
 }
 
 describe('large full deterministic graph counts', () => {
-  it('produces exactly 100 classes of 30 distinct students and 10,000 assignments', () => {
+  it('rescales the canonical profile to 48 classes, 8 year groups and 50 assignments', () => {
+    expect(LARGE_FULL_CLASS_COUNT).toBe(48);
+    expect(LARGE_FULL_STUDENTS_PER_CLASS).toBe(30);
+    expect(LARGE_FULL_ASSIGNMENTS_PER_CLASS).toBe(50);
+    expect(LARGE_FULL_YEAR_GROUP_COUNT).toBe(8);
+  });
+
+  it('produces exactly 48 classes of 30 distinct students and 2,400 assignments', () => {
     expect(largeFullGraph.persistence.classes).toHaveLength(LARGE_FULL_CLASS_COUNT);
     expect(largeFullGraph.persistence.assignments).toHaveLength(
       LARGE_FULL_CLASS_COUNT * LARGE_FULL_ASSIGNMENTS_PER_CLASS
@@ -188,7 +211,7 @@ describe('large full deterministic graph counts', () => {
     );
   });
 
-  it('distributes the 100 classes four or five per Year Group 7-30', () => {
+  it('distributes the 48 classes six per Year Group 7-14', () => {
     const classesByYearGroup = new Map<string, number>();
     for (const classDocument of largeFullGraph.persistence.classes) {
       const yearGroupKey = classDocument.yearGroupKey;
@@ -200,8 +223,7 @@ describe('large full deterministic graph counts', () => {
 
     expect(classesByYearGroup.size).toBe(LARGE_FULL_YEAR_GROUP_COUNT);
     const distribution = [...classesByYearGroup.values()];
-    expect(distribution.every((count) => count === 4 || count === 5)).toBe(true);
-    expect(distribution.filter((count) => count === 5)).toHaveLength(FIVE_CLASS_YEAR_GROUP_COUNT);
+    expect(distribution.every((count) => count === CLASSES_PER_YEAR_GROUP)).toBe(true);
 
     const yearGroupLabels = new Set(
       largeFullGraph.referenceData.yearGroups.map((yearGroup) => yearGroup.name)
@@ -211,7 +233,20 @@ describe('large full deterministic graph counts', () => {
     }
   });
 
-  it('applies the 5/10/70/15 completion bands to every class from its roster and submissions', () => {
+  it('uses 6/10/70/14 band shares with unchanged completion ranges', () => {
+    expect(COMPLETION_BANDS.map((band) => band.sharePercent)).toEqual(EXPECTED_BAND_SHARES);
+    expect(
+      COMPLETION_BANDS.map((band) => [band.minCompletedPercent, band.maxCompletedPercent])
+    ).toEqual([
+      [20, 49],
+      [50, 79],
+      [80, 95],
+      [96, 100],
+    ]);
+    expect(expectedBandCounts()).toEqual(EXPECTED_BAND_COUNTS);
+  });
+
+  it('applies the 3/5/35/7 completion bands to every class from its roster and submissions', () => {
     const completionCounts = assertCompletionBands(largeFullGraph);
 
     expect(completionCounts).toHaveLength(

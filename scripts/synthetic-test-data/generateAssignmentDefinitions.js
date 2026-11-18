@@ -3,8 +3,12 @@ import { isoAt, toImageDataUrl } from './deterministicPrimitives.js';
 const DOCUMENT_TYPES = ['SLIDES', 'SHEETS'];
 const COMPACT_DEFINITION_MINIMUM = 3;
 const LARGE_FULL_DEFINITION_COUNT = 8;
-const COMPACT_TASKS_PER_DEFINITION = 2;
-const LARGE_FULL_TASKS_PER_DEFINITION = 1;
+const COMPACT_TASKS_PER_DEFINITION = Object.freeze({
+  small: 4,
+  medium: 6,
+  'large-representative': 10,
+});
+const LARGE_FULL_TASKS_PER_DEFINITION = 15;
 const PARTIAL_ONLY_DEFINITION_COUNT = 1;
 const MAX_GENERATED_WEIGHTING = 5;
 const MINUTES_PER_DEFINITION = 10;
@@ -30,11 +34,19 @@ function resolveFullDefinitionCount(profileDefinition) {
  *
  * @param {{name: string}} profileDefinition Resolved profile definition.
  * @returns {number} Task count per definition.
+ * @throws {Error} When the profile has no tasks-per-definition mapping.
  */
 function resolveTasksPerDefinition(profileDefinition) {
-  return profileDefinition.name === 'large-full'
-    ? LARGE_FULL_TASKS_PER_DEFINITION
-    : COMPACT_TASKS_PER_DEFINITION;
+  if (profileDefinition.name === 'large-full') {
+    return LARGE_FULL_TASKS_PER_DEFINITION;
+  }
+  const taskCount = COMPACT_TASKS_PER_DEFINITION[profileDefinition.name];
+  if (taskCount === undefined) {
+    throw new Error(
+      `No tasks-per-definition mapping for synthetic analysis profile "${String(profileDefinition.name)}".`
+    );
+  }
+  return taskCount;
 }
 
 /**
