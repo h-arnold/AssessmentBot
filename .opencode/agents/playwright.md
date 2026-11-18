@@ -2,7 +2,7 @@
 description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
 steps: 100
-model: mistral/zai-glm-5-3-flash
+model: opencode-go/hy4-flash-free
 permissions:
   - action: playwright_*
     resource: '*'
