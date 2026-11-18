@@ -111,6 +111,11 @@ Key notes:
   explicit `null` and a missing or malformed response field fails parsing rather than being
   stripped.
 
+### Scope boundaries
+
+Ordinary class saves preserve raw legacy bodies and original version values, including non-array
+submissions roots.
+
 ---
 
 ## Transport
@@ -1335,13 +1340,6 @@ canonical snapshots and boundary probes; it is the parity oracle, not production
     argument distinguishes same-class readiness-null from genuine navigation. No ABClass field or
     transport shape changes. This is a deliberate frontend execution-state extension; see
     [Frontend Data Analysis Response — settlement](frontend-data-analysis-response.md#confirmed-persistence-and-refresh-settlement).
-
----
-
-## Scope boundaries
-
-Ordinary class saves preserve raw legacy bodies and original version values, including non-array
-submissions roots.
 
 ---
 
