@@ -19,6 +19,7 @@ import {
   HEATMAP_CLASS_ID,
   HEATMAP_CLASS_NAME,
   HEATMAP_DEFINITION_KEY,
+  HEATMAP_SECOND_DEFINITION_KEY,
   HEATMAP_TASK_IDS,
 } from './task-heatmap-fixtures';
 
@@ -295,4 +296,24 @@ export function addSecondAssignment(classDocument: Record<string, unknown>): voi
       }
     ),
   });
+}
+
+/**
+ * Point the second assignment at the distinct definition partial.
+ *
+ * The select-all dropdown-header journey needs two assignment options whose
+ * labels a search query can tell apart, so the cloned second assignment is
+ * re-keyed to the distinct definition partial instead of sharing the first
+ * assignment's definition.
+ * @param {Record<string, unknown>} classDocument - Class payload to mutate.
+ */
+export function applyDistinctDefinitionToSecondAssignment(
+  classDocument: Record<string, unknown>
+): void {
+  const assignments = classDocument.assignments as Array<Record<string, unknown>>;
+  const secondAssignment = assignments[1];
+  if (!secondAssignment) {
+    throw new Error('Expected the heatmap fixture to contain a second assignment.');
+  }
+  secondAssignment.assignmentDefinitionKey = HEATMAP_SECOND_DEFINITION_KEY;
 }

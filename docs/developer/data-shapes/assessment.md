@@ -204,11 +204,12 @@ None. This shape embeds no other shape; `error` is an inline `{ stage, code }` o
 
 3. **The shared result/cause owner is consumed by both read schemas and both read services run the normaliser.**
    `assessmentResult.zod.ts` is consumed by `assignmentAssessment.zod.ts` and
-   `classDetailService.zod.ts`. `assignmentAssessmentService.getAssignment()` calls
-   `normaliseAssignmentRead()` and `classDetailService.getABClass()` calls
-   `normaliseClassRead()` before their final `parseApiResponse` call, each preceded by a
-   root-only parse. Per-item isolation and contextual source/marker checks are active at
-   runtime.
+   `classDetailService.zod.ts`. `assignmentAssessmentService.getAssignment()` and
+   `classDetailService.getABClass()` each call `parseApiResponse` on a root/envelope stub
+   only (`submissions: []` / `assignments: []`), then call
+   `normaliseAssignmentRead()` / `normaliseClassRead()`, which performs the single
+   per-item validation pass. Per-item isolation and contextual source/marker checks are
+   active at runtime.
 
 4. **Duplicate partial score declarations are absent.**
    `classDetailService.zod.ts` declares no `MAX_ASSESSMENT_SCORE`,
@@ -335,7 +336,7 @@ rejects, before marker stamping, serialisation or any collection mutation:
 Only after that validation succeeds does `persistAssignmentRun()` set
 `assignment.assessmentContractVersion = 1`, then serialise detached full and partial
 assignment payloads and prepare the prospective full class and partial-registry payloads.
-Both assignment serializers consequently emit marker `1` on newly completed/reassessed
+Both assignment serialisers consequently emit marker `1` on newly completed/reassessed
 results. Legacy records are untouched by this write path: their stored body and exact
 marker presence/value are re-emitted from ordinary instance state, and read-time
 preparation never enters persistence. Genuine no-submission (null parent document and empty item map) remains
@@ -453,8 +454,9 @@ Format gate and persistence preservation:
   Successful reassessment is the authorised transition to a current result.
 - The frontend normaliser validates the prepared entries and the required
   `assessmentContractVersion: 1 | 'legacy'` read field. It does not generate a second
-  legacy graph, query a roster or infer historical outcomes. Both read services invoke the
-  normaliser before their final parse.
+  legacy graph, query a roster or infer historical outcomes. Both read services parse only
+  a root/envelope stub and then invoke the normaliser as the single per-item validation
+  pass; there is no final full-tree parse.
 - An invalid root/definition or untrustworthy required identity still fails the owned
   dataset; preparation must not invent missing identities.
 
@@ -483,7 +485,7 @@ The representation mode is threaded from `Assignment.fromJSON()` through
 
 | Aspect                  | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Activation              | `assessmentContractVersion === 1` only. Newly completed runs are validated and stamped before both persistence serialisers emit the marker. Marker-less, `null` and unsupported records are retained as ordinary instance state without reconstruction; the read transport emits `'legacy'` after read preparation. Both frontend read schemas require `1 \| 'legacy'` and both read services run the normaliser before their final parse. See [Known discrepancies](#validation).                                                        |
+| Activation              | `assessmentContractVersion === 1` only. Newly completed runs are validated and stamped before both persistence serialisers emit the marker. Marker-less, `null` and unsupported records are retained as ordinary instance state without reconstruction; the read transport emits `'legacy'` after read preparation. Both frontend read schemas require `1 \| 'legacy'` and both read services parse only a root/envelope stub and then run the normaliser as the single per-item validation pass. See [Known discrepancies](#validation). |
 | Root and task list      | Validated once, before any model constructor runs: non-blank `courseId` / `assignmentId` strings, `submissions` as an array, and a non-empty embedded `assignmentDefinition.tasks`. In the full task-map form every key is non-blank and equals the embedded task's canonical `id`; an optional `taskId` must match that key. In the partial summary-array form every `taskId` is a non-empty unique string. Any failure throws and fails the owned dataset.                                                                              |
 | Shared identities       | The same task-list check runs with an empty `submissions` array, so duplicate or inconsistent definition identities cannot be hidden by having no students. A submission must carry a non-blank string `studentId` and an `assignmentId` equal to the root assignment ID. Unknown stored task keys outside the authoritative task list throw; associations are never guessed.                                                                                                                                                             |
 | Empty no-submission     | A submission with parent `documentId: null` and an empty item object remains an empty submission record. It is not expanded into placeholders or fabricated `N` items.                                                                                                                                                                                                                                                                                                                                                                    |
@@ -524,7 +526,7 @@ Assessment-stage LLM:      src/backend/RequestHandlers/
   ├── LLMRequestManager.js               — terminal assessment outcomes, run-stop
   │                                        terminalisation, shared live/cache numeric
   │                                        validation and versioned internal cache
-  │                                        identity retained through writebackhttps://github.com/h-arnold/AssessmentBot/pull/355/conflict?name=docs%252Fdeveloper%252Fdata-shapes%252Fassessment.md&ancestor_oid=395fe8c3395945797659a2659b1352bc0921a293&base_oid=697657fd04fc7b98104c8cdbbb356284acfe8736&head_oid=e59f10fc83481695a37bca36daee6e89fa52d76a
+  │                                        identity retained through writeback
   └── CacheManager.js                    — generic best-effort get/put and shared
                                            CACHE_EXPIRY_SECONDS
 

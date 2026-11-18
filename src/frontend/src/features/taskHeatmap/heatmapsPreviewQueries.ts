@@ -98,3 +98,34 @@ export function buildPreviewInput(
     hasError: queryResult.isError,
   };
 }
+
+/**
+ * Pair a deferred assignment selection with deferred preview results by
+ * `assignmentId`.
+ *
+ * @param {readonly string[]} assignmentIds - The deferred selection's assignment IDs.
+ * @param {AssignmentPreviewCombined['previewResults']} previewResults - Deferred preview results.
+ * @returns {AssignmentPreviewInput[]} One input per deferred assignment, in selection order.
+ *
+ * @remarks
+ * Pairing is by ID because the two lists legitimately differ during the deferral
+ * lag. A deferred assignment absent from the supplied preview results (for example
+ * when the deferred selection advances to an assignment whose committed preview
+ * result has not settled) is synthesised as a pending input, mirroring a
+ * not-yet-returned fetch, so assembly never sees a missing input and no error flash
+ * is raised. The `assembleMergedPreviewData` missing-input throw remains the
+ * fail-loud wiring-regression invariant.
+ */
+export function buildPreviewInputsByAssignmentId(
+  assignmentIds: readonly string[],
+  previewResults: AssignmentPreviewCombined['previewResults']
+): AssignmentPreviewInput[] {
+  const previewById = new Map(previewResults.map((preview) => [preview.assignmentId, preview]));
+  return assignmentIds.map((assignmentId: string): AssignmentPreviewInput => {
+    const preview = previewById.get(assignmentId);
+    return buildPreviewInput(
+      assignmentId,
+      preview ?? { assignmentId, isPending: true, isError: false, data: null }
+    );
+  });
+}

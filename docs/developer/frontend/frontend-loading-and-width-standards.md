@@ -52,6 +52,16 @@ Use it alongside:
 - Do not fall back to a full skeleton or whole-surface replacement spinner unless the surface becomes non-usable.
 - Do not reset selection, filters, or other user context unless the refreshed data invalidates that context.
 
+### 4.1 Deferred derivation behind urgent controls
+
+A region whose content is expensive to derive may defer that derivation so its controls stay responsive. The current implementation is React's `useDeferredValue` in `src/frontend/src/features/taskHeatmap/useHeatmapsPageData.ts`. Deferral changes what busy means for the region; the refresh rules above still apply.
+
+- Keep the last committed result visible while the deferred derivation catches up. A result that belongs to inputs the user has already replaced (for example the previous class) must not stay on screen; release it instead of pairing it with the new controls.
+- Mark the region busy while the derivation inputs differ from the urgent inputs, including when no fetch is in flight. A recompute served entirely from cache is still a refresh for the reader.
+- Derive that signal from the inputs the derivation actually consumes, so a change it ignores cannot flash busy.
+- On an empty→selected transition there is no committed result to keep, so the shape-matched skeleton from Section 3 stays until the deferred result arrives, inside the busy region. The gap must not flash an error state.
+- Busy may also disable a conflicting action: the Heatmaps surface disables Refresh for the whole lag, including the recompute that needs no fetch.
+
 ## 5. Fail-closed degraded-data rules
 
 - If required data for an owned region is known-invalid, known-incomplete, refresh-invalidated, or otherwise untrustworthy, suppress the normal content for that region by default.
@@ -181,7 +191,7 @@ Both student tables use Ant Design's `sticky` mode: the Student Averages table o
 ## 8. Accessibility semantics
 
 - Initial blocking load must expose accessible loading semantics, such as a labelled `role="status"` region while the skeleton is present.
-- Background refresh must mark the affected region busy, for example with `aria-busy="true"`, and pair that with visible refresh feedback that includes accessible text.
+- Background refresh, and a pending deferred derivation for the region (Section 4.1), must mark the affected region busy, for example with `aria-busy="true"`, and pair that with visible refresh feedback that includes accessible text.
 - Mutation loading and disabled states must remain programmatically exposed through the relevant control semantics.
 - Visual affordances alone are not sufficient.
 

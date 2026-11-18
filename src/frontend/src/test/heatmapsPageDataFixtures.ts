@@ -80,6 +80,7 @@ export function createMockQueryResult<T>(overrides: {
     failureCount: 0,
     failureReason: null,
     fetchStatus,
+    isError: status === 'error',
     isFetched: !isPending,
     isFetchedAfterMount: !isPending,
     isFetching: isPending,

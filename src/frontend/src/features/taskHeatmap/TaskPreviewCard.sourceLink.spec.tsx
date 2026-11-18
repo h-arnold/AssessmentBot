@@ -116,10 +116,11 @@ describe('TaskPreviewCard source action', () => {
     renderWithFrontendProviders(<TaskPreviewCard data={createPreviewData()} />);
 
     // The tooltip is a visible affordance, never the sole accessible-name
-    // mechanism, so the name must survive with no tooltip mounted.
-    const action = screen.getByRole('link', { name: SOURCE_ACTION_LABEL });
-
-    expect(action).toHaveAttribute('aria-label', SOURCE_ACTION_LABEL);
+    // mechanism, so the name must survive with no tooltip mounted. Querying by
+    // that name (before any hover or focus mounts a tooltip) is the assertion;
+    // restating it as an aria-label attribute check would duplicate the
+    // accessible-name pins in the sibling test.
+    expect(screen.getByRole('link', { name: SOURCE_ACTION_LABEL })).toBeInTheDocument();
   });
 
   it('links the derived editor URL in a new tab without leaking the opener', () => {
@@ -170,6 +171,8 @@ describe('TaskPreviewCard source action', () => {
     expect(within(status).queryByRole('link', { name: SOURCE_ACTION_LABEL })).toBeNull();
     expect(action.closest('.ant-card-head')).not.toBeNull();
     expect(document.querySelector('.ant-card-body')?.contains(action)).toBe(false);
+    // The balance space is rendered only alongside the action it mirrors.
+    expect(screen.getByTestId('task-preview-header-balance')).toBeInTheDocument();
   });
 
   it.each(NON_COMPUTED_PREVIEW_METRICS)(
@@ -191,8 +194,10 @@ describe('TaskPreviewCard source action', () => {
 
     expect(screen.queryByRole('link', { name: SOURCE_ACTION_LABEL })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: SOURCE_ACTION_LABEL })).not.toBeInTheDocument();
-    // No inert placeholder may carry the action's name either.
+    // No inert placeholder may carry the action's name, and the header carries
+    // no balance space without an action to balance.
     expect(screen.queryByLabelText(SOURCE_ACTION_LABEL)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('task-preview-header-balance')).not.toBeInTheDocument();
     // The existing empty-content treatment and the rest of the card stand.
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.getByText('Student Response')).toBeInTheDocument();

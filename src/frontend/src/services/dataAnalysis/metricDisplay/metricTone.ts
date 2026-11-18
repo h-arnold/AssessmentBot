@@ -139,9 +139,6 @@ function clampUnit(value: number): number {
  */
 function resolveNormalisedPosition(value: number, range: MetricToneRange): number {
   const span = range.upper - range.lower;
-  if (span <= 0) {
-    return 0;
-  }
   return clampUnit((value - range.lower) / span);
 }
 
@@ -275,7 +272,7 @@ export function resolveMetricTone(
     case 'error': {
       return {
         color: errorColor,
-        cellStyle: resolveDiscreteCellStyle(errorColor),
+        cellStyle: METRIC_TONE_CELL_STYLE[errorColor],
         muted: false,
       };
     }
@@ -286,32 +283,6 @@ export function resolveMetricTone(
         cellStyle: { className: EXCLUDED_CELL_CLASS_NAME },
         muted: false,
       };
-    }
-  }
-}
-
-/**
- * Resolve the preset cell style for a discrete (non-gradient) tone token.
- *
- * @param {MetricToneColor} token - The discrete tone token.
- * @returns {CSSProperties} The matching preset cell style.
- */
-function resolveDiscreteCellStyle(token: MetricToneColor): CSSProperties {
-  switch (token) {
-    case 'red': {
-      return METRIC_TONE_CELL_STYLE.red;
-    }
-    case 'gold': {
-      return METRIC_TONE_CELL_STYLE.gold;
-    }
-    case 'green': {
-      return METRIC_TONE_CELL_STYLE.green;
-    }
-    case 'volcano': {
-      return METRIC_TONE_CELL_STYLE.volcano;
-    }
-    case 'default': {
-      return METRIC_TONE_CELL_STYLE.default;
     }
   }
 }

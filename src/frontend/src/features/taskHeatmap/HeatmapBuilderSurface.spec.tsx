@@ -1,54 +1,13 @@
 /**
- * Component tests for the Heatmaps builder surface
- * (`HeatmapBuilderSurface`).
+ * Component tests for the Heatmaps builder surface (`HeatmapBuilderSurface`).
  *
  * @remarks
- * These tests pin the assembled surface's behaviour: the selection bar (three
- * labelled controls, disabled-dependent affordances, option ordering and checkbox
- * membership), the content-region precedence matrix (loading skeleton, blocking
- * Result, no-class / no-assignments Empty guidance, ready-with-selections table),
- * and the refresh affordances. They serve as the acceptance gate for the standalone
- * Heatmaps builder surface.
- *
- * The hook `useHeatmapsPageData` is mocked at the module seam (`vi.mock('./useHeatmapsPageData')`)
- * so each test drives one discriminated surface state. The mock return shape is
- * derived from the REAL `HeatmapsPageData` contract exported by `useHeatmapsPageData.ts`
- * (surfaceState discriminator, structured errors, `mergedResult` shape via
- * `adaptMetricsToMergedHeatmap` in `services/dataAnalysis/heatmapAdapter.merged.ts`).
- *
- * --- `optionRender` value-accessor pin (confirmed against INSTALLED antd typings) ---
- * The repo pins **antd v6.6.7** (the "(v5)" hint in the plan is stale). The installed
- * `@rc-component/select` (antd v6's Select base) types `optionRender` as:
- *
- *   optionRender?: (
- *     oriOption: FlattenOptionData<OptionType>,
- *     info: { index: number }
- *   ) => React.ReactNode;
- *
- *   interface FlattenOptionData<OptionType> {
- *     label?: React.ReactNode;
- *     data: OptionType;            // the original option entry
- *     key: React.Key;
- *     value?: RawValueType;        // RawValueType = string | number
- *     groupOption?: boolean;
- *     group?: boolean;
- *   }
- *
- * There is **no `selected` flag** on the option object. Therefore the rendered
- * Checkbox `checked` state MUST be derived from membership of the option's `value`
- * (or `data.value`) in the surface's controlled selected-values array:
- *
- *   const checked = selectedValues.includes(String(oriOption.value));
- *
- * The tests below assert exactly that contract (test "reflects controlled selection
- * membership ...") so a green implementation cannot read a non-existent
- * `option.selected` prop.
- *
- * --- EMPTY-STATE COPY (I3) ---
- * The empty-state guidance copy constants (`NO_CLASS_EMPTY_COPY`,
- * `NO_ASSIGNMENTS_EMPTY_COPY`) are sourced from `pageContent.heatmaps` (single source of
- * truth), per the green-phase handoff; the tests assert against that imported copy rather
- * than hard-coded literals.
+ * Pins the selection bar, content-region precedence and refresh affordances.
+ * `useHeatmapsPageData` is mocked at the module seam; the mock shape follows the
+ * real `HeatmapsPageData` contract. antd v6.6.7's `optionRender` has no `selected`
+ * flag, so checkbox `checked` must come from selected-value membership.
+ * Empty-state copy comes from `pageContent.heatmaps`, not hard-coded strings. The
+ * accessibility block pins the live status as a sibling of the busy region.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -412,6 +371,48 @@ describe('HeatmapBuilderSurface — refresh', () => {
   });
 });
 
+describe('HeatmapBuilderSurface — deferred selection transient', () => {
+  it('keeps the merged table visible with Refresh disabled while the deferred recompute lags', () => {
+    // The hook raises `isRefreshing` while the deferred pipeline inputs differ from
+    // the urgent selection, even with no fetch in flight. That coupling disables
+    // Refresh during the lag and keeps the previous table on screen (no flash).
+    renderSurface({
+      selection: {
+        classId: 'class-1',
+        topicKeys: [],
+        assignmentIds: ['a1', 'a2'],
+      } as SelectionState,
+      classFull: CLASS_FULL,
+      classFullQuery: READY_CLASS_QUERY,
+      mergedResult: buildMergedResult(),
+      surfaceState: { status: 'ready' } as HeatmapsSurfaceState,
+      isRefreshing: true,
+    });
+
+    expect(screen.getByRole('button', { name: /refresh/i })).toBeDisabled();
+    expect(document.querySelector('.ant-table-body')).toBeInTheDocument();
+    expect(document.querySelector('.ant-skeleton')).not.toBeInTheDocument();
+    expect(document.querySelector('[aria-busy="true"]')).toBeInTheDocument();
+  });
+
+  it('renders the defensive skeleton and busy region on the empty-to-selected transition', () => {
+    // The deferred pipeline has not produced a merged result yet, so the surface
+    // shows its defensive skeleton instead of flashing the no-assignments Empty.
+    renderSurface({
+      selection: { classId: 'class-1', topicKeys: [], assignmentIds: ['a1'] } as SelectionState,
+      classFull: CLASS_FULL,
+      classFullQuery: READY_CLASS_QUERY,
+      mergedResult: null,
+      surfaceState: { status: 'ready' } as HeatmapsSurfaceState,
+      isRefreshing: true,
+    });
+
+    expect(document.querySelector('[aria-busy="true"]')).toBeInTheDocument();
+    expect(document.querySelector('.ant-skeleton')).toBeInTheDocument();
+    expect(screen.queryByText(NO_ASSIGNMENTS_EMPTY_COPY)).not.toBeInTheDocument();
+  });
+});
+
 describe('HeatmapBuilderSurface — chrome title derivation', () => {
   it('shows the page title and a Refresh action when no class is selected', () => {
     renderSurface({
@@ -434,5 +435,62 @@ describe('HeatmapBuilderSurface — chrome title derivation', () => {
     });
 
     expect(screen.getByRole('heading', { name: 'Test Class 7A' })).toBeInTheDocument();
+  });
+});
+
+describe('HeatmapBuilderSurface — content-region accessibility semantics', () => {
+  it('places the live status beside the busy content region rather than inside it', () => {
+    renderSurface({ isRefreshing: true });
+
+    const status = screen.getByRole('status');
+    const busy = status.nextElementSibling;
+    if (!(busy instanceof HTMLElement)) throw new TypeError('Expected the busy content region');
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    expect(status.nextElementSibling).toBe(busy);
+    expect(status.parentElement).toBe(busy.parentElement);
+    expect(busy).not.toContainElement(status);
+    expect(busy.querySelector('span.sr-only[role="status"]')).toBeNull();
+  });
+
+  it.each([
+    {
+      state: 'a background refresh',
+      overrides: { isRefreshing: true },
+      text: 'Refreshing heatmap…',
+    },
+    {
+      state: 'the initial load',
+      overrides: { surfaceState: { status: 'loading' } as HeatmapsSurfaceState },
+      text: 'Loading heatmap content',
+    },
+    { state: 'a ready, idle surface', overrides: {}, text: '' },
+  ])('announces $state in the live status', ({ overrides, text }) => {
+    renderSurface(overrides);
+
+    expect(screen.getByRole('status').textContent).toBe(text);
+  });
+
+  it.each([
+    {
+      state: 'the initial load',
+      overrides: { surfaceState: { status: 'loading' } as HeatmapsSurfaceState },
+    },
+    {
+      state: 'the defensive fallback with selections but no merged result',
+      overrides: {
+        selection: { classId: 'class-1', topicKeys: [], assignmentIds: ['a1'] } as SelectionState,
+        classFull: CLASS_FULL,
+        classFullQuery: READY_CLASS_QUERY,
+        mergedResult: null,
+        surfaceState: { status: 'ready' } as HeatmapsSurfaceState,
+      },
+    },
+  ])('renders an unwrapped skeleton during $state', ({ overrides }) => {
+    renderSurface(overrides);
+
+    const busy = screen.getByRole('status').nextElementSibling;
+    // The bare skeleton must carry no live wrapper inside the busy region.
+    expect(busy?.querySelector('.ant-skeleton')).toBeInTheDocument();
+    expect(busy?.querySelector('[aria-live], [role="status"]')).toBeNull();
   });
 });

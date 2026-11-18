@@ -17,14 +17,24 @@ import {
 import {
   BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL,
   EXCLUDED_METRIC_ACCESSIBLE_LABEL,
+  METRIC_TONE_CELL_STYLE,
   resolveExcludedMetricAccessibleLabel,
   resolveMetricTone,
 } from './metricTone';
-import type { MetricToneResolution } from './metricTone';
+import type { MetricToneColor, MetricToneResolution } from './metricTone';
 import { appStylesRaw } from '@/test/appStylesRaw';
 
 /** Value at the default range ceiling (upper bound of { lower: 0, upper: 5 }). */
 const DEFAULT_RANGE_CEILING = 5;
+
+/** Every discrete tone token the error state can be coloured with. */
+const DISCRETE_TONE_TOKENS: readonly MetricToneColor[] = [
+  'red',
+  'gold',
+  'green',
+  'volcano',
+  'default',
+];
 
 describe('resolveMetricTone', () => {
   // -------------------------------------------------------------------------
@@ -273,6 +283,23 @@ describe('resolveMetricTone', () => {
       muted: false,
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Discrete cell style — reference-identity pin
+  // -------------------------------------------------------------------------
+
+  it.each(DISCRETE_TONE_TOKENS)(
+    'returns the shared METRIC_TONE_CELL_STYLE entry by reference for the "%s" error tone',
+    (token) => {
+      const metric: MetricResult = createErrorMetricResult();
+
+      const result = resolveMetricTone(metric, { lower: 0, upper: 5 }, token);
+
+      // Reference identity, not deep equality: the discrete resolver must hand
+      // back the shared record entry itself so the lookup stays a pure mapping.
+      expect(result.cellStyle).toBe(METRIC_TONE_CELL_STYLE[token]);
+    }
+  );
 
   // -------------------------------------------------------------------------
   // Edge-case range boundaries

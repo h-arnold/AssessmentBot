@@ -40,7 +40,10 @@ import { TaskHeatmapTable } from './TaskHeatmapTable';
 import { HeatmapSelectionBar } from './HeatmapSelectionBar';
 import { useHeatmapsPageData } from './useHeatmapsPageData';
 import { TaskHeatmapSummaryCards } from './TaskHeatmapSummaryCards';
-import { useHeatmapSelectionSummary, type HeatmapSelectionSummaryResult } from './useHeatmapSelectionSummary';
+import {
+  useHeatmapSelectionSummary,
+  type HeatmapSelectionSummaryResult,
+} from './useHeatmapSelectionSummary';
 import type { HeatmapsPageError } from './heatmapsSurfaceState';
 import type { BlockingConfig } from '@/errors/blockingConfig';
 import { resolveBlockingResultConfig } from '@/errors/blockingConfig';
@@ -108,24 +111,36 @@ function BlockingResult({
  * Wraps the rendered content in a container that carries the background-refresh
  * busy signal. A disabled Refresh button is removed from the accessibility
  * tree, so its `aria-busy` would never be announced; the busy signal therefore
- * lives on this persistent container, paired with a visually-hidden live status.
+ * lives on this persistent container. The visually-hidden live status is a
+ * sibling of that container, not a descendant: nesting a live region inside an
+ * `aria-busy` region can produce conflicting screen-reader announcements. One
+ * status carries both the refresh and initial-loading announcements, so the
+ * loading skeleton needs no live wrapper of its own.
  *
- * @param {Readonly<{ isRefreshing: boolean; children: JSX.Element }>} properties - Region properties.
+ * @param {Readonly<{ isRefreshing: boolean; isLoading: boolean; children: JSX.Element }>} properties - Region properties.
  * @param {boolean} properties.isRefreshing - Whether a background refresh is in flight.
+ * @param {boolean} properties.isLoading - Whether the initial-loading skeleton is showing.
  * @param {JSX.Element} properties.children - The rendered content region.
- * @returns {JSX.Element} The busy-aware content region.
+ * @returns {JSX.Element} The live status and busy-aware content region as siblings.
  */
 function ContentRegion({
   isRefreshing,
+  isLoading,
   children,
-}: Readonly<{ isRefreshing: boolean; children: JSX.Element }>): JSX.Element {
+}: Readonly<{ isRefreshing: boolean; isLoading: boolean; children: JSX.Element }>): JSX.Element {
+  let announcement = '';
+  if (isRefreshing) {
+    announcement = 'Refreshing heatmap…';
+  } else if (isLoading) {
+    announcement = 'Loading heatmap content';
+  }
   return (
-    <div aria-busy={isRefreshing}>
-      <span className="sr-only" aria-live="polite">
-        {isRefreshing ? 'Refreshing heatmap…' : ''}
+    <>
+      <span className="sr-only" role="status" aria-live="polite">
+        {announcement}
       </span>
-      {children}
-    </div>
+      <div aria-busy={isRefreshing}>{children}</div>
+    </>
   );
 }
 
@@ -134,8 +149,11 @@ function ContentRegion({
  * @param {Readonly<{ result: HeatmapSelectionSummaryResult }>} properties - Prepared summary state.
  * @returns {JSX.Element | null} Summary cards, a local failure, or no content.
  */
-function SelectionSummary({ result }: Readonly<{ result: HeatmapSelectionSummaryResult }>): JSX.Element | null {
-  if (result.error !== null) return <Alert type="error" showIcon title="The summary could not be built" />;
+function SelectionSummary({
+  result,
+}: Readonly<{ result: HeatmapSelectionSummaryResult }>): JSX.Element | null {
+  if (result.error !== null)
+    return <Alert type="error" showIcon title="The summary could not be built" />;
   if (result.view === null) return null;
   return <TaskHeatmapSummaryCards {...result.view} />;
 }
@@ -165,7 +183,7 @@ export function HeatmapBuilderSurface(): JSX.Element {
     classFull,
     assignmentDefinitionPartials,
     mergedResult,
-    surfaceState.status === 'ready',
+    surfaceState.status === 'ready'
   );
 
   const title =
@@ -178,11 +196,7 @@ export function HeatmapBuilderSurface(): JSX.Element {
 
   const renderContent = (): JSX.Element => {
     if (surfaceState.status === 'loading') {
-      return (
-        <div role="status" aria-live="polite" aria-label="Loading heatmap content">
-          <Skeleton active paragraph={{ rows: 6 }} />
-        </div>
-      );
+      return <Skeleton active paragraph={{ rows: 6 }} />;
     }
 
     if (surfaceState.status === 'blocking') {
@@ -216,11 +230,7 @@ export function HeatmapBuilderSurface(): JSX.Element {
 
     // Defensive fallback: selections present but the merged result is not yet
     // available — keep the shape-matched skeleton rather than flashing empty.
-    return (
-      <div role="status" aria-live="polite" aria-label="Loading heatmap content">
-        <Skeleton active paragraph={{ rows: 6 }} />
-      </div>
-    );
+    return <Skeleton active paragraph={{ rows: 6 }} />;
   };
 
   return (
@@ -250,7 +260,9 @@ export function HeatmapBuilderSurface(): JSX.Element {
           onChangeAssignments={changeAssignments}
         />
       </Card>
-      <ContentRegion isRefreshing={isRefreshing}>{renderContent()}</ContentRegion>
+      <ContentRegion isRefreshing={isRefreshing} isLoading={surfaceState.status === 'loading'}>
+        {renderContent()}
+      </ContentRegion>
     </Flex>
   );
 }

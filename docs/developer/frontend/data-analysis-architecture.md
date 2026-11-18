@@ -342,22 +342,23 @@ averaging surfaces, not a metadata-specific effect. Import actual owners directl
 do not introduce a frontend facade or barrel. The hook validates the successful
 context after commit: complete unsliced class, live definition partials and a
 matching-class averaging result. Pass null when there is no successful context;
-descriptive summaries remain read-only. The required third argument is the committed
-selected class ID, which owns feedback lifetime independently of that readiness.
+descriptive summaries remain read-only. The required third argument is the class ID
+that owns feedback lifetime, independently of that readiness.
 
 `hooks/usePagePostAnalysisTasks.ts` owns the page-level eligibility gate shared by
 both surfaces. It forms and memoises the context only when the surface is `ready` and
 the complete class, live definitions and successful averaging result are all non-null;
 otherwise it passes `null`. It creates the descriptor list once per mount with a
-mount-scoped clock and forwards the committed selected class ID unchanged. Feature
+mount-scoped clock and forwards the supplied class ID unchanged. Feature
 hooks call it directly and do not build their own context, descriptor list or status
 alias.
 
-Both feature hooks call `usePagePostAnalysisTasks` directly:
-`features/classPage/useClassPageData.ts` and
-`features/taskHeatmap/useHeatmapsPageData.ts` pass their surface status, complete
-unsliced class, live definition partials, successful averaging result and committed
-class ID. The page hook owns the context memo and the once-per-mount descriptor list,
+Both feature hooks call `usePagePostAnalysisTasks` directly, passing their surface
+status, complete unsliced class, live definition partials and successful averaging
+result. `features/classPage/useClassPageData.ts` passes its selected class ID;
+`features/taskHeatmap/useHeatmapsPageData.ts` passes its deferred selection's class
+ID, so the ID always matches the deferred averaging result it forwards. The page hook
+owns the context memo and the once-per-mount descriptor list,
 so ordinary rerenders keep the same context and task-list references. Never rebuild
 the context object per render: an unstable object re-attaches the effect each render
 and was observed in a browser run to produce an attach/publish loop once cache

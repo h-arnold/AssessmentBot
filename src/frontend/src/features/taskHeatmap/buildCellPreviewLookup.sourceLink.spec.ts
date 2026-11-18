@@ -174,6 +174,37 @@ describe('buildCellPreviewLookup source URL derivation', () => {
       );
     });
 
+    it('trims and encodes the parent documentId used as the fallback', () => {
+      const assignment = cloneCanonicalSlidesAssignment();
+      const { studentId, taskKey, item } = selectFirstSourceCell(assignment);
+      item.artifact.documentId = null;
+      // The parent ID carries surrounding whitespace and a slash, both of
+      // which must be trimmed and encoded when it becomes the URL path segment.
+      const untrimmedParentId = '  parent doc/1  ';
+      assignment.submissions[0].documentId = untrimmedParentId;
+
+      expect(deriveSourceUrl(assignment, studentId, taskKey)).toBe(
+        buildExpectedSourceUrl('SLIDES', untrimmedParentId, item.artifact.pageId)
+      );
+    });
+
+    it('handles an absent parent documentId key as an unusable fallback', () => {
+      const assignment = cloneCanonicalSlidesAssignment();
+      const { studentId, taskKey, item } = selectFirstSourceCell(assignment);
+      // Delete the key so the resolver receives `undefined`, not `null`.
+      delete (assignment.submissions[0] as { documentId?: string | null }).documentId;
+
+      // The artefact's own ID still yields its editor URL with no parent.
+      expect(deriveSourceUrl(assignment, studentId, taskKey)).toBe(
+        buildExpectedSourceUrl('SLIDES', item.artifact.documentId, item.artifact.pageId)
+      );
+
+      // With neither artefact nor parent ID usable, derivation is null rather
+      // than a thrown error on the absent key.
+      item.artifact.documentId = null;
+      expect(deriveSourceUrl(assignment, studentId, taskKey)).toBeNull();
+    });
+
     it('falls back to the parent documentId with no fragment when the artifact documentId and pageId are both unusable', () => {
       const assignment = cloneCanonicalSlidesAssignment();
       const { studentId, taskKey, item } = selectFirstSourceCell(assignment);
