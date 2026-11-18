@@ -7,6 +7,8 @@
  *   - it imports and handles `TaskTitlesUnavailableError`
  *   - it renders an in-view Ant Design Alert for TaskTitlesUnavailableError
  *   - it logs via logFrontendError on generic Error and calls onBack
+ *   - the table card head hosts one Averages basis control only when the Class
+ *     page supplies all three mode props
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -28,6 +30,7 @@ import {
 } from '@/test/taskHeatmapPageFixtures';
 import { createTestQueryClient } from '@/test/dataAnalysis/heatmapFixtures';
 import { requireElement } from '@/test/shared/domGuards';
+import { MODE_CONTROL_LABEL, READY_AVAILABILITY } from '@/test/averagesBasisTestConstants';
 
 // ===========================================================================
 // Helpers
@@ -300,5 +303,70 @@ describe('TaskHeatmapPage — TaskTitlesUnavailableError and generic Error handl
       )
     ).toBeInTheDocument();
     expect(container.querySelector('.ant-table-body')).not.toBeInTheDocument();
+  });
+
+  // -----------------------------------------------------------------------
+  // Averages basis control hosted by the heatmap table card
+  // -----------------------------------------------------------------------
+
+  it('hosts a single Averages basis control in the heatmap table card head when all mode props are supplied', () => {
+    mockTaskHeatmapTable.mockImplementation(() =>
+      createElement('div', { 'data-testid': 'task-heatmap-table' })
+    );
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <App>
+          <TaskHeatmapPage
+            analyserResult={analyserResultFixture}
+            classFull={classFullFixture}
+            assignmentId="a-1"
+            assignmentDefinitionPartials={[VALID_ASSIGNMENT_PARTIAL]}
+            onBack={vi.fn()}
+            refetch={vi.fn()}
+            analysisMode="absolute"
+            onAnalysisModeChange={vi.fn()}
+            baselineAvailability={READY_AVAILABILITY}
+          />
+        </App>
+      </QueryClientProvider>
+    );
+
+    const control = screen.getByRole('radiogroup', { name: MODE_CONTROL_LABEL });
+    expect(screen.getAllByRole('radiogroup', { name: MODE_CONTROL_LABEL })).toHaveLength(1);
+
+    const tableCard = requireElement(
+      screen.getByTestId('task-heatmap-table').closest('.ant-card'),
+      'Expected the Task Heatmap table card.'
+    );
+    const extra = requireElement(
+      tableCard.querySelector(':scope .ant-card-head .ant-card-extra'),
+      'Expected the Task Heatmap card head extra.'
+    );
+    expect(extra).toContainElement(control);
+  });
+
+  it('renders no Averages basis control when the mode props are absent', () => {
+    mockTaskHeatmapTable.mockImplementation(() =>
+      createElement('div', { 'data-testid': 'task-heatmap-table' })
+    );
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <App>
+          <TaskHeatmapPage
+            analyserResult={analyserResultFixture}
+            classFull={classFullFixture}
+            assignmentId="a-1"
+            assignmentDefinitionPartials={[VALID_ASSIGNMENT_PARTIAL]}
+            onBack={vi.fn()}
+            refetch={vi.fn()}
+          />
+        </App>
+      </QueryClientProvider>
+    );
+
+    expect(screen.queryByRole('radiogroup', { name: MODE_CONTROL_LABEL })).not.toBeInTheDocument();
+    expect(screen.getByTestId('task-heatmap-table')).toBeInTheDocument();
   });
 });

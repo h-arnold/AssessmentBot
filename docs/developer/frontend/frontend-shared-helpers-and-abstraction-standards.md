@@ -69,6 +69,8 @@ Do not create a new helper only to move code out of a large file.
 - Classes bulk form modal scaffold: `src/frontend/src/features/classes/bulk/BulkFormModalScaffold.tsx` — three-caller shell owning reset-on-cancel, submit-on-OK, inline submission error rendering, and busy semantics.
 - Reference-data modal family: `ReferenceDataManagementModalScaffold.tsx`, `manageReferenceDataDialogs.tsx`, `InlineDialog.tsx`, and `ReferenceDataInitialLoadingState.tsx` (under `src/frontend/src/features/referenceData/`) — extend this family for new reference-data modals rather than composing a fresh shell.
 - Cross-feature re-run entry contract: `src/frontend/src/features/shared/reRunAssessmentContext.ts` — `ReRunContext` lives in `features/shared` so `features/taskHeatmap/**` never imports `features/classPage/**`.
+- Cross-feature baseline-availability type: `src/frontend/src/features/shared/baselineAvailability.ts` — `BaselineAvailability` lives in `features/shared` (resolved by `classPage`, consumed by `taskHeatmap` and the shared control) under the same dependency rule.
+- Cross-feature averages-basis mode props: `src/frontend/src/features/shared/averagesBasisModeProps.ts` — `AveragesBasisModeProps` (optional `analysisMode`, `onAnalysisModeChange`, `baselineAvailability`) lives in `features/shared` (threaded by `classPage`, consumed by `taskHeatmap` and the shared control) under the same dependency rule.
 
 Feature-scoped helpers should stay feature-scoped unless there is proven cross-feature reuse.
 
@@ -86,6 +88,7 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 
 - `ImageRenderer`: shared presentational component at `src/frontend/src/components/ImageRenderer/ImageRenderer.tsx`. Renders a base64 data URL as a constrained `<img>` (maxWidth 100%, height auto, maxHeight 400, default alt "Student response image").
 - `MarkdownRenderer`: shared presentational component at `src/frontend/src/components/MarkdownRenderer/MarkdownRenderer.tsx`. Renders markdown text and tables via `react-markdown` + `remark-gfm` (no `rehype-raw`, for XSS safety), with co-located CSS for basic table styling.
+- `AveragesBasisControl`: shared presentational component at `src/frontend/src/components/AveragesBasisControl/AveragesBasisControl.tsx`, with `renderAveragesBasisControlExtra.tsx` guarding the host-card `extra`. Promoted to `components/` because two features host it — `classPage`'s Student Averages card and `taskHeatmap`'s table card. Its visible label is `sr-only`; the accessible name stays `Averages basis`.
 
 ### 3.6 Student-name helpers
 
@@ -214,7 +217,7 @@ Rules for new entries:
 - **9.11 Classes page grouped view-model** — keep local to `src/frontend/src/pages/classesPageModel.ts`; do not widen the Settings Classes helper family, which serves different merge and workflow needs.
 - **9.14 Topic existence check** — single-caller one-liner in `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`; no existing helper matches the contract.
 - **9.16 / 9.16a AssessTask link and skeleton helpers** — `matchDefinitionForAssignment.ts`, `getLinkableDefinitionsForModal.ts`, `LinkableDefinitionList.tsx` (which also exports the `LinkExistingDefinitionButton` availability leaf), `AssignmentSelectSkeleton.tsx`, and `stringComparison.ts` stay in `src/frontend/src/features/classes/AssessTaskModal/`; two or three in-modal callers each, so they are not promoted.
-- **9.19 Class page and task-heatmap surface** — every adapter, model, hook, dispatcher, presentational component, column-marking header, and E2E scenario helper under `src/frontend/src/features/classPage/**` and `src/frontend/src/features/taskHeatmap/**` stays feature-local per Section 6; promotion requires a documented cross-feature caller. The embedded heatmap's class-partial preview lookup (`buildClassPartialPreviewLookup.ts`) is feature-local under the same rule.
+- **9.19 Class page and task-heatmap surface** — every adapter, model, hook, dispatcher, presentational component, column-marking header, and E2E scenario helper under `src/frontend/src/features/classPage/**` and `src/frontend/src/features/taskHeatmap/**` stays feature-local per Section 6; promotion requires a documented cross-feature caller (the promoted `AveragesBasisControl` is recorded in §9.27). The embedded heatmap's class-partial preview lookup (`buildClassPartialPreviewLookup.ts`) is feature-local under the same rule.
 
 ### Rejected and superseded designs
 
@@ -255,6 +258,9 @@ Behaviour that the code alone does not explain:
 - `AnalysisModeSchema` in `dataAnalysis.zod.ts` has no default: every caller states `analysisMode`, and the result echoes `appliedAnalysisMode`.
 - Pass the mode to `MetricPill` and the student-averages column builder explicitly; do not introduce React context.
 - `buildTaskColumns` takes a required `ReadonlySet<string> | null`; `adaptMetricsToHeatmap` supplies the baseline set or `null` for absolute mode, and the merged chain passes `null` explicitly at each hop.
+- `BaselineAvailability` is owned by `features/shared/baselineAvailability.ts` (resolved in `classPage`, consumed by `taskHeatmap` and the shared control), so `taskHeatmap` never imports `classPage`.
+- `AveragesBasisModeProps` is owned by `features/shared/averagesBasisModeProps.ts` (threaded by `classPage`, consumed by `taskHeatmap` and the shared control), so `taskHeatmap` never imports `classPage`; all three members stay optional so direct card renders keep their original head.
+- `AveragesBasisControl` lives in `components/AveragesBasisControl/` with `renderAveragesBasisControlExtra.tsx` owning the `extra` guard; promoted from `features/classPage/ClassPageModeControl.tsx` because both averaging cards host it.
 - `resolveBaselineAvailability` stays in `useClassPageData.helpers.ts`; its reason strings are module constants.
 - Load the `medium` synthetic views at each call site with `?raw`; do not add a shared loader.
 - The shared `buildInput`/`buildSingleStudentInput` fixture pins `analysisMode: 'absolute'`.

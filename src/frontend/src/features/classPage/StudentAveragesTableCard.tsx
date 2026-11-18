@@ -5,7 +5,8 @@
  * containing a control row (`Space.Compact` with a plain `Input` and
  * `SearchOutlined` prefix on the left, static label on the right) and an Ant
  * Design `Table` with six columns (Forename, Surname, Completeness, Accuracy,
- * SPaG, Average).
+ * SPaG, Average). When the Class page supplies all three mode props, the
+ * card head's `extra` hosts the shared `AveragesBasisControl`.
  *
  * @remarks
  * **State ownership.** The component owns three pieces of user-controlled
@@ -64,8 +65,9 @@ import { Card, Input, Space, Typography, Flex, Table, Empty } from 'antd';
 import type { TableColumnsType, TablePaginationConfig } from 'antd';
 import type { FilterValue, SorterResult } from 'antd/es/table/interface';
 import { SearchOutlined } from '@ant-design/icons';
-import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
+import type { AveragesBasisModeProps } from '../shared/averagesBasisModeProps';
+import { renderAveragesBasisControlExtra } from '@/components/AveragesBasisControl/renderAveragesBasisControlExtra';
 import { pageContent } from '@/pages/pageContent';
 
 import { buildClassPageViewModel } from './classPageModel';
@@ -93,16 +95,11 @@ type SortState = {
   readonly direction: 'asc' | 'desc';
 };
 
-export type StudentAveragesTableCardProperties = {
-  readonly adapterResult: ClassPageAdapterResult;
-  /**
-   * The Class page's current analysis mode, forwarded to the column builder
-   * for the `excluded` cells' accessible label (§9.27.3 threading chain).
-   * Class-page consumers pass it explicitly; when absent the weighting-only
-   * wording is used.
-   */
-  readonly analysisMode?: AnalysisMode;
-};
+export type StudentAveragesTableCardProperties = Readonly<
+  {
+    readonly adapterResult: ClassPageAdapterResult;
+  } & AveragesBasisModeProps
+>;
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -183,12 +180,14 @@ function normaliseSorter(
  * @param {StudentAveragesTableCardProperties} properties - Component properties.
  * @param {ClassPageAdapterResult} properties.adapterResult - The adapter's canonical output.
  * @param {AnalysisMode} [properties.analysisMode] - The page's analysis mode for the excluded labels.
+ * @param {(mode: AnalysisMode) => void} [properties.onAnalysisModeChange] - Mode-change handler.
+ * @param {BaselineAvailability} [properties.baselineAvailability] - Baseline availability.
  * @returns {JSX.Element} The Student Averages table card.
  */
 export function StudentAveragesTableCard(
   properties: StudentAveragesTableCardProperties
 ): JSX.Element {
-  const { adapterResult, analysisMode } = properties;
+  const { adapterResult, analysisMode, onAnalysisModeChange, baselineAvailability } = properties;
 
   // ── State ──────────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -259,8 +258,19 @@ export function StudentAveragesTableCard(
 
   // ── Render ─────────────────────────────────────────────────────────────
 
+  const modeControlExtra = renderAveragesBasisControlExtra({
+    analysisMode,
+    onAnalysisModeChange,
+    baselineAvailability,
+  });
+
   return (
-    <Card size="small" title="Student Averages">
+    <Card
+      size="small"
+      title="Student Averages"
+      classNames={{ header: 'app-card-header--controls' }}
+      extra={modeControlExtra}
+    >
       <Flex justify="space-between" align="center">
         <Space.Compact className="ant-input-search">
           <Input

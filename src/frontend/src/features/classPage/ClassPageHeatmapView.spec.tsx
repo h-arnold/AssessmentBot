@@ -9,7 +9,8 @@
  *   (and `analyserResult`/`classFull` non-null), it renders `TaskHeatmapPage`
  *   instead of the ready overview tree.
  * - `TaskHeatmapPage` renders header (assignment name, class name, Back button),
- *   a control Card (refresh), and `<TaskHeatmapTable heatmapResult={...} />`.
+ *   a table Card whose head also hosts the Averages basis control in ready mode,
+ *   and `<TaskHeatmapTable heatmapResult={...} />`.
  * - On `adaptMetricsToHeatmap` throw, it logs via `logFrontendError` and calls
  *   `onBack` (no in-view error UI).
  */

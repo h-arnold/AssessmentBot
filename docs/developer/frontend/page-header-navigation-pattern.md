@@ -19,24 +19,22 @@ JSDoc are the component contract.
 
 ## Layout per page level
 
-Class page:
+Class page (ready):
 
 ```text
 [PageTitleCard — class name, level 2]
-[Mode-control slot — "Averages basis" Segmented]
 [PageNavCard — "Back to Classes" | Edit Student Details + Start New Assessment]
 [Recent Assignments section]
-[Student Averages table]
+[Student Averages table — "Averages basis" Segmented in card top-right extra]
 ```
 
-Task heatmap (child of the Class page):
+Task heatmap (child of the Class page, ready):
 
 ```text
 [PageTitleCard — parent class name, level 2]
-[Mode-control slot — owned by the Class page header]
 [PageTitleCard — assignment name, level 4]
 [PageNavCard — "Back to Class overview" | Re-run Assessment + Refresh]
-[Task Heatmap table]
+[Task Heatmap table — "Averages basis" Segmented in card top-right extra]
 ```
 
 Parent-level actions (Edit Student Details, Start New Assessment) must not appear on the child page.
@@ -60,18 +58,21 @@ Parent-level actions (Edit Student Details, Start New Assessment) must not appea
 
 ## Mode-control slot
 
-The Class page header has a third element between its title and nav cards:
-`ClassPageModeControl` (`src/frontend/src/features/classPage/ClassPageModeControl.tsx`). It hosts the
-"Averages basis" `Segmented` control (`All tasks` | `Baseline tasks`).
+`AveragesBasisControl` (`src/frontend/src/components/AveragesBasisControl/AveragesBasisControl.tsx`)
+hosts the "Averages basis" `Segmented` control (`All tasks` | `Baseline tasks`). It is card chrome,
+not part of `PageTitleCard` or `PageNavCard`.
 
-- The slot is page-level and outside this title/nav pattern. It must not become part of
-  `PageTitleCard` or `PageNavCard`.
-- Render it with the header in every child view and blocking state, so the escape back to
-  `All tasks` stays reachable during a baseline-mode failure.
-- The Heatmaps surfaces gain no mode control; the embedded heatmap marks baseline data through
-  data only.
-- Disabled-state accessibility (tooltip plus sr-only description) is documented in the component
-  JSDoc.
+- In ready states it sits in the top-right `extra` of the Student Averages card (overview) and of
+  the card wrapping `TaskHeatmapTable` (embedded heatmap view).
+  `renderAveragesBasisControlExtra.tsx` guards the `extra`, so direct renders keep their original
+  card head.
+- While `blocking`, a fallback card between the title and nav cards hosts the control so the escape
+  back to `All tasks` stays reachable. Mount exactly one control: the fallback replaces the in-card
+  one.
+- Standalone Heatmaps renders no control; the embedded heatmap hosts it only when the Class page
+  supplies all three mode props.
+- The visible label is `sr-only` but stays the `aria-labelledby` target, preserving the accessible
+  name "Averages basis". Disabled-state accessibility is documented in the component JSDoc.
 
 ## Related standards
 

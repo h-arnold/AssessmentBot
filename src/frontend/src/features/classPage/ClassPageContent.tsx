@@ -32,13 +32,14 @@ import type { JSX } from 'react';
 import { Space, Skeleton, Button, Result } from 'antd';
 import type { ClassPageSurfaceState, ClassPageError } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
-import type { AnalysisMode, AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { RecentAssignmentsSection } from './RecentAssignmentsSection';
 import { StudentAveragesTableCard } from './StudentAveragesTableCard';
 import { TaskHeatmapPage } from '../taskHeatmap/TaskHeatmapPage';
 import type { ReRunContext } from '../shared/reRunAssessmentContext';
+import type { AveragesBasisModeProps } from '../shared/averagesBasisModeProps';
 import type { BlockingConfig } from '@/errors/blockingConfig';
 import { resolveBlockingResultConfig } from '@/errors/blockingConfig';
 
@@ -46,44 +47,38 @@ import { resolveBlockingResultConfig } from '@/errors/blockingConfig';
 // Types
 // ---------------------------------------------------------------------------
 
-type ClassPageContentProperties = Readonly<{
-  /** The combined surface state (`loading` | `blocking` | `ready`). */
-  surfaceState: ClassPageSurfaceState;
-  /** Adapter result (non-null only when `surfaceState.status === 'ready'`). */
-  adapterResult: ClassPageAdapterResult | null;
-  /** Structured error (non-null only when `surfaceState.status === 'blocking'`). */
-  error: ClassPageError | null;
-  /** Callback invoked when the user clicks "Back to Classes". */
-  onNavigateToClasses: () => void;
-  /** Callback invoked when the user clicks "Retry" on a retryable error. */
-  onRetry: () => void;
-  /** Analyser result — non-null when `surfaceState.status === 'ready'`. */
-  analyserResult: AveragingResult | null;
-  /** The full class data — non-null when `surfaceState.status === 'ready'`. */
-  classFull: ClassFull | null;
-  /** The current view selection (overview or heatmap with optional assignmentId). */
-  selectedView: { view: 'overview' | 'heatmap'; assignmentId?: string };
-  /** Warm-up assignment-definition partials (non-null when `surfaceState.status === 'ready'`). */
-  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null;
-  /** Callback invoked when a RecentAssignmentCard is clicked to open the heatmap. */
-  onOpenHeatmap: (assignmentId: string) => void;
-  /** Callback invoked to return from the heatmap view to the overview. */
-  onBack: () => void;
-  /** Callback invoked to re-run the data pipeline (refresh). */
-  refetch: () => void;
-  /** Callback invoked when the user clicks "Start New Assessment" (used by empty-state CTA). */
-  onStartNewAssessment: () => void;
-  /** Callback invoked when the user clicks Re-run Assessment in the heatmap view. */
-  onReRunAssessment?: (context: ReRunContext) => void;
-  /**
-   * The page's current analysis mode (§9.27.3 threading chain), forwarded to
-   * the ready overview tree's `excluded` accessible labels. The page passes it
-   * explicitly; when absent the weighting-only wording is used. Never forwarded
-   * to the embedded heatmap view (`features/taskHeatmap/**` receives no mode
-   * props).
-   */
-  analysisMode?: AnalysisMode;
-}>;
+type ClassPageContentProperties = Readonly<
+  {
+    /** The combined surface state (`loading` | `blocking` | `ready`). */
+    surfaceState: ClassPageSurfaceState;
+    /** Adapter result (non-null only when `surfaceState.status === 'ready'`). */
+    adapterResult: ClassPageAdapterResult | null;
+    /** Structured error (non-null only when `surfaceState.status === 'blocking'`). */
+    error: ClassPageError | null;
+    /** Callback invoked when the user clicks "Back to Classes". */
+    onNavigateToClasses: () => void;
+    /** Callback invoked when the user clicks "Retry" on a retryable error. */
+    onRetry: () => void;
+    /** Analyser result — non-null when `surfaceState.status === 'ready'`. */
+    analyserResult: AveragingResult | null;
+    /** The full class data — non-null when `surfaceState.status === 'ready'`. */
+    classFull: ClassFull | null;
+    /** The current view selection (overview or heatmap with optional assignmentId). */
+    selectedView: { view: 'overview' | 'heatmap'; assignmentId?: string };
+    /** Warm-up assignment-definition partials (non-null when `surfaceState.status === 'ready'`). */
+    assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null;
+    /** Callback invoked when a RecentAssignmentCard is clicked to open the heatmap. */
+    onOpenHeatmap: (assignmentId: string) => void;
+    /** Callback invoked to return from the heatmap view to the overview. */
+    onBack: () => void;
+    /** Callback invoked to re-run the data pipeline (refresh). */
+    refetch: () => void;
+    /** Callback invoked when the user clicks "Start New Assessment" (used by empty-state CTA). */
+    onStartNewAssessment: () => void;
+    /** Callback invoked when the user clicks Re-run Assessment in the heatmap view. */
+    onReRunAssessment?: (context: ReRunContext) => void;
+  } & AveragesBasisModeProps
+>;
 
 type ClassPageBlockingProperties = Readonly<{
   /** The blocking error to display. */
@@ -94,16 +89,16 @@ type ClassPageBlockingProperties = Readonly<{
   onNavigateToClasses: () => void;
 }>;
 
-type ClassPageReadyProperties = Readonly<{
-  /** The adapter result with recent assignments and student averages. */
-  adapterResult: ClassPageAdapterResult;
-  /** Callback forwarded to RecentAssignmentsSection for opening the heatmap view. */
-  onOpenHeatmap: (assignmentId: string) => void;
-  /** Callback invoked when the user clicks "Start New Assessment" (used by empty-state CTA). */
-  onStartNewAssessment: () => void;
-  /** The page's analysis mode for the `excluded` accessible labels (§9.27.3). */
-  analysisMode?: AnalysisMode;
-}>;
+type ClassPageReadyProperties = Readonly<
+  {
+    /** The adapter result with recent assignments and student averages. */
+    adapterResult: ClassPageAdapterResult;
+    /** Callback forwarded to RecentAssignmentsSection for opening the heatmap view. */
+    onOpenHeatmap: (assignmentId: string) => void;
+    /** Callback invoked when the user clicks "Start New Assessment" (used by empty-state CTA). */
+    onStartNewAssessment: () => void;
+  } & AveragesBasisModeProps
+>;
 
 // ---------------------------------------------------------------------------
 // Error configuration
@@ -291,7 +286,7 @@ function ClassPageBlocking({
 // ---------------------------------------------------------------------------
 
 /** Options for {@link renderReadyContent}. */
-interface RenderReadyContentOptions {
+interface RenderReadyContentOptions extends AveragesBasisModeProps {
   selectedView: ClassPageContentProperties['selectedView'];
   analyserResult: AveragingResult | null;
   classFull: ClassFull | null;
@@ -302,7 +297,6 @@ interface RenderReadyContentOptions {
   refetch: () => void;
   onStartNewAssessment: () => void;
   onReRunAssessment?: (context: ReRunContext) => void;
-  analysisMode?: AnalysisMode;
 }
 
 /**
@@ -325,6 +319,8 @@ function renderReadyContent(options: RenderReadyContentOptions): JSX.Element {
     onStartNewAssessment,
     onReRunAssessment,
     analysisMode,
+    onAnalysisModeChange,
+    baselineAvailability,
   } = options;
   if (
     selectedView.view === 'heatmap' &&
@@ -342,6 +338,9 @@ function renderReadyContent(options: RenderReadyContentOptions): JSX.Element {
         onBack={onBack}
         refetch={refetch}
         onReRunAssessment={onReRunAssessment}
+        analysisMode={analysisMode}
+        onAnalysisModeChange={onAnalysisModeChange}
+        baselineAvailability={baselineAvailability}
       />
     );
   }
@@ -352,6 +351,8 @@ function renderReadyContent(options: RenderReadyContentOptions): JSX.Element {
       onOpenHeatmap={onOpenHeatmap}
       onStartNewAssessment={onStartNewAssessment}
       analysisMode={analysisMode}
+      onAnalysisModeChange={onAnalysisModeChange}
+      baselineAvailability={baselineAvailability}
     />
   );
 }
@@ -365,13 +366,17 @@ function renderReadyContent(options: RenderReadyContentOptions): JSX.Element {
  * 2. `StudentAveragesTableCard` with `adapterResult`
  *
  * Both children receive the page's `analysisMode` so their `excluded`
- * accessible labels stay mode-aware (§9.27.3 threading chain).
+ * accessible labels stay mode-aware (§9.27.3 threading chain). The Student
+ * Averages card also receives the mode-change handler and baseline
+ * availability so it can host the `AveragesBasisControl` in its card head.
  *
  * @param {ClassPageReadyProperties} properties - Component properties.
  * @param {ClassPageAdapterResult} properties.adapterResult - The adapter result.
  * @param {(assignmentId: string) => void} properties.onOpenHeatmap - Callback to open the heatmap.
  * @param {() => void} properties.onStartNewAssessment - Callback to start a new assessment (empty-state CTA).
  * @param {AnalysisMode} [properties.analysisMode] - The page's analysis mode for the excluded labels.
+ * @param {(mode: AnalysisMode) => void} [properties.onAnalysisModeChange] - Mode-change handler.
+ * @param {BaselineAvailability} [properties.baselineAvailability] - Baseline availability.
  * @returns {JSX.Element} The rendered ready-state content tree.
  */
 function ClassPageReady({
@@ -379,6 +384,8 @@ function ClassPageReady({
   onOpenHeatmap,
   onStartNewAssessment,
   analysisMode,
+  onAnalysisModeChange,
+  baselineAvailability,
 }: ClassPageReadyProperties): JSX.Element {
   return (
     <>
@@ -388,7 +395,12 @@ function ClassPageReady({
         onOpenHeatmap={onOpenHeatmap}
         analysisMode={analysisMode}
       />
-      <StudentAveragesTableCard adapterResult={adapterResult} analysisMode={analysisMode} />
+      <StudentAveragesTableCard
+        adapterResult={adapterResult}
+        analysisMode={analysisMode}
+        onAnalysisModeChange={onAnalysisModeChange}
+        baselineAvailability={baselineAvailability}
+      />
     </>
   );
 }
@@ -431,6 +443,8 @@ export function ClassPageContent({
   refetch,
   onReRunAssessment,
   analysisMode,
+  onAnalysisModeChange,
+  baselineAvailability,
 }: ClassPageContentProperties): JSX.Element {
   switch (surfaceState.status) {
     case 'loading': {
@@ -464,6 +478,8 @@ export function ClassPageContent({
         onStartNewAssessment,
         onReRunAssessment,
         analysisMode,
+        onAnalysisModeChange,
+        baselineAvailability,
       });
     }
   }
