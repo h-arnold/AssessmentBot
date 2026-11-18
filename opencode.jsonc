@@ -39,6 +39,7 @@
     { "action": "shell", "resource": "rm *", "effect": "ask" },
     { "action": "shell", "resource": "rm", "effect": "ask" },
     { "action": "playwright_*", "resource": "*", "effect": "deny" },
+    { "action": "compact_context", "resource": "*", "effect": "deny" },
   ],
   "mcp": {
     "servers": {

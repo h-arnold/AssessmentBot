@@ -3,6 +3,10 @@ description: Orchestrates delivery against ACTION_PLAN.md in a strict TDD-first 
 mode: all
 model: mistral/mistral-large-4
 steps: 100
+permissions:
+  - action: compact_context
+    resource: '*'
+    effect: allow
 ---
 
 # Action Plan Implementer Instructions
@@ -300,6 +304,17 @@ Run plan compaction at every section completion, in parallel with the docs sync 
 
 ---
 
+### **2.8 Context Compaction**
+
+Once the section is committed and pushed (§2.7), and before starting the next section, call `compact_context` exactly once. This requests compaction of this subagent session's context so that detail from the completed section does not consume the budget needed by the next section.
+
+- This is **session-context compaction**, distinct from the plan compaction in **§2.5**, which rewrites `ACTION_PLAN.md`. Do not call it as a substitute for §2.5, and do not call it during the red, green, review or refactor phases.
+- The request is **asynchronous**: the tool returns a short status string, not a summary. Compaction runs at the next step boundary; do not treat the return value as a context digest or wait for one.
+- It affects **this subagent session only**, never the plan or any other agent.
+- Record nothing in `ACTION_PLAN.md` for this call; it leaves no plan artefact.
+
+---
+
 ## **3. Delegation Rules**
 
 ### **3.1 General Rules**
@@ -425,6 +440,7 @@ A section is **not complete** until all of the following are true:
 - `ACTION_PLAN.md` updated.
 - Changes committed and pushed.
 - Commit SHA(s), message(s), branch name, and push confirmation recorded.
+- `compact_context` called once after the commit and push, before the next section (see **2.8**).
 
 ---
 
@@ -506,6 +522,7 @@ When the full plan is complete, provide:
 - **Never resolve a plan contradiction yourself.** Stop and ask the user.
 - **Sync docs at the end of every section where documented behaviour changed.** Update existing docs; new pages are not the default. Record a skip reason when no sync is needed.
 - **Compact every completed section before the regression gate**, except the §2.6 rework path, where re-compaction follows the passing gate. Retain contracts, decisions and follow-ups; remove delivery history. Never let `ACTION_PLAN.md` grow without bound.
+- **Compact this session once per section** after commit and push, before the next section (§2.8). It is asynchronous session-context compaction, not plan compaction; never call it during red, green or refactor.
 - **One section at a time.**
 - **Keep phases separate:** Red, green, review, refactor, optional docs sync, plan compaction, section regression gate, commit.
 - **Regression checker runs once per completed section** (the §2.6 rework path re-runs it against the reworked tree), never between red, green or refactor phases. Use focused and section-scoped checks between phases.
@@ -525,7 +542,7 @@ When the full plan is complete, provide:
 
 > **📜 Prime Directives:** Never code | Delegate always | Scope-bound | Kif=menial only
 
-> **🔄 Workflow:** Red Loop (tests → Testing Specialist or Playwright for E2E) → focused checks → Green Loop (impl) → focused checks → Refactor → Docs Sync + Plan Compaction (parallel) → Section Regression Gate → Commit
+> **🔄 Workflow:** Red Loop (tests → Testing Specialist or Playwright for E2E) → focused checks → Green Loop (impl) → focused checks → Refactor → Docs Sync + Plan Compaction (parallel) → Section Regression Gate → Commit → Session Compaction (§2.8)
 
 > **🔁 Gate failure:** Restore section body → rework → re-run gate → re-compact → commit
 
@@ -534,6 +551,8 @@ When the full plan is complete, provide:
 > **📝 Docs sync:** End of section | Existing docs preferred | New page only when no existing doc is adequate | Skip with a recorded reason
 
 > **🗜️ Plan compaction:** Every completed section | Keep future-relevant detail | Remove delivery history
+
+> **🧹 Session compaction:** Once after commit+push, before next section | Session only, not the plan (§2.5) | Async status, not a summary (§2.8)
 
 > **🧭 Scope triage:** In scope → fix | Ambiguous → record and ask user | Out of scope → record, never fix | Critical → stop and notify
 
