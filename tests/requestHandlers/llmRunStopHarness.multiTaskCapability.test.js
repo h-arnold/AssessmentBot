@@ -36,4 +36,22 @@ describe('run-stop harness multi-task capability', () => {
     expect(fixture.numeric).toHaveLength(3);
     expect(new Set(fixture.numeric.map((entry) => entry.item.artifact.getUid())).size).toBe(3);
   });
+
+  it('fails loudly when candidate selection cannot find the required TEXT/numeric pairs', () => {
+    // Algorithmic boundary: the corpus's distinct-student guard caps numeric TEXT
+    // candidates at 12 per medium assignment, so no corpus-backed count can reach
+    // the loud-failure branch; a minimal impossible local count is used instead.
+    const unsatisfiableCount = 99;
+
+    expect(() => createRunStopAssignment(MEDIUM_PROFILE, unsatisfiableCount)).toThrow(
+      new RegExp(
+        `${MEDIUM_PROFILE} canonical inputs contain no assignment with ${unsatisfiableCount} numeric TEXT candidates`
+      )
+    );
+    expect(() => createMultiTaskRunStopAssignment(MEDIUM_PROFILE, unsatisfiableCount)).toThrow(
+      new RegExp(
+        `no assignment with ${unsatisfiableCount} numeric TEXT candidates across at least two distinct tasks`
+      )
+    );
+  });
 });

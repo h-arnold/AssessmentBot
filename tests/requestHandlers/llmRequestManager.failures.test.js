@@ -94,12 +94,12 @@ function runInternalFaultCase(install) {
  * current source the helper is unreached: every caller fails at its per-row
  * identity assertion first.
  */
-function expectOriginalErrorIsolation(collected) {
+function expectOriginalErrorIsolation(collected, expectedFetchAllCalls = 1) {
   const { fetchAll, fetch, sleep, item, artefact, artefactSnapshot, documentId, assignment } =
     collected;
-  // One batch with one native member; no semantic single fetch or sleep.
-  expect(fetchAll).toHaveBeenCalledTimes(1);
-  expect(fetchAll.mock.calls[0][0]).toHaveLength(1);
+  // A partition fault dispatches nothing; a downstream fault dispatches one batch.
+  expect(fetchAll).toHaveBeenCalledTimes(expectedFetchAllCalls);
+  if (expectedFetchAllCalls) expect(fetchAll.mock.calls[0][0]).toHaveLength(1);
   expect(fetch).not.toHaveBeenCalled();
   expect(sleep).not.toHaveBeenCalled();
   // Current item.artifact identity plus detached full snapshot and parent ID.
@@ -157,10 +157,10 @@ describe('LLM internal fault original-error identity', () => {
     expect(collected.item.getAssessment()).toEqual({});
   });
 
-  it('propagates the exact original error when the retained uidIndex routing lookup throws', () => {
+  it('propagates the exact original error when the uidIndex lookup throws during partition, before dispatch', () => {
     const collected = runInternalFaultCase(({ manager, fault }) => {
       // Manager-local getter fault installed after request generation; the
-      // real processing path reaches it through the retained mapping itself.
+      // partition reads uidIndex before any dispatch round.
       const previousDescriptor = Object.getOwnPropertyDescriptor(manager, 'uidIndex');
       let routingLookups = 0;
       Object.defineProperty(manager, 'uidIndex', {
@@ -182,12 +182,12 @@ describe('LLM internal fault original-error identity', () => {
         },
       };
     });
-    // Actual reach through the real routed processing, never a manual getter call.
+    // Actual reach through the partition's pre-dispatch uidIndex read, never a manual getter call.
     expect(collected.reach.routingLookups()).toBeGreaterThan(0);
     // Same object identity thrown from the real public processing operation.
     expect(collected.caught).toBe(collected.fault);
-    // Source retained and no catalogue E relabelling of the programming fault.
-    expectOriginalErrorIsolation(collected);
+    // No dispatch occurred and no catalogue E relabelling of the fault; source retained.
+    expectOriginalErrorIsolation(collected, 0);
     expect(collected.item.getAssessment()).toEqual({});
   });
 

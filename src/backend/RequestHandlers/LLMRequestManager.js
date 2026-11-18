@@ -153,12 +153,17 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   * Sends requests to the LLM service and processes the responses, adding assessment
-   * data to the assignment object. Every dispatched outcome is terminal; when the run
-   * stops, never-dispatched eligible items are terminalised without further HTTP.
+   * Sends requests to the LLM service in two phases and processes the responses,
+   * adding assessment data to the assignment object. The seed phase dispatches one
+   * request per TaskDefinition as a single parallel round; the remainder phase uses
+   * the configured batch size and is skipped after a seed stop. Every dispatched
+   * outcome is terminal; when the run stops, never-dispatched eligible items are
+   * terminalised without further HTTP.
    * @param {Object[]} requests - An array of request objects to send.
    * @param {Object} assignment - The Assignment instance containing StudentTasks.
    * @returns {void}
+   * @remarks `runStopped` is shared across both phases and never reset. The progress
+   * base message is captured once so the remainder phase composes onto it deliberately.
    */
   processStudentResponses(requests, assignment) {
     this.runStopped = false;
@@ -173,43 +178,41 @@ class LLMRequestManager extends BaseRequestManager {
         throw new Error(`Duplicate LLM request UID: ${request.uid}`);
       requestByUid.set(request.uid, request);
     });
+    const { seeds, remainder } = LLMSeedPhase.partitionRequests(requests, this.uidIndex);
+    // Report only on a two-phase split: an empty remainder is a single round, unchanged from before seeding.
+    if (remainder.length > 0) {
+      ABLogger.getInstance().info(
+        `Seeded ${seeds.length} task prefixes before dispatching ${requests.length} requests.`
+      );
+    }
     const processedUids = new Set();
-    this.sendRequestsInBatches(requests, {
-      batchSize: this.configManager.getBackendAssessorBatchSize(),
+    const onBatchComplete = LLMSeedPhase.createBatchConsumer(this, {
+      requestByUid,
+      processedUids,
       acceptedStatuses: LLM_ACCEPTED_STATUSES,
       stopStatuses: LLM_STOP_STATUSES,
-      onBatchComplete: (outcomes) => {
-        if (
-          outcomes.some(
-            ({ response }) => response && LLM_STOP_STATUSES.includes(response.getResponseCode())
-          )
-        ) {
-          this.runStopped = true;
-        }
-        const seen = new Set();
-        const routed = outcomes.map((outcome) => {
-          if (!requestByUid.has(outcome.uid) || seen.has(outcome.uid)) {
-            throw new Error(`Unknown or duplicate LLM outcome UID: ${outcome.uid}`);
-          }
-          seen.add(outcome.uid);
-          return { outcome, request: requestByUid.get(outcome.uid) };
-        });
-        routed.sort((left, right) => {
-          return (
-            Number(LLM_ACCEPTED_STATUSES.includes(right.outcome.response?.getResponseCode?.())) -
-            Number(LLM_ACCEPTED_STATUSES.includes(left.outcome.response?.getResponseCode?.()))
-          );
-        });
-        this.progressTracker.updateProgress('Double-checking all assessments.', true);
-        routed.forEach(({ outcome, request }) => {
-          processedUids.add(outcome.uid);
-          this._processSingleResponse(outcome.response, request, outcome.attempts);
-        });
-        // Exactly false stops the shared sender: no later batch is dispatched, while
-        // every response already received in this batch has been processed above.
-        return !this.runStopped;
-      },
     });
+    const sendOptions = (batchSize) => {
+      return {
+        batchSize,
+        acceptedStatuses: LLM_ACCEPTED_STATUSES,
+        stopStatuses: LLM_STOP_STATUSES,
+        onBatchComplete,
+      };
+    };
+    // Capture the progress base once so the remainder phase composes onto the
+    // same message rather than the seed phase's final "Double-checking" text.
+    const baseMessage = this.progressTracker.getCurrentProgress().message;
+    if (seeds.length > 0) {
+      this.sendRequestsInBatches(seeds, sendOptions(seeds.length));
+    }
+    if (remainder.length > 0 && !this.runStopped) {
+      this.progressTracker.updateProgress(baseMessage, false);
+      this.sendRequestsInBatches(
+        remainder,
+        sendOptions(this.configManager.getBackendAssessorBatchSize())
+      );
+    }
     if (this.runStopped) this._terminaliseUnprocessedItems(processedUids);
   }
 

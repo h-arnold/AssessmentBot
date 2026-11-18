@@ -8,6 +8,7 @@
 - **Baseline gate (passed with documented debt):** session ID `feat-issue-309-cache-seeding`; report `.ts-regression-checker/reports/session-feat-issue-309-cache-seeding/baseline/baseline.txt`; overall FAILING with 7/8 checks passing; **0 regressions, 0 new failures**. The sole failing check is `backend-lint-check` with 4 pre-existing `max-lines` warnings (each an unrelated 501-line test file last touched by `4a0a3418`): `tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`. These are **accepted technical debt** for this plan: out of scope, untouched by the plan, and must not be "fixed" opportunistically. All other checks (frontend/builder lint, backend/frontend/builder coverage, E2E, typecheck) pass. Every section regression gate must show these same 4 warnings and no new failures.
 - **Gate command (user direction, 2026-11-18):** the regression checker is the authoritative gate and runs **only once at the end of each section**; `npm run run-all-checks` is not used as a gate because it is slow and stops on the accepted baseline lint debt. Between phases use focused/section-scoped tests and lints only. (The §1 acceptance-criterion wording "run-all-checks passes" is read through this direction: the equivalent section evidence is targeted green tests/lints plus a clean section regression-gate comparison.)
 - **§2+§3 combined delivery (user decision, 2026-11-18):** the plan requires §§2 and 3 to land as one green unit (§2 leaves deliberately expected-red suites that §3 migrates). Keep separate RED/GREEN loops and separate plan-section records, but run **one authoritative regression gate and one combined commit after §3**. §2 records its expected-red inventory in Implementation notes and has no standalone clean gate. Do not push an interim commit that claims feature completion before §3 lands.
+- **Progress:** §1 complete — corpus regenerated, dependent tests re-derived, section regression gate re-run clean (0 regressions / 0 new failures), committed `89fb460f` and pushed. Currently in §2 RED (seed partition helper and two-phase dispatch). §2 and §3 will share one regression gate and one combined commit after §3.
 
 ## Read-First Context
 
@@ -132,165 +133,67 @@ Additional per-phase and per-section reads are listed in each section.
   - **User-directed rule (2026-11-18), added to this section's change surface:** (a) New tests, and any newly touched test, must draw fixture data from the shared synthetic corpus (`@synthetic/*` raw imports, canonical loaders or harnesses) rather than hard-coding fixture literals inline — the corpus is the single source of truth for data shapes, so corpus-backed tests stay current on regeneration and fail only when production needs to handle a new shape. Existing hard-coded fixtures are tolerated only until their test is touched, then ported in the same change. A genuine boundary case the corpus cannot express may use a minimal local input with an inline justification. (b) Expectations must be derived from the data shape (expected keys from the composed input, or an independent oracle over the raw corpus view), never pinned to corpus-derived literals (task-key lists, counts, exact-key fixture preconditions), because such pins break on every regeneration without signalling a production defect. A derived expectation must be independent of the production path under test, or the test becomes self-fulfilling. The Docs agent codifies this in the Testing Specialist instructions, the testing docs and a single enforcement checklist item in the Code Reviewer instructions, and adds a reusable inventory of corpus-derived assertion helpers plus two copyable patterns (derive-from-composed-input; independent raw-corpus oracle) to `docs/developer/testing/synthetic-test-data.md`; this is a user-authorised expansion beyond the original § 1 file list. Two distinct exceptions are retained and documented: a realism gap (local realistic fixture plus a generator/corpus plan) and an algorithmic boundary (minimal local input plus inline justification).
   - **Rule-codification docs outcome:** the user-directed rule was written into `.opencode/agents/testing-specialist.md`, `.opencode/agents/code-reviewer.md` (one enforcement checklist item), `docs/developer/testing/synthetic-test-data.md` (full rule + verified helper inventory + two patterns + two-exception distinction), `docs/developer/frontend/frontend-testing.md` and `docs/developer/backend/backend-testing.md` (brief pointers). All Prettier-clean; no new pages; ACTION_PLAN.md and spec/test files untouched by the Docs agent. The unrelated pre-existing typo "documenation" in `code-reviewer.md` line 331 was recorded as a disregarded nitpick in the deferred log, not fixed.
   - **Section regression gate — RE-RUN PASSED (supersedes the failed first run):** report `.ts-regression-checker/reports/session-feat-issue-309-cache-seeding/runs/2026-11-18T19-58-45.530Z/comparison.txt`; overall FAILING **only** because of the 4 accepted baseline `max-lines` warnings in the same unrelated test files. **Regressions Count: 0, New Failures Count: 0, Fixes Count: 0**; 7/8 checks pass, including `frontend-test-coverage-check`, `frontend-e2e-check` and `typescript-compile-check`. §1 is clean for progression.
+  - **Commit and push:** branch `feat/issue-309-cache-seeding`; commit `89fb460fb0aab5100a313b2ebed13b10480ee693` — `feat(issue-309): regenerate synthetic corpus and harden corpus-consuming tests`. All pre-commit hooks (Prettier, ESLint, `typecheck:all`) passed; 52 files. `git push -u origin feat/issue-309-cache-seeding` succeeded (new remote branch, tracking set). Working tree clean after commit.
 
 ---
 
 ## Section 2 — Seed partition helper and two-phase dispatch
 
-### Objective
+### Outcome (compacted)
 
-- Implement the per-TaskDefinition seed partition and orchestrate the two sender calls with one shared outcome consumer, preserving every behavioural rule in the spec.
+- Implemented the per-TaskDefinition seed partition and the two sender calls sharing one outcome consumer. `src/backend/RequestHandlers/LLMSeedPhase.js` owns both the partition helper and the shared batch-outcome consumer; `LLMRequestManager.js` orchestrates at 497 lines. RED and GREEN reviewed clean. Per the combined-delivery decision, §2 has no standalone regression gate or commit and lands with §3.
 
-### Constraints
+### Retained for later sections
 
-- Partition runs after the existing guards; fail-fast faults: duplicate UID, missing `uidIndex` route entry, missing `taskDefinition` — messages name the offending UID.
-- Seeds: first eligible request per `TaskDefinition.getId()` in generation order, one parallel `fetchAll` round with `batchSize = seeds.length`, skipped when empty; deliberately not throttled by `getBackendAssessorBatchSize()`.
-- Remainder: existing `batchSize = getBackendAssessorBatchSize()`, dispatched only when non-empty; skipped entirely after a phase-1 stop.
-- Shared `runStopped` across phases; never reset between them; stop semantics and terminalisation unchanged; seed non-stop failure is best-effort and phase 2 proceeds.
-- Progress base message captured deliberately across both sender calls so message composition is intentional; derive per-row progress expectations from the two-phase call sequence (non-stopped total `1 + ceil(remainder/batchSize)` vs pre-change `ceil(total/batchSize)`).
-- Info-level seed-round size log only; never log payloads.
-- File separation: `LLMRequestManager.js` is 494 lines today; 534–574 is the pre-move projection and exceeds the 500-line gate. The partition helper moves to `src/backend/RequestHandlers/LLMSeedPhase.js`; extract the ~35-line outcome consumer into the same sibling module unless a measured post-move projection for `LLMRequestManager.js` is ≤ 500. Verify with `wc -l`; `BaseRequestManager` (334 lines) stays unchanged.
-- Test-bootstrap wiring: the new sibling module is concatenated as a GAS global, so Node suites driving `processStudentResponses()` must load it through `tests/helpers/llmRequestManagerHarness.js` (exactly **500 lines** today — zero headroom under the backend `max-lines` gate) or `tests/setupGlobals.js` (449 lines). Prefer `setupGlobals.js` for the global; if the harness must change, extract a companion helper instead of growing it. Verify with `wc -l` at this section's gate.
-- GAS load order: the new sibling file is concatenated by filename order — confirm no new numeric-prefix or load-order dependency is introduced (production backend uses no Node aliases).
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `@docs/plans/issue-309/SPEC.md`, `@docs/developer/backend/backend-testing.md`
-- `@tests/helpers/llmRequestManagerHarness.js`, `@tests/helpers/llmRunStopHarness.js`
-- `@src/backend/RequestHandlers/LLMRequestManager.js`, `@src/backend/RequestHandlers/BaseRequestManager.js`
-
-Implementation mandatory docs:
-
-- `@docs/plans/issue-309/SPEC.md`, `@docs/developer/backend/AssessmentFlow.md`, `@docs/developer/backend/backend-file-organisation.md`
-- `@docs/developer/backend/api-layer.md`
-- `@src/backend/RequestHandlers/LLMRequestManager.js`, `@src/backend/RequestHandlers/BaseRequestManager.js`
-
-Code Reviewer mandatory docs:
-
-- `@docs/plans/issue-309/SPEC.md`, `@docs/developer/backend/backend-testing.md`
-- `@src/backend/RequestHandlers/LLMRequestManager.js`, `@src/backend/RequestHandlers/BaseRequestManager.js`
-
-### Shared helper plan
-
-1. Helper: seed partition (`{ seeds, remainder }`, fail-fast faults)
-   - Decision: `new`
-   - Owning module/path: `src/backend/RequestHandlers/LLMSeedPhase.js`
-   - Call-site rationale: called once from `processStudentResponses()` after existing guards; keeps `LLMRequestManager.js` under the 500-line gate.
-   - Relevant canonical doc target: `docs/developer/backend/api-layer.md` § Shared helpers; planned status `Not implemented` (entry already recorded).
-2. Helper: shared batch-outcome consumer
-   - Decision: `extend` (extract the existing `onBatchComplete` callback into one shared unit)
-   - Owning module/path: `LLMSeedPhase.js` (preferred) or retained in `LLMRequestManager.js` only if the post-move LOC projection is ≤ 500
-   - Call-site rationale: identical outcome pipeline for both phases; avoids duplicated stop/writeback logic.
-   - Relevant canonical doc target: `docs/developer/backend/api-layer.md` § Shared helpers; planned status `Not implemented` (entry already recorded).
-
-### Acceptance criteria
-
-- All seed fault cases throw before dispatch with messages naming the offending UID.
-- Phase 1 is a single `fetchAll` round of `seeds.length` requests; phase 2 uses the configured batch size and is skipped when remainder is empty or phase 1 stopped.
-- Every UID is dispatched exactly once across both phases, in the preserved order; outcome handling is identical in both phases; `runStopped` is shared.
-- Seed failure without a stop does not prevent phase 2; a phase-1 stop terminalises never-dispatched items exactly as today.
-- Zero-request early exits and Sheets assignments are unchanged.
-- An info-level log reports the seed-round size; no payload content is logged.
-- `LLMRequestManager.js` is ≤ 500 lines after the helper/extraction work, and `llmRequestManagerHarness.js` stays ≤ 500 after test-bootstrap wiring.
-
-### Required test cases (Red first)
-
-Backend unit tests (new suite `tests/requestHandlers/llmRequestManager.seedPhase.test.js`, following the concern-split convention):
-
-1. Partition groups by `taskDefinition.getId()`; seed is first eligible request in generation order; both arrays preserve order.
-2. Partition throws on duplicate UID, missing route-map entry and missing `taskDefinition`, naming the UID in each message; no dispatch occurs on a partition fault.
-3. Two sender calls in order with the expected `batchSize` values; phase 2 skipped when remainder empty; phase 2 skipped after a phase-1 stop; no phase-1 call when seeds are empty.
-4. Shared `runStopped`: a seed stop prevents phase 2 and terminalises never-dispatched eligible items; a seed transient/permanent failure still allows phase 2.
-5. Outcomes from both phases go through the same consumer (sort, writeback, result-cache `put`, progress, stop detection, exactly-once UID routing).
-6. Progress-step counts derived from the two-phase call sequence; no accidental message composition across phases (capture base message once).
-7. Zero-request early exit unchanged; Sheets path untouched.
-8. The info-level seed log asserts the seed-round size fields and that no payload content appears in log output.
-
-### Section checks
-
-- Focused check is limited to the new suite: `npm run test:backend -- tests/requestHandlers/llmRequestManager.seedPhase.test.js`, then `npm run lint:backend:check`. Do **not** run the whole `llmRequestManager.*` glob as this section's gate: the existing suites below are expected red until § 3 migrates them.
-- Expected-red inventory at the end of § 2 (recorded in `Implementation notes`): `runStop.test.js` pins `[2, 1]` call lengths; `transportCallerPolicy.test.js` has six real-generation stop rows plus three hand-built rows with no route map (partition fault now precedes dispatch); `assignmentRunIntegration.test.js` hand-builds `uidIndex` entries without `taskDefinition` and asserts single sender calls; `tests/controllers/assignmentRunCompletion.test.js`'s batch-size-2 same-batch row (`createConnectedStopRun(2)`) pins `expectedBatches = [2]` and a persisted healthy survivor, so it goes red (`[1]` and `LLM_RUN_STOPPED`). The `eligibility.test.js` unknown-UID row is **green but vacuous** post-§ 2: its dispatch proof lives inside the mock implementation, which is skipped when the partition faults before dispatch, while the outer error assertions still pass; § 3's re-expression is mandatory regardless of test colour. These outcomes are not regressions of § 2's implementation.
-- §§ 2 and 3 must land as **one green unit**: after § 3, re-run the full `npm run test:backend -- tests/requestHandlers tests/controllers` before the § 4 gate and before any push or interim commit that claims feature completion.
-- `wc -l src/backend/RequestHandlers/LLMRequestManager.js` ≤ 500 and `wc -l tests/helpers/llmRequestManagerHarness.js` ≤ 500; if either is exceeded, apply the extraction rules above and rerun.
-- Mandatory-read evidence gate passed; docs sync outcome recorded (AssessmentFlow two-phase description, the `llmRequestManager.seedPhase.test.js` addition to `backend-testing.md`'s suite-split enumeration, api-layer helper entries still `Not implemented` until § 5); section compacted with the final helper placement and expected-red inventory retained for § 3.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Record `@remarks` on the partition helper (why partition follows the guards, why seeds ignore the configured throttle) and on the orchestration entry (shared `runStopped` and deliberate progress-message capture). Do not add payload contents to logs or comments.
+- **Two-phase dispatch contract (§4 verification, §5 docs):** partition runs after the existing guards (empty check → `Validate.requireParams` → duplicate-UID rejection), preserving invalid-input error precedence. Fail-fast faults — duplicate UID, missing `uidIndex` route entry, missing `taskDefinition` — each throw before dispatch with a message naming the offending UID. Seeds are the first eligible request per `TaskDefinition.getId()` in generation order, dispatched in one unthrottled parallel `fetchAll` round with `batchSize = seeds.length`, skipped when the seed list is empty; deliberately not gated by `getBackendAssessorBatchSize()`. The remainder uses `batchSize = getBackendAssessorBatchSize()`, skipped when empty or after a phase-1 stop. `runStopped` is shared across both phases and never reset; a seed non-stop failure is best-effort and phase 2 still proceeds; a phase-1 stop terminalises never-dispatched items as today. The base progress message is captured once across both sender calls so message composition is intentional (non-stopped total `1 + ceil(remainder/batchSize)` vs pre-change `ceil(total/batchSize)`). An info-level log reports only the seed-round size — no payload content — and is emitted only on a two-phase split, so an empty remainder keeps the single-round path unchanged. Zero-request early exits and the Sheets path are unchanged.
+- **Helper placement and LOC gates (§4 `wc -l`):** `LLMSeedPhase.js` owns both helpers (import-free, GAS-safe, guarded `module.exports`); `LLMRequestManager.js` orchestrates at **497 lines**; `tests/setupGlobals.js:294` wires the module as a GAS global at **454 lines**; `llmRequestManagerHarness.js` **500** and `llmRequestManager.seedPhase.test.js` **500** (zero headroom — later sections must not grow them). `BaseRequestManager` unchanged. Backend `max-lines` gate is 500 with `--max-warnings 0`; verify every touched file is ≤ 500.
+- **Test bootstrap / load order:** the new sibling is concatenated as a GAS global by filename order; no numeric-prefix or load-order dependency introduced (production backend uses no Node aliases). Suites drive `processStudentResponses()` through the `setupGlobals.js` global wiring.
+- **Shared helper entries:** both planned entries in `docs/developer/backend/api-layer.md` § Shared helpers (partition helper, shared outcome consumer; owning layer `src/backend/RequestHandlers/`) remain `Not implemented` until §5 reconciles them.
+- **Outstanding @remarks:** recorded on the partition helper (why partition follows the guards, why seeds ignore the throttle) and the orchestration entry (shared `runStopped`, deliberate progress-message capture). §5 must confirm all planned `@remarks` are present; no payload contents in logs or comments.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** none yet.
+- **Implementation notes:**
+  - **RED phase complete and reviewed clean** (`review-s2-red-issue-309.md`, PASS): new suite `tests/requestHandlers/llmRequestManager.seedPhase.test.js` (500 lines, 12 tests) encodes all 8 required cases using corpus fixtures (`loadBackendModelInputs('medium')` via a predicate-based host selector, `createMultiTaskRunStopAssignment('medium', 2)`, `createAssignment`) with expectations derived from an independent `uidIndex` partition oracle and the observed two-phase call sequence — no pinned keys/counts, no exception invoked. 10 tests RED for the intended behavioural reasons (single-phase impl) and 2 intentionally green contract guards (duplicate-UID guard, zero-request/Sheets paths). The suite asserts behaviour only through `processStudentResponses()` and does NOT import or wire the not-yet-existing sibling module, so no other backend suite is affected. File is exactly 500 lines (zero headroom — §3 must not grow it); lint clean on the file.
+  - **GREEN phase complete and reviewed clean** (`review-s2-green-issue-309.md` then `review-s2-green-re-review-issue-309.md`, final PASS): new sibling `src/backend/RequestHandlers/LLMSeedPhase.js` owns BOTH the seed partition helper and the single shared batch-outcome consumer; `LLMRequestManager.js` orchestrates the two-phase dispatch and stays at **497 lines** (≤500); `tests/setupGlobals.js` wires the new module as a GAS global at 454 lines. Harness and seedPhase suite unchanged at 500. The one review Nitpick (explanatory comment on the remainder-gated seed log) was added; reviewer confirmed the gate is sound, not a workaround. `@remarks` on partition helper and orchestration entry. Seed log emits only on a two-phase split (empty remainder = single round unchanged, preserving "pass unchanged" suites' diagnostic budgets). No production defect; no assertion weakened.
+  - **LOC gates (verified):** `LLMRequestManager.js` 497, `LLMSeedPhase.js` 91, `tests/setupGlobals.js` 454, harness 500, seedPhase suite 500. `LLMSeedPhase.js` is import-free (GAS-safe, no Node aliases); guarded `module.exports`; no load-order issue (`globalExposure` 18/18 with seedPhase). New module registered in `setupGlobals.js:294`.
+  - **Expected-red inventory (§3 must clear; NOT regressions of §2):** full backend coverage shows 3744/3777, all 33 failures confined to the §3 migration suites. The plan's original inventory: `runStop.test.js` (batch `[2,1]`→`[1,2]`, seed-stop shrinks first round); `transportCallerPolicy.test.js` (six stop rows' call pattern; three hand-built rows fault in partition `no route-map entry` before the asserted consumer fault); `assignmentRunIntegration.test.js` (hand-built routes lack `taskDefinition`; two sender stubs lack `getCurrentProgress` for base-message capture); `assignmentRunCompletion.test.js` (batch-size-2 same-batch row `[1]` vs pinned `[2]`, survivor `LLM_RUN_STOPPED`). `eligibility.test.js` unknown-UID row is green but vacuous pre-§3. **Two additional rows found during GREEN (add to §3 inventory):** `llmRequestManager.failures.test.js` "retained uidIndex routing lookup throws" row now faults during partition before dispatch (unavoidable — partition reads `uidIndex` first); and `assignmentRunIntegration.test.js` minimal `progressTracker` stub lacks `getCurrentProgress` (new base-message capture). Reviewer confirmed both are legitimate §3-scope consequences, not production defects.
+  - **No standalone gate:** per the combined-delivery decision, §2 has no separate regression gate or commit; it lands with §3.
+  - **Docs sync outcome (2026-11-18):** shared with the §3 combined delivery — `docs/developer/backend/AssessmentFlow.md` now describes the two-phase dispatch contract; `docs/developer/backend/backend-testing.md` enumerates the four new suites. No new pages. Both `api-layer.md` helper entries deliberately remain `Not implemented` (§5 owns reconciliation). Full record in §3 Implementation notes.
 - **Deviations from plan:** none yet.
-- **Follow-up implications for later sections:** § 3 pins per-row expectations from the actual two-phase sequence; § 5 reconciles both planned helper entries in `api-layer.md`.
+- **Follow-up implications for later sections:** § 3 pins per-row expectations from the actual two-phase sequence and clears the full expected-red inventory above; § 5 reconciles both planned helper entries in `api-layer.md`.
 
 ---
 
 ## Section 3 — Test-suite migrations and harness multi-task mode
 
-### Objective
+### Outcome (compacted)
 
-- Migrate every inventoried suite to two-phase expectations using the regenerated corpus, with the harness supporting opt-in multi-task selection while remaining single-task by default.
+- Migrated every inventoried suite to two-phase expectations against the regenerated corpus, splitting large files into companion suites. All four migration batches reviewed clean, the §2 expected-red inventory is cleared, and the combined §§2–3 green-unit check passes (872 tests, 0 errors). The harness's opt-in multi-task selector is consumed only by same-batch-survivor scenarios.
 
-### Constraints
+### Retained for later sections
 
-- No realism-gate relaxation: `isRunStopTextPair` stays intact; the harness's opt-in multi-task selector is built in § 1 and consumed here only by same-batch-survivor scenarios.
-- Single-task mode is pinned explicitly for 1-seed rows (batch-size-1 run-stop rows, batch-size-1 controller row, cached-stop warm-phase row).
-- Exact batch patterns are derived from each row's two-phase call sequence; do not pre-pin speculative bracket patterns.
-- The eligibility unknown-UID row becomes a pre-dispatch partition fault asserting no dispatch; the consumer's unknown-UID guard remains covered by `assignmentRunIntegration.test.js` mocked-sender rows.
-- LOC / file separation for touched suites (all currently near or below 500): `llmRequestManager.runStop.test.js` 487, `transportCallerPolicy.test.js` 494, `assignmentRunIntegration.test.js` 495, `eligibility.test.js` 455, `assignmentRunCompletion.test.js` 399, `llmRunStopHarness.js` 329 (grown in § 1, so re-measure before migrations), and `llmRequestManagerHarness.js` 500 (zero headroom from § 2's global wiring). Migrations must stay ≤ 500 lines per file; if a suite or harness would cross 500, extract a companion suite/helper (for example `llmRequestManager.runStop.multiTask.test.js` or `llmRequestManager.transportCallerPolicy.scenarios.test.js`) rather than growing the original. Record measured post-change counts in `Implementation notes`.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `@docs/plans/issue-309/SPEC.md`, `@docs/developer/backend/backend-testing.md`
-- `@tests/helpers/llmRunStopHarness.js`, `@tests/helpers/llmRequestManagerHarness.js`
-- All inventoried suites listed in the spec's Testing expectations
-
-Implementation/Code Reviewer mandatory docs:
-
-- `@docs/plans/issue-309/SPEC.md`, `@docs/developer/backend/backend-testing.md`
-- `@src/backend/RequestHandlers/LLMRequestManager.js`, `@src/backend/RequestHandlers/BaseRequestManager.js`
-- All inventoried suites listed in the spec's Testing expectations
-
-### Shared helper plan
-
-- Harness decision: `reuse` — consume the opt-in multi-task selector added to `tests/helpers/llmRunStopHarness.js` in § 1; keep the default traversal-order selector for single-task rows. No new harness capability here; no canonical production-helper entry needed.
-- No production helper changes in this section.
-
-### Acceptance criteria
-
-- The 12-row stop matrix, cached-stop warm phase, batch-size-1/≥2 controller rows, six real-generation `transportCallerPolicy` stop rows, hand-built route rows, `assignmentRunIntegration` mocked-sender rows and the eligibility fault row all pass with two-phase expectations.
-- The same-batch-survivor scenario is re-expressed multi-task in both `runStop.test.js` and `assignmentRunCompletion.test.js`; cancelled-retryable and permanent-sibling rows stay single-task with the stop in the remainder.
-- No touched test file exceeds 500 lines; companion suites are used where needed.
-- All canonical fixtures used are from the regenerated corpus; no local realistic builder is introduced.
-- The expected-red inventory recorded at § 2's boundary is fully cleared, so §§ 2–3 together are green.
-
-### Required test cases (Red first)
-
-1. `llmRequestManager.runStop.test.js`: batch-size ≥ 2 rows migrated (for example `[2,1]` → `[1,2]`); stop-at-index-0 rows now a single one-member batch with the same-batch sibling never dispatched; multi-task same-batch-survivor row with derived seed/remainder patterns.
-2. `assignmentRunCompletion.test.js`: batch-size-2 same-batch row re-expressed with multi-task candidates; mixed-E counts re-derived (from § 1); cancelled-retryable/permanent-sibling rows retain single-task selection with the stop in phase 2.
-3. `transportCallerPolicy.test.js`: hand-built rows supply `taskDefinition` or assert two-phase call sequence; six real-generation stop rows re-authored for a remainder (or re-authored seed-round expectations); `validates missing public LLM assignment` row verified unchanged.
-4. `assignmentRunIntegration.test.js`: two hand-built-route tests supply `taskDefinition` and assert the two-phase call sequence; mocked-sender unknown-UID guard coverage retained.
-5. `llmRequestManager.eligibility.test.js`: unknown-UID row re-expressed as a pre-dispatch partition fault asserting no `fetchAll`.
-6. Harness: explicit single-task mode and opt-in multi-task mode tests; loud failure when candidate selection cannot find the required TEXT/numeric pairs.
-
-### Section checks
-
-- `npm run test:backend -- tests/requestHandlers tests/controllers` restores the full § 2 expected-red inventory to green; `npm run lint:backend:check`. This is the green-unit gate for §§ 2–3 before § 4 and before any push.
-- Record post-change LOC for every touched test file and confirm ≤ 500.
-- Mandatory-read evidence gate passed; docs sync outcome recorded (test-helper API note in `backend-testing.md` only if changed); section compacted with derived batch patterns retained for § 4.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Add `@remarks` to the harness's multi-task selector explaining the per-student artefact-type allocation and why the TEXT gate cannot be relaxed.
+- **Migration outcomes and companion suites:** four batches reviewed clean. Large suites split to stay ≤ 500: `llmRequestManager.runStop.test.js` 453 + new `llmRequestManager.runStop.multiTask.test.js` 401; `llmRequestManager.transportCallerPolicy.test.js` 305 + new `llmRequestManager.transportCallerPolicy.scenarios.test.js` 238; `tests/helpers/llmRunStopHarness.multiTaskCapability.test.js` 57. Expectations derive from the two-phase call sequence with regenerated-corpus fixtures; no pinned keys/counts or corpus-derived literals; no assertion weakened.
+- **Final LOC (§4 `wc -l` gate, all ≤ 500):** runStop 453, runStop.multiTask 401, transportCallerPolicy 305, transportCallerPolicy.scenarios 238, assignmentRunIntegration 500, eligibility 456, failures 500, assignmentRunCompletion 500, llmRunStopHarness.multiTaskCapability 57, LLMRequestManager 497, LLMSeedPhase 91, setupGlobals 454. From §2: `llmRequestManagerHarness.js` 500 and `llmRequestManager.seedPhase.test.js` 500.
+- **Single-task vs multi-task selection (§4 regression context):** `runRunStopControl` cannot accept a selection mode, so 1-seed rows pin single-task through the derived structural guard `expectSingleTaskFixture` (loud-fails if the fixture selection changes). The same-batch-survivor scenario is re-expressed multi-task; cancelled-retryable and permanent-sibling rows stay single-task with the stop in the remainder. The harness TEXT/numeric realism gate (`isRunStopTextPair`) was not relaxed.
+- **Eligibility fault row:** the unknown-UID row is now a pre-dispatch partition fault asserting no `fetchAll`; the consumer's unknown-UID guard remains covered by `assignmentRunIntegration.test.js` mocked-sender rows.
+- **Verified unchanged:** `transportCallerPolicy` `validates missing public LLM assignment` row byte-identical; mixed-E 12/18 row unchanged.
+- **Combined green-unit gate (§4 handoff):** `npm run test:backend -- tests/requestHandlers tests/controllers` → 77 files / 872 tests pass, 0 errors; `npm run lint:backend:check` → 0 errors plus the 4 accepted baseline `max-lines` warnings in the four unrelated 501-line files (exit 1 solely from `--max-warnings 0`); all 13 touched code/test files ≤ 500. All §2 expected-red rows green.
+- **§5 obligations / no shape change:** no production, harness or fixture change in §3; corpus fixtures only; no data-shape, persistence, API or transport change. §5 must reconcile both planned helper entries in `docs/developer/backend/api-layer.md`.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** none yet.
+- **Implementation notes:**
+  - **RED (migration) — all 4 batches delivered, reviews resolving:** the pre-migration `tests/requestHandlers tests/controllers` run showed 33 failures across 6 suites (two-phase batch-pattern shifts, pre-dispatch partition faults, `getCurrentProgress` stub gap) — see §2's expected-red inventory. `llmRequestManager.failures.test.js` and the `getCurrentProgress` stub row were added to that inventory from §2 GREEN findings (delivery critical path, not production defects). Batches and outcomes:
+    - (1) `runStop.test.js` 487→453 + NEW companion `runStop.multiTask.test.js` 401; 30 tests pass. Independent local two-phase oracle replaces harness helper (harness out of scope). Deviation: `runRunStopControl` cannot accept a selection mode, so single-task is pinned via a derived structural guard `expectSingleTaskFixture`; **review PASS, no findings** (deviation accepted, loud-fails if selection changes).
+    - (2) `transportCallerPolicy.test.js` 494→305 + NEW companion `transportCallerPolicy.scenarios.test.js` 238; 10 tests pass; `validates missing public LLM assignment` byte-identical. Review found 1 Nitpick (captured `documentId` from `submissions[0]` wrong for added track 3) — fixed via `route.submission.documentId` (+3 lines: 2 JSDoc + 1 route/item split); **re-review PASS**.
+    - (3) `assignmentRunIntegration.test.js` 495→500, `eligibility.test.js` 455→456, `failures.test.js` 500→500; 41 tests pass; eligibility unknown-UID row now non-vacuous. Review found 1 Improvement (missing inline Exception-2 justification at two hand-built route sites) — comments added with 2-line offset compaction to stay at 500; **re-review PASS**.
+    - (4) `assignmentRunCompletion.test.js` 425→500 + `llmRunStopHarness.multiTaskCapability.test.js` 39→57; 14 tests pass; independent oracle `deriveExpectedBatchLengths`, multi-task same-batch survivor, mixed-E 12/18 verified unchanged. Review found 1 Nitpick (missing inline justification on `unsatisfiableCount = 99` probe) — comment-only fix applied; **re-review PASS** (54→57 = exactly 3 comment lines, assertions unchanged, 14/14 tests, eslint clean).
+    - All 4 migration batches: per-file `eslint --max-warnings 0` clean; `lint:backend:check` 0 errors + 4 accepted baseline warnings; all files ≤500; no production/harness/fixture change; no assertion weakened. Review-evidence scratch files were wiped by the `origin/main` merge hook; verdicts and evidence are recorded here and the deferred log was reconstructed.
+    - **Combined §2+§3 full-suite check (2026-11-18):** `npm run test:backend -- tests/requestHandlers tests/controllers` → 77 files / 872 tests pass (exit 0); `npm run lint:backend:check` → 0 errors, only the 4 accepted baseline `max-lines` warnings in the four unrelated 501-line files (exit 1 solely from `--max-warnings 0`); `wc -l` on all 13 touched code/test files ≤ 500 (max: `llmRequestManager.seedPhase.test.js`, `.assignmentRunIntegration.test.js`, `.failures.test.js`, `assignmentRunCompletion.test.js` = 500; `LLMRequestManager.js` = 497). All §2 expected-red rows now green.
+  - **origin/main merge (2026-11-18):** merged commit `2e969fdc feat(opencode): add agent-callable session compaction tool (#358)` — added `compact-context` plugin, `opencode.jsonc` registration and §2.8 session-compaction instructions to the action-plan-implementer agent config. Merge conflict-free (3 plugin/config files only). The merge hook cleared `.opencode/scratchpad/`; the deferred-findings log was reconstructed from this plan's authoritative ledger.
+  - **Docs sync outcome (2026-11-18):** updated `docs/developer/backend/AssessmentFlow.md` (replaced the single-phase `processStudentResponses()` description with the two-phase contract: partition split, unthrottled seed round with size-only logging, configured-batch remainder round, shared `createBatchConsumer()` with shared `runStopped`, UID-not-routed terminalisation, added one-round-trip latency) and `docs/developer/backend/backend-testing.md` (four new suite names added to the LLM-terminal-outcomes enumeration). No new pages; `mkdocs.yml` and `code-reviewer.md` doc lists unchanged; no JSDoc/source edits needed (existing JSDoc already matches). Doc-only correction of a pre-existing `_processSingleResponse` heading signature within the edited section. Both `api-layer.md` helper entries deliberately left `Not implemented` (§5 owns reconciliation); `data-handling.md` reviewed — its "per batch" wording is compatible with two phases, no change needed; no data-shape docs changed. No out-of-scope material findings to defer.
+  - **Combined §2+§3 regression gate (2026-11-18):** `npm run regression-checker -- feat-issue-309-cache-seeding` → 7/8 checks pass; overall FAILING solely from `backend-lint-check`'s 4 pre-existing accepted baseline `max-lines` warnings in the four unrelated 501-line files; **0 regressions, 0 new failures, 0 fixes** — identical to baseline, so the gate passes for progression. Report: `.ts-regression-checker/reports/session-feat-issue-309-cache-seeding/runs/2026-11-18T21-23-18.798Z/comparison.txt`.
 - **Deviations from plan:** none yet.
 - **Follow-up implications for later sections:** § 4 runs the full gate with all migrations in place; § 5 reconciles helper entries and docs.
 

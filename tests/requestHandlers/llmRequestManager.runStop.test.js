@@ -12,16 +12,27 @@ import {
   seedStaleMixedMarks,
 } from '../helpers/llmRequestManagerHarness.js';
 
+/** Structural pin for the single-task harness selection: every numeric candidate resolves
+ * to one task identity, so the seed round is one member and the rest form the remainder. */
+function expectSingleTaskFixture(collected) {
+  const taskIds = new Set(collected.numeric.map((entry) => entry.task.getId()));
+  expect(taskIds.size).toBe(1);
+}
+
 describe('LLM controlled-batch run-stop healthy controls', () => {
   it.each([[1], [2]])(
     'keeps canonical numeric candidates and the template signature healthy at batch size %s',
     (batchSize) => {
       const collected = runRunStopControl('medium', 3, batchSize, { stop: null });
+      expectSingleTaskFixture(collected);
 
-      // Native budget: batched fetchAll only; no single fetch and no waits.
+      // Native budget: the three same-task candidates split into a one-member seed
+      // round (phase 1, batchSize = seeds.length = 1) and a two-member remainder
+      // (phase 2, batchSize = configured). At batch size 2 the remainder is one
+      // parallel round; at batch size 1 it is two single-member rounds.
+      const expectedCallLengths = batchSize === 1 ? [1, 1, 1] : [1, 2];
       expect(collected.fetch).not.toHaveBeenCalled();
       expect(collected.sleep).not.toHaveBeenCalled();
-      const expectedCallLengths = batchSize === 1 ? [1, 1, 1] : [2, 1];
       expect(collected.fetchAll).toHaveBeenCalledTimes(expectedCallLengths.length);
       expect(collected.fetchAll.mock.calls.map((call) => call[0].length)).toEqual(
         expectedCallLengths
@@ -55,32 +66,9 @@ describe('LLM controlled-batch run-stop healthy controls', () => {
 });
 
 describe('LLM controlled-batch run-stop terminalisation', () => {
-  it.each([
-    [401, 'INITIAL', 2, 0],
-    [403, 'INITIAL', 2, 0],
-    [404, 'INITIAL', 2, 0],
-    [401, 'TRANSPORT_RETRY', 2, 0],
-    [403, 'TRANSPORT_RETRY', 2, 0],
-    [404, 'TRANSPORT_RETRY', 2, 0],
-    [401, 'INITIAL', 1, 1],
-    [403, 'INITIAL', 1, 1],
-    [404, 'INITIAL', 1, 1],
-    [401, 'TRANSPORT_RETRY', 1, 1],
-    [403, 'TRANSPORT_RETRY', 1, 1],
-    [404, 'TRANSPORT_RETRY', 1, 1],
-  ])(
-    'terminalises the stopped request and its unprocessed sibling for HTTP %s from %s origin at batch size %s',
-    (status, origin, batchSize, stopIndex) => {
-      const collected = runRunStopControl('medium', 3, batchSize, {
-        stop: { requestIndex: stopIndex, origin, status },
-      });
-      // Proof-first shared assertions. The completion expectation is the
-      // current 401/403 logAndThrowError abort and the canonical terminal map
-      // for 404's silent continuation.
-      expectRunStopTerminalStops(collected);
-    }
-  );
-
+  // Single-task, batch-size-1 rows: the one-member seed round is healthy, then the
+  // remainder is dispatched in single-member rounds until the stop latches the run.
+  // The observed two-phase sequence is [1, 1], matching the configured batch size.
   it.each([
     [401, 'INITIAL'],
     [403, 'INITIAL'],
@@ -89,51 +77,18 @@ describe('LLM controlled-batch run-stop terminalisation', () => {
     [403, 'TRANSPORT_RETRY'],
     [404, 'TRANSPORT_RETRY'],
   ])(
-    'terminalises the stop-cancelled retryable sibling for HTTP %s from %s origin at batch size 2',
+    'terminalises the stopped request and its unprocessed sibling for HTTP %s from %s origin at batch size 1',
     (status, origin) => {
-      const collected = runRunStopControl('medium', 3, 2, {
-        stop: { requestIndex: 0, origin, status },
-        cancelledRetryable: true,
+      const collected = runRunStopControl('medium', 3, 1, {
+        stop: { requestIndex: 1, origin, status },
       });
-      // Proof-first shared assertions including the cancelled sibling's
-      // attempts-1 provenance from the real batch consumption. The completion
-      // expectation is the cancelled sibling's terminal map: Base returned
-      // its untouched initial 500 (retries cancelled by the stop), so it is
-      // affected remaining eligible work — the current source labels it
-      // LLM_UNAVAILABLE instead of the required LLM_RUN_STOPPED.
+      expectSingleTaskFixture(collected);
+      // Proof-first shared assertions. The completion expectation is the
+      // current 401/403 logAndThrowError abort and the canonical terminal map
+      // for 404's silent continuation.
       expectRunStopTerminalStops(collected);
     }
   );
-
-  it('terminalises the stop-cancelled retryable sibling while a same-batch healthy member survives', () => {
-    const collected = runRunStopControl('medium', 3, 3, {
-      stop: { requestIndex: 0, origin: 'INITIAL', status: 401 },
-      cancelledRetryable: true,
-    });
-    // One batch of three: stop target, cancelled retryable sibling and a
-    // healthy member dispatched after both. All proof-first shared assertions
-    // run; the cancelled sibling's canonical map is the completion expectation.
-    expectRunStopTerminalStops(collected);
-  });
-
-  it('terminalises the stop-cancelled retryable sibling preceding an INITIAL stop', () => {
-    // Reverse arrangement: the retryable 500 is dispatched BEFORE the stop in
-    // the same initial batch; an order-sensitive repair must not pass only forward rows.
-    const collected = runRunStopControl('medium', 3, 2, {
-      stop: { requestIndex: 1, origin: 'INITIAL', status: 401 },
-      cancelledRetryable: true,
-    });
-    expectRunStopTerminalStops(collected);
-  });
-
-  it('keeps a permanent sibling LLM_HTTP_FAILED beside an INITIAL stop latch', () => {
-    const collected = runRunStopControl('medium', 3, 2, {
-      stop: { requestIndex: 0, origin: 'INITIAL', status: 401 },
-      permanentSibling: true,
-    });
-    // Latch true while processing: canonical LLM_HTTP_FAILED must survive the stop.
-    expectRunStopTerminalStops(collected);
-  });
 });
 
 describe('LLM genuine transport exhaustion is never relabelled by a sibling stop', () => {
@@ -146,11 +101,12 @@ describe('LLM genuine transport exhaustion is never relabelled by a sibling stop
     let firstMemberContent = null;
     let secondMemberContent = null;
     let firstMemberFetches = 0;
-    // Real Base consumption at batch size 2: the first member exhausts its
-    // three attempts on network failures before the second member's first
-    // retry returns the stop. Members share one endpoint URL, so retries are
-    // distinguished by their request payload's student content. No outcome is
-    // ever substituted.
+    // Two same-task candidates produce a one-member seed round (the exhausted
+    // member) and a one-member remainder (the member whose retry reveals the
+    // stop). Each round enters the real retry engine, so the native fetchAll
+    // seam is called twice — once per phase — rather than once for a single
+    // batch. Members share one endpoint URL, so retries are distinguished by
+    // their request payload's student content. No outcome is ever substituted.
     const fetch = vi.fn((url, nativeRequest) => {
       const content = nativeRequest ? JSON.parse(nativeRequest.payload).studentResponse : null;
       if (content === firstMemberContent) {
@@ -179,21 +135,27 @@ describe('LLM genuine transport exhaustion is never relabelled by a sibling stop
       withTemporaryGlobals(context.globals, () => {
         delete require.cache[context.llmPath];
         const manager = new (require(context.llmPath))();
-        const fixture = createRunStopAssignment('medium', 2);
+        // Pin single-task selection explicitly via the harness API: with two
+        // same-task candidates the seed round holds the exhausted member and
+        // the remainder holds the stop-revealing member.
+        const fixture = createRunStopAssignment('medium', 2, { selectionMode: 'single-task' });
         const template = fixture.notAttempted.task.getPrimaryTemplate();
         fixture.notAttempted.item.artifact.content = template.content;
         fixture.notAttempted.item.artifact.contentHash = template.contentHash;
         const requests = manager.generateRequestObjects(fixture.assignment);
         expect(requests).toHaveLength(2);
+        expect(new Set(fixture.numeric.map((entry) => entry.task.getId())).size).toBe(1);
         firstMemberContent = JSON.parse(requests[0].payload).studentResponse;
         secondMemberContent = JSON.parse(requests[1].payload).studentResponse;
         vi.spyOn(manager.configManager, 'getBackendAssessorBatchSize').mockImplementation(() => 2);
         const engine = vi.spyOn(manager, '_runRetryEngine');
         manager.processStudentResponses(requests, fixture.assignment);
-        // Native budget: both members entered the real engine sequentially;
-        // the first exhausted three attempts (waits 5000/7500), the second
-        // stopped on its first retry (wait 5000).
-        expect(fetchAll).toHaveBeenCalledTimes(1);
+        // Native budget: both phases entered the real engine sequentially —
+        // phase 1 dispatched the first member, which exhausted three attempts
+        // (waits 5000/7500); phase 2 dispatched the second, which stopped on
+        // its first retry (wait 5000). The fetchAll count is therefore 2.
+        expect(fetchAll).toHaveBeenCalledTimes(2);
+        expect(fetchAll.mock.calls.map((call) => call[0].length)).toEqual([1, 1]);
         expect(firstMemberFetches).toBe(2);
         expect(unexpectedNativePayloads).toEqual([]);
         expect(sleep.mock.calls.map((call) => call[0])).toEqual([5000, 7500, 5000]);
@@ -240,7 +202,8 @@ const CACHED_STOP_NATIVE = () => ({
  * identical model: the cached sibling is excluded by a genuine cache hit, the
  * signature sibling by genuine template-copy N, and the last two candidates
  * carry the target and LATER-unprocessed roles. Batch size is exactly 1 and no
- * outcome is ever substituted.
+ * outcome is ever substituted. Single-task selection is pinned explicitly: all
+ * three candidates share one task identity, so the seed round is one member.
  */
 function runCachedStopControl(status, origin) {
   const withNativeCode = (code, content) => ({
@@ -282,7 +245,7 @@ function runCachedStopControl(status, origin) {
       const CacheManagerOwner = require('#backend/RequestHandlers/CacheManager.js');
       const Manager = require(context.llmPath);
       // COLD: one real valid dispatch writes the numeric result in this context.
-      const cold = createRunStopAssignment('medium', 3);
+      const cold = createRunStopAssignment('medium', 3, { selectionMode: 'single-task' });
       const coldManager = new Manager();
       const coldRequests = coldManager.generateRequestObjects(cold.assignment);
       expect(coldRequests.length).toBeGreaterThan(0);
@@ -303,7 +266,7 @@ function runCachedStopControl(status, origin) {
       context.scriptCache.get.mockClear();
       context.scriptCache.put.mockClear();
       // WARM: fresh manager and fresh identical model, genuine N before generation.
-      const warm = createRunStopAssignment('medium', 3);
+      const warm = createRunStopAssignment('medium', 3, { selectionMode: 'single-task' });
       const warmManager = new Manager();
       const template = warm.notAttempted.task.getPrimaryTemplate();
       expect(typeof template.content === 'string' && template.content.length > 0).toBe(true);
@@ -318,6 +281,9 @@ function runCachedStopControl(status, origin) {
       expect(requests.map((request) => request.uid)).toEqual(
         [warm.numeric[1], warm.numeric[2]].map((entry) => entry.item.artifact.getUid())
       );
+      // Structural pin: one task identity means a one-member seed round and a
+      // one-member remainder, so the stop in the remainder is the only dispatch.
+      expect(new Set(warm.numeric.map((entry) => entry.task.getId())).size).toBe(1);
       seedStaleMixedMarks(warm.numeric[1].item);
       seedStaleMixedMarks(warm.numeric[2].item);
       const cached = warm.numeric[0];

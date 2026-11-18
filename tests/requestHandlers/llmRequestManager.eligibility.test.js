@@ -285,13 +285,12 @@ describe('LLMRequestManager generated-route UID guards', () => {
     });
   });
 
-  it('fails processing loudly for a request UID absent from the generated route map', () => {
+  it('fails before dispatch when a request UID is absent from the generated route map', () => {
     const fetchSingle = vi.fn();
     const sleep = vi.fn();
-    const fetchAll = vi.fn((nativeRequests) => {
-      expect(nativeRequests).toHaveLength(1);
-      return [validHttpResponse()];
-    });
+    // Plain recorder: a dispatch proof inside this mock would be skipped when
+    // the partition faults, so non-dispatch is asserted explicitly below.
+    const fetchAll = vi.fn();
     withCacheManager({ fetchAll, fetch: fetchSingle, sleep }, (bound) => {
       const { manager, scriptCache } = bound;
       const { assignment, item, task } = createAssignment('TEXT');
@@ -309,23 +308,25 @@ describe('LLMRequestManager generated-route UID guards', () => {
       const artefactSnapshot = structuredClone(item.artifact.toJSON());
       const documentId = assignment.submissions[0].documentId;
       const mutation = vi.spyOn(item, 'addAssessment');
-      vi.spyOn(console, 'warn').mockImplementation(() => {});
       let caught = null;
       try {
         manager.processStudentResponses([unknownRequest], assignment);
       } catch (error) {
         caught = error;
       }
+      // Non-vacuous: the partition reads uidIndex before any sender call, so
+      // the real fetchAll seam must never be invoked for an unknown UID.
+      expect(fetchAll).not.toHaveBeenCalled();
+      expect(fetchSingle).not.toHaveBeenCalled();
+      expect(sleep).not.toHaveBeenCalled();
       expect(mutation).not.toHaveBeenCalled();
       expect(item.getAssessment()).toEqual({});
       expect(scriptCache.put).not.toHaveBeenCalled();
-      expect(fetchSingle).not.toHaveBeenCalled();
-      expect(sleep).not.toHaveBeenCalled();
       expect(item.artifact.toJSON()).toEqual(artefactSnapshot);
       expect(assignment.submissions[0].documentId).toBe(documentId);
       expect(caught).toBeInstanceOf(Error);
       expect(caught.message).toContain(unknownUid);
-      expect(caught.message.length).toBeGreaterThan(unknownUid.length);
+      expect(caught.message).toContain('route-map');
     });
   });
 
