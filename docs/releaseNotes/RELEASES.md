@@ -1,5 +1,6 @@
 # 🚀 Release Notes Index
 
+- [v1.2.0](./v1.2.0_release_notes.md) – Baseline analysis, select-all heatmaps, clearer errors and class metadata
 - [v1.1.0](./v1.1.0_release_notes.md) – Heatmap workflow improvements, clearer scores, and source-document access
 - [v1.0.0](./v1.0.0_release_notes.md) – React GAS Web App replaces the bound Admin Sheet
 - [v0.7.9](./v0.7.9_release_notes.md) – Application-level authentication with role-based access control
