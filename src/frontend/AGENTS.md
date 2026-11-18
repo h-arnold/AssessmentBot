@@ -24,6 +24,7 @@ opencode injects this file when you touch a frontend file. The docs it points to
 - Do not add `@ant-design/v5-patch-for-react-19`; Ant Design v6 does not need it.
 - Decompose any frontend file over 550 lines that is in scope for your change, in the same change. Never game the threshold with formatting tricks or speculative helpers.
 - Set default values in a module's constructor only; root `AGENTS.md` owns this rule.
+- If there are more than two files with the same domain prefix in a folder, YOU MUST create a subfolder (see `docs/developer/frontend/frontend-architecture.md` for details). Opportunistically reorganise files you touch so that the codebase becomes better organised over time.
 
 ## 3. Required documentation
 
