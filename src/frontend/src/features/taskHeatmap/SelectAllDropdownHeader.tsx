@@ -161,7 +161,7 @@ function makeHeaderPopupRenderer(
     return (
       <>
         {configuration.hasHeader ? (
-          <div role="presentation" onMouseDown={handleHeaderMouseDown}>
+          <div role="none" onMouseDown={handleHeaderMouseDown}>
             <Flex
               justify="space-between"
               align="center"
