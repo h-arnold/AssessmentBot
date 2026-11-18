@@ -62,6 +62,10 @@ against the current specification first.
   - Owning layer/path: `src/backend/RequestHandlers/` — final placement (same sibling module or retained in `LLMRequestManager.js`) decided by the action plan from the recorded LOC constraint (post-change `LLMRequestManager.js` must be ≤ 500 lines).
   - Behaviour: single consumer for seed-phase and remainder-phase batch outcomes; keeps accepted-first sort, assigned/cached writeback, error mapping, stop-status detection, shared `runStopped`, progress update and exactly-once UID routing. Implemented once and shared; no duplicate consumer per phase.
   - Status: `Not implemented` — reconcile when the two-phase dispatch lands.
+- ABClass metadata nested-field validators (`Not implemented` — planned for the metadata enrichment)
+  - Owning layer/path: `src/backend/Models/`, a dedicated sibling module of `ABClassMetadata.js`.
+  - Behaviour: validate the extended metadata's baseline averages and top/bottom standing entries, including the legacy two-field shape and null normalisation on emission. `ABClassMetadata` remains the single facade and owner; nested validation is extracted only to keep the facade at or under the 500-line backend lint gate. Request provenance and transport error adaptation stay in their existing owners.
+  - Status: `Not implemented` — reconcile when the metadata shape change lands.
 
 ## ABClass metadata helpers
 

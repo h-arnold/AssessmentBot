@@ -1343,6 +1343,42 @@ canonical snapshots and boundary probes; it is the parity oracle, not production
 
 ---
 
+## Planned changes: baseline averages and student standings (Not implemented)
+
+The following contract changes are planned in `SPEC.md` and are **Not implemented**. They are
+recorded here as the implementation target; remove the `Not implemented` marker as each entry is
+delivered. Until then the shape above remains the implemented contract.
+
+- **Extended metadata shape — `Not implemented`**: add three nullable fields to a non-null
+  `ABClassMetadata`: `baselineAverages` (four scores plus `updatedAt`), `allTaskStandings` and
+  `baselineStandings` (each `{ top: StudentStanding[]; bottom: StudentStanding[] }`, where a
+  `StudentStanding` carries `studentId`, `studentName`, `scores: AverageScores` and
+  `recentAssignmentScores: AverageScores[]` with exactly one score set per newest fresh-class
+  assignment, aligned positionally to `ClassSummary.recentAssignments`). Only the whole `metadata`
+  and these three new fields may be `null`; no nested score or list entry becomes `null`. Lists
+  are dense with zero to three entries, and `top` and `bottom` are disjoint within a basis.
+- **Legacy shape tolerance and null normalisation — `Not implemented`**: `ABClassMetadata`
+  accepts both the existing two-field shape and the extended five-field shape. Validation and
+  defensive copying emit the five-field shape, inserting `null` for absent new fields. Reads
+  (`getABClass`, `getABClassPartials`, mutation summaries) normalise in memory and never write,
+  repair or backfill stored bytes. A present `undefined` for a new field remains invalid; present
+  invalid values remain integrity failures. Request provenance and `INVALID_REQUEST` adaptation
+  are unchanged.
+- **Validator module separation — `Not implemented`**: nested validation for the three new
+  fields moves to a dedicated sibling module so `src/backend/Models/ABClassMetadata.js` stays at
+  or under the 500-line backend lint gate; `ABClassMetadata` remains the single owner and facade.
+- **Frontend parity — `Not implemented`**: `ABClassMetadataSchema` and
+  `NonNullableABClassMetadataSchema` accept legacy and current inputs and emit the five-field
+  shape. `ClassFullSchema`, `ClassPartialSchema` and the mutation schemas keep referencing the
+  one schema owner; `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts`
+  must cover both shapes.
+- **Snapshot source — `Not implemented`**: the values are supplied by the frontend
+  `ClassSummary` analyser (see
+  [Frontend Data Analysis Response — planned class summary](../data-shapes/frontend-data-analysis-response.md#planned-class-summary-contract-not-implemented));
+  the backend continues to validate and store without calculating or refreshing them.
+
+---
+
 ## File Index
 
 ```

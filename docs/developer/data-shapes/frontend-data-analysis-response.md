@@ -327,6 +327,12 @@ failure can reject after a backend write without producing the saved variant.
 Helper discovery/status is owned by
 [Frontend shared helpers](../frontend/frontend-shared-helpers-and-abstraction-standards.md#928-frontend-abclass-metadata-and-post-analysis).
 
+**Planned writer mapping (`Not implemented`)** — `mergeClassMetadata()` will accept a
+`ClassSummary` instead of separate class/assignment score arguments, retain the rolling
+`recentAssignments` history and summary clock, and map analyser-native `MetricResult` values
+through the existing `projectAverageScores()` mapping. `getMetadataRefreshDecision()` and the
+freshness rules are unchanged. Remove this marker when that mapping lands.
+
 ### Shared post-analysis lifecycle
 
 This extends only frontend in-memory validation/execution; backend shapes and analyser output
@@ -1372,6 +1378,59 @@ and the E2E browser coverage are described below. The explicit-`E` analyser inpu
       This override is preview-local: it must not mutate class-query data, recompute analysed
       class scores/averages, or persist a read repair. The public `MetricResult` output is
       unchanged.
+
+## Planned class summary contract (Not implemented)
+
+The following in-memory contract is planned in `SPEC.md` and is **Not implemented**. It is not a
+wire, persistence or envelope shape, and it is recorded here so implementation has a target;
+remove the `Not implemented` marker as each entry is delivered.
+
+- **ClassSummary analyser and schema — `Not implemented`**: a dedicated `classSummary` analyser
+  registered in `DataAnalysisService` produces a validated `ClassSummary`, exposed as
+  `analyseClassSummary(input, options)`. It composes the existing `AveragingAnalyser` and reuses
+  its exported `rollupMetric`, `computeOverallComposite` and `convertToBaselineExcluded` helpers;
+  task metrics are filtered by `taskKey` in the analyser. It owns ranking and per-assignment assembly. No new
+  averaging logic is added outside `DataAnalysisService`, and `AnalysisFilterSchema`,
+  `AveragingAnalyserInputSchema` and `DataAnalysisResponseSchema` are unchanged. The existing
+  `analyse(input, 'averaging')` and `analyseAssignmentSummary()` entry points are unchanged;
+  `AssignmentSummaryAnalyser` stays in its own field and the averaging registry is not widened.
+  The new analyser is held in its own `classSummaryAnalyser` field, matching that existing pattern.
+- **Analyse options — `Not implemented`**: the writer supplies `{ target, recentAssignments }`,
+  where `target` is the result of its existing freshness decision and `recentAssignments` are the
+  newest three fresh-class assignment instances. The analyser performs no freshness selection and
+  derives no rolling history.
+- **ClassSummary shape — `Not implemented`**: `{ classId, allTasks: { classAverages, standings },
+baseline: { available, classAverages, standings }, target, recentAssignments }`. All score
+  values are analyser-native four-state `MetricResult` values; conversion to the metadata score
+  union uses the existing `projectAverageScores()` mapping in the writer. `target` carries the
+  isolated absolute averages for the refreshed assignment; `recentAssignments` describes the
+  newest three fresh-class instances in newest-first order and `recentAssignmentScores[i]`
+  aligns to `recentAssignments[i]`. Baseline values are `null` when `available` is `false`. No
+  summary-clock timestamp is carried; the writer owns stamping.
+- **Isolated baseline score derivation — `Not implemented`**: for each supplied recent assignment,
+  run the existing `AveragingAnalyser` in absolute mode and take `perStudentTaskMetrics`; filter
+  each student's metrics to the whole-class baseline keys by `taskKey`, roll up each criterion
+  with `rollupMetric` and derive `overall` with `computeOverallComposite`. A student with no
+  baseline metrics rolls up unfiltered evidence and applies `convertToBaselineExcluded` to the
+  criterion results before deriving `overall`. No isolated analysis runs in baseline mode.
+- **Ranking rule — `Not implemented`**: rank by `perStudent.overall` where its state is
+  `computed`; top descending, bottom ascending, ties by `studentId` ascending, at most three
+  dense entries per list. Non-numeric `overall` states are not ranked. The two lists per basis
+  are disjoint: take the top three first, then the bottom three from the remaining students.
+- **Baseline unavailability — `Not implemented`**: the documented `deriveAttemptBaseline`
+  failures (roster below 3, fewer than 2 attempt candidates, empty pool intersection) produce
+  `available: false` with null baseline averages and standings; the refresh still succeeds and
+  writes all-task fields. These failures throw a dedicated `AttemptBaselineUnavailableError`
+  extending `Error` with the existing messages; the summary analyser catches only that type and
+  every other thrown value propagates. No message matching or broad catch is used.
+- **Writer consumption — `Not implemented`**: `abClassMetadataService.ts` selects the target and
+  newest assignments using its existing freshness decision, calls `analyseClassSummary()` and maps
+  the result into the extended ABClass metadata shape in
+  [abclass.md](../data-shapes/abclass.md#planned-changes-baseline-averages-and-student-standings-not-implemented);
+  `mergeClassMetadata()` owns the persisted rolling history, target replacement, uniqueness and
+  summary timestamp. No calculation lives in the writer, and `postAnalysisTasks.ts`,
+  `refreshABClassMetadata.ts`, `postAnalysisFeedback.ts` and `postAnalysisInvalidation.ts`
+  remain unchanged.
 
 ## File Index
 

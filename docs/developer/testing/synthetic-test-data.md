@@ -268,6 +268,13 @@ and [api-layer.md § ABClass metadata helpers](../backend/api-layer.md#abclass-m
 Cross-reference: [Backend Testing](../backend/backend-testing.md) §Backend model-input
 adapter.
 
+**Planned new-field coverage (`Not implemented`)** — the generator and raw validator will be
+extended to emit and validate the three new metadata fields (baseline averages and top/bottom
+standings) as supplied snapshots, preserving the existing deterministic coverage matrix and
+legacy `null` cases. The three committed compact profiles will be regenerated through the CLI;
+no new profile, view, generator stage or corpus rescale is planned. Remove this marker when that
+coverage lands.
+
 ### `generateClassMetadata.js` stage
 
 - `scripts/synthetic-test-data/generateClassMetadata.js` runs once inside

@@ -269,6 +269,8 @@ Behaviour that the code alone does not explain:
 
 - Contracts and owners are recorded in Section 3.10. Do not add a second metadata schema, mutation wrapper or post-analysis lifecycle.
 - The backend-parity and round-trip suites are test-only; they compare the frontend Zod contract with the real backend validator through existing dispatcher seams.
+- Metadata schema extension (`Not implemented` — planned for the metadata enrichment): `services/abClass/abClassMetadata.zod.ts` remains the single metadata schema owner and is extended to accept legacy and current shapes and emit the five-field shape. No second schema, mutation wrapper or lifecycle is introduced. Reconcile this entry when the schema lands.
+- Class-summary analyser (`Not implemented` — planned for the metadata enrichment): a new shared analyser owned by `src/frontend/src/services/dataAnalysis/` and held in its own `classSummaryAnalyser` field in `DataAnalysisService` alongside the existing `summaryAnalyser` field; the averaging registry is unchanged. It is the single owner for metadata summary calculation — ranking, baseline restriction and per-assignment assembly — and reuses `rollupMetric`, `computeOverallComposite` and `convertToBaselineExcluded`. No averaging logic is added to the metadata writer or any other consumer. `AssignmentSummaryAnalyser` keeps its own field and entry point. Reconcile this entry when the analyser lands.
 
 ### 9.29 Explicit assessment errors: response normalisation and E preview
 
