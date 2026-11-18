@@ -97,6 +97,8 @@ The script property key used by JsonDbApp to locate the database index.
 
 Timeout used when acquiring database locks.
 
+Since the vendored JsonDbApp v0.3.1 this value is also the deadline for lock acquisition, not just the lease, so a contested operation can wait this long before it gives up. Keep it comfortably below the 6-minute Apps Script execution limit.
+
 #### 📈 JSON DB Log Level
 
 **Default:** `INFO`

@@ -5,6 +5,7 @@
   "jsonDbApp": {
     "pinnedSnapshotDir": "scripts/builder/vendor/jsondbapp",
     "sourceFiles": [
+      "src/01_utils/BackoffUtils.js",
       "src/01_utils/ComparisonUtils.js",
       "src/01_utils/ErrorHandler.js",
       "src/01_utils/FieldPathUtils.js",

@@ -93,6 +93,7 @@ Builder configuration lives in `scripts/builder/builder.config.json`.
   "jsonDbApp": {
     "pinnedSnapshotDir": "scripts/builder/vendor/jsondbapp",
     "sourceFiles": [
+      "src/01_utils/BackoffUtils.js",
       "src/01_utils/ComparisonUtils.js",
       "src/01_utils/ErrorHandler.js",
       "src/01_utils/FieldPathUtils.js",
@@ -143,7 +144,7 @@ Notes:
 - Builder config validation is owned by the adjacent Zod schema in `scripts/builder/src/config.zod.ts`, and the builder config types are inferred from that schema.
 - `jsonDbApp.sourceFiles` is sorted deterministically before inlining.
 - `jsonDbApp.publicExports` controls what is exposed on `JsonDbApp`.
-- The committed vendored snapshot is sourced from upstream JsonDbApp tag `v0.3.0`; Stage 6 validates that local snapshot and never downloads or extracts releases at runtime.
+- The committed vendored snapshot is sourced from upstream JsonDbApp tag `v0.3.1`; Stage 6 validates that local snapshot and never downloads or extracts releases at runtime.
 - The vendored upstream logger implementation at `scripts/builder/vendor/jsondbapp/src/01_utils/JDbLogger.js` intentionally retains `console.error`, `console.warn`, and `console.log` for upstream/runtime parity. This is a narrow exception for that vendored file only, not a general precedent for active project code.
 
 ### Failure behaviour
