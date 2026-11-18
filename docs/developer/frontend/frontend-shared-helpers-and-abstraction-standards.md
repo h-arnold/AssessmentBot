@@ -70,6 +70,7 @@ Do not create a new helper only to move code out of a large file.
 - Reference-data modal family: `ReferenceDataManagementModalScaffold.tsx`, `manageReferenceDataDialogs.tsx`, `InlineDialog.tsx`, and `ReferenceDataInitialLoadingState.tsx` (under `src/frontend/src/features/referenceData/`) — extend this family for new reference-data modals rather than composing a fresh shell.
 - Cross-feature re-run entry contract: `src/frontend/src/features/shared/reRunAssessmentContext.ts` — `ReRunContext` lives in `features/shared` so `features/taskHeatmap/**` never imports `features/classPage/**`.
 - Cross-feature baseline-availability type: `src/frontend/src/features/shared/baselineAvailability.ts` — `BaselineAvailability` lives in `features/shared` (resolved by `classPage`, consumed by `taskHeatmap` and the shared control) under the same dependency rule.
+- Cross-feature averages-basis mode props: `src/frontend/src/features/shared/averagesBasisModeProps.ts` — `AveragesBasisModeProps` (optional `analysisMode`, `onAnalysisModeChange`, `baselineAvailability`) lives in `features/shared` (threaded by `classPage`, consumed by `taskHeatmap` and the shared control) under the same dependency rule.
 
 Feature-scoped helpers should stay feature-scoped unless there is proven cross-feature reuse.
 
@@ -258,6 +259,7 @@ Behaviour that the code alone does not explain:
 - Pass the mode to `MetricPill` and the student-averages column builder explicitly; do not introduce React context.
 - `buildTaskColumns` takes a required `ReadonlySet<string> | null`; `adaptMetricsToHeatmap` supplies the baseline set or `null` for absolute mode, and the merged chain passes `null` explicitly at each hop.
 - `BaselineAvailability` is owned by `features/shared/baselineAvailability.ts` (resolved in `classPage`, consumed by `taskHeatmap` and the shared control), so `taskHeatmap` never imports `classPage`.
+- `AveragesBasisModeProps` is owned by `features/shared/averagesBasisModeProps.ts` (threaded by `classPage`, consumed by `taskHeatmap` and the shared control), so `taskHeatmap` never imports `classPage`; all three members stay optional so direct card renders keep their original head.
 - `AveragesBasisControl` lives in `components/AveragesBasisControl/` with `renderAveragesBasisControlExtra.tsx` owning the `extra` guard; promoted from `features/classPage/ClassPageModeControl.tsx` because both averaging cards host it.
 - `resolveBaselineAvailability` stays in `useClassPageData.helpers.ts`; its reason strings are module constants.
 - Load the `medium` synthetic views at each call site with `?raw`; do not add a shared loader.

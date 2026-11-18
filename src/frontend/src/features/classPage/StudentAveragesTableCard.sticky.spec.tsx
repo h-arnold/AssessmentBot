@@ -16,18 +16,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 
 import { StudentAveragesTableCard } from './StudentAveragesTableCard';
-import type { BaselineAvailability } from '@/features/shared/baselineAvailability';
 import {
   buildStudentAverageRow,
   createClassPageAdapterResult,
 } from '@/test/classPage/classPageFixtures';
 import { requireElement, resolveStickyTables } from '@/test/shared/domGuards';
-
-/** Accessible name of the shared mode control hosted in the card head. */
-const MODE_CONTROL_LABEL = 'Averages basis';
-
-/** Minimal ready availability for the supplied-mode-props render. */
-const READY_AVAILABILITY: BaselineAvailability = { status: 'ready', reason: null };
+import { MODE_CONTROL_LABEL, READY_AVAILABILITY } from '@/test/averagesBasisTestConstants';
 
 afterEach(() => {
   cleanup();

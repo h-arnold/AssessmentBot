@@ -32,34 +32,20 @@ import type { JSX } from 'react';
 import { Space, Skeleton, Button, Result } from 'antd';
 import type { ClassPageSurfaceState, ClassPageError } from './useClassPageData';
 import type { ClassPageAdapterResult } from './classPageAdapter.zod';
-import type { AnalysisMode, AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { RecentAssignmentsSection } from './RecentAssignmentsSection';
 import { StudentAveragesTableCard } from './StudentAveragesTableCard';
 import { TaskHeatmapPage } from '../taskHeatmap/TaskHeatmapPage';
 import type { ReRunContext } from '../shared/reRunAssessmentContext';
-import type { BaselineAvailability } from '../shared/baselineAvailability';
+import type { AveragesBasisModeProps } from '../shared/averagesBasisModeProps';
 import type { BlockingConfig } from '@/errors/blockingConfig';
 import { resolveBlockingResultConfig } from '@/errors/blockingConfig';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-/**
- * Optional mode props the Class page threads to both ready views. The page
- * supplies all three together; direct renders omit them and keep the
- * weighting-only `excluded` wording without mounting a control.
- */
-type ModeControlProps = {
-  /** The page's current analysis mode (§9.27.3 threading chain). */
-  analysisMode?: AnalysisMode;
-  /** Change the analysis mode (page-owned state; no persistence). */
-  onAnalysisModeChange?: (mode: AnalysisMode) => void;
-  /** Baseline availability for the host card's `AveragesBasisControl`. */
-  baselineAvailability?: BaselineAvailability;
-};
 
 type ClassPageContentProperties = Readonly<
   {
@@ -91,7 +77,7 @@ type ClassPageContentProperties = Readonly<
     onStartNewAssessment: () => void;
     /** Callback invoked when the user clicks Re-run Assessment in the heatmap view. */
     onReRunAssessment?: (context: ReRunContext) => void;
-  } & ModeControlProps
+  } & AveragesBasisModeProps
 >;
 
 type ClassPageBlockingProperties = Readonly<{
@@ -111,7 +97,7 @@ type ClassPageReadyProperties = Readonly<
     onOpenHeatmap: (assignmentId: string) => void;
     /** Callback invoked when the user clicks "Start New Assessment" (used by empty-state CTA). */
     onStartNewAssessment: () => void;
-  } & ModeControlProps
+  } & AveragesBasisModeProps
 >;
 
 // ---------------------------------------------------------------------------
@@ -300,7 +286,7 @@ function ClassPageBlocking({
 // ---------------------------------------------------------------------------
 
 /** Options for {@link renderReadyContent}. */
-interface RenderReadyContentOptions extends ModeControlProps {
+interface RenderReadyContentOptions extends AveragesBasisModeProps {
   selectedView: ClassPageContentProperties['selectedView'];
   analyserResult: AveragingResult | null;
   classFull: ClassFull | null;

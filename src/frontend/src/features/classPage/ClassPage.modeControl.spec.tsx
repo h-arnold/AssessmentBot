@@ -25,14 +25,12 @@ import {
   classFullFixture,
   VALID_ASSIGNMENT_PARTIAL,
 } from '@/test/taskHeatmapPageFixtures';
+import { MODE_CONTROL_LABEL, READY_AVAILABILITY } from '@/test/averagesBasisTestConstants';
 
 const CLASS_PAGE_CLASS_ID = 'class-1';
 const CLASS_NAME = 'Class A';
 const RECENT_ASSIGNMENT_NAME = 'Assignment One';
 
-// Control copy pinned by the attempt-baseline layout specification
-// (copy home: `pageContent` under `classDetail`).
-const MODE_CONTROL_LABEL = 'Averages basis';
 const ABSOLUTE_OPTION_LABEL = 'All tasks';
 const BASELINE_OPTION_LABEL = 'Baseline tasks';
 
@@ -115,9 +113,6 @@ const RECENT_ASSIGNMENT: RecentAssignmentCardModel = {
     average: NO_DATA_METRIC,
   },
 };
-
-/** Availability state of an eligible class (control enabled, no reason). */
-const READY_AVAILABILITY = { status: 'ready' as const, reason: null };
 
 /** Availability state before any successful analysis (control disabled). */
 const AWAITING_DATA_AVAILABILITY = {

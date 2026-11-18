@@ -65,9 +65,8 @@ import { Card, Input, Space, Typography, Flex, Table, Empty } from 'antd';
 import type { TableColumnsType, TablePaginationConfig } from 'antd';
 import type { FilterValue, SorterResult } from 'antd/es/table/interface';
 import { SearchOutlined } from '@ant-design/icons';
-import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { ClassPageAdapterResult, StudentAverageRowModel } from './classPageAdapter.zod';
-import type { BaselineAvailability } from '../shared/baselineAvailability';
+import type { AveragesBasisModeProps } from '../shared/averagesBasisModeProps';
 import { renderAveragesBasisControlExtra } from '@/components/AveragesBasisControl/renderAveragesBasisControlExtra';
 import { pageContent } from '@/pages/pageContent';
 
@@ -96,20 +95,11 @@ type SortState = {
   readonly direction: 'asc' | 'desc';
 };
 
-export type StudentAveragesTableCardProperties = {
-  readonly adapterResult: ClassPageAdapterResult;
-  /**
-   * The Class page's current analysis mode, forwarded to the column builder
-   * for the `excluded` cells' accessible label (§9.27.3 threading chain).
-   * Class-page consumers pass it explicitly; when absent the weighting-only
-   * wording is used.
-   */
-  readonly analysisMode?: AnalysisMode;
-  /** Change the analysis mode; supplied with the other mode props by the Class page. */
-  readonly onAnalysisModeChange?: (mode: AnalysisMode) => void;
-  /** Baseline availability; supplied with the other mode props by the Class page. */
-  readonly baselineAvailability?: BaselineAvailability;
-};
+export type StudentAveragesTableCardProperties = Readonly<
+  {
+    readonly adapterResult: ClassPageAdapterResult;
+  } & AveragesBasisModeProps
+>;
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -268,8 +258,6 @@ export function StudentAveragesTableCard(
 
   // ── Render ─────────────────────────────────────────────────────────────
 
-  // Only the Class page supplies the three mode props together; direct
-  // renders without them keep the original card head.
   const modeControlExtra = renderAveragesBasisControlExtra({
     analysisMode,
     onAnalysisModeChange,

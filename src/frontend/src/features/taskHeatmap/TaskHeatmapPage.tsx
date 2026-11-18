@@ -15,10 +15,10 @@ import { RefreshCw, RotateCcw } from 'lucide-react';
 import { APP_GAP_MD } from '@/theme/spacing';
 
 import type { ReRunContext } from '../shared/reRunAssessmentContext';
-import type { BaselineAvailability } from '../shared/baselineAvailability';
+import type { AveragesBasisModeProps } from '../shared/averagesBasisModeProps';
 import { renderAveragesBasisControlExtra } from '@/components/AveragesBasisControl/renderAveragesBasisControlExtra';
 
-import type { AnalysisMode, AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
+import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type {
   AssignmentPartial,
   ClassFull,
@@ -71,28 +71,24 @@ type HeaderLabels = Readonly<{
   assignmentName: string;
 }>;
 
-type TaskHeatmapPageProperties = Readonly<{
-  /** The already-computed analyser result (non-null, narrowed by the ready gate). */
-  analyserResult: AveragingResult;
-  /** The full class data (non-null, narrowed by the ready gate). */
-  classFull: ClassFull;
-  /** The assignment ID to project the heatmap for. */
-  assignmentId: string;
-  /** Warm-up assignment-definition partials (non-null, narrowed by the ready gate). */
-  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse;
-  /** Callback invoked when the user clicks Back to return to the overview. */
-  onBack: () => void;
-  /** Callback invoked when the user clicks Refresh to re-run the data pipeline. */
-  refetch: () => void;
-  /** Callback invoked when the user clicks Re-run Assessment (renders only when supplied). */
-  onReRunAssessment?: (context: ReRunContext) => void;
-  /** The Class page's current analysis mode (host card's mode control). */
-  analysisMode?: AnalysisMode;
-  /** Change the analysis mode; supplied with the other mode props by the Class page. */
-  onAnalysisModeChange?: (mode: AnalysisMode) => void;
-  /** Baseline availability; supplied with the other mode props by the Class page. */
-  baselineAvailability?: BaselineAvailability;
-}>;
+type TaskHeatmapPageProperties = Readonly<
+  {
+    /** The already-computed analyser result (non-null, narrowed by the ready gate). */
+    analyserResult: AveragingResult;
+    /** The full class data (non-null, narrowed by the ready gate). */
+    classFull: ClassFull;
+    /** The assignment ID to project the heatmap for. */
+    assignmentId: string;
+    /** Warm-up assignment-definition partials (non-null, narrowed by the ready gate). */
+    assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse;
+    /** Callback invoked when the user clicks Back to return to the overview. */
+    onBack: () => void;
+    /** Callback invoked when the user clicks Refresh to re-run the data pipeline. */
+    refetch: () => void;
+    /** Callback invoked when the user clicks Re-run Assessment (renders only when supplied). */
+    onReRunAssessment?: (context: ReRunContext) => void;
+  } & AveragesBasisModeProps
+>;
 
 /** Status tag text shown for a legacy assignment on the navigation card. */
 const REASSESSMENT_TAG_TEXT = 'Reassessment required';
@@ -451,8 +447,6 @@ export function TaskHeatmapPage({
   // Valid heatmap rendering, including optional summary failures.
   const { heatmapResult, summary, summaryError } = state;
 
-  // Standalone heatmaps render no mode control: the Class page supplies all
-  // three mode props together when it embeds this surface.
   const modeControlExtra = renderAveragesBasisControlExtra({
     analysisMode,
     onAnalysisModeChange,

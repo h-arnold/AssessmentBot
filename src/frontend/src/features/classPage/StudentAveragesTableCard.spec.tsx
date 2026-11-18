@@ -16,6 +16,7 @@ import type { FilterDropdownProps } from 'antd/es/table/interface';
 import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
 import type { BaselineAvailability } from '@/features/shared/baselineAvailability';
 import type * as studentAveragesTableColumnsModule from './studentAveragesTableColumns';
+import { MODE_CONTROL_LABEL, READY_AVAILABILITY } from '@/test/averagesBasisTestConstants';
 import { BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL } from '@/services/dataAnalysis/metricDisplay/metricTone';
 import {
   buildStudentAverageRow,
@@ -91,12 +92,6 @@ const FORENAME_ASC_SORT = { column: 'forename', direction: 'asc' } as const;
 
 /** Sentinel for accessing the last element of an array. */
 const LAST_CALL_INDEX = -1;
-
-/** Accessible name of the shared mode control hosted in the card head. */
-const MODE_CONTROL_LABEL = 'Averages basis';
-
-/** Minimal ready availability for the supplied-mode-props render. */
-const READY_AVAILABILITY: BaselineAvailability = { status: 'ready', reason: null };
 
 // ---------------------------------------------------------------------------
 // Fixture helpers

@@ -9,25 +9,20 @@
  */
 
 import type { JSX } from 'react';
-import type { AnalysisMode } from '@/services/dataAnalysis/dataAnalysis.zod';
-import type { BaselineAvailability } from '@/features/shared/baselineAvailability';
+import type { AveragesBasisModeProps } from '@/features/shared/averagesBasisModeProps';
 import { AveragesBasisControl } from './AveragesBasisControl';
 
 /**
  * Build a host card's `extra` slot when the full mode contract is supplied.
  *
- * @param {Readonly<{...}>} properties - The optional mode props from the host page.
+ * @param {AveragesBasisModeProps} properties - The optional mode props from the host page.
  * @returns {JSX.Element | undefined} The control, or undefined without all three props.
  */
 export function renderAveragesBasisControlExtra({
   analysisMode,
   onAnalysisModeChange,
   baselineAvailability,
-}: Readonly<{
-  analysisMode?: AnalysisMode;
-  onAnalysisModeChange?: (mode: AnalysisMode) => void;
-  baselineAvailability?: BaselineAvailability;
-}>): JSX.Element | undefined {
+}: AveragesBasisModeProps): JSX.Element | undefined {
   if (
     analysisMode === undefined ||
     onAnalysisModeChange === undefined ||
