@@ -187,6 +187,8 @@ function createMockDbManager(vi, mockCollection) {
   return {
     getInstance: vi.fn().mockReturnThis(),
     getCollection: vi.fn().mockReturnValue(mockCollection),
+    // Vendor dropCollection() reports success with true, not undefined.
+    getDb: vi.fn(() => ({ dropCollection: vi.fn(() => true) })),
   };
 }
 
