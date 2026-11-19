@@ -1,79 +1,78 @@
-# 📝 Assessment Bot Configuration Options
+# Assessment Bot Configuration Options
 
-- [📝 Assessment Bot Configuration Options](#assessment-bot-configuration-options)
-  - [📂 Where to Find the Settings](#where-to-find-the-settings)
-  - [⚙️ The Options](#the-options)
-    - [🌐 Backend Section](#backend-section)
-      - [🔑 API Key](#api-key)
-      - [🌍 URL](#url)
-      - [📧 Auth Group Email](#auth-group-email)
-    - [🧩 Advanced Options Section](#advanced-options-section)
-      - [📦 Backend Assessor Batch Size](#backend-assessor-batch-size)
-      - [🖼️ Slides Fetch Batch Size](#slides-fetch-batch-size)
-      - [⏳ Days Until Auth Revoke](#days-until-auth-revoke)
-    - [🗃️ Database Section](#database-section)
-      - [🗂️ JSON DB Master Index Key](#json-db-master-index-key)
-      - [⏱️ JSON DB Lock Timeout (ms)](#json-db-lock-timeout-ms)
-      - [📈 JSON DB Log Level](#json-db-log-level)
-      - [💾 JSON DB Backup On Initialise](#json-db-backup-on-initialise)
-      - [📁 JSON DB Root Folder ID](#json-db-root-folder-id)
+- [Assessment Bot Configuration Options](#assessment-bot-configuration-options)
+  - [Where to Find the Settings](#where-to-find-the-settings)
+  - [The Options](#the-options)
+    - [Backend Section](#backend-section)
+      - [API Key](#api-key)
+      - [URL](#url)
+    - [Authentication (admin only)](#authentication-admin-only)
+    - [Advanced Options Section](#advanced-options-section)
+      - [Backend Assessor Batch Size](#backend-assessor-batch-size)
+      - [Slides Fetch Batch Size](#slides-fetch-batch-size)
+      - [Days Until Auth Revoke](#days-until-auth-revoke)
+    - [Database Section](#database-section)
+      - [JSON DB Master Index Key](#json-db-master-index-key)
+      - [JSON DB Lock Timeout (ms)](#json-db-lock-timeout-ms)
+      - [JSON DB Log Level](#json-db-log-level)
+      - [JSON DB Backup On Initialise](#json-db-backup-on-initialise)
+      - [JSON DB Root Folder ID](#json-db-root-folder-id)
 
-## 📂 Where to Find the Settings
+## Where to Find the Settings
 
-1. Open the Assessment Bot frontend application in your browser.
+1. Open the Assessment Bot web app in your browser.
 2. Click **Settings** in the navigation sidebar.
-3. Click the **Backend settings** tab.
+3. Use the **Backend settings** tab for the API key and URL, or the **Authentication** tab for access control (admins only).
 
-## ⚙️ The Options
+## The Options
 
-### 🌐 Backend Section
+### Backend Section
 
-**Important:** The **API Key** and **URL** settings are _required_ for Assessment Bot to function. The **Auth Group Email** setting controls who can access the application (see below).
+**Important:** The **API Key** and **URL** settings are _required_ for Assessment Bot to function. Access control is set in [Authentication (admin only)](#authentication-admin-only).
 
-#### 🔑 API Key
+#### API Key
 
 This authenticates you with the Assessment Bot LLM Service, which you should have set up already. It is the same API key you set in the `API_KEYS` environment variable when deploying the LLM Service.
 
-#### 🌍 URL
+#### URL
 
 This is the URL of your deployed Assessment Bot LLM Service. It should look something like:
 `https://assessment-bot-backend.yourdomain.com/v1/assessor`
 
-#### 📧 Auth Group Email
+---
 
-**Default:** empty (unset)
+### Authentication (admin only)
 
-The email address of the Google Group whose members are allowed to access this application.
+The **Authentication** tab holds the email address of the Google Group whose members can access Assessment Bot. It is hidden for non-admins, so ask an administrator if you cannot see it.
 
-While this value is empty, the application is in _bootstrap mode_: anyone who can reach the app
-(within your Google Workspace domain) is granted access, which lets the first administrator reach
-this settings page. Once a group email is set, only members of that Google Group can use the
-application.
+Open **Settings → Authentication** to set the group email.
 
-The value is **compulsory once set** — you can change it to a different group email, but you
-cannot clear it back to empty from this page.
+- **Default:** empty (unset).
+- While the group email is empty, the application is in _bootstrap mode_: anyone who can reach the app within your Google Workspace domain is granted access. This lets the first administrator reach the settings page.
+- Once a group email is set, only members of that Google Group can use the application.
+- The value is compulsory once set. You can change it to a different group email, but you cannot clear it back to empty from this page.
 
 ---
 
-### 🧩 Advanced Options Section
+### Advanced Options Section
 
 These values are optional, but can be tuned for throughput and reliability.
 
-The default values and accepted ranges below are the authoritative settings for this guide; the backend configuration contract owns their storage and transport details ([BackendConfig](../developer/data-shapes/backend-config.md)).
+The default values and accepted ranges below are the authoritative settings for this guide.
 
-#### 📦 Backend Assessor Batch Size
+#### Backend Assessor Batch Size
 
 **Default:** 120
 
 This is the number of student-response requests Assessment Bot sends to the LLM Service in each batch.
 
-#### 🖼️ Slides Fetch Batch Size
+#### Slides Fetch Batch Size
 
 **Default:** 30
 
 This is the number of image fetch requests processed in each batch when working with Slides-based tasks.
 
-#### ⏳ Days Until Auth Revoke
+#### Days Until Auth Revoke
 
 **Default:** 60 days
 
@@ -81,37 +80,37 @@ After an assessment record has been created, this value controls when the automa
 
 ---
 
-### 🗃️ Database Section
+### Database Section
 
 These settings control internal JsonDbApp storage behaviour.
 
-#### 🗂️ JSON DB Master Index Key
+#### JSON DB Master Index Key
 
 **Default:** `ASSESSMENT_BOT_DB_MASTER_INDEX`
 
 The script property key used by JsonDbApp to locate the database index.
 
-#### ⏱️ JSON DB Lock Timeout (ms)
+#### JSON DB Lock Timeout (ms)
 
 **Default:** 30000
 
 Timeout used when acquiring database locks.
 
-Since the vendored JsonDbApp v0.3.1 this value is also the deadline for lock acquisition, not just the lease, so a contested operation can wait this long before it gives up. Keep it comfortably below the 6-minute Apps Script execution limit.
+This is also the deadline for a contested save: two operations trying to write at the same time can wait this long before one gives up. Keep it well below the Apps Script execution limit.
 
-#### 📈 JSON DB Log Level
+#### JSON DB Log Level
 
 **Default:** `INFO`
 
 Controls JsonDbApp logging verbosity.
 
-#### 💾 JSON DB Backup On Initialise
+#### JSON DB Backup On Initialise
 
 **Default:** `false`
 
 When enabled, JsonDbApp creates a backup when initialising the database.
 
-#### 📁 JSON DB Root Folder ID
+#### JSON DB Root Folder ID
 
 **Default:** empty (unset)
 

@@ -1,4 +1,4 @@
-site_name: AssessmentBot Documentation
+site_name: Assessment Bot Documentation
 site_description: A tool designed to simplify tracking and assessing the work of hundreds of students
 site_author: h-arnold
 repo_url: https://github.com/h-arnold/AssessmentBot
@@ -49,12 +49,11 @@ exclude_docs: |
 nav:
   - Home: README.md
   - Setup:
-      - Overview: setup/README.md
+      - Setup Overview: setup/README.md
       - Configuration Options: setup/configOptions.md
       - Setting Up Assessment Records: setup/settingUpAssessmentRecords.md
   - How-Tos:
-      - Overview: howTos/README.md
-      - Rehydration: howTos/rehydration.md
+      - How-To Overview: howTos/README.md
   - Developer:
       - Documentation Style Guide: developer/documentation-style-guide.md
       - Backend:
@@ -64,7 +63,7 @@ nav:
           - Backend Logging and Error Handling: developer/backend/backend-logging-and-error-handling.md
           - Backend Testing: developer/backend/backend-testing.md
           - OAuth Scopes: developer/backend/oauth-scopes.md
-          - Rehydration: developer/backend/rehydration.md
+          - Backend Rehydration: developer/backend/rehydration.md
           - Singleton Pattern: developer/backend/singletons.md
           - Vendoring: developer/backend/Vendoring.md
       - Data Shapes:
@@ -104,7 +103,7 @@ nav:
           - Regression Checker How-To: developer/builder/regression-checker-how-to.md
           - TypeScript and Lint Config Hierarchy: developer/builder/TypeScriptAndLintConfigHierarchy.md
       - Security:
-          - Overview: developer/security/README.md
+          - Security Overview: developer/security/README.md
           - Platform Security: developer/security/platform-security.md
           - Application Authentication: developer/security/application-authentication.md
           - Attack-Surface Reduction: developer/security/attack-surface-reduction.md
@@ -115,13 +114,13 @@ nav:
       - Templates:
           - Specification Template: developer/SPEC_TEMPLATE.md
           - Layout Specification Template: developer/LAYOUT_SPEC_TEMPLATE.md
-          - Action Plan Template: developer/ACTION_PLAN_TEMPLATE.md
+          - Feature Delivery Plan (TDD-First): developer/ACTION_PLAN_TEMPLATE.md
           - Regression CLI Spec: developer/regression-cli-spec.md
       - Known Flaky Tests: developer/known-flaky-tests.md
   - Architecture:
       - YearGroupKey ADR: architecture/YearGroupKey.md
   - Pedagogy:
-      - Overview: pedagogy/README.md
+      - Pedagogy Overview: pedagogy/README.md
       - Data Analysis and Scoring: pedagogy/data-analysis-scoring.md
   - Release Notes:
       - Releases: releaseNotes/RELEASES.md

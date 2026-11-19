@@ -43,7 +43,7 @@ be shortened or the cache removed.
 
 On a genuinely fresh install (no `__CONFIG_STORE_KEY__` blob present), the first eligible
 interactive caller — one whose server-resolved email is non-blank — is committed as the
-sole administrator through the Section 4 atomic bootstrap claim. The claim writes only
+sole administrator through the atomic first-admin bootstrap claim. The claim writes only
 auth fields and cannot be performed by trigger execution (`neverClaim: true`) or by a
 blank-identity caller, both of whom are denied fail-closed. Any existing configuration —
 however empty, blank or malformed — is not a fresh install and never bootstraps; broken
@@ -68,22 +68,20 @@ set — it cannot be cleared through the UI or the backend write path — so the
 only recoverable by hand-editing Script Properties.
 
 **Why accepted:** the self-membership check adds complexity and the lockout is
-recoverable (the recovery procedure is documented in the auth service specification's
-"Admin lockout recovery" section). The compulsory-once-set rule is itself a security
+recoverable. The compulsory-once-set rule is itself a security
 feature: it prevents accidental removal of the gate by a later misconfiguration.
 
-**Change trigger:** a deferred guard that verifies the caller's own membership before
-persisting the group email would turn lockout from a recovery procedure into an
-impossibility. This is tracked as a future iteration.
+**Change trigger:** a guard that verifies the caller's own membership before persisting the
+group email would turn lockout from a recovery procedure into an impossibility.
 
-### 5. All API methods are accessible to both `admin` and `user` roles
+### 5. Most API methods are accessible to both `admin` and `user` roles
 
-The auth layer resolves a role (`admin` or `user`) but v1 does not restrict methods by
-role. Every authenticated group member can call every allowlisted method.
+The auth layer resolves a role (`admin` or `user`); `getAuthenticationSettings` and
+`setAuthenticationSettings` are admitted only for admins. Every other allowlisted method is
+available to any authenticated group member, with no role-based filtering.
 
-**Why accepted:** role-based filtering is deliberately deferred so the role model can be
-validated in production before method-level restrictions are layered on. The role
-information is already resolved and audited, so the foundation is in place.
+**Why accepted:** roles are resolved and audited on every call. The two authentication-management
+endpoints are admin-only; the remaining methods do not filter by role.
 
 **Change trigger:** see "Role-based method filtering" under Future direction below.
 
@@ -118,15 +116,14 @@ one without the other breaks the transport contract — clients would send or re
 shapes and the auth gate could admit or deny incorrectly.
 
 The backend-configuration `.strict()` lockstep is a separate, later deploy-order dependency:
-Section 6 drops the auth fields from the `getBackendConfig` read transport and Section 7 drops
-them from the frontend `BackendConfig` Zod schemas. Because both schemas use `.strict()`, the
-backend must never emit a field the frontend schema does not yet accept, so those two surfaces must
-ship together in the same release.
+the `getBackendConfig` read transport and the frontend `BackendConfig` Zod schemas must drop the
+auth fields in the same release. Because both schemas use `.strict()`, the backend must never emit
+a field the frontend schema does not yet accept, so those two surfaces must ship together.
 
-**Why accepted:** the builder ships the whole backend bundle (and the frontend alongside it)
-through a single `clasp` push, so the auth transport, the dispatcher admission phase, and the
-backend-configuration transport are always deployed atomically with their matching frontend
-schemas. There is no staged or canary backend rollout path that could split them.
+**Why accepted:** the builder emits one `build/gas` bundle containing the backend and frontend;
+the documented deployment pushes that bundle together, so the auth transport, the dispatcher
+admission phase, and the backend-configuration transport stay aligned with their matching
+frontend schemas. The documented workflow has no staged rollout.
 
 **Change trigger:** if the backend or frontend ever gains a staged or canary deploy path, the
 contract should be versioned (for example a negotiated schema version) so a half-deployed surface
@@ -144,13 +141,13 @@ fails safe rather than silently mismatching.
   of a compromised device.
 - **Fail closed by default; bootstrap is a bounded claim, not a fail-open window.**
   Errors in identity resolution, group lookup, role mapping and broken configuration deny
-  access. The only deviation from pure fail-closed is the Section 4 first-admin claim,
+  access. The only deviation from pure fail-closed is the first-admin bootstrap claim,
   which fires solely on a genuinely absent configuration store for an interactive caller
   with a non-blank identity — it grants, rather than failing open to all users.
 
 ## Future direction
 
-- **Role-based method filtering (v2+).** Methods in `ALLOWLISTED_METHOD_HANDLERS` will
+- **Role-based method filtering.** Methods in `ALLOWLISTED_METHOD_HANDLERS` will
   declare which roles may call them, using an allow-list approach: a method is closed to
   all roles unless explicitly granted. Denials reuse the `FORBIDDEN` error code.
 - **Self-membership verification guard.** Prevent the admin-lockout scenario in risk 4

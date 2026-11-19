@@ -22,7 +22,7 @@ This document should define layout hierarchy, visible regions, component choices
 
 ---
 
-# [Feature name] Layout Specification
+## [Feature name] Layout Specification
 
 ## Purpose
 
@@ -63,21 +63,9 @@ This document does **not** redefine:
 6. Favour layouts that remain understandable on smaller screens and in reduced-motion mode.
 7. Keep responsibilities clear between composition, state orchestration, and presentational regions.
 
-## Ant Design references consulted
+## Ant Design references
 
-List the official components that materially inform this layout. Remove anything that is not actually relevant.
-
-- [Tabs](https://ant.design/components/tabs)
-- [Card](https://ant.design/components/card)
-- [Table](https://ant.design/components/table)
-- [Form](https://ant.design/components/form)
-- [Modal](https://ant.design/components/modal)
-- [Drawer](https://ant.design/components/drawer)
-- [Alert](https://ant.design/components/alert)
-- [Empty](https://ant.design/components/empty)
-- [Skeleton](https://ant.design/components/skeleton)
-- [Flex](https://ant.design/components/flex)
-- [Space](https://ant.design/components/space)
+Link the relevant [Ant Design component documentation](https://ant.design/components/overview) only where a specific layout decision needs justification.
 
 ## Surface hierarchy
 
@@ -102,8 +90,6 @@ Rationale:
 - [reason tied to implementation simplicity]
 
 Remove this section if additional navigation layers are genuinely required.
-
-## Outer layout
 
 ## Recommended page skeleton
 

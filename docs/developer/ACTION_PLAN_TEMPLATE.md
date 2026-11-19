@@ -46,7 +46,7 @@ For each section below:
 3. **Refactor**: tidy implementation with all tests still green.
 4. Run section-level verification commands.
 5. **Docs sync (optional)**: when the section changes documented behaviour, public APIs, module or developer documentation, data shapes or commands, run the docs sync pass before the section regression gate. Record the outcome (files updated or pages created), or why it was skipped.
-6. **Plan compaction**: after the section is verified and before the regression gate, compact the completed section to a summary that retains contracts, decisions, constraints and follow-ups relevant to future sections. Preserve other sections, the deferred-findings ledger and the `Implementation notes / deviations / follow-up` subsection. Runs in parallel with step 5; see the action-plan implementer workflow (§2.5) for the full retention and removal rules.
+6. **Plan compaction**: after the section is verified and before the regression gate, compact the completed section to a summary that retains contracts, decisions, constraints and follow-ups relevant to future sections. Preserve other sections, the deferred-findings ledger and the `Implementation notes / deviations / follow-up` subsection. Runs in parallel with step 5; see Section Compaction in `action-plan-implementer.md` for the full retention and removal rules.
 
 ### Delegation mandatory reads (mandatory for sub-agent execution)
 
@@ -150,7 +150,7 @@ Frontend tests:
 
 ### Section checks
 
-- `npm test -- tests/...`
+- `npm run test:<scope> -- <target>` (see [validation commands hierarchy](#validation-commands-hierarchy))
 - Mandatory-read evidence gate passed for all delegated handoffs in this section.
 - Shared-helper planning entries are present when helper changes are expected.
 - Planned helper entries were added to relevant canonical docs with status `Not implemented` before implementation starts.
@@ -197,7 +197,7 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 
 1. Run touched backend model/controller/API suites.
 2. Run touched frontend service/UI suites.
-3. Run backend frontend lint commands.
+3. Run backend and frontend lint commands.
 4. Run any required e2e tests.
 
 ### Section checks
@@ -263,8 +263,16 @@ Record findings triaged as out of scope or ambiguous during delivery here. Do no
 | ------- | -------- | --------------- | -------- | ------------------------------------- | ------------- |
 | ...     | Any      | ...             | ...      | asked, noted, disregarded or approved | ...           |
 
-`Disposition` is one of `asked`, `noted`, `disregarded` or `approved`. `User decision` records the user's answer and date once given, and stays empty while the disposition is `asked`. Record an ambiguous finding as `asked` before handing it back. The exception is an ambiguous nitpick: log it in the `Nitpicks` table of the deferred-findings log and add a pointer row here. Default an out-of-scope Critical or Material finding to `noted` and an out-of-scope minor or nitpick finding to `disregarded`; an ambiguous finding defaults to `asked` regardless of severity. Only a user-authorised item becomes `approved`.
+- `Disposition` is one of `asked`, `noted`, `disregarded` or `approved`.
+- `User decision` records the user's answer and date once given, and stays empty while the disposition is `asked`.
+- Record an ambiguous finding as `asked` before handing it back; an ambiguous nitpick also goes in the `Nitpicks` table of the deferred-findings log, with a pointer row here.
+- Default an out-of-scope Critical or Material finding to `noted`, and an out-of-scope minor or nitpick finding to `disregarded`.
+- Default an ambiguous finding to `asked` regardless of severity.
+- Only a user-authorised item becomes `approved`.
 
-Nitpicks are logged separately in `.opencode/scratchpad/<branch-slug>-deferred-findings.md`, where the branch slug is the branch name with `/` replaced by `-`. That ignored working file holds two headed tables: `Deferred and out-of-scope findings` (Finding | Severity | Scope rationale | Evidence | Disposition | User decision) and `Nitpicks` (Finding | Location | Evidence | Deferred at (section and phase) | Disposition). Link it here for traceability, and do not list individual nitpicks in this plan.
+Nitpicks are logged separately in `.opencode/scratchpad/<branch-slug>-deferred-findings.md`, where the branch slug is the branch name with `/` replaced by `-`.
+
+- That ignored working file holds two headed tables: `Deferred and out-of-scope findings` (Finding | Severity | Scope rationale | Evidence | Disposition | User decision) and `Nitpicks` (Finding | Location | Evidence | Deferred at (section and phase) | Disposition).
+- Link the file here for traceability; do not list individual nitpicks in this plan.
 
 The orchestrating agent or `action-plan-implementer` creates this section at the end of `ACTION_PLAN.md` if an in-flight plan lacks it, before recording the first row. Before the plan is deleted or superseded, its open rows are mirrored into the deferred-findings log.

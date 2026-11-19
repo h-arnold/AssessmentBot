@@ -15,8 +15,6 @@ Sibling contracts:
 
 - [Contract: ABClass](abclass.md) — ABClass embeds `cohortKey` and `yearGroupKey` referencing Cohorts and YearGroups respectively.
 - [Contract: AssignmentDefinition](assignment-definition.md) — AssignmentDefinition embeds `primaryTopicKey` referencing AssignmentTopics.
-- [Contract: Assignment](assignment.md) — No direct reference-data relationship.
-- [Contract: BackendConfig](backend-config.md) — No direct reference-data relationship.
 
 ---
 
@@ -45,7 +43,7 @@ Stored via `Cohort.toJSON()`.
 Key notes:
 
 - `active` is always a boolean in `toJSON()` — there is no tri-state null like ABClass.
-- `startYear` is a safe integer year (e.g. 2025), not a full date. `Cohort.setStartYear` rejects values outside `Number.MIN_SAFE_INTEGER` through `Number.MAX_SAFE_INTEGER`, including during construction and rehydration; no narrower year range is introduced.
+- `startYear` is a safe integer year (e.g. 2025), not a full date. `Cohort.setStartYear` rejects values outside `Number.MIN_SAFE_INTEGER` through `Number.MAX_SAFE_INTEGER`, including during construction and rehydration.
 - `startMonth` is an integer (1–12). Defaults to 9 (September) via the module constant `ACADEMIC_YEAR_START_MONTH`.
 - Constructor defaults: `active: true`, `startYear: getCurrentAcademicYearStart()`, `startMonth: 9`.
 - `fromJSON()` uses `Object.hasOwn()` fallback checks for `active`, `startMonth`, and `startYear` so legacy records missing these fields still deserialise correctly.
@@ -92,8 +90,8 @@ controller returns plain objects produced by `Model.toJSON()` (with `_id` stripp
 The transport envelope is documented in [`transport-envelope.md`](transport-envelope.md).
 This section documents the `data` payload only.
 
-All list (`get*`) endpoints return records sorted by name (case-insensitive localeCompare
-via `_sortRecordsByName`). All delete endpoints return `null` (via the controller's `void`
+All list (`get*`) endpoints return records sorted by name via the locale-aware
+`_sortRecordsByName`. All delete endpoints return `null` (via the controller's `void`
 return being coerced by `apiHandler._success()` `data: data ?? null`).
 
 ### Cohort CRUD
@@ -136,7 +134,7 @@ return being coerced by `apiHandler._success()` `data: data ?? null`).
 
 Key contract notes:
 
-- The `key` is generated server-side via `generateStableKey()` (uses `Utilities.getUuid()` in GAS, falls back to timestamp+counter in tests).
+- The `key` is generated server-side via `generateStableKey_()`, which uses `Utilities.getUuid()`.
 - Duplicate detection: `_normaliseName()` trims and lowercases the name, then checks against all stored records. If a match is found, throws `Error` (mapped to `INTERNAL_ERROR` envelope).
 
 #### `updateCohort` (write)
@@ -157,6 +155,7 @@ Key contract notes:
 Key contract notes:
 
 - The frontend `UpdateCohortRecordInputSchema` requires `active: z.boolean()` (not optional), unlike the create schema where `active` is optional.
+- `callApi` wraps the payload as `params`; the handler passes `parameters` directly to `updateCohort`, which destructures `{ key, record }` from it.
 - Update uses `_findByKey(records, trimmedKey)` to verify the record exists before updating.
 - Duplicate name detection: the controller checks that the new normalised name does not conflict with a _different_ existing record (same-key renames are allowed).
 
@@ -401,7 +400,7 @@ Frontend Zod (secondary/unused): `src/frontend/src/services/assignmentDefinition
    - Backend `AssignmentTopic.toJSON()` always emits `{ key, name, yearGroupKeys }`.
    - The primary frontend schema in `referenceData.zod.ts` (`AssignmentTopicSchema`) includes all three fields and is used by the production service.
    - The secondary frontend schema in `assignmentTopics.zod.ts` (`AssignmentTopicSchema`) defines only `{ key, name }` (no `yearGroupKeys`, uses `.strict()`).
-   - **Risk:** The secondary schema is unused by any production service (not imported by any `.ts` file except its own `.spec.ts`). If a future change started using it for response validation, it would reject valid backend responses that include `yearGroupKeys`. The secondary schema also uses `.strict()`, which means extra fields would be rejected, creating an additional mismatch. The `assignmentTopics.zod.ts` file appears to be dead code or a leftover from an earlier implementation.
+   - The secondary schema is not used in production. It declares only `{ key, name }` and uses `.strict()`, unlike the three-field primary schema.
 
 2. **`CohortRecordInputSchema.active` is optional on create but `UpdateCohortRecordInputSchema.active` is required.**
    - Backend `Cohort` constructor defaults `active` to `true` when not provided.
@@ -409,19 +408,9 @@ Frontend Zod (secondary/unused): `src/frontend/src/services/assignmentDefinition
    - Frontend `UpdateCohortRecordInputSchema` defines `active` as `z.boolean()` (required).
    - On update, the controller does not apply defaults; it merges the update record with the existing stored record via `_buildRecord()`. Requiring `active` on update ensures explicit intent. On create, the constructor default handles it.
 
-3. **Delete endpoints return `null` (via `void` → `null` coercion).**
-   - Backend delete methods return `undefined` (JavaScript implicit return). The `apiHandler._success()` method coerces `undefined` to `null` via `data ?? null`.
-   - Frontend `Delete*ResponseSchema` all use `z.void().nullable()`.
-   - Both sides handle the null/void boundary consistently.
-
-4. **Frontend `UpdateCohortInputSchema` wraps key and record in an object; backend handler destructures `parameters` directly.**
-   - Backend handler: `updateCohort: (parameters) => new ReferenceDataController().updateCohort(parameters)` — passes the whole `parameters` object as the `payload` argument.
-   - Frontend `UpdateCohortInputSchema`: `z.object({ key: ..., record: ... })` — validates `{ key, record }` shape.
-   - The controller's `updateCohort(payload)` destructures `{ key, record } = payload`. The frontend sends `{ key, record }` wrapped in `params` by `callApi`. The backend receives `params: { key, record }` and the inline closure passes `parameters` (which is `request.params`) directly to the controller.
-
-5. **Duplicate name errors are mapped to `INTERNAL_ERROR` rather than `INVALID_REQUEST`.**
-   - The controller throws a plain `Error` for duplicate names or not-found records. The error does not have a `name` matching `ApiValidationError`, so `_mapErrorToFailureEnvelope` maps it to `INTERNAL_ERROR`.
-   - The controller does not use `ApiValidationError` for these domain checks. The frontend receives `INTERNAL_ERROR` and treats it as an unexpected failure. This is intentional for the current implementation.
+3. **Duplicate-name errors map to `INTERNAL_ERROR` rather than `INVALID_REQUEST`.**
+   - The controller throws a plain `Error` for duplicate names and not-found records, so `_mapErrorToFailureEnvelope` maps it to `INTERNAL_ERROR`.
+   - The frontend receives `INTERNAL_ERROR` and treats it as an unexpected failure. Classification: **Aligned** — both sides handle the generic error code deliberately.
 
 ---
 

@@ -31,7 +31,7 @@ Make sure these inputs exist:
 Use the builder commands from the root `package.json`:
 
 ```bash
-# Full validation pipeline (lint:check + test:coverage + production build)
+# Full validation pipeline (lint:check + test:coverage + typecheck:all + production build; see package.json)
 npm run run-all-checks
 
 # Production build only (compiles builder, runs gas-bundle in production mode)
@@ -52,16 +52,13 @@ npm run test:builder
 
 # Regression checker CLI
 npm run regression-checker -- [sessionId]
-
-# Full production build (includes builder compile + frontend build)
-npm run build:production
 ```
 
 For full regression-checker configuration, report interpretation, compatibility rules, and troubleshooting, use [Regression Checker How-To](./regression-checker-how-to.md).
 
 ### Coverage requirement
 
-Builder unit tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `scripts/builder/vitest.config.ts` and checked via `npm run test:builder:coverage`.
+Builder unit tests must meet a minimum coverage threshold for lines, functions, statements, and branches. The threshold is enforced in `scripts/builder/vitest.config.ts` and checked via `npm run test:builder:coverage`.
 
 ### Typical local workflow
 
@@ -144,7 +141,7 @@ Notes:
 - Builder config validation is owned by the adjacent Zod schema in `scripts/builder/src/config.zod.ts`, and the builder config types are inferred from that schema.
 - `jsonDbApp.sourceFiles` is sorted deterministically before inlining.
 - `jsonDbApp.publicExports` controls what is exposed on `JsonDbApp`.
-- The committed vendored snapshot is sourced from upstream JsonDbApp tag `v0.3.1`; Stage 6 validates that local snapshot and never downloads or extracts releases at runtime.
+- The committed vendored snapshot in `scripts/builder/vendor/jsondbapp` is the source of truth; Stage 6 validates it locally and never downloads or extracts releases at runtime. See [Vendoring](../backend/Vendoring.md) for how that snapshot is managed.
 - The vendored upstream logger implementation at `scripts/builder/vendor/jsondbapp/src/01_utils/JDbLogger.js` intentionally retains `console.error`, `console.warn`, and `console.log` for upstream/runtime parity. This is a narrow exception for that vendored file only, not a general precedent for active project code.
 
 ### Failure behaviour

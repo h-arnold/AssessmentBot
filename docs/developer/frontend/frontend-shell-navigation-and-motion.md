@@ -33,7 +33,7 @@ Current pattern:
 - transformation: `toMenuItems(...)`
 - memoisation boundary: `useMemo(() => toMenuItems(navigationItems), [])`
 
-If menu structure becomes dynamic later, keep memoisation but move dependencies to the smallest required set.
+Menu item transformation stays memoised over the smallest required dependency set.
 
 ### 1.3 Key validation must be explicit and constant-time
 
@@ -101,15 +101,13 @@ Keep a CSS-level fallback for reduced motion:
 
 This protects behaviour even when JavaScript media-query handling is unavailable or delayed.
 
-## 4. Future-change checklist
+## 4. Shell invariants
 
-When changing shell navigation or motion, confirm:
-
-1. `App.tsx` remains thin and composition-only.
-2. Navigation labels/keys still come from `appNavigation.tsx`.
-3. Menu item transformation remains memoised.
-4. `isAppNavigationKey` remains fail-fast and constant-time.
-5. Decorative icon wrappers remain `aria-hidden`.
-6. Motion remains token-aligned (theme token + CSS variables).
-7. Reduced-motion behaviour remains honoured in both theme and CSS fallback layers.
-8. Vitest and Playwright assertions remain aligned with the selector conventions above.
+- `App.tsx` stays thin and composition-only.
+- Navigation labels and keys come from `appNavigation.tsx`.
+- Menu item transformation stays memoised.
+- `isAppNavigationKey` stays fail-fast and constant-time.
+- Decorative icon wrappers stay `aria-hidden`.
+- Motion stays token-aligned (theme token + CSS variables).
+- Reduced-motion behaviour is honoured in both theme and CSS fallback layers.
+- Vitest and Playwright assertions align with the selector conventions above.

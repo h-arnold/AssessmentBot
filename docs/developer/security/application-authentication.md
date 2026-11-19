@@ -1,13 +1,12 @@
 # Application-Level Authentication
 
-This is **Layer 2** of the security approach: the application-level authentication layer
-built on the platform controls of Layer 1 (see [platform-security.md](./platform-security.md)).
-It verifies that the calling user is authorised — either as a member of a designated Google
-Group or as a named user stored in Script Properties — before any protected request is
-dispatched, guards against accidental misconfiguration of the platform layer, and enforces
-**role-based access control** (`admin` / `user`) today. Where Layer 1 asks "can this person
-reach the web app at all?", Layer 2 asks "is this person allowed to use the application, and
-with which role?" — and answers it independently on every protected call.
+This is **Layer 2** of the security approach, built on the platform controls of
+[Layer 1](./platform-security.md) (see the [security overview](./README.md) for the layering
+model). It verifies that the calling user is authorised — either as a member of a designated
+Google Group or as a named user stored in Script Properties — before any protected request is
+dispatched, and guards against accidental misconfiguration of the platform layer. It resolves
+the caller's role: `getAuthenticationSettings` and `setAuthenticationSettings` are admin-only,
+while the remaining methods do not filter by role.
 
 The layer is implemented by `AuthService` (`src/backend/Utils/AuthService.js`), a singleton
 that centralises identity resolution, provider resolution, role mapping, successful-result
@@ -147,38 +146,29 @@ placement is deliberate:
 
 1. Request validation (`_isValidRequest`) runs first, so malformed payloads get the
    `INVALID_REQUEST` envelope regardless of the caller.
-2. The auth gate runs **before** the allowlist method lookup and **before**
-   `_runAdmissionPhase` (the lock + rate-limit admission phase). A non-member therefore
-   receives the uniform `FORBIDDEN` response (`API_ERROR_CODE_MAP.FORBIDDEN`,
-   `'Access denied.'`) and can never distinguish `UNKNOWN_METHOD` from an existing
-   method — method-surface probing is impossible for outsiders because the allowlist
-   lookup only executes for authorised callers.
-3. Because the gate precedes admission, a denied request consumes no lock capacity and
-   is not counted against the active-request rate limit. This prevents an attacker
-   outside the authorised set from exhausting the lock or the rate-limit budget as a denial
-   of service against legitimate users.
+2. The auth gate runs **before** the allowlist lookup and `_runAdmissionPhase`. A non-member
+   receives the uniform `FORBIDDEN` response (`API_ERROR_CODE_MAP.FORBIDDEN`, `'Access denied.'`)
+   and cannot distinguish `UNKNOWN_METHOD` from an existing method: the allowlist lookup runs
+   only for authorised callers.
+3. Denied requests consume no lock capacity and are not counted against the rate limit, so
+   callers outside the authorised set cannot exhaust those budgets.
 
-- **Gate-exempt methods.** Two methods skip the group/user check entirely:
-  - `hasScriptAuthorisation` runs its OAuth-only handler
-    (`() => new ScriptAppManager().isAuthorised()`) because the frontend must distinguish
-    _OAuth-scope denial_ from _membership denial_.
-  - `getApplicationAccess` skips the deny gate and instead runs the shared access-resolution
-    path, so the Section 4 bootstrap claim fires on a fresh install and the same call returns
-    `reason: 'ok'` with the claimed admin role for the first claimable caller.
+- **Gate-exempt methods.** `hasScriptAuthorisation` runs its OAuth-only handler
+  (`() => new ScriptAppManager().isAuthorised()`) so the frontend can tell an _OAuth-scope denial_
+  from a _membership denial_. `getApplicationAccess` runs the shared access-resolution path, so
+  the bootstrap claim fires on a fresh install and the first claimable caller receives
+  `reason: 'ok'` with the claimed admin role.
 - **Admin-required methods.** `getAuthenticationSettings` and `setAuthenticationSettings` are
-  admitted only for an `admin` role, resolved in the dispatcher admission phase from a fresh
-  `getApplicationAccess` call. A non-admin caller receives `FORBIDDEN` before the handler
-  runs. The management-endpoint cache bypass lives in the dispatcher, not in the transport
-  handler.
+  admitted only for an `admin` role resolved in the dispatcher admission phase from a fresh
+  `getApplicationAccess` call. A non-admin receives `FORBIDDEN` before the handler runs; the
+  cache bypass lives in the dispatcher, not in the transport handler.
 - **Error envelope.** `FORBIDDEN` is one of the documented transport error codes
   (see the [transport envelope](../data-shapes/transport-envelope.md)); it is produced
   directly by the gate rather than thrown by a dedicated exception type.
-- **Thrown auth errors are not denials.** If `checkAccess()` throws (for example a
-  `ConfigurationManager` persistence failure when reading configuration), the gate logs
-  the error once at the transport boundary and maps it through
-  `_mapErrorToFailureEnvelope`, producing the `INTERNAL_ERROR` envelope — never
-  `FORBIDDEN`. This keeps the two failure classes distinct in the audit trail: a denied
-  user is a security event, an internal error is an operational fault.
+- **Thrown auth errors are not denials.** If `checkAccess()` throws — for example, a
+  `ConfigurationManager` persistence failure — the gate logs once at the transport boundary and
+  maps the error through `_mapErrorToFailureEnvelope` to `INTERNAL_ERROR`, never `FORBIDDEN`.
+  A denial is a security event; an internal error is an operational fault.
 
 ## Management endpoints
 
@@ -270,16 +260,16 @@ TTL latency.
 Every access attempt is audited through `ABLogger` with structured metadata — the caller
 email, the requested method (when supplied) and the group email:
 
-| Event                                        | Level | Log message (`AuthService.js`)                                                       |
-| -------------------------------------------- | ----- | ------------------------------------------------------------------------------------ |
-| Grant from cache                             | info  | `'AuthService: access granted (cached).'`                                            |
-| Fresh grant                                  | info  | `'AuthService: access granted.'`                                                     |
-| Denial (non-member / unlisted / denied role) | warn  | `'AuthService: access denied.'`                                                      |
-| Blank identity                               | warn  | `'AuthService: failed to resolve the active user email.'`                            |
-| Fresh-install claim (interactive)            | info  | `'AuthService: fresh install claimed; caller granted admin.'`                        |
-| Fresh-install, no claim (trigger/blank)      | info  | `'AuthService: fresh install detected but trigger execution never claims an admin.'` |
-| Broken configuration                         | error | `'AuthService: broken authentication configuration denies access.'`                  |
-| Group lookup failure                         | error | `'AuthService: group lookup failed.'`                                                |
+| Event                                        | Level | Emitted by                                                      | Log message                                                                          |
+| -------------------------------------------- | ----- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Grant from cache                             | info  | `GoogleGroupsAuthService.js`                                    | `'AuthService: access granted (cached).'`                                            |
+| Fresh grant                                  | info  | `GoogleGroupsAuthService.js`                                    | `'AuthService: access granted.'`                                                     |
+| Denial (non-member / unlisted / denied role) | warn  | `GoogleGroupsAuthService.js` / `ScriptPropertiesAuthService.js` | `'AuthService: access denied.'`                                                      |
+| Blank identity                               | warn  | `AuthService.js`                                                | `'AuthService: failed to resolve the active user email.'`                            |
+| Fresh-install claim (interactive)            | info  | `AuthService.js`                                                | `'AuthService: fresh install claimed; caller granted admin.'`                        |
+| Fresh-install, no claim (trigger/blank)      | info  | `AuthService.js`                                                | `'AuthService: fresh install detected but trigger execution never claims an admin.'` |
+| Broken configuration                         | error | `AuthService.js`                                                | `'AuthService: broken authentication configuration denies access.'`                  |
+| Group lookup failure                         | error | `GoogleGroupsAuthService.js`                                    | `'AuthService: group lookup failed.'`                                                |
 
 The audit trail is the primary operational signal for the threat model's
 "Workspace-domain users outside the authorised set" actor: repeated warn-level denials from a
@@ -294,83 +284,78 @@ secrets in log output and mandates `ABLogger` for all backend code — see
   endpoints (and, for recovery, by hand-editing Script Properties). The ordinary backend
   configuration transport rejects these fields for every caller, including admins.
 - **Blank-tolerant write, compulsory once set (Google Groups).** The `authGroupEmail` write
-  path accepts blank (normalised to `''`) but the `CONFIG_SCHEMA` validator
-  (`src/backend/ConfigurationManager/01_configKeysAndSchema.js`) rejects any attempt to
-  clear a stored value: blank input while a non-blank value is already stored throws
-  `'Auth Group Email cannot be cleared once set.'` and the stored value is preserved.
-  Changing to a _different_ non-blank email remains allowed.
+  path accepts blank (normalised to `''`), but the `CONFIG_SCHEMA` validator
+  (`src/backend/ConfigurationManager/01_configKeysAndSchema.js`) rejects clearing a stored
+  value: blank input while a non-blank value is stored throws
+  `'Auth Group Email cannot be cleared once set.'` A different non-blank email remains allowed;
+  the lockout risk and recovery path are in [accepted-risks.md](./accepted-risks.md) risk 4.
 - **Frontend mirror.** The compulsory-once-set rule is enforced in the Authentication tab's
   `useAuthenticationSettings` hook
   (`src/frontend/src/features/settings/authentication/useAuthenticationSettings.ts`), which
   refuses to clear a previously configured group email at the UX layer; the backend rule is
   defence-in-depth, not the primary UX path. See
   [Contract: BackendConfig](../data-shapes/backend-config.md).
-- **Auth shape ownership.** The ordinary backend-configuration read transport
-  (`getBackendConfig`) no longer emits any auth field — `authMode` and `authGroupEmail` left that
-  transport in favour of the dedicated Authentication settings surface. The auth shape is owned by
-  the `getAuthenticationSettings` endpoint (admin-only), which returns `authMode`, `authGroupEmail`,
-  `authUsers` and `authRevision` (or `[]` / `null` where a mode does not use them). On a genuinely
-  fresh install the first-admin claim resolves the state, so an unconfigured group email is only
-  observable before the first eligible interactive caller claims the install.
-- **Admin lockout recovery.** Because there is no self-membership verification on save,
-  an administrator can save a group they are not themselves a member of, locking everyone
-  out of the UI. Because the value is compulsory once set, the recovery path is
-  hand-editing the script's Script Properties to correct or remove `authGroupEmail`
-  (summarised in [accepted-risks.md](./accepted-risks.md) risk 4 and
-  [Contract: BackendConfig](../data-shapes/backend-config.md)); a deferred self-membership
-  guard is tracked as future work. The same hand-edit path can seed or repair the
-  `scriptProperties` provider when the UI is unreachable — see the release notes for the
-  exact literal values and the double-serialisation warning.
+- **Auth shape ownership.** The `getBackendConfig` transport emits no auth fields. The
+  `getAuthenticationSettings` endpoint (admin-only) owns the auth shape: `authMode`,
+  `authGroupEmail`, `authUsers` and `authRevision` (or `[]` / `null` where a mode does not use
+  them). On a genuinely fresh install the first-admin claim resolves the state, so an
+  unconfigured group email is only observable before the first eligible interactive caller
+  claims the install.
+- **Admin lockout recovery.** There is no self-membership verification on save, so an admin
+  can save a group they do not belong to and lock everyone out of the UI. Recovery is by
+  hand-editing the script's Script Properties to correct or remove `authGroupEmail`; the same
+  path can seed or repair the `scriptProperties` provider when the UI is unreachable (see the
+  release notes for the literal values). The full treatment is in
+  [accepted-risks.md](./accepted-risks.md) risk 4.
 
 > **Recommended operational practice:** on a genuinely fresh install the first interactive
 > caller with a resolvable identity becomes administrator automatically. Configure the
 > application promptly after deployment so an unintended first caller cannot claim admin.
 
-> **Recommended operational practice:** before saving an `authGroupEmail`, verify that
-> the group is the intended one and that the saving administrator is a member of it
-> (for example in the Google Groups admin console). The application does not verify this
-> and will not warn on lockout.
+> **Recommended operational practice:** before saving an `authGroupEmail`, confirm the group
+> and your own membership. Recovery is documented in
+> [accepted-risks.md](./accepted-risks.md) risk 4.
 
 ## Frontend auth surfaces
 
-- **`AppAuthGate`** (`src/frontend/src/features/auth/AppAuthGate.tsx`) is a blocking,
-  fail-closed gate that resolves access in two ordered stages before rendering its protected
-  children (the dashboard, including `AuthStatusCard`):
+`AppAuthGate` (`src/frontend/src/features/auth/AppAuthGate.tsx`) is a blocking, fail-closed gate
+that resolves access in three ordered stages before rendering its protected children (the
+dashboard, including `AuthStatusCard`). The first-admin bootstrap claim fires through the
+gate-exempt `getApplicationAccess` path, distinct from the OAuth-only `hasScriptAuthorisation`
+check.
 
-  1. **OAuth admission first.** `useAuthorisationStatus` runs the gate-exempt
-     `hasScriptAuthorisation` OAuth-only check. While it resolves, the gate paints an
-     accessible "Loading authorisation status" surface. An OAuth transport error renders a
-     retryable `Result`, and an unresolved OAuth scope (`isAuthorised === false`) renders the
-     "Permissions required" result. The dashboard is never revealed solely because the OAuth
-     scope check resolved authorised.
-  2. **Application-access admission.** Only once OAuth is authorised does the gate call
-     `getApplicationAccess` (via `useApplicationAccess`). While that query is pending the gate
-     shows a "Verifying access" surface. A transport error renders a retryable `Result`; a
-     resolved `reason` of `freshInstall`, `brokenConfig`, or `denied` renders a clear,
-     non-blaming blocking `Result`, and only `reason: 'ok'` admits the caller. Admission is
-     driven solely by the `getApplicationAccess` `reason` — not by warm-up.
-  3. **Post-admission warm-up prefetch.** After admission, the gate mounts
-     `ApplicationAccessContext.Provider` (delivering `{ allowed, role, email, reason }` to
-     descendants such as `SettingsPage`) and wraps the children in `StartupWarmupStateProvider`.
-     The startup warm-up then prefetches the shared lookup datasets in the background. A warm-up
-     failure is logged and its status published to the provider, but it does **not** fail the
-     shell closed or block admission — the protected children render regardless.
+### OAuth admission
 
-  The first-admin bootstrap claim (a fresh install with no stored configuration) fires through
-  the gate-exempt `getApplicationAccess` path, and is distinct from the OAuth-only
-  `hasScriptAuthorisation` check.
+`useAuthorisationStatus` runs the gate-exempt `hasScriptAuthorisation` check while the gate paints
+an accessible "Loading authorisation status" surface. An OAuth transport error renders a
+retryable `Result`; an unresolved scope (`isAuthorised === false`) renders the "Permissions
+required" result, and the dashboard is not revealed on the OAuth verdict alone.
+
+### Application-access admission
+
+Once OAuth is authorised, the gate calls `getApplicationAccess` (via `useApplicationAccess`) and
+shows a "Verifying access" surface while pending. Only `reason: 'ok'` admits the caller; a
+transport error renders a retryable `Result`, and `freshInstall`, `brokenConfig` or `denied`
+renders a non-blaming blocking `Result`.
+
+### Post-admission warm-up
+
+After admission, the gate mounts `ApplicationAccessContext.Provider` (delivering
+`{ allowed, role, email, reason }`) and wraps the children in `StartupWarmupStateProvider` for
+background prefetch of shared lookup datasets. A warm-up failure is logged and published to the
+provider but does not fail the shell closed or block admission.
+
+### Frontend auth contracts
 
 - **`useAuthorisationStatus`** (`src/frontend/src/features/auth/useAuthorisationStatus.ts`)
   returns `{ isAuthorised, isLoading, error }`. It resolves OAuth scope status through
-  the gate-exempt `hasScriptAuthorisation` method (query definition in
-  `src/frontend/src/query/sharedQueries.ts`, service call in
-  `src/frontend/src/services/authService/authService.ts`) and deliberately does **not**
-  observe `FORBIDDEN` — the group/user-denial case is owned by the application-access gate, so
-  the two mechanisms stay disjoint.
-- **Role delivery.** `getApplicationAccess` returns the caller's `role`. `AppAuthGate` lifts
-  it into an `ApplicationAccessContext` (`src/frontend/src/features/auth/AppAuthGate.tsx`)
-  so descendants — most notably `SettingsPage` — can gate admin-only surfaces on `role:
-'admin'`. `SettingsPage` renders the **Authentication tab** only for admins.
+  `hasScriptAuthorisation` (query definition in `src/frontend/src/query/sharedQueries.ts`,
+  service call in `src/frontend/src/services/authService/authService.ts`) and does not observe
+  `FORBIDDEN` — the group/user-denial case is owned by the application-access gate.
+- **Role delivery.** `getApplicationAccess` returns the caller's `role`. `AppAuthGate` lifts it
+  into an `ApplicationAccessContext` (`src/frontend/src/features/auth/AppAuthGate.tsx`) so
+  descendants — most notably `SettingsPage` — can gate admin-only surfaces on `role: 'admin'`.
+  `SettingsPage` renders the **Authentication tab** only for admins.
 - **`AuthenticationSettingsTab`**
   (`src/frontend/src/features/settings/authentication/AuthenticationSettingsTab.tsx`) is the
   admin-only management UI. It shows a provider card (mode `Select` plus, for Google Groups,

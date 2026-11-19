@@ -254,8 +254,7 @@ planning-artefact names in filenames, titles, headings or body content.
 │   │       └── data-handling.md                         # Layer 4: no durable client storage, server-side persistence, logging hygiene
 │   │
 │   ├── howTos/
-│   │   ├── README.md                                  # Step-by-step usage instructions (tagging, distributing, assessing)
-│   │   └── rehydration.md                             # Guide for rehydrating assessment data
+│   │   └── README.md                                  # Step-by-step usage instructions (tagging, distributing, assessing)
 │   │
 │   ├── pedagogy/
 │   │   ├── README.md                                  # Pedagogical principles supporting AssessmentBot

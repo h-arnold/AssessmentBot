@@ -41,7 +41,7 @@ Canonical config path:
 
 - `.ts-regression-checker/regression.config.json`
 
-Current repository example:
+Minimal example (a subset of the checks in the tracked config):
 
 ```json
 {
@@ -71,6 +71,8 @@ Current repository example:
   ]
 }
 ```
+
+For the full tracked check set, see [`.ts-regression-checker/regression.config.json`](../../../.ts-regression-checker/regression.config.json).
 
 ### Top-level fields
 
@@ -154,7 +156,7 @@ If no baseline exists for `sessionId`, the checker:
    - `mode: baseline`
    - `baselineCreatedThisRun: true`
    - `baselineTimestamp: N/A`
-   - `This run created the baseline and did not perform comparison diffing.`
+   - `This run creates the baseline; comparison begins on the next run.`
 
 Exit code is `0` when baseline creation completes successfully.
 
@@ -185,7 +187,7 @@ Reports are written under:
 
 - `.ts-regression-checker/reports`
 
-Session folder uses a filesystem-safe key derived from session ID (`session-<base64url>`).
+Session folder uses a readable filesystem-safe slug derived from the session ID — invalid path characters become `-` (for example `feature/my-change` → `session-feature-my-change`). See `createSessionStorageKey` in `scripts/builder/src/regression-checker/storage/session-storage.ts`.
 
 Layout:
 

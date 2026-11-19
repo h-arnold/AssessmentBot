@@ -16,7 +16,7 @@ Sibling contracts:
   pattern (Script Properties vs User Properties) and is likewise an internal backend store
   with no transport.
 - [Contract: AuthCache](auth-cache.md) — AuthService's in-memory group-membership cache;
-  `triggerHandler()` reads it via `AuthService.checkAccess({ bypassCache: true })`.
+  `triggerHandler()` reads it via `AuthService.checkAccess({ bypassCache: true, neverClaim: true })`.
 - No other sibling contracts — TriggerContext is an internal backend mechanism with no
   frontend-facing transport and no registration in `ALLOWLISTED_METHOD_HANDLERS`.
 
@@ -28,9 +28,8 @@ Sibling contracts:
 
 The store is a pair of Script Properties keys per triggerUid. Each key embeds the
 `triggerUid` — an opaque `String` returned by `Trigger.getUniqueId()` (via
-`TriggerController.createTimeBasedTrigger()`), assumed to equal the GAS `event.triggerUid`
-at fire time (pending staging verification) — so concurrent
-triggers never collide.
+`TriggerController.createTimeBasedTrigger()`) and equal to the GAS `event.triggerUid` at fire
+time — so concurrent triggers never collide.
 
 | Key                    | Type     | Value                                                                                               | Notes                                                                                   |
 | ---------------------- | -------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
@@ -70,9 +69,6 @@ The store is managed by three instance methods on `TriggerController`
   a `finally` block, and only for a resolved, known triggerUid (malformed input does not
   trigger cleanup).
 - The `params` value is a JSON string because Script Properties only stores strings.
-- The previous model stored task context in User Properties and dispatched directly to
-  `triggerProcessSelectedAssignment`; the ScriptProperties-keyed-by-triggerUid model replaces
-  it, and existing triggers must be drained before deployment.
 
 ---
 
@@ -137,7 +133,7 @@ Writer:               src/backend/y_controllers/AssignmentController.js
 Consumer:             src/backend/Triggers/triggerHandler.js
   ├── resolve triggerUid from event
   ├── getTriggerContext(triggerUid)
-   ├── AuthService.checkAccess({ bypassCache: true, neverClaim: true })
+  ├── AuthService.checkAccess({ bypassCache: true, neverClaim: true })
   ├── TRIGGER_METHOD_HANDLERS[method](params)
   └── finally: clearTriggerContext(triggerUid) + deleteTriggerById(triggerUid)
 

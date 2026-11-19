@@ -33,19 +33,19 @@ named by `classId` and written via `ABClass.toJSON()`, plus a lightweight fixed 
 
 Stored via `ABClass.toJSON()`.
 
-| #   | Field          | Type              | Persistence                      | Transport   | Frontend Zod                                                    | Notes                                                                                                                                                                                                                                                                                                                                                                                                |
-| --- | -------------- | ----------------- | -------------------------------- | ----------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `classId`      | `string`          | included                         | unchanged   | `ClassFullSchema.classId: z.string()`                           | Google Classroom course ID. Required, never null.                                                                                                                                                                                                                                                                                                                                                    |
-| 2   | `className`    | `string\|null`    | included                         | unchanged   | `ClassFullSchema.className: z.string().nullable()`              | Derived from Google Classroom on write path. Null when unset.                                                                                                                                                                                                                                                                                                                                        |
-| 3   | `cohortKey`    | `string\|null`    | included                         | unchanged   | `ClassFullSchema.cohortKey: z.string().nullable()`              | User-managed. `null` when unset.                                                                                                                                                                                                                                                                                                                                                                     |
-| 4   | `courseLength` | `number`          | included                         | unchanged   | `ClassFullSchema.courseLength: z.number()`                      | Integer ≥ 1. Default 1 in constructor.                                                                                                                                                                                                                                                                                                                                                               |
-| 5   | `yearGroupKey` | `string\|null`    | included                         | unchanged   | `ClassFullSchema.yearGroupKey: z.string().nullable()`           | User-managed. `null` when unset.                                                                                                                                                                                                                                                                                                                                                                     |
-| 6   | `classOwner`   | `Object\|null`    | included                         | unchanged   | `ClassFullSchema.classOwner: TeacherSummarySchema.nullable()`   | Teacher summary object (see [§ Sub-entity Teacher](#sub-entity-teacher)). Null when unset.                                                                                                                                                                                                                                                                                                           |
-| 7   | `teachers`     | `Array`           | included                         | unchanged   | `ClassFullSchema.teachers: z.array(TeacherSummarySchema)`       | Array of Teacher summary objects. Empty array when no teachers.                                                                                                                                                                                                                                                                                                                                      |
-| 8   | `students`     | `Array`           | included                         | unchanged   | `ClassFullSchema.students: z.array(StudentSummarySchema)`       | Array of Student objects (see [§ Sub-entity Student](#sub-entity-student)). Empty array when no students.                                                                                                                                                                                                                                                                                            |
-| 9   | `assignments`  | `Array`           | included                         | transformed | `ClassFullSchema.assignments: z.array(AssignmentPartialSchema)` | Embedded assignments (see [§ Transport getABClass](#getabclass-read)). `toJSON()` serialises each by its existing definition representation: a partial definition (task-summary array) serialises via `toPartialJSON()`, a genuine full definition keeps full `toJSON()`. Non-empty in normal persisted classes; not a fixed empty array.                                                            |
-| 10  | `active`       | `boolean\|null`   | included (`this.active ?? null`) | unchanged   | `ClassFullSchema.active: z.boolean().nullable()`                | Tri-state: `true` (active), `false` (inactive), `null` (unknown/unset).                                                                                                                                                                                                                                                                                                                              |
-| 11  | `metadata`     | `ABClassMetadata` | included by `toJSON()`           | included    | `ClassFullSchema.metadata: ABClassMetadataSchema`               | Supplied assessment-summary snapshot; see [§ Sub-entity: ABClassMetadata](#sub-entity-abclassmetadata). Whole-class and selective editable persistence prepare detached copies before writing; the full read view emits validated, detached metadata. Upsert/update requests validate and replace it wholly, and only a request-provenance typed failure becomes `INVALID_REQUEST` at the transport. |
+| #   | Field          | Type              | Persistence                      | Transport   | Frontend Zod                                                    | Notes                                                                                                                                                                               |
+| --- | -------------- | ----------------- | -------------------------------- | ----------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `classId`      | `string`          | included                         | unchanged   | `ClassFullSchema.classId: z.string()`                           | Google Classroom course ID. Required, never null.                                                                                                                                   |
+| 2   | `className`    | `string\|null`    | included                         | unchanged   | `ClassFullSchema.className: z.string().nullable()`              | Derived from Google Classroom on write path. Null when unset.                                                                                                                       |
+| 3   | `cohortKey`    | `string\|null`    | included                         | unchanged   | `ClassFullSchema.cohortKey: z.string().nullable()`              | User-managed. `null` when unset.                                                                                                                                                    |
+| 4   | `courseLength` | `number`          | included                         | unchanged   | `ClassFullSchema.courseLength: z.number()`                      | Integer ≥ 1. Default 1 in constructor.                                                                                                                                              |
+| 5   | `yearGroupKey` | `string\|null`    | included                         | unchanged   | `ClassFullSchema.yearGroupKey: z.string().nullable()`           | User-managed. `null` when unset.                                                                                                                                                    |
+| 6   | `classOwner`   | `Object\|null`    | included                         | unchanged   | `ClassFullSchema.classOwner: TeacherSummarySchema.nullable()`   | Teacher summary object (see [§ Sub-entity Teacher](#sub-entity-teacher)). Null when unset.                                                                                          |
+| 7   | `teachers`     | `Array`           | included                         | unchanged   | `ClassFullSchema.teachers: z.array(TeacherSummarySchema)`       | Array of Teacher summary objects. Empty array when no teachers.                                                                                                                     |
+| 8   | `students`     | `Array`           | included                         | unchanged   | `ClassFullSchema.students: z.array(StudentSummarySchema)`       | Array of Student objects (see [§ Sub-entity Student](#sub-entity-student)). Empty array when no students.                                                                           |
+| 9   | `assignments`  | `Array`           | included                         | transformed | `ClassFullSchema.assignments: z.array(AssignmentPartialSchema)` | Embedded assignments, serialised representation-aware (partial definitions via `toPartialJSON()`, full definitions via `toJSON()`); see [§ Transport getABClass](#getabclass-read). |
+| 10  | `active`       | `boolean\|null`   | included (`this.active ?? null`) | unchanged   | `ClassFullSchema.active: z.boolean().nullable()`                | Tri-state: `true` (active), `false` (inactive), `null` (unknown/unset).                                                                                                             |
+| 11  | `metadata`     | `ABClassMetadata` | included by `toJSON()`           | included    | `ClassFullSchema.metadata: ABClassMetadataSchema`               | Supplied assessment-summary snapshot, emitted and replaced as a whole value; see [§ Sub-entity: ABClassMetadata](#sub-entity-abclassmetadata).                                      |
 
 Key notes:
 
@@ -66,9 +66,7 @@ Key notes:
   stored body from ordinary instance state. Production write/read flows never reach the
   partial-definition state: `persistAssignmentRun()` rejects a partial definition before any
   write, `_ensureFullDefinition()` replaces one before read serialisation, and the class
-  serialiser routes partial-definition assignments through `toPartialJSON()`. The class serialiser
-  performs no fetch, definition fabrication or assignment removal, adds no second serialiser and
-  uses no catch-and-fallback.
+  serialiser routes partial-definition assignments through `toPartialJSON()`.
 - Class-embedded assignments are normally partial-hydration instances; fully hydrated records live
   in separate `assign_full_*` collections. Whatever representation the model currently holds is
   what `toJSON()` writes.
@@ -160,7 +158,7 @@ Key contract notes:
   `ABClassMetadata`) from a present value, which it validates and defensively copies.
   Present invalid metadata fails the request as an integrity error rather than dropping
   the row or falling back to a full-class read. Its reuse by `_buildClassSummary()`
-  covers mutation summaries, so `getAllClassPartials()` adds no duplicate metadata pass.
+  covers mutation summaries.
 - JsonDbApp revives stored ISO date strings as live `Date` objects on read, and
   `ABClassMetadata` accepts only canonical UTC strings. The stored-partial gate therefore
   passes a present stored `metadata` value through `DateUtils.deepConvertDates()` before
@@ -170,9 +168,8 @@ Key contract notes:
 - The backend emits `metadata` on every row, and `ClassPartialSchema` requires the shared
   nullable schema, so legacy absence must arrive as explicit `null`; a missing or malformed field
   fails parsing.
-- The registry-only read path and the existing empty-list behaviour are preserved: metadata
-  introduces no full-class reads, assignment hydration, definition lookups or upstream API
-  calls on this path. Returns an empty array when no partial documents exist.
+- The registry-only read path reads only `abclass_partials` and returns an empty array when no
+  partial documents exist.
 - This endpoint does **not** pass through `DateUtils.deepConvertDates()` on its response.
   The response stays `Date`-free because `_normaliseClassPartial()` projects only scalar
   fields, teacher summaries and `metadata` — and the stored-partial metadata gate already
@@ -266,8 +263,7 @@ Key contract notes:
   perform no writes. An absent class still returns top-level `null`, which is distinct from an
   existing class with `metadata: null`.
 - `ClassFullSchema` requires the emitted field: legacy backend absence must arrive as explicit
-  `null`, and a missing or malformed field fails parsing instead of being stripped. Top-level
-  not-found `null` and unrelated unknown-field stripping remain unchanged.
+  `null`, and a missing or malformed field fails parsing instead of being stripped.
 - All assignments in the response carry partial-hydration data (artifact `content` is `null`;
   numeric and `'N'` assessment `reasoning` values are stripped; `'E'` entries retain `reasoning`
   and `error`). Each entry carries `assessmentContractVersion: 1` for a current result or
@@ -283,14 +279,14 @@ Key contract notes:
 
 #### Class-read marker, `E` projections and coverage
 
-ABClass adds no persistence or transport field of its own for these; the marker and `E`
-projections ride inside the embedded assignment partials and their submission items.
+The marker and `E` projections ride inside the embedded assignment partials and their
+submission items.
 
-| Field                                  | Where                              | Type                       | Frontend Zod                                                  | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| -------------------------------------- | ---------------------------------- | -------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `assessmentContractVersion`            | Each `assignments[]` partial entry | `1 \| 'legacy'`            | `z.union([z.literal(1), z.literal('legacy')])`                | `1` for a current result; `'legacy'` for every other stored marker. A stored marker may be absent, `null` or unsupported and is preserved exactly as stored. `Assignment.toPartialJSON()` emits `1` for current results, while `_toReadView()` emits `'legacy'` beside prepared read submissions for legacy results. The class read transport always emits the field as `1 \| 'legacy'`; ABClass does not produce the marker independently. A wire payload with a missing/unsupported marker is an invalid root, not a frontend compatibility or second legacy-graph path. |
-| `submissions[].items[].assessments[*]` | Embedded partial submission items  | `Assessment` partial union | Score-only numeric/`N`, or `{ score: 'E', reasoning, error }` | `StudentSubmissionItem.toPartialJSON()` keeps numeric/`N` entries score-only and preserves an `'E'` entry's `reasoning` and `error`. `PartialAssessmentEntrySchema` aliases the shared `partialAssessmentResultSchema`, so a class-embedded `E` validates with its explanation; the read service validates the provided entries through the normaliser.                                                                                                                                                                                                                    |
-| `assignmentDefinitionKey`              | Each `assignments[]` partial entry | `string`                   | `z.string()`                                                  | Unchanged read-boundary integrity rule (see the transport notes above).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Field                                  | Where                              | Type                       | Frontend Zod                                                  | Notes                                                                                                                                                        |
+| -------------------------------------- | ---------------------------------- | -------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `assessmentContractVersion`            | Each `assignments[]` partial entry | `1 \| 'legacy'`            | `z.union([z.literal(1), z.literal('legacy')])`                | `1` for a current result, `'legacy'` for every other stored marker; the class read view is the sole marker owner. See [§ getABClass read](#getabclass-read). |
+| `submissions[].items[].assessments[*]` | Embedded partial submission items  | `Assessment` partial union | Score-only numeric/`N`, or `{ score: 'E', reasoning, error }` | Numeric/`N` entries stay score-only; `'E'` keeps `reasoning`/`error` via the shared `partialAssessmentResultSchema` alias.                                   |
+| `assignmentDefinitionKey`              | Each `assignments[]` partial entry | `string`                   | `z.string()`                                                  | Read-boundary integrity rule (see the transport notes above).                                                                                                |
 
 Class-read behaviour:
 
@@ -384,8 +380,7 @@ Class-read behaviour:
   wire payload that omits `assessmentContractVersion` or carries an unsupported value is an
   invalid root, not a legacy-result signal; the backend `_toReadView()` read preparation is the sole
   legacy owner and always emits the required `1 | 'legacy'` field.
-- ABClass persistence itself is unchanged; the marker is produced by the embedded `Assignment`
-  partial serialiser, not by a second ABClass-side projection.
+- The marker is produced by the embedded `Assignment` partial serialiser.
 
 ### `upsertABClass` (write)
 
@@ -401,19 +396,18 @@ Creates a new class or updates an existing one. Always refreshes Google-derived 
 
 **Request:**
 
-| Field          | Type                    | Required | Notes                                                                                                                                                   |
-| -------------- | ----------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `classId`      | `string`                | yes      | Safe identifier: non-empty string, already trimmed, no `/`, `\`, `..` or control characters                                                             |
-| `cohortKey`    | `string`                | yes      | Required non-null string in the frontend wrapper; backend rejects null/undefined and stringifies admitted non-null values (see Known discrepancies 7–8) |
-| `yearGroupKey` | `string`                | yes      | Same non-null upsert contract as `cohortKey`; read/update nullable semantics are unchanged                                                              |
-| `courseLength` | `number`                | yes      | Positive safe integer (`1` through `Number.MAX_SAFE_INTEGER`), without coercion                                                                         |
-| `metadata`     | `ABClassMetadata\|null` | no       | Optional whole-snapshot replacement                                                                                                                     |
+| Field          | Type                    | Required | Notes                                                                                                                                                                                                                                                     |
+| -------------- | ----------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `classId`      | `string`                | yes      | Safe identifier: non-empty string, already trimmed, no `/`, `\`, `..` or control characters                                                                                                                                                               |
+| `cohortKey`    | `string`                | yes      | Required non-null string in the frontend wrapper; backend rejects null/undefined and stringifies admitted non-null values (see [Known discrepancies](#known-discrepancies): frontend coercion/extra-field rejection and null configuration-key rejection) |
+| `yearGroupKey` | `string`                | yes      | Same non-null upsert contract as `cohortKey`; read/response and update keys are nullable                                                                                                                                                                  |
+| `courseLength` | `number`                | yes      | Positive safe integer (`1` through `Number.MAX_SAFE_INTEGER`), without coercion                                                                                                                                                                           |
+| `metadata`     | `ABClassMetadata\|null` | no       | Optional whole-snapshot replacement                                                                                                                                                                                                                       |
 
 **Response:** `ClassPartialSchema` (partial class summary — no students or assignments)
 
 Frontend request validation and queue/response semantics are specified under
 [§ Mutation schemas and queued services](#mutation-schemas-and-queued-services).
-Existing generic class-management workflows are not migrated by these new wrappers.
 
 Key contract notes:
 
@@ -506,7 +500,6 @@ Key contract notes:
   field is applied, and the request-origin failure adapts to the same non-retriable
   `INVALID_REQUEST` envelope as `upsertABClass`.
 - The returned summary includes validated, detached `metadata`.
-- No roster refresh is introduced.
 - Throws `RangeError` (maps to `INTERNAL_ERROR`) when the class does not exist — this
   is **not** an upsert path.
 
@@ -550,16 +543,13 @@ Key contract notes:
 - Repeated deletes are idempotent and always succeed. Deleting stores that do not exist never
   produces a class-not-found error; there is no absent-record failure path.
 - A missing registry row yields `hasDeletedClassPartial: false`.
-- **Full-flag quirk (current behaviour, deliberately not fixed here):** `deleteABClass` sets
+- **Full-flag quirk (current behaviour):** `deleteABClass` sets
   `hasDeletedFullClass: true` after any non-throwing `dropCollection(classId)` call. The flag is
   only left `false` on the recognised missing-collection exception (`code === 'COLLECTION_NOT_FOUND'`),
   but the vendor's ordinary absent-collection path returns `false` rather than throwing. Every
   non-throwing delete therefore reports `hasDeletedFullClass: true`, including a nominal repeated
   delete of an already-absent collection, so the flag does not prove a collection was removed.
-  Correcting this to honour the vendor's boolean return is an explicitly deferred future change
-  tracked in [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
-- The response does not use `ClassPartialSchema`; it is a plain `{ classId, hasDeletedFullClass, hasDeletedClassPartial }` object. No metadata field is added to this response and no
-  metadata-specific endpoint exists.
+- The response is a plain `{ classId, hasDeletedFullClass, hasDeletedClassPartial }` object.
 
 ---
 
@@ -588,13 +578,12 @@ Key notes:
   entries are neither hydrated nor migrated: they pass through `ABClass.serialiseOwner()` /
   `ArrayUtils.serialiseArray()` unchanged until actually replaced by a `Teacher` instance, so a raw
   legacy row may still omit the key.
-- `Teacher.fromJSON()`, the constructor and the setters are unchanged. It detects `teacherName` in
+- `Teacher.fromJSON()` detects `teacherName` in
   the JSON via `'teacherName' in json` and only sets it when present, so legacy input with no
   `teacherName` restores with the constructor-owned `null` value and then serialises with an
   explicit `teacherName: null`.
-- `TeacherSummarySchema` remains `.nullable().optional().transform(...)`, so it accepts both
-  legacy absence and the explicit `null`. No second default, raw-registry rewrite or eager
-  migration is introduced.
+- `TeacherSummarySchema` is `.nullable().optional().transform(...)`, so it accepts both
+  legacy absence and the explicit `null`.
 
 ### Sub-entity: Student
 
@@ -704,8 +693,7 @@ including lower case, is rejected).
   accepted); arrays, `Date` objects, class instances and values requiring coercion are
   rejected.
 - Unexpected own fields in metadata or its nested objects are rejected, including
-  misspellings and `lastAssessedAt`. This does **not** introduce an unrelated blanket
-  unknown-key rule for existing ABClass requests.
+  misspellings and `lastAssessedAt`.
 - The recent array is dense: sparse slots, `undefined` entries and incomplete entries are
   invalid.
 - Scores: numeric zero and fractions are valid; no coercion, truncation, rounding or
@@ -752,8 +740,8 @@ request-time tagging step sets `inputSource: 'request'`.
 - `ABClass.fromJSON(json)` applies the same own-property distinction despite using `Object.create()` for restoration. Legacy full or partial JSON without an own `metadata` field therefore restores as an own `metadata: null`; explicitly present invalid data is rejected, not repaired. A present stored `metadata` value is passed through `DateUtils.deepConvertDates()` before validation, because JsonDbApp revives stored ISO timestamp strings as live `Date` objects and `ABClassMetadata` accepts only canonical UTC strings. The constructor and `setMetadata` take request or in-memory input, where `Date` is not expected, and apply no such conversion.
 - `ABClass.setMetadata(value)` replaces the whole snapshot or clears it with `null`. Its argument is always explicit, so `undefined` is invalid. Validation/copying completes before assignment, leaving existing state intact on failure.
 - `toJSON()` and `toPartialJSON()` always emit `metadata`; each revalidates mutable model state through `ABClassMetadata` and returns an independently owned plain snapshot (or `null`). Input, full output, partial output and model state do not share nested metadata objects or arrays.
-- A caller that deletes `model.metadata` or assigns `undefined` has corrupted model state; serialisation rejects it rather than invoking the absence default. Unrelated legacy-field restoration and serialization behaviour remains unchanged.
-- Invalid metadata fails ABClass restoration even if later code intends to replace it; no restoration bypass is provided. Constructors/restoration, explicit metadata replacement and metadata-bearing serialization use the same authoritative rules, so mutable metadata cannot bypass validation at those model boundaries.
+- A caller that deletes `model.metadata` or assigns `undefined` has corrupted model state; serialisation rejects it rather than invoking the absence default.
+- Invalid metadata fails ABClass restoration even if later code intends to replace it; no restoration bypass is provided. Constructors/restoration, explicit metadata replacement and metadata-bearing serialisation use the same authoritative rules, so mutable metadata cannot bypass validation at those model boundaries.
 
 #### Persistence operations and lifecycle
 
@@ -786,10 +774,8 @@ request-time tagging step sets `inputSource: 'request'`.
   document while rebuilding the partial with `null`; a field-scoped roster patch changes neither
   store's metadata. Absence and `null` stay semantically equivalent until the next explicit
   metadata or whole-class write.
-- Full-store persistence precedes partial-registry persistence. Actual I/O failures retain the
-  existing partial-success risk: a full-store failure prevents the partial write, while a
-  partial-store failure propagates after the full store has been written. The contract adds no
-  transaction emulation, rollback, automatic retry, backfill or concurrent-write recovery.
+- Full-store persistence precedes partial-registry persistence. A full-store failure prevents the
+  partial write; a partial-store failure propagates after the full store has been written.
 - Constructor-owned `null` normalisation: the metadata-domain constructor owns the nullable
   field's `null` default. ABClass construction, restoration and legacy partial projection route
   actual absence through it (the `Object.create` restoration path does not inherit constructor
@@ -823,22 +809,15 @@ request-time tagging step sets `inputSource: 'request'`.
   valid replacement or `null`; there is no API repair path that bypasses stored-data integrity.
 - An invalid mixed update applies none of its other fields: rejection precedes every read, roster
   call, in-memory patch and store write, so no partial configuration change is observed.
-- Upsert preserves existing assignments and `active`, retains its whole-class save and roster
-  refresh; update introduces no roster refresh. Metadata is a supplied snapshot and remains stale
-  until an explicit replacement or whole-class write; no calculation, stamping, refresh or entity
-  validation is performed.
+- Upsert preserves existing assignments and `active` with its whole-class save and roster refresh;
+  update applies only editable fields. Metadata is a supplied snapshot that remains stale until an
+  explicit replacement or whole-class write.
 
-**Transport error adaptation.** The mutation transport helper `adaptMetadataRequestError_()` in
-`abclassMutations.js` catches the controller delegation, logs the original thrown value with
-`method`/`classId` through `ABLogger`, translates only this error type with request provenance
-into `ApiValidationError` (`{ method }`, message unchanged), and rethrows every other exception
-unchanged. Invalid caller-supplied metadata therefore returns the existing `INVALID_REQUEST`
-envelope (`isRetriable: false`), with an actionable field path included in `error.message`. No
-new `fieldName`, `details` payload or other envelope-shape change is added. Invalid persisted/model
-metadata is an internal integrity failure and returns the existing generic `INTERNAL_ERROR`
-treatment, not `INVALID_REQUEST`, and cannot be repaired or bypassed by supplying a valid
-replacement or `null`. Exceptions from persistence, upstream services and internal wiring are not
-caught and reclassified as caller validation errors.
+**Transport error adaptation.** `adaptMetadataRequestError_()` in `abclassMutations.js` adapts only
+request-provenance metadata failures to `ApiValidationError`/`INVALID_REQUEST`; all other failures
+rethrow unchanged. See [§ Backend transport validation](#validation). Invalid caller-supplied
+metadata returns `INVALID_REQUEST` with the field path in `error.message`; stored/model corruption
+stays generic `INTERNAL_ERROR`.
 
 #### Field-scoped roster persistence
 
@@ -887,11 +866,9 @@ changed. When a write is required, it patches only the fields it owns in each st
   correctly reports a matched-but-unmodified row (`matchedCount === 1` is accepted), unlike the
   vendor's query-filter no-op result. A zero-match result fails loudly; there is no classId-query
   or upsert fallback.
-- Existing roster-only patches do not call the whole-row partial upsert path. Whole-class
-  saves and explicit metadata writes retain that path and its identical full/partial metadata
-  contract. Direct controller operations used by the facade retain their signatures; no separate
-  public roster API and no change to upsert/read workflows is introduced beyond this persistence
-  boundary.
+- Roster-only patches update the two stored fields directly; whole-class saves and explicit
+  metadata writes use the whole-row partial upsert path. Direct controller operations used by the
+  facade keep their signatures.
 - A field-scoped roster patch of an existing partial is **not** a metadata-bearing write. It
   must not use, validate, copy or rewrite the stored metadata value; the existence lookup
   required by the missing-partial path is unaffected.
@@ -1005,14 +982,14 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
   as a stored-integrity error (generic `INTERNAL_ERROR`) instead of emitting `null` or an
   absent `assignmentDefinitionKey`. There is no null/absent read fallback.
 - `courseLength` must be a positive safe integer on validated upsertABClass and updateABClass writes (`1` through `Number.MAX_SAFE_INTEGER`). Unsafe numeric values are rejected rather than accepted after precision has been lost.
-- Constructor and `fromJSON` normalisation retain the existing course-length fallback of `1`; roster initialisation retains its existing current-value fallback. `_parseNullableInt` checks both numeric input magnitudes and parsed results for safety. Existing prefix parsing of safe values is unchanged (for example, `'3years'` becomes `3` and the string `'1e21'` becomes `1`); an unsafe numeric `1e21` takes the fallback before parsing.
+- Constructor and `fromJSON` normalisation retain the existing course-length fallback of `1`; roster initialisation retains its existing current-value fallback. `_parseNullableInt` checks both numeric input magnitudes and parsed results for safety. Prefix parsing of safe values uses the leading numeric prefix (for example, `'3years'` becomes `3` and the string `'1e21'` becomes `1`); an unsafe numeric `1e21` takes the fallback before parsing.
 - On updateABClass, `active` must be a boolean or null.
 - `classOwner`, `teachers`, `students`, `assignments` are forbidden in updateABClass requests.
 - The response mapper (`_normaliseClassPartial`) throws `TypeError` in two cases: a falsy or
   non-object partial document, or a `teachers` field that is not an array. It enforces no plain
   prototype, so an array document is not rejected on that basis (it still needs an array
   `teachers` field); nullable fields are then null-defaulted as described above.
-- ABClass model construction, restoration, explicit metadata replacement and both serialisers enforce the shared strict metadata-domain contract. The stored-read gates (`ABClass.fromJSON()`, `ABClassResponseMapper._normaliseClassPartial()`) convert revived `Date` values in a present stored `metadata` value through `DateUtils.deepConvertDates()` before validation; request and in-memory paths take no `Date`. The response mappers (`_normaliseClassPartial()`, `_buildClassSummary()`, `_toReadView()`) project validated, detached `metadata` on partial-list, mutation-summary and full-read responses. `ABClassValidation._validateRequestMetadata()` validates explicitly supplied request `metadata` before any read/roster/write and tags only those failures with request provenance. The transport boundary (`abclassMutations.js` → `adaptMetadataRequestError_`) adapts only a request-provenance typed metadata failure to `ApiValidationError`/`INVALID_REQUEST`; stored/model, projection, persistence, upstream and wiring failures remain generic `INTERNAL_ERROR`. See [§ Sub-entity: ABClassMetadata](#sub-entity-abclassmetadata).
+- All model, read, write and transport boundaries apply the shared metadata-domain contract described in [§ Sub-entity: ABClassMetadata](#sub-entity-abclassmetadata) and [§ Validation](#validation).
 
 ### Mutation schemas and queued services
 
@@ -1042,14 +1019,12 @@ Service owner: `src/frontend/src/services/abClass/abClassMutationService.ts`.
   parties enqueue on the same lane symbol rather than duplicated literals; no import cycle
   exists. Omitted properties remain absent, not serialised as null/undefined. This is the
   existing per-job FIFO, shared with class bulk mutations, not a global queue.
-- Queue consumers import `services/api/apiQueue.ts` directly; actual transport and
-  `parseApiResponse` remain in `services/apiService.ts`. No facade, barrel or `apiTransport.ts`
-  owner is introduced. Existing bulk workflows are not migrated by adding these wrappers.
+- Queue consumers import `services/api/apiQueue.ts` directly; transport and `parseApiResponse`
+  live in `services/apiService.ts`.
 - Successful inner payloads use `parseApiResponse(ClassPartialSchema, method, data)` and return
   `Promise<ClassPartial>`: metadata is required and nullable, malformed/missing metadata fails,
-  parsed metadata is detached, and unrelated response keys still strip. No new response schema,
-  endpoint, envelope property or deletion change is introduced. Transport failures (including
-  `INVALID_REQUEST` and `INTERNAL_ERROR`) propagate unchanged; retries remain transport-owned.
+  parsed metadata is detached, and unrelated response keys strip. Transport failures (including
+  `INVALID_REQUEST` and `INTERNAL_ERROR`) propagate; retries are transport-owned.
 - Never await these queued wrappers from an active task on
   `CLASSES_BULK_MUTATION_JOB_NAME`: nested same-lane enqueue deadlocks. A reserved-slot owner
   must call `callApi` directly with the shared request schema and response parser.
@@ -1076,7 +1051,6 @@ The shared lifecycle context, decision and outcome shapes are documented once in
 only `classFull`; `assignmentDefinitionPartials` is forwarded to the reserved-slot writer, which
 re-reads and recomputes from the complete unsliced class. `averagingResult` authorises the run
 but is never reparsed or persisted as display scores.
-No function, clock, context or outcome is a GAS payload; no new wire schema is introduced.
 
 Freshness and calculation:
 
@@ -1113,7 +1087,7 @@ Replacement and persistence:
   stable-sort timestamps descending and keep at most three. Equal-time history retains
   supplied order, not the target-selection ID tie-break. Inputs remain unmodified; the merge
   validates through `NonNullableABClassMetadataSchema` and returns `NonNullable<ABClassMetadata>`,
-  so the write path has no nullable-union branch. The nullable read/request contract is unchanged.
+  so the write path has no nullable-union branch.
 - The recent entry copies the target partial's exact canonical `updatedAt`. The injected
   `now: () => string` is invoked only after changed calculations, when preparing a write;
   its value becomes `classAverages.updatedAt` and must satisfy the shared canonical schema.
@@ -1125,12 +1099,11 @@ Replacement and persistence:
   only then return `saved` with `confirmedPersistence: true` and `classPartial`.
 - The shared `CLASSES_BULK_MUTATION_JOB_NAME` lane covers
   read/recheck/calculation/merge/write/response parsing, preventing same-lane owners from
-  interleaving and losing prior recent entries within this session. It is not cross-session
-  locking or CAS. Failures propagate; transport alone owns retries. No rollback, roster refresh,
-  configuration echo, nested patch or speculative corruption repair is added.
+  interleaving and losing prior recent entries within this session. Failures propagate; transport
+  alone owns retries.
 - No React Query access, invalidation, manual refetch or UI activation exists in these owners.
-  A malformed response may reject after a backend write; the service does not claim that a
-  rejected call proves nothing persisted.
+  A malformed response may reject after a backend write; a rejected call does not prove that
+  nothing persisted.
 
 ### Shared lifecycle and feedback (frontend consumers)
 
@@ -1145,46 +1118,39 @@ mount-local attempt promises, StrictMode reattachment and stale-publication clea
 network cancellation. Its page-level companion `hooks/usePagePostAnalysisTasks.ts` owns the
 ready-only eligibility gate and the once-per-mount descriptor list used by both averaging
 surfaces. `usePostAnalysisTasks`'s required third argument, `selectedClassId`, tracks class
-ownership separately from analysis readiness. Unkeyed future tasks use input-context identity
+ownership separately from analysis readiness. Unkeyed tasks use input-context identity
 independently of metadata.
 
-Exact field tables and the separate **local**, non-wire descriptor/function/Error handles
-are owned by [Frontend Data Analysis Response — shared lifecycle](frontend-data-analysis-response.md#shared-post-analysis-lifecycle).
-That contract records the result-validation fragility as resolved: strict succeeded/skipped task
-returns validate before descriptor-owned `taskId` and outcome construction; returned
-pending/failed states become isolated failures with non-null local Errors. No
-backend/analyser shape changes are introduced.
+ABClass metadata refresh feeds a shared post-analysis lifecycle. Strict succeeded/skipped task
+results validate before the descriptor-owned `taskId` is added and outcome data is built;
+pending/failed returns become isolated failed outcomes with non-null local Errors. Field tables
+and the local, non-wire descriptor/function/Error handles are owned by
+[Frontend Data Analysis Response — shared lifecycle](frontend-data-analysis-response.md#shared-post-analysis-lifecycle).
 
 Failed lifecycle outcome data permits `confirmedPersistence: z.literal(true).optional()`
-(false/null reject); task returns remain strictly succeeded/skipped. After a
-parsed confirmed metadata save, the cached hook attempt includes both class-detail/list
-invalidations with `throwOnError: true` and observes both settlements. Refresh failure
-retains save confirmation plus a local normalised Error; user-safe warning copy says saved
-but refresh failed, not unsaved. Refresh failures also log the bounded scalar
-`confirmedPersistence: true` with the existing task/class/target identifiers. Persistent
-warnings are mount/selected-class/task/source-owned, dismissible, duration zero and cleaned
-up without aborting queued writes; a same-class readiness-null context neither destroys a
-visible warning nor detaches the pending attempt, so a confirmed-save warning can still
-appear after both invalidations settle, while genuine navigation/unmount still suppresses
-late feedback. The notification host is the required existing
-`App.useApp().notification` context with no no-host fallback. Exact settlement, copy,
-dismissal and bounded diagnostic contracts are owned by the linked lifecycle section, not
-the backend wire contract.
+(false/null reject); task returns stay strictly succeeded/skipped. After a parsed confirmed
+metadata save, the cached hook attempt includes both class-detail/list invalidations with
+`throwOnError: true` and observes both settlements. A refresh failure keeps save confirmation
+with a local normalised Error and saved-but-refresh-failed warning copy, and logs the bounded
+scalar `confirmedPersistence: true` with the task/class/target identifiers. Persistent warnings
+are mount/selected-class/task/source-owned, dismissible, duration zero and cleaned up without
+aborting queued writes; a same-class readiness-null context preserves a visible warning and the
+pending attempt until navigation or unmount. The notification host is the
+`App.useApp().notification` context. Settlement, copy, dismissal and bounded diagnostic contracts
+are owned by the linked lifecycle section.
 
-`DataAnalysisService` is unchanged, synchronous and I/O-free. Helper discovery/status belongs in
-[Frontend shared helpers](../frontend/frontend-shared-helpers-and-abstraction-standards.md#928-frontend-abclass-metadata-and-post-analysis),
-not a duplicated helper register here. Backend persistence/transport remains unchanged.
+`DataAnalysisService` is synchronous and I/O-free. Helper discovery/status is owned by
+[Frontend shared helpers](../frontend/frontend-shared-helpers-and-abstraction-standards.md#928-frontend-abclass-metadata-and-post-analysis).
 
-### Exclusions
+### Invariants
 
-- No backend calculation of averages or automatic backend refresh of metadata after assessments.
-  The frontend metadata task is registered with the shared post-analysis lifecycle and both
-  averaging surfaces activate it.
-- No eager migration, backfill or repair job for absent or corrupt stored metadata.
-- No new metadata-specific endpoint; `deleteABClass` gains no metadata field.
-- No transaction emulation, rollback, automatic retry or concurrent-write recovery.
-- No layout specification in this contract; frontend warning ownership/copy is documented
-  in the linked local lifecycle contract, not added to backend transport.
+- Metadata is a frontend-supplied snapshot: the backend does not calculate averages or refresh it
+  after assessments; the frontend task is registered with the shared lifecycle and both averaging
+  surfaces activate it.
+- Absent or corrupt stored metadata has no migration, backfill or repair job.
+- `deleteABClass` has no metadata field and there is no metadata-specific endpoint.
+- Persistence has no transaction emulation, rollback, automatic retry or concurrent-write recovery.
+- Frontend warning ownership and copy live in the linked local lifecycle contract.
 
 ### Test-only synthetic capability
 
@@ -1198,8 +1164,8 @@ Supplied snapshots (no calculation):
 
 - `generateClassMetadata.js` runs once in `generateSyntheticAnalysisGraph()` after assignment
   generation and before transport projection, assigning `metadata` in place on each
-  persistence class. It reads no clock and consumes no Faker values, so seeds, entity counts,
-  assignment timestamps and byte reproducibility are unchanged.
+  persistence class. It reads no clock and consumes no Faker values, preserving seeds, entity counts,
+  assignment timestamps and byte reproducibility.
 - Compact profiles use a fixed per-class-index matrix of profile, template and entry count:
   `small` is `null`, numeric/0 entries, `N`/1 entry; `medium` is `E`/2, `excluded`/3,
   `mixed`/1 and numeric/0; and `large-representative` is `null`, numeric/3, `mixed`/2 and
@@ -1214,48 +1180,29 @@ Supplied snapshots (no calculation):
   assignments of that class, newest first. These are supplied snapshot values: no averaging
   is performed and no cross-metric relationship is derived.
 
-Raw views, parity and independent validation:
+Raw views and validation:
 
 - `projectClassTransportViews.toClassPartial()` adds an independently cloned `metadata` value
   to both `transport.classPartials` and `transport.classesById` whenever the persistence class
-  owns the field, so pre-metadata stage compositions never acquire an own
-  `metadata: undefined`.
+  owns the field, so pre-metadata stage compositions hold an own `metadata` value.
 - `validateClassMetadata.js` checks raw shape, exact keys and score union, canonical timestamp,
   dense zero-to-three entries, unique assignment IDs, newest-first ordering,
   assignment/class/definition linkage, exact source timestamps and three-way
   persistence/partial/full parity, and is invoked by `validateSyntheticAnalysisGraph()`.
-- The focused synthetic suites validate every raw snapshot view through the real
-  `ABClassMetadata.validateMetadata` domain owner. Both frontend class read schemas require
-  metadata, so class-response parsing retains it rather than stripping it. This is structural
-  contract validation only: no identifier existence, class membership, stored-Assignment
-  timestamp equality or "three most recent" claim is verified live.
+- Synthetic snapshots are validated through the `ABClassMetadata.validateMetadata` domain owner;
+  both class read schemas require metadata, so class-response parsing retains it.
 - `loadBackendModelInputs(profileName)` clones the committed views (including the fifth
-  `assignmentDefinitionPartials` view) and adapts them to backend model JSON. It retains all
-  partial-only assignments and definitions, resolves class-embedded definitions to partial
-  summaries, and leaves standalone full definitions with their keyed tasks and freshness
-  fields intact; class-embedded submissions stay redacted. Raw `metadata` is independently
-  cloned, and no returned representation shares mutable nodes. The adapter is test-only:
-  production `src/backend` source never imports it.
+  `assignmentDefinitionPartials` view) and adapts them to backend model JSON, retaining partial-only
+  assignments and definitions, resolving class-embedded definitions to partial summaries and
+  keeping class-embedded submissions redacted. Raw `metadata` is independently cloned. The adapter
+  is test-only.
 
-Frontend test-only acceptance surfaces. They add **no** production wire, persistence, analyser
-or local-execution shape, and they do not replace the backend real-dispatcher suites.
-
-| Test-only surface                 | Owner                                                                | Contract boundary                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| --------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Real-dispatcher round-trip bridge | `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js`           | Clones committed profile views per instance, installs the established dispatcher seams, dispatches once through the real `apiHandler` and returns its envelope. Restores every installed global exactly and preserves caller-owned spies. Does not seed persistence.                                                                                                                                                                                                     |
-| Metadata round-trip suite         | `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` | Covers full/partial read retention; stateful omission/null/replacement across queued update and upsert; own-`undefined` rejection before dispatch; malformed dispatch `INVALID_REQUEST` versus throwing-seam `INTERNAL_ERROR`; bridge isolation and seam restoration. Controller/mutation seams supply prepared transport data, so it is not proof of real controller/persistence/integrity validation.                                                                  |
-| Browser scenario builder          | `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` | Canonical `small` class `class-2`; initial historical-source boundary omits only the final null-name assignment and sets `metadata: null`; replacement derives from standard `DataAnalysisService` full-class and isolated-target analyses with explicit metric-state mapping. Supplied metadata is not a scoring oracle.                                                                                                                                                |
-| Browser persistence acceptance    | `src/frontend/e2e-tests/post-analysis-metadata.persistence.spec.ts`  | Covers the Class page and standalone Heatmaps changed write; a full fresh read with no repeat write; a later source version producing exactly one further write.                                                                                                                                                                                                                                                                                                         |
-| Browser feedback acceptance       | `src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts`     | Covers the save-failure warning on standalone Heatmaps with keyboard dismissal and no reopening on rerender; Class-page save failure with analysis intact and navigation cleanup; confirmed-save refresh-failure copy; four desktop/narrow × light/dark containment cases; and a Class-page delayed-list readiness journey where the detail refresh fails while the list refresh remains deferred, proving the confirmed-save warning survives a readiness-null context. |
-
-Frontend parity suites: `src/frontend/src/services/abClass/abClassMetadata.zod.spec.ts` covers
-null/complete acceptance, score boundaries and markers, own-key/prototype probes, dense bounded
-arrays, canonical timestamps and alias detachment. `src/frontend/src/test/abClass/abClassMetadataFixtures.ts`
-selects metadata from the committed `small`, `medium` and `large-representative` class-partial
-views (test-only; not a production default or fixture generator).
-`tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts` compares frontend Zod
-acceptance and value preservation with the real backend `ABClassMetadata.validateMetadata` for
-canonical snapshots and boundary probes; it is the parity oracle, not production validation.
+The synthetic corpus protects these contract facts: full/partial read metadata retention;
+omission, `null` and whole-replacement across queued update and upsert with own-`undefined`
+rejection; `INVALID_REQUEST` versus `INTERNAL_ERROR` error provenance; the canonical `small`
+class-2 historical-source boundary; changed writes on both averaging surfaces with a full fresh
+read producing no repeat write; and save/refresh feedback with viewport/theme containment and
+readiness-null contexts. Test paths are listed in the [File Index](#file-index).
 
 ### Known discrepancies
 
@@ -1265,28 +1212,7 @@ canonical snapshots and boundary probes; it is the parity oracle, not production
    from other sources. Zod's default `.strip()` behaviour means extra fields are tolerated, and
    the stripped data is unused by the frontend.
 
-2. **`ClassFullResponseSchema` is `ClassFullSchema.nullable()`**
-   The backend returns `null` when the class document does not exist. The frontend
-   schema expects this and handles it.
-
-3. **`ClassPartialSchema` and `ClassFullSchema` both redundantly declare `TeacherSummarySchema`.**
-   The schema is duplicated in both `classPartials.zod.ts` and `classDetailService.zod.ts`.
-   The duplication is intentional: it keeps each Zod file self-contained and avoids cross-file
-   import coupling for a simple schema.
-
-4. **`deleteABClass` response shape (`{ classId, hasDeletedFullClass, hasDeletedClassPartial }`) has no frontend Zod schema.**
-   The response is consumed by generic `callApi` without `parseApiResponse` validation.
-   The delete flow does not require typed validation at the transport boundary; the caller
-   receives raw `unknown` and destructures as needed.
-
-5. **Backend reads emit `metadata`, and both class read schemas require it.**
-   `ClassPartialSchema` and `ClassFullSchema` import the shared
-   `ABClassMetadataSchema`, so successful parsing retains the field instead of stripping it.
-   Legacy backend absence must arrive as explicit `null`; a missing or malformed field fails
-   parsing. The read contract matches the backend projection. The mutation wrappers also parse
-   summaries through the real `ClassPartialSchema`.
-
-6. **The canonical-UTC timestamp predicate is implemented independently on each side.**
+2. **The canonical-UTC timestamp predicate is implemented independently on each side.**
    Backend `Validate.isCanonicalUtcDateTime()` uses a regex plus explicit calendar/leap-year
    checks; frontend `CanonicalMetadataTimestampSchema` uses the same regex plus
    `Date.parse`/`toISOString()` round-trip equality. The current accepted sets agree on the
@@ -1296,7 +1222,7 @@ canonical snapshots and boundary probes; it is the parity oracle, not production
    behaviour. The Node parity suite is the guard; do not replace it with a shared runtime import
    from backend code.
 
-7. **Frontend mutation requests deliberately reject backend coercion and extra fields.**
+3. **Frontend mutation requests deliberately reject backend coercion and extra fields.**
    Frontend upsert accepts reference keys only as non-null strings; update accepts strings or
    null. Backend upsert and update stringify admitted non-null reference values. Backend upsert
    has no blanket unknown/protected-key rejection; update rejects the four protected keys only
@@ -1304,42 +1230,37 @@ canonical snapshots and boundary probes; it is the parity oracle, not production
    checks reject all unexpected own keys (including symbols), non-plain records and every own
    undefined value before queue admission. They require an own `classId`; no coercion or
    defaulting is applied. Both sides accept positive safe-integer numeric `courseLength` and
-   safe already-trimmed string `classId`. The typed frontend request boundary is intentionally
-   narrower;
-   it does not change backend admission or migrate generic bulk callers. The existing
-   backend own-undefined reference-key `INTERNAL_ERROR` behaviour remains documented above;
-   these wrappers reject that input locally instead of dispatching it.
+   safe already-trimmed string `classId`. The typed frontend request boundary is narrower than
+   backend admission. The backend own-undefined reference-key `INTERNAL_ERROR` behaviour is
+   [documented in Validation](#validation); the wrappers reject that input locally.
 
-8. **Frontend upsert rejects null configuration keys, matching backend required-parameter checks.**
+4. **Frontend upsert rejects null configuration keys, matching backend required-parameter checks.**
    `UpsertABClassRequestSchema` uses `configurationShape.cohortKey.unwrap()` and
    `configurationShape.yearGroupKey.unwrap()` (both `z.string()`), so explicit null for either
    required key fails schema/service validation before queue admission. Backend
    `ABClassMutationOps.upsertABClass()` rejects null/undefined through `Validate.requireParams`
    before metadata validation or any side effect; its plain `Error` maps to generic
    `INTERNAL_ERROR`, not `INVALID_REQUEST`. Later null-handling assignment branches do not
-   bypass it. Nullable read/response keys, update omission/null clearing and optional nullable
-   whole `metadata` replacement are unchanged. No backend admission, coercion or error-mapping
-   change is introduced.
+   bypass it. Read/response keys are nullable, update supports omission/null clearing, and whole
+   `metadata` replacement is optional and nullable.
 
-9. **Metadata refresh requires stricter assignment timestamps than the class-read schema.**
+5. **Metadata refresh requires stricter assignment timestamps than the class-read schema.**
    `AssignmentPartialSchema.updatedAt` remains `z.string().nullable()`. The metadata refresh
    decision (`getMetadataRefreshDecision()`) instead parses every assignment's timestamp with
    `CanonicalMetadataTimestampSchema` before choosing a target, even assignments that would
    not win selection. Null, malformed and non-canonical values fail rather than receiving
-   clock/default substitution. No read schema or backend assignment shape is tightened. This is
-   intentional task-boundary narrowing to make timestamp-only freshness comparisons trustworthy;
-   the existing read contract is unchanged.
+   clock/default substitution. The stricter parsing is confined to the task boundary so
+   timestamp-only freshness comparisons are trustworthy.
 
-10. **Confirmed persistence is distinct from successful frontend refresh.**
-    Failed local lifecycle data permits optional literal `confirmedPersistence: true` when either
-    required post-save query invalidation rejects. It does not add a field to ABClass metadata,
-    mutation responses or the shared API envelope, and task returns remain succeeded/skipped only.
-    The local Error is kept separately from safe saved-but-refresh-failed warning copy. The same
-    bounded scalar is logged on refresh-failure diagnostics, and feedback ownership is tied to the
-    committed selected class rather than analysis readiness; a required third `selectedClassId`
-    argument distinguishes same-class readiness-null from genuine navigation. No ABClass field or
-    transport shape changes. This is a deliberate frontend execution-state extension; see
-    [Frontend Data Analysis Response — settlement](frontend-data-analysis-response.md#confirmed-persistence-and-refresh-settlement).
+6. **Confirmed persistence is distinct from successful frontend refresh.**
+   Failed local lifecycle data permits optional literal `confirmedPersistence: true` when either
+   required post-save query invalidation rejects; task returns stay succeeded/skipped. The local
+   Error is kept separately from safe saved-but-refresh-failed warning copy. The same bounded
+   scalar is logged on refresh-failure diagnostics, and feedback ownership is tied to the
+   committed selected class rather than analysis readiness; a required third `selectedClassId`
+   argument distinguishes same-class readiness-null from genuine navigation. This is a frontend
+   execution-state extension; see
+   [Frontend Data Analysis Response — settlement](frontend-data-analysis-response.md#confirmed-persistence-and-refresh-settlement).
 
 ---
 

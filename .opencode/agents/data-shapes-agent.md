@@ -104,7 +104,7 @@ docs/developer/data-shapes/
 - **Create a new contract file** only when a new domain entity gains independent persistence, its own API endpoints, and its own frontend Zod schemas. Do not create files for entities that are always nested inside another contract.
 - **Remove a contract file** only when the entire contract is retired (entity, endpoints, and schemas all removed). Do not remove files just because the current implementation is incomplete.
 - **Update INDEX.md** every time a contract file is added or removed, or when its containment hierarchy changes.
-- **Keep INDEX.md factual.** The registry table, containment hierarchy, and at most one status line per contract. Do not write multi-paragraph status blocks there; if a longer status exists, retire it on the next touch.
+- **Keep INDEX.md factual.** Record only the registry table, containment hierarchy and cross-references. Do not write status lines or multi-paragraph status blocks there.
 
 ### 1.2 Naming rules
 
@@ -313,12 +313,10 @@ A contract file may contain exactly these `##` sections:
 4. `## Sub-entities`
 5. `## Validation`
 6. `## File Index`
-7. Optional: `## Status`
-8. Optional: `## Planned contract changes (not implemented)`
+7. Optional: `## Planned contract changes (not implemented)`
 
-Any other `##` heading is a structural deviation; if genuinely required, justify it in the handoff summary and prefer nesting it as `###` inside an allowed section.
+Any other `##` heading is a structural deviation; if genuinely required, justify it in the handoff summary and prefer nesting it as `###` inside an allowed section. Contract files must not carry implementation-status markers; `docs/developer/documentation-style-guide.md` is the source of truth for that rule.
 
-- **`## Status`**: at most a few lines stating current implementation state and any cross-contract reconciliations. Do not narrate features, delivery cycles, or per-endpoint status.
 - **`## Planned contract changes (not implemented)`**: for shape changes agreed during planning but not yet in code. Record them _before_ implementation so agents know the intended approach. Keep each entry compact and declarative:
   - name the intended shape change — fields, types, nullability, validation rules, projection behaviour — with its tracking-issue reference;
   - state what will change in this contract's canonical sections when it lands, and any cross-contract impact;
@@ -343,7 +341,7 @@ When an orchestrator delegates data-shape doc updates after an implementation cy
 
 1. Read the changed source files to see what actually changed.
 2. **If the delegation covers planned (not-yet-implemented) contract changes**, record them under `## Planned contract changes (not implemented)` only (§3.7): intended shapes and tracking references, no implementation narrative.
-3. **Consolidate first.** Locate any existing `Planned contract changes` sub-sections (and stale `Status` lines) covering the changed shape. Merge their still-true facts into the relevant canonical field tables, transport sub-sections and validation rules, and delete the planned narrative in this same update. Never re-label implemented content as "implemented" under a planned heading.
+3. **Consolidate first.** Locate any existing `Planned contract changes` sub-sections covering the changed shape. Merge their still-true facts into the relevant canonical field tables, transport sub-sections and validation rules, and delete the planned narrative in this same update. Never re-label implemented content as "implemented" under a planned heading.
 4. Update the canonical sections to reflect the new shapes by editing existing field tables in place (§5.6).
 5. If the change introduces a new frontend Zod schema or modifies an existing one, verify the contract file's field table matches the new schema.
 6. If the change introduces a new backend serialization field, check whether the frontend Zod schema handles it (nullable? optional? required?).

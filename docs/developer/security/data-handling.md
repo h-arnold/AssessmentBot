@@ -1,21 +1,16 @@
 # Data-Handling Discipline
 
 This document is **Layer 4** of the [Security Approach overview](./README.md). It is about
-where data exists in AssessmentBot and — just as importantly — where it deliberately does
-not exist. The design posture is: the client is not trusted with data at rest, server-side
-persistence is minimised and bounded, and logs are kept free of secrets. Layers 1–3 control
-who can reach the application and what they can make it do; this layer controls how little
-sensitive material is left lying around if a control fails. It complements the threat model
-in the [overview](./README.md), in which a stolen or compromised client device is an
-in-scope adversary and the countering layer is precisely "no persisted client storage".
+where data exists in Assessment Bot and — just as importantly — where it deliberately does
+not exist: the client is not trusted with data at rest, server-side persistence is minimised
+and bounded, and logs are kept free of secrets.
 
 ## No durable client-side storage
 
-The frontend never persists data to browser storage. A scan of `src/frontend/src`
-(production source, co-located specs and test fixtures) finds no use of `localStorage`,
-`sessionStorage`, `indexedDB` or `document.cookie` — this is verified, not asserted from
-convention. Assessment data, configuration and reference data exist in the browser only as
-React state or as React Query cache entries.
+The frontend never persists data to browser storage. No use of `localStorage`,
+`sessionStorage`, `indexedDB` or `document.cookie` appears in `src/frontend/src` (production
+source, co-located specs and test fixtures). Assessment data, configuration and reference data
+exist in the browser only as React state or as React Query cache entries.
 
 React Query caches server responses **in memory only**, for the lifetime of the page
 session. `createAppQueryClient()` in `src/frontend/src/query/queryClient.ts` constructs a
@@ -108,9 +103,9 @@ the Google Workspace domain**. It is a documented trust boundary in the
 [overview](./README.md); the API key protecting that boundary is itself a stored asset
 (Script Properties above), so key hygiene is not optional.
 
-The deployed service currently uses Mistral's `mistral-small-latest` model. It offers a very
-good price/performance ratio, and Zero Data Retention (ZDR) is easy to obtain with Mistral.
-This reduces retention risk but does not remove the external-service trust boundary.
+The LLM service's provider and retention settings are documented in the
+[setup guide](../../setup/README.md); they are configured outside this repository. Student work
+crossing to that service remains an external trust boundary regardless of those settings.
 
 ## Logging hygiene
 
@@ -118,7 +113,7 @@ This reduces retention risk but does not remove the external-service trust bound
 
 The backend policy in
 [backend-logging-and-error-handling.md](../backend/backend-logging-and-error-handling.md)
-(section 8) forbids logging secrets, credentials, tokens or API keys, prefers selective
+forbids logging secrets, credentials, tokens or API keys, prefers selective
 structured metadata over raw payloads, and asks for correlation context (`requestId`,
 method) where available. All backend developer diagnostics must go through `ABLogger`
 (`src/backend/Utils/ABLogger.js`).
@@ -143,7 +138,7 @@ debug call is dropped by `isLevelEnabled()` before it reaches the console.
 
 ### Backend — gated debug logging, still a known tension
 
-We state this honestly because it remains a real gap against the never-log-secrets policy:
+This remains a real gap against the never-log-secrets policy:
 `ApiDispatcher.handle()` in `src/backend/z_Api/z_apiHandler.js` debug-logs the full
 incoming request:
 
@@ -164,8 +159,7 @@ request is not one of the PII-log methods (`getAuthenticationSettings`,
 call that sets a new API key can then place that raw key in the GAS execution logs at debug
 level. The same dispatcher also debug-logs the response envelope (which for config
 endpoints carries only masked or redacted values), so the risk is concentrated in the
-request-params log. This remains a candidate for future redaction at the transport
-boundary — it is tracked as a known consideration, **not** claimed as fixed.
+request-params log. This remains a candidate for future redaction at the transport boundary.
 
 ### Recommended operational practice
 

@@ -2,9 +2,7 @@
 
 ## Purpose
 
-`src/backend/z_Api` contains the Google Apps Script global transport handlers invoked by the React frontend through `apiHandler`.
-
-This is now the canonical backend transport path for frontend-callable methods. Legacy backend `globals.js` transport files should be treated as migration leftovers or deprecated references only.
+`src/backend/z_Api` contains the Google Apps Script global transport handlers invoked by the React frontend through `apiHandler`. It is the sole backend transport owner for frontend-callable methods.
 
 This layer is deliberately REST-ish in structure:
 
@@ -24,7 +22,8 @@ entire codebase.
 1. Read the relevant data-shape specification(s) in `docs/developer/data-shapes/` that cover the
    contract you are changing.
 2. Ensure the planned change is accounted for in those docs — either as an existing entry to be
-   modified or as a new `Not implemented` planned entry (per the planner workflow in `AGENTS.md`).
+   modified or as a new `Not implemented` planned entry; see
+   [AGENTS.md § Same-Change Documentation Obligation](../../../AGENTS.md#72-same-change-documentation-obligation).
 3. Update the specification to match the implementation as part of the change.
 
 Do not modify API contracts based on assumptions about what the data-shape docs say. Always verify
@@ -32,42 +31,27 @@ against the current specification first.
 
 ## Shared helpers
 
-- ABClass parameters-object validator
-  - Location: `validateParametersObject_()` in `src/backend/z_Api/abclass/abclassValidation.js`
-  - Behaviour: shared primitive for the `abclass/` domain folder; validates that the parameters argument is a plain object (not an array). Referenced via `/* global validateParametersObject_ */` from `abclassMutations.js` and `abclassRead.js`.
-- ABClass mutation `classId` validator
-  - Location: `validateMutationClassId_(classId, methodName)` in `src/backend/z_Api/abclass/abclassMutations.js`
-  - Behaviour: shared by the upsert, update and delete transport helpers. It delegates to `validateSafeTrimmedIdentifier_` (`src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js`), so mutations enforce the same identifier boundary as reads: string type, non-emptiness, already-trimmed shape, and rejection of path characters (`/`, `\`, `..`) and control characters, reported as `ApiValidationError`. A code comment marks the reuse as an explicit security defence-in-depth guard.
-- ABClass request metadata gate
-  - Location: `_validateRequestMetadata(parameters)` in `src/backend/y_controllers/ABClassController/ABClassValidation.js`
-  - Behaviour: own-property request gate shared by `ABClassMutationOps.upsertABClass()` and `.updateABClass()`. Delegates all nested rules to the shared `ABClassMetadata` domain validator and tags only failures from that invocation with `inputSource: 'request'`, rethrowing the same error object and `fieldPath`.
-- ABClass metadata request-error adapter
-  - Location: `adaptMetadataRequestError_(methodName, parameters, operation)` in `src/backend/z_Api/abclass/abclassMutations.js`
-  - Behaviour: narrow trailing-underscore transport adapter reused by `upsertABClass_()` and `updateABClass_()` only. It logs the raw thrown value with `method` and `classId` context, converts only an `ABClassMetadataValidationError` whose `inputSource` is exactly `'request'` into an `ApiValidationError` (same path-bearing `message`, `{ method }` option, no new envelope fields), and rethrows every other thrown value with unchanged identity. It does not revalidate metadata or reproduce nested domain rules, and `deleteABClass_()` is unchanged.
-- Assignment-definition upsert request validator
-  - Location: `validateUpsertParameters_()` in `src/backend/z_Api/assignmentDefinition/assignmentDefinitionUpsertValidation.js`
-  - Behaviour: owns request-shape validation, optional update-key safety, and structural `taskWeightings` array validation for `upsertAssignmentDefinition` without duplicating controller business rules.
-- Assignment-definition read request validator
-  - Location: `validateReadParameters_()` in `src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js`
-  - Behaviour: owns safe-key validation for full-definition reads by `definitionKey`.
-- Assignment-definition transport partial row helper
-  - Location: `toTransportPartialRow_` in `src/backend/z_Api/assignmentDefinitionTransport.js`
-  - Note: Transport-boundary helper that accepts a model instance or plain object, calls `definition.toPartialJSON()`, defensively strips `yearGroup`, and normalises Date fields.
+Transport helpers are trailing-underscore functions in the relevant `z_Api` file; their JSDoc owns their signatures and detailed behaviour. Domain validators live with their owning class or controller.
 
-- LLM seed partition helper (`Not implemented` — planned for issue #309)
+- `validateParametersObject_()` and `validateMutationClassId_()` (`src/backend/z_Api/abclass/`) — request-shape and safe-identifier checks for ABClass transport handlers.
+- `_validateRequestMetadata(parameters)` (`src/backend/y_controllers/ABClassController/ABClassValidation.js`) — metadata request gate for ABClass upsert and update; see [Controller request gate](#controller-request-gate).
+- `adaptMetadataRequestError_(methodName, parameters, operation)` (`src/backend/z_Api/abclass/abclassMutations.js`) — converts request-tagged metadata failures into `ApiValidationError`; see [Transport error adaptation](#transport-error-adaptation).
+- `validateUpsertParameters_()` and `validateReadParameters_()` (`src/backend/z_Api/assignmentDefinition/`) — request validators for definition upsert and read; see [Assignment-definition upsert validation split](#assignment-definition-upsert-validation-split-upsertassignmentdefinition).
+- `toTransportPartialRow_` (`src/backend/z_Api/assignmentDefinitionTransport.js`) — normalises a model or plain object into a transport partial row.
+
+The two helpers below are `Not implemented`.
+
+- LLM seed partition helper (`Not implemented`)
   - Owning layer/path: `src/backend/RequestHandlers/`, dedicated sibling module (for example `LLMSeedPhase.js`).
-  - Behaviour: derives the ephemeral `{ seeds, remainder }` split of generated LLM requests after the existing input guards; seeds are the first eligible request per `TaskDefinition.getId()` in generation order; both arrays preserve order; fails loudly on duplicate UID, missing `uidIndex` route entry and missing `taskDefinition` (messages name the offending UID). Called once from `LLMRequestManager.processStudentResponses()`; no persistence or transport surface.
-  - Status: `Not implemented` — reconcile when the two-phase dispatch lands.
-- LLM shared batch-outcome consumer (`Not implemented` — planned for issue #309)
-  - Owning layer/path: `src/backend/RequestHandlers/` — final placement (same sibling module or retained in `LLMRequestManager.js`) decided by the action plan from the recorded LOC constraint (post-change `LLMRequestManager.js` must be ≤ 500 lines).
-  - Behaviour: single consumer for seed-phase and remainder-phase batch outcomes; keeps accepted-first sort, assigned/cached writeback, error mapping, stop-status detection, shared `runStopped`, progress update and exactly-once UID routing. Implemented once and shared; no duplicate consumer per phase.
-  - Status: `Not implemented` — reconcile when the two-phase dispatch lands.
+  - Behaviour: derives the ephemeral `{ seeds, remainder }` split of generated LLM requests after the input guards; seeds are the first eligible request per `TaskDefinition.getId()` in generation order; both arrays preserve order; fails loudly on duplicate UID, missing `uidIndex` route entry and missing `taskDefinition` (messages name the offending UID). Called once from `LLMRequestManager.processStudentResponses()`; no persistence or transport surface.
+- LLM shared batch-outcome consumer (`Not implemented`)
+  - Owning layer/path: `src/backend/RequestHandlers/`.
+  - Behaviour: single consumer for seed-phase and remainder-phase batch outcomes; keeps accepted-first sort, assigned/cached writeback, error mapping, stop-status detection, shared `runStopped`, progress update and exactly-once UID routing.
 
 ## ABClass metadata helpers
 
 > `upsertABClass` and `updateABClass` accept an optional `metadata` field and report
-> request-provenance metadata failures as `INVALID_REQUEST`. The deletion flag's known quirk is
-> deferred to [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
+> request-provenance metadata failures as `INVALID_REQUEST`.
 >
 > Cross-references:
 > [abclass.md § Validation](../data-shapes/abclass.md#validation) and
@@ -123,7 +107,7 @@ against the current specification first.
   array) is serialised via the assignment's existing `toPartialJSON()`; a genuinely full
   assignment keeps its existing `toJSON()`. Plain objects and other supported items retain
   `ArrayUtils.serialiseArray()` behaviour.
-- `AssignmentDefinition.toJSON()` remains strict and still rejects a partial definition.
+- `AssignmentDefinition.toJSON()` rejects a partial definition.
   `Assignment.toJSON()` emits a partial definition (tasks stored as an array) through
   `definition.toPartialJSON()` and a full definition through `toJSON()`. Serialisation errors
   from a genuine full definition propagate unchanged.
@@ -147,10 +131,9 @@ against the current specification first.
   `YYYY-MM-DDTHH:mm:ss.sssZ`, rejecting live `Date` objects, date-only strings, timezone
   offsets and non-canonical precision. The metadata domain validator reuses it. See
   [abclass.md § Validation](../data-shapes/abclass.md#validation).
-- Distinguish it from the unchanged, broader `isIsoDateTimeString_` in
-  `z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js`, which accepts
-  timezone offsets and is owned by the transport layer. Model-domain validation must not depend
-  on that helper; leave it and its broader contract unchanged.
+- The broader `isIsoDateTimeString_` in
+  `z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js` accepts timezone
+  offsets and is owned by the transport layer; model-domain validation does not use it.
 
 ### Controller request gate
 
@@ -159,8 +142,8 @@ against the current specification first.
   nothing; an explicitly supplied `metadata` value (including own `undefined`) is passed to the
   shared domain validator `ABClassMetadata.validateMetadata(parameters.metadata, 'metadata')`.
   Only a caught `ABClassMetadataValidationError` from that invocation is tagged
-  `inputSource: 'request'` and rethrown unchanged (same object, same `fieldPath`); every other
-  exception propagates untouched. The gate lives on the existing `ABClassValidation` owner and is
+  `inputSource: 'request'` and rethrown with the same object and `fieldPath`; every other
+  exception propagates with its original identity. The gate lives on the existing `ABClassValidation` owner and is
   reused by both mutation methods; the nested domain rules stay in the domain validator and are
   not reimplemented here.
 - `ABClassMutationOps.upsertABClass()` and `.updateABClass()` invoke the gate immediately after
@@ -178,15 +161,14 @@ against the current specification first.
   narrow trailing-underscore adapter shared by `upsertABClass_()` and `updateABClass_()` only. It
   wraps the controller delegation and logs the raw thrown value through `ABLogger` with `method`
   and `classId` context, then converts only an `ABClassMetadataValidationError` whose
-  `inputSource` is exactly `'request'` into an `ApiValidationError` built from the unchanged
-  path-bearing `message` and the `{ method }` option. No `fieldName`, `details` or other envelope
-  field is added; the `INVALID_REQUEST` envelope code comes from the existing dispatcher mapping.
+  `inputSource` is exactly `'request'` into an `ApiValidationError` built from the same
+  path-bearing `message` and the `{ method }` option; the `INVALID_REQUEST` envelope code comes
+  from the dispatcher mapping.
 - Every other thrown value — model-typed metadata errors, same-message but untagged errors,
   request-tagged generic or wrong-typed errors, and persistence, upstream and wiring failures — is
-  rethrown with unchanged identity and type, so stored/user-data integrity failures keep returning
+  rethrown with its original identity and type, so stored/user-data integrity failures keep returning
   `INTERNAL_ERROR`.
-- The adapter does not revalidate metadata or reproduce nested domain rules, and `deleteABClass_()`
-  is unchanged.
+- Metadata validation stays in the domain layer.
 - No dispatcher, allowlist, authorisation, request-tracking or envelope-shape change is required
   or authorised; the transport layer never evaluates nested domain rules.
 
@@ -246,8 +228,7 @@ against the current specification first.
 
 - `persistClassAndPartial(abClass)` prepares independent full and partial payloads through
   `_prepareClassAndPartial()` **before** the first full-store mutation, then writes the full
-  document first and the prepared partial afterwards. Retained direct method signatures and the
-  full-first/partial-second order are unchanged.
+  document first and the prepared partial second.
 - `_prepareClassAndPartial()` copies the model's full JSON (or the supported plain-object input)
   without mutating the caller, normalises the caller's metadata through the domain constructor,
   and validates any present projection metadata. `_prepareClassPartial()` builds the complete
@@ -267,7 +248,7 @@ abClass)` and `_writePreparedRosterPartial(prepared, classId)`. `ABClassRoster._
   refreshed roster with the stored full document and registry row, and, when both still match,
   logs once and returns without preparing or writing anything. Otherwise it prepares the
   operation, writes the full-store roster `$set`, and then calls the write helper. The comparison
-  only suppresses a redundant write; no stored shape, schema or transport contract changes.
+  only suppresses a redundant write.
 - An existing row is patched with `$set` only `className`, `classOwner` (owner helper) and
   `teachers` (array helper), filtered by the row's stored `_id`. The vendor's `matchedCount` is
   checked: an `_id`-only filter counts a matched-but-unmodified row, so a true zero-match patch
@@ -277,7 +258,7 @@ abClass)` and `_writePreparedRosterPartial(prepared, classId)`. `ABClassRoster._
 - The prepared full class document uses the partial-aware `ABClass.toJSON()` projection above, so
   it carries its actual non-empty partial/full assignment population alongside validated
   metadata. A true partial-save or patch failure keeps the existing logged propagation and
-  non-transactional partial-success risk; no rollback or retry is added.
+  non-transactional partial-success risk.
 - See [abclass.md § Field-scoped roster persistence](../data-shapes/abclass.md#field-scoped-roster-persistence).
 
 ## Design Rules
@@ -356,8 +337,7 @@ Rules:
    required-field completeness, and other business rules are owned by the controller that receives
    the call. Do not reimplement them in the transport layer.
 3. **Do not duplicate the same rule in both layers** unless it is an explicit security
-   defence-in-depth guard — in which case mark it as such in a code comment so it is not removed
-   during future de-sloppification passes.
+   defence-in-depth guard, which must be marked as such in a code comment so it is retained.
 4. **All new functionality must follow this rule** from the point of introduction.
 5. **Old functionality should be opportunistically refactored** towards this rule when the code is
    already being touched. Keep the scope of opportunistic refactoring local and low-risk; do not
@@ -383,20 +363,6 @@ Controller ownership:
 - parse or refresh tasks, apply assignment/task weighting values, and manage rollback when registry persistence fails after the full-store write
 
 The transport layer does not derive or rotate `definitionKey` from metadata.
-
-## Relationship to `globals.js`
-
-Legacy backend `globals.js` files are reference-only during migration and are not the authority for new or migrated frontend transport methods.
-
-- `src/backend/AssignmentProcessor/globals.js`
-- `src/backend/y_controllers/globals.js`
-
-Backend configuration reads and writes go through `src/backend/z_Api/z_apiHandler.js`, with callable method names owned by `ALLOWLISTED_METHOD_HANDLERS` in that file and the implementation living in `src/backend/z_Api/apiConfig.js`.
-
-Migration rule:
-
-- when an equivalent function is implemented in `src/backend/z_Api`, remove the legacy `globals.js` variant.
-- do not add new functionality to legacy `globals.js` files.
 
 ## Testing Guidance
 
@@ -459,9 +425,9 @@ Node-specific code is the guarded `module.exports` block at the end of the file.
 
 Node unit tests mirror that GAS layout through `tests/setupGlobals.js`, which installs the same
 constants, request-store helpers, transport handlers, and error types before the dispatcher module
-loads. Keep this dependency wiring in the test bootstrap; do not reintroduce `require`/`globalThis`
-wiring in production backend files. The `ALLOWLISTED_METHOD_HANDLERS` registry, the auth gate, and
-the admission/completion tracking are unchanged by this boundary.
+loads. Keep dependency wiring in the test bootstrap; production backend files read
+concatenated-script globals. The `ALLOWLISTED_METHOD_HANDLERS` registry, the auth gate and the
+admission/completion tracking live in `z_apiHandler.js`.
 
 ### Admission control and tracking
 
@@ -499,7 +465,7 @@ Frontend code should call `callApi` from `src/frontend/src/services/apiService.t
 Feature services should expose typed helpers per method and return parsed `data` from `callApi`.
 Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_HANDLERS`, for example `callApi('getGoogleClassrooms')`.
 
-### ⚠️ Critical: prohibited types in `google.script.run` parameters and return values
+### Critical: prohibited types in `google.script.run` parameters and return values
 
 `google.script.run` prohibits `Date`, `Function`, and DOM elements in both **parameters and
 return values** — including inside nested objects and arrays.
@@ -610,7 +576,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Transport-required request fields: `primaryTitle`, `primaryTopicKey`, `referenceDocumentId`, `templateDocumentId`, and `yearGroupKey`.
   Optional request fields: `definitionKey`, `alternateTitles`, `alternateTopics`, `documentType`, `assignmentWeighting`, `taskWeightings`, `forceReparse`, and `updatedAt`.
   Validation split: the transport helper enforces request shape, recovery control-field shapes (`forceReparse` boolean; `updatedAt` a strict ISO datetime string with timezone when supplied non-null, while omission and explicit `null` mean no stale-baseline check), safe-identifier rules for `definitionKey`, `taskWeightings[].taskId`, `referenceDocumentId`, `templateDocumentId`, and URL-extracted document IDs, and structural `taskWeightings` shape; the controller owns topic membership, duplicate-tuple rejection, numeric weighting rules, document-type rules, task-ID matching, and persistence semantics.
-  Request-side concurrency token: `updatedAt` carries the reviewed definition's response `updatedAt` from the latest load/reparse, and the frontend sends it only when that value is non-null. A non-null mismatch with the stored `updatedAt` returns `DEFINITION_STALE` before any writes; omission or explicit `null` means no stale-baseline check. This request token is distinct from the persisted/response `AssignmentDefinition.updatedAt` field, which is unchanged.
+  Request-side concurrency token: `updatedAt` carries the reviewed definition's response `updatedAt` from the latest load/reparse, and the frontend sends it only when that value is non-null. A non-null mismatch with the stored `updatedAt` returns `DEFINITION_STALE` before any writes; omission or explicit `null` means no stale-baseline check. This request token is distinct from the persisted/response `AssignmentDefinition.updatedAt` field, which records the stored definition's timestamp.
   Frontend validation split: the frontend Zod `UpsertAssignmentDefinitionRequestSchema` enforces a `superRefine` mutual-exclusion rule between the URL-shape (`referenceDocumentUrl` + `templateDocumentUrl`) and the ID-shape (`referenceDocumentId` + `templateDocumentId` + `documentType`). Payloads with neither shape, only partial URL fields, or only partial ID fields are rejected before the payload reaches the backend. The wizard's existing URL-shape payload continues to pass without modification; the link-to-existing-definition flow uses the ID-shape payload.
   Create behaviour: when `definitionKey` is absent or `null`, the controller requires `yearGroupKey` and `documentType` (or derives it from URLs when URL-based transport is used), parses tasks from the source documents, resolves `primaryTopic` from `assignment_topics`, generates a stable opaque `definitionKey`, and writes both the full store (`assdef_full_<definitionKey>`) and the registry partial (`assignment_definitions`). This is the stage-one create persistence path.
   Update behaviour: when `definitionKey` is present, the controller preserves the stored key, reuses the stored `documentType` when omitted, reparses only when source document IDs changed or refresh is required, and reapplies stored or supplied task weightings before persistence. Re-parse transport behaviour applies when document URLs change: existing task weightings are preserved for matching task IDs, and new tasks default to `1`.
@@ -638,7 +604,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Handler behaviour: calls `new ABClassController().readRehydrateAssignment(courseId, assignmentId)` for a read-only load and hydration (no roster refresh, no `loadClass`, no ABClass mutation), including full-definition resolution, then serialises via `assignment.toReadJSON()`. It defensively strips `progressTracker` at the boundary and applies `DateUtils.deepConvertDates(response)` to recursively convert all `Date` objects to ISO 8601 strings (required because `google.script.run` prohibits `Date` objects in return values). On `AssignmentNotFoundError` thrown by `readRehydrateAssignment`, returns `null` (caught via `instanceof` check); all other errors from `readRehydrateAssignment` propagate.
   Logging: `info` before loading the full assignment document (`"getAssignment: loading full assignment"` with `{ courseId, assignmentId }`), `info` after successful hydration (`"getAssignment: rehydrated assignment"`), `warn` for not-found (`"getAssignment: assignment not found"` — `warn`, not `error`, because the API returns `null` gracefully); other failures propagate without a handler-level log and are logged once at the `apiHandler` boundary (`"API request failed."` with `requestId`, canonical method and the error).
   Response data: the complete `Assignment.toReadJSON()` shape — `courseId`, `assignmentId`, `assignmentName`, `dueDate` (ISO string or `null`), `updatedAt` (ISO string or `null`), `documentType`, `referenceDocumentId`, `templateDocumentId`, `tasks`, `submissions` (full artifacts, assessments, feedback), `assignmentDefinition`, and `assessmentContractVersion`. Current results keep `assessmentContractVersion: 1`; a stored legacy record (marker missing, `null` or unsupported) is prepared into read submissions that keep valid scores, feedback, identities and timestamps and isolate malformed assessment data as per-task `CORRUPT_RECORD` E, with `assessmentContractVersion: 'legacy'`. A present non-array `submissions` root fails the read with a contextual error naming the assignment. Persistence `toJSON()`/`toPartialJSON()` still serialise the stored submissions and marker from instance state. See [Contract: Assignment §`getAssignment` (read)](../data-shapes/assignment.md#getassignment-read). Or `null` when no persisted assignment document exists.
-  Error codes: `INVALID_REQUEST` (transport validation failure: non-object params, missing fields, unsafe characters). `INTERNAL_ERROR` (corrupt assignment document, partial-definition rejection, or any other `readRehydrateAssignment` failure). No new error code is introduced for not-found — the handler returns `null` for that case (catching the `AssignmentNotFoundError` typed error before it can reach the dispatcher's error envelope).
+  Error codes: `INVALID_REQUEST` (transport validation failure: non-object params, missing fields, unsafe characters). `INTERNAL_ERROR` (corrupt assignment document, partial-definition rejection, or any other `readRehydrateAssignment` failure). A not-found read returns `null`: the handler catches `AssignmentNotFoundError` before it reaches the dispatcher's error envelope.
 
 - `getGoogleClassrooms` — returns active Classroom picker rows for ABClass creation flows.
   Source: `src/backend/z_Api/googleClassrooms.js`, via the `getGoogleClassrooms_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.
@@ -649,7 +615,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Failure nuance: upstream Classroom fetch failures currently log inside `ClassroomApiClient.fetchAllActiveClassrooms()` and return `[]`, so not every upstream Classroom failure becomes a transport error envelope today.
 
 - `upsertABClass` — creates a new ABClass or refreshes an existing one using Classroom data plus user-supplied metadata.
-  Source: `src/backend/z_Api/abclassMutations.js`, via the `upsertABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.upsertABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
+  Source: `src/backend/z_Api/abclass/abclassMutations.js`, via the `upsertABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.upsertABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
   Required request fields: `classId`, `cohortKey`, `yearGroupKey`, `courseLength`.
   Optional request field: `metadata` — omission preserves an existing snapshot (or initialises a new class to `null`), explicit `null` clears it, and a complete object replaces it wholly (no nested patch). Supplied metadata is validated before any collection access, roster refresh or write.
   Validation: transport enforces `params` as an object and validates `classId` through the shared `validateSafeTrimmedIdentifier_` helper, rejecting non-string, empty, untrimmed, path-character (`..`, `/`, `\`) and control-character values before delegation — the same identifier boundary used by reads. The reuse is an explicit security defence-in-depth guard, marked in a code comment. Controller validation owns required-field completeness, its own `classId` checks, `courseLength` integer/range checks, and the metadata request gate (see §Controller request gate).
@@ -658,7 +624,7 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Error mapping: invalid request metadata raises a typed `ABClassMetadataValidationError` with `inputSource: 'request'`, which the `abclassMutations.js` request-error adapter converts into an `ApiValidationError`; the dispatcher therefore returns `INVALID_REQUEST`/`isRetriable: false` with the path-bearing message and no extra error fields. Stored/user-data integrity failures keep the generic `INTERNAL_ERROR` envelope.
 
 - `updateABClass` — applies a lightweight patch to editable ABClass fields.
-  Source: `src/backend/z_Api/abclassMutations.js`, via the `updateABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.updateABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
+  Source: `src/backend/z_Api/abclass/abclassMutations.js`, via the `updateABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.updateABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
   Required request field: `classId`.
   Optional patch fields: `cohortKey`, `yearGroupKey`, `courseLength`, `active`, `metadata`. For `cohortKey` and `yearGroupKey`, omission preserves the stored value, `null` clears it, and a valid value replaces it; an explicitly supplied `undefined` is rejected as a domain `TypeError` before any write instead of being persisted as the string `"undefined"`. `metadata` is a whole-value replacement: omission preserves it, `null` clears it, and a complete object replaces it; nested partial objects are invalid, not patches.
   Forbidden request fields: `classOwner`, `teachers`, `students`, `assignments`.
@@ -668,12 +634,12 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Response data: the same partial class summary shape used by `upsertABClass()`, including always-present nullable, validated, detached `metadata`. Invalid request metadata follows the same `INVALID_REQUEST` mapping as `upsertABClass`; internal integrity failures stay `INTERNAL_ERROR`.
 
 - `deleteABClass` — deletes the stored class record and its class-partial registry row.
-  Source: `src/backend/z_Api/abclassMutations.js`, via the `deleteABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.deleteABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
+  Source: `src/backend/z_Api/abclass/abclassMutations.js`, via the `deleteABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.deleteABClass()` in `src/backend/y_controllers/ABClassController/index.js`.
   Required request field: `classId`.
   Validation: transport enforces `params` as an object and validates `classId` through the shared `validateSafeTrimmedIdentifier_` helper, rejecting non-string, empty, untrimmed, path-character (`..`, `/`, `\`) and control-character values before delegation. This matches the read-path identifier boundary; the overlap with the controller's own missing, non-string, and non-empty `classId` checks is an explicit security defence-in-depth guard, marked in a code comment.
   Controller behaviour: deletes the full-class collection with `dropCollection(classId)` and removes the matching `abclass_partials` row with `deleteOne({ classId })`.
   Response data: `{ classId, hasDeletedFullClass, hasDeletedClassPartial }`.
-  Idempotency: repeated deletes succeed. A missing registry row yields `hasDeletedClassPartial: false`. The full-collection flag is currently true after any non-throwing `dropCollection()`, including the vendor's `false` return for an absent collection, so it does not prove the collection was removed; it stays false only on the recognised `COLLECTION_NOT_FOUND` exception path, which the vendor's normal absent result does not take. This quirk is documented, not fixed: the flag correction is deferred to [issue #332](https://github.com/h-arnold/AssessmentBot/issues/332).
+  Idempotency: repeated deletes succeed. A missing registry row yields `hasDeletedClassPartial: false`. The full-collection flag is currently true after any non-throwing `dropCollection()`, including the vendor's `false` return for an absent collection, so it does not prove the collection was removed; it stays false only on the recognised `COLLECTION_NOT_FOUND` exception path, which the vendor's normal absent result does not take.
 
 - Cohort reference data — exposes `getCohorts`, `createCohort`, `updateCohort`, and `deleteCohort`.
   Source: inline closures in `src/backend/z_Api/z_apiHandler.js` delegating to `ReferenceDataController` CRUD helpers backed by the `cohorts` JsonDbApp collection.
