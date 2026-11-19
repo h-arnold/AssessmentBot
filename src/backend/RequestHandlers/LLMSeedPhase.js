@@ -52,6 +52,13 @@ const LLMSeedPhase = {
    * @param {Object} state - Phase-shared routing state: a UID to request map, a
    * set of already-routed UIDs, and the accepted and stop status arrays.
    * @returns {function(Object[]): boolean} The batch-outcome consumer; returns false when a stop latches the manager's `runStopped`, true otherwise.
+   * @remarks The whole-manager dependency is deliberate under the ACTION_PLAN §2
+   * constraint: keep `processStudentResponses()` orchestration thin, with domain work
+   * in the partition helper and this shared outcome consumer. Coupling to
+   * `manager.runStopped`, `manager.progressTracker` and the private
+   * `manager._processSingleResponse` is therefore accepted. If the design is revisited,
+   * the reviewed alternative is passing explicit `onProcess`/`onProgress`/`onStop`
+   * callbacks so the helper depends on behaviour rather than the manager's private shape.
    */
   createBatchConsumer(manager, state) {
     return (outcomes) => {

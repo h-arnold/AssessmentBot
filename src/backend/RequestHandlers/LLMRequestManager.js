@@ -181,9 +181,10 @@ class LLMRequestManager extends BaseRequestManager {
     const { seeds, remainder } = LLMSeedPhase.partitionRequests(requests, this.uidIndex);
     // Report only on a two-phase split: an empty remainder is a single round, unchanged from before seeding.
     if (remainder.length > 0) {
-      ABLogger.getInstance().info(
-        `Seeded ${seeds.length} task prefixes before dispatching ${requests.length} requests.`
-      );
+      ABLogger.getInstance().info('Seeded task prefixes before dispatching requests.', {
+        seedCount: seeds.length,
+        requestCount: requests.length,
+      });
     }
     const processedUids = new Set();
     const onBatchComplete = LLMSeedPhase.createBatchConsumer(this, {
@@ -328,9 +329,6 @@ class LLMRequestManager extends BaseRequestManager {
       ['template', templateTask],
       ['student', studentArtifact],
     ].forEach(([role, artifact]) => {
-      if (typeof role !== 'string') {
-        throw new TypeError('Stored content role must be a string.');
-      }
       if (typeof artifact.contentHash !== 'string' || artifact.contentHash.length === 0) {
         throw new Error(
           `Stored ${role} content has no usable contentHash for taskId ${item.taskId}.`
