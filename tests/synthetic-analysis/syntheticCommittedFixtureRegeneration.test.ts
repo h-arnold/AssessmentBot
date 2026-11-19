@@ -19,7 +19,9 @@ const COMMITTED_PROFILE_NAMES = [
   REPRESENTATIVE_PROFILE_NAME,
 ] as const;
 const INJECTED_GENERATION_FAILURE_MESSAGE = 'injected later-profile generation failure';
-const FORMATTER_HEAVY_TEST_TIMEOUT_MS = 15_000;
+// Raised because the committed corpus grew to 4/6/10 tasks per definition and
+// coverage instrumentation slows byte-for-byte regeneration.
+const FORMATTER_HEAVY_TEST_TIMEOUT_MS = 40_000;
 
 /**
  * Mutable control exercised by the graph-generator mock so a test can make a
