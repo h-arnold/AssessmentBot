@@ -121,6 +121,20 @@ describe('reference-data generation boundaries', () => {
   });
 });
 
+describe('assignment definition generation boundaries', () => {
+  it('rejects an unmapped profile with an actionable tasks-per-definition error', () => {
+    const profileDefinition = {
+      ...getProfileDefinition(SMALL_PROFILE),
+      name: 'unmapped-profile',
+    };
+    const referenceData = generateReferenceData(profileDefinition) as GeneratedReferenceData;
+
+    expect(() => generateAssignmentDefinitions({ profileDefinition, referenceData })).toThrow(
+      /No tasks-per-definition mapping.*unmapped-profile/u
+    );
+  });
+});
+
 describe('large-full submission band composition', () => {
   it('derives large-full completion counts from the seeded band selection', () => {
     const profileDefinition = { ...COMPACT_LARGE_FULL_PROFILE };
