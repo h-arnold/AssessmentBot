@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { withTemporaryGlobals } from '../helpers/globalMockManager.js';
 import {
   createMultiTaskRunStopAssignment,
+  expectSingleTaskFixture,
   runRunStopControl,
 } from '../helpers/llmRunStopHarness.js';
 import { RUN_STOP_UNEXPECTED_PAYLOAD_GUARD } from '../helpers/llmRunStopHarness.js';
@@ -13,12 +14,6 @@ import {
   loadManager,
   seedStaleMixedMarks,
 } from '../helpers/llmRequestManagerHarness.js';
-
-/** Structural pin for the single-task harness selection: every numeric candidate resolves
- * to one task identity, so the seed round is one member and the rest form the remainder. */
-function expectSingleTaskFixture(collected) {
-  expect(new Set(collected.numeric.map((entry) => entry.task.getId())).size).toBe(1);
-}
 
 /**
  * Two-phase migration of the single-task stop-at-index-0 assertions. The single
@@ -53,8 +48,8 @@ function expectSeedRoundStop(collected, { cancelled = false, retryIndex = 0, via
   // One seed per task identity in a single-task fixture: the seed round holds
   // only the first request; the other two form the skipped remainder.
   expectSingleTaskFixture(collected);
-  const seedIndexes = numeric.map((_, index) => index).filter((index) => index === 0);
-  const remainderIndexes = numeric.map((_, index) => index).filter((index) => index !== 0);
+  const seedIndexes = [0];
+  const remainderIndexes = numeric.map((_, index) => index).slice(1);
   expect(requests).toHaveLength(numeric.length);
   expect(new Set(requests.map((request) => request.uid)).size).toBe(requests.length);
   expect(requests.map((request) => request.uid)).toEqual(

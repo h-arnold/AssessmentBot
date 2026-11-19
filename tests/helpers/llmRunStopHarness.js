@@ -417,9 +417,17 @@ function runRunStopControl(profile, numericCount, batchSize, scenario) {
   }
 }
 
+/** Structural pin for the single-task harness selection: every numeric candidate resolves
+ * to one task identity, so the seed round is one member and the rest form the remainder. */
+function expectSingleTaskFixture(collected) {
+  const taskIds = new Set(collected.numeric.map((entry) => entry.task.getId()));
+  expect(taskIds.size).toBe(1);
+}
+
 export {
   RUN_STOP_UNEXPECTED_PAYLOAD_GUARD,
   createMultiTaskRunStopAssignment,
   createRunStopAssignment,
+  expectSingleTaskFixture,
   runRunStopControl,
 };

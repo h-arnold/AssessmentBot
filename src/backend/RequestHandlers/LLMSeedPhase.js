@@ -51,7 +51,7 @@ const LLMSeedPhase = {
    * @param {Object} manager - The LLMRequestManager owning run and writeback state.
    * @param {Object} state - Phase-shared routing state: a UID to request map, a
    * set of already-routed UIDs, and the accepted and stop status arrays.
-   * @returns {function(Object[]): boolean} The batch-outcome consumer.
+   * @returns {function(Object[]): boolean} The batch-outcome consumer; returns false when a stop latches the manager's `runStopped`, true otherwise.
    */
   createBatchConsumer(manager, state) {
     return (outcomes) => {

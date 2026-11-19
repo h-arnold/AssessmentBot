@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { withTemporaryGlobals } from '../helpers/globalMockManager.js';
-import { createRunStopAssignment, runRunStopControl } from '../helpers/llmRunStopHarness.js';
+import {
+  createRunStopAssignment,
+  expectSingleTaskFixture,
+  runRunStopControl,
+} from '../helpers/llmRunStopHarness.js';
 import { RUN_STOP_UNEXPECTED_PAYLOAD_GUARD } from '../helpers/llmRunStopHarness.js';
 import {
   catalogueHTTPAssessments,
@@ -11,13 +15,6 @@ import {
   RUN_STOP_CRITERIA,
   seedStaleMixedMarks,
 } from '../helpers/llmRequestManagerHarness.js';
-
-/** Structural pin for the single-task harness selection: every numeric candidate resolves
- * to one task identity, so the seed round is one member and the rest form the remainder. */
-function expectSingleTaskFixture(collected) {
-  const taskIds = new Set(collected.numeric.map((entry) => entry.task.getId()));
-  expect(taskIds.size).toBe(1);
-}
 
 describe('LLM controlled-batch run-stop healthy controls', () => {
   it.each([[1], [2]])(

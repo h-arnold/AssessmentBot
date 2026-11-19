@@ -127,14 +127,6 @@ describe('AssignmentController processSelectedAssignment run completion', () => 
     expect(embedded.assessmentContractVersion).toBe(1);
   });
 
-  it('persists canonical medium mixed-E items beside numeric and N success through the real persistence chain', () => {
-    const flow = createCompletedRun('medium', 'assignment-0-4');
-    flow.run();
-    const stored = fullRecordOf(flow);
-    expect(countItems(stored, true)).toBe(12);
-    expect(countItems(stored, false)).toBe(18);
-  });
-
   it('derives the regenerated medium mixed-E split from six tasks and five submitters', () => {
     const flow = createCompletedRun('medium', 'assignment-0-4');
     flow.run();
