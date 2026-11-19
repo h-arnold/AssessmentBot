@@ -338,12 +338,12 @@ describe('medium corpus baseline-mode round trip', () => {
     );
 
     expect(results).toHaveLength(MEDIUM_CLASS_IDS.length);
-    for (const [index, result] of results.entries()) {
+    for (const result of results) {
       const attemptBaseline = result.attemptBaseline;
       if (!attemptBaseline) {
         throw new Error('baseline-mode result is missing the attemptBaseline block');
       }
-      const oracle = deriveCorpusBaseline(parseMediumClasses()[MEDIUM_CLASS_IDS[index]]);
+      const oracle = deriveCorpusBaseline(parseMediumClasses()[result.classId]);
       // Outside-baseline rows are those whose key sits outside the result's
       // baseline set; the complement is taken over the corpus's projected keys.
       const baselineTaskKeys = new Set(attemptBaseline.baselineTaskKeys);
@@ -382,9 +382,13 @@ describe('medium corpus heatmap column projection', () => {
     const input = buildMediumInput('topDecileBaseline', MEDIUM_CLASS_IDS);
     const results = new DataAnalysisService().analyse(input);
 
-    for (const [classIndex, classId] of MEDIUM_CLASS_IDS.entries()) {
-      const result = results[classIndex];
-      const classFull = input.classes[classIndex];
+    for (const result of results) {
+      const classFull = input.classes.find((classRecord) => classRecord.classId === result.classId);
+      if (!classFull) {
+        throw new Error(
+          `medium round-trip spec: no input class for result class ${result.classId}`
+        );
+      }
       const includedFlags = new Map<string, boolean>();
       for (const assignment of classFull.assignments) {
         const heatmap = adaptMetricsToHeatmap(
@@ -398,7 +402,7 @@ describe('medium corpus heatmap column projection', () => {
         }
       }
 
-      const oracle = deriveCorpusBaseline(parseMediumClasses()[classId]);
+      const oracle = deriveCorpusBaseline(parseMediumClasses()[result.classId]);
       expect(includedFlags.size).toBe(PROJECTED_TASK_KEYS.length);
       const excludedKeys: string[] = [];
       const includedKeys: string[] = [];
