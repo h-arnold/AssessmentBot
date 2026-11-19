@@ -243,12 +243,13 @@ Rules:
   raw-root/criterion-key admission, key normalisation, shared validation, UID routing,
   model mutation, cache wiring and serialisation all run outside it, so reader, wiring
   and programming faults propagate with their original identity.
-- The batch callback records each routed outcome's attempt count in an invocation-local
-  map before processing. Non-accepted outcomes consume that provenance through
+- The batch callback passes each routed outcome's attempt count directly to the response
+  processor before processing. Non-accepted outcomes consume that provenance through
   `_terminalCodeFor`: stop statuses map to `LLM_RUN_STOPPED`, permanent statuses to
   `LLM_HTTP_FAILED`, and retryable/network outcomes distinguish a genuinely spent budget
   (`attempts === maxAttempts`, `LLM_UNAVAILABLE`) from stop-cancelled pending retries
-  (`LLM_RUN_STOPPED`). The map holds numbers only and is reset per public invocation.
+  (`LLM_RUN_STOPPED`). The attempt count is carried on the outcome, not held in a map or
+  reset per invocation.
 - A missing or invalid provenance value is a wiring fault, not a service result: a value
   that is not a safe integer in `1..maxAttempts` (including `undefined`, `null`, numeric
   strings, fractions, `NaN`, infinities and unsafe integers) throws a contextual `Error`
