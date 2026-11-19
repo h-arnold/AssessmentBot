@@ -68,9 +68,9 @@ This section is primarily for Heads of Department or administrators responsible 
 
 - This step creates the class records that store assessment data.
 
-#### [3. Getting started with your first assessment](../howTos/README.md)
+#### [3. Getting started with your first assessment](../howTos/index.md)
 
-- Once setup is complete, follow the [assessment guide](../howTos/README.md) to run your first assessment.
+- Once setup is complete, follow the [assessment guide](../howTos/run-an-assessment/index.md) to run your first assessment.
 
 ---
 

@@ -145,6 +145,7 @@ To avoid policy drift, keep detailed policy in dedicated docs and use AGENTS fil
 - Backend logging and error-handling policy: `docs/developer/backend/backend-logging-and-error-handling.md`
 - Frontend logging and error-handling policy: `docs/developer/frontend/frontend-logging-and-error-handling.md`
 - Frontend testing policy and commands: `docs/developer/frontend/frontend-testing.md`
+- Teacher tutorials and explainers: `docs/developer/teacher-documentation-workflow.md`
 
 Module-specific test file naming and location conventions belong in the module testing docs; do not duplicate them in `AGENTS.md` files.
 

@@ -6,7 +6,12 @@ Guides for setting up Assessment Bot, using it, and understanding its scoring mo
 
 ## Using the Assessor
 
-[**Guide**](./howTos/README.md) – Step-by-step instructions for the day-to-day usage of Assessment Bot.
+Step-by-step guides for day-to-day use of Assessment Bot:
+
+- [**Prepare and Distribute Tasks**](./howTos/prepare-tasks/index.md) – Create a template, tag tasks and attach it to a classroom assignment.
+- [**Run an Assessment**](./howTos/run-an-assessment/index.md) – Create an assignment definition and start a marking run.
+- [**View Results**](./howTos/view-results/index.md) – Read averages, heatmaps and task feedback.
+- [**Manage Assignment Definitions**](./howTos/manage-assignment-definitions/index.md) – Update or remove saved definitions.
 
 ---
 
@@ -87,6 +92,7 @@ Technical documentation for developers contributing to the Assessment Bot codeba
 ### Documentation standards
 
 - [**Documentation Style Guide**](./developer/documentation-style-guide.md) – Writing rules for canonical docs, ADRs and review exclusions
+- [**Teacher Documentation Workflow**](./developer/teacher-documentation-workflow.md) – When a change needs a teacher tutorial or explainer, and how to produce one
 
 ### Templates
 

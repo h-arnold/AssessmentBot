@@ -53,47 +53,47 @@ The end-to-end happy path: from a class page, kick off a new assessment, and wal
 
 **1. Open the class page and click "Start New Assessment".**
 
-<img src="/docs/images/react-wizard-1-class-page.png" alt="Class page with the Start New Assessment button" width="80%">
+<img src="docs/howTos/run-an-assessment/images/run-an-assessment-class-page.png" alt="Class page with the Start New Assessment button" width="80%">
 
 **2. Pick the Google Classroom assignment to assess.**
 
-<img src="/docs/images/react-wizard-2-assess-modal.png" alt="Assess Task modal with the assignment selector" width="80%">
+<img src="docs/howTos/run-an-assessment/images/run-an-assessment-assignment-select.png" alt="Assess Task modal with the assignment selector" width="80%">
 
 **3. Fill in the wizard — title, topic, year group, and the reference/template document URLs.**
 
-<img src="/docs/images/react-wizard-3-stage1-form.png" alt="Create assignment wizard stage 1 — form fields" width="80%">
+<img src="docs/howTos/run-an-assessment/images/run-an-assessment-definition-details.png" alt="Create assignment wizard stage 1 — form fields" width="80%">
 
 **4. The tool parses the documents, surfaces the extracted tasks, and you save.**
 
-<img src="/docs/images/react-wizard-4-stage2-tasks.png" alt="Create assignment wizard stage 2 — parsed tasks ready to save" width="80%">
+<img src="docs/howTos/run-an-assessment/images/run-an-assessment-definition-weightings.png" alt="Create assignment wizard stage 2 — parsed tasks ready to save" width="80%">
 
 ### Classes overview
 
 Classes are grouped by year group, with each card offering one-click access to the class page and to a fresh assessment run.
 
-<img src="/docs/images/react-classes-overview.png" alt="Classes overview grouped by year group" width="80%">
+<img src="docs/howTos/run-an-assessment/images/run-an-assessment-classes.png" alt="Classes overview grouped by year group" width="80%">
 
 ### Run a new assessment
 
 Pick a Google Classroom assignment, kick off the run, and either create a new assignment definition inline or link to an existing one.
 
-<img src="/docs/images/react-assess-task-modal.png" alt="Assess Task modal showing the choice prompt after starting an assessment" width="80%">
+<img src="docs/howTos/run-an-assessment/images/run-an-assessment-no-definition.png" alt="Assess Task modal showing the choice prompt after starting an assessment" width="80%">
 
 ### Assignments page
 
 Every assignment definition is listed in one table. Filter, sort, update, or permanently delete obsolete entries from the same surface.
 
-<img src="/docs/images/react-assignments-table.png" alt="Assignment definitions table" width="80%">
+<img src="docs/howTos/manage-assignment-definitions/images/manage-assignment-definitions-table.png" alt="Assignment definitions table" width="80%">
 
 Destructive actions are confirmed in a dedicated dialog so accidental clicks never silently lose work.
 
-<img src="/docs/images/react-assignments-delete-modal.png" alt="Delete assignment definition confirmation dialog" width="80%">
+<img src="docs/howTos/manage-assignment-definitions/images/manage-assignment-definitions-delete.png" alt="Delete assignment definition confirmation dialog" width="80%">
 
 ### Task Heatmap
 
 The per-class detail page exposes a per-task, per-student heatmap. Each task is broken into Completeness, Accuracy and SPaG sub-columns, with banded colour coding that surfaces who is on track and who needs support at a glance.
 
-<img src="/docs/images/react-task-heatmap.png" alt="Task heatmap for a class assignment" width="80%">
+<img src="docs/howTos/view-results/images/view-results-task-heatmap.png" alt="Task heatmap for a class assignment" width="80%">
 
 ### Cell-level evidence
 
@@ -101,9 +101,9 @@ Every heatmap cell is a button. Click it to inspect the AI's reasoning alongside
 
 <table>
   <tr>
-    <td><img src="/docs/images/react-task-preview-image.png" alt="Image preview popover for a Completeness cell" width="280"></td>
-    <td><img src="/docs/images/react-task-preview-text.png" alt="Text preview popover for an Accuracy cell" width="280"></td>
-    <td><img src="/docs/images/react-task-preview-table.png" alt="Table preview popover for a SPaG cell" width="280"></td>
+    <td><img src="docs/howTos/view-results/images/view-results-preview-image.png" alt="Image preview popover for a Completeness cell" width="280"></td>
+    <td><img src="docs/howTos/view-results/images/view-results-preview-text.png" alt="Text preview popover for an Accuracy cell" width="280"></td>
+    <td><img src="docs/howTos/view-results/images/view-results-preview-table.png" alt="Table preview popover for a SPaG cell" width="280"></td>
   </tr>
   <tr>
     <td align="center"><b>Image</b><br>Slide captures and diagrams</td>
@@ -116,7 +116,7 @@ Every heatmap cell is a button. Click it to inspect the AI's reasoning alongside
 
 Build a cross-assignment heatmap by picking a class, a topic, and the assignments to merge. The same per-cell evidence flow is available on the merged table.
 
-<img src="/docs/images/react-heatmaps-builder.png" alt="Heatmaps builder empty state" width="80%">
+<img src="docs/howTos/view-results/images/view-results-heatmap-builder.png" alt="Heatmaps builder empty state" width="80%">
 
 ---
 
