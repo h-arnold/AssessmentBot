@@ -106,7 +106,7 @@ class ABClassMutationOps {
   /**
    * Removes the full class collection and its registry row.
    * @param {Object} parameters - Class identifier.
-   * @returns {{classId: string, hasDeletedFullClass: boolean, hasDeletedClassPartial: boolean}} Deletion flags.
+   * @returns {{classId: string, hasDeletedFullClass: boolean, hasDeletedClassPartial: boolean}} Deletion flags, where `hasDeletedFullClass` mirrors the `dropCollection()` result: true only when this call removed the collection, false when it was already absent.
    */
   deleteABClass(parameters) {
     Validate.requireParams({ classId: parameters?.classId }, 'deleteABClass');
@@ -116,8 +116,7 @@ class ABClassMutationOps {
     let hasDeletedClassPartial = false;
 
     try {
-      this._dbManager.getDb().dropCollection(classId);
-      hasDeletedFullClass = true;
+      hasDeletedFullClass = this._dbManager.getDb().dropCollection(classId);
     } catch (error) {
       if (!this._validation._isMissingCollectionError(error)) {
         throw error;

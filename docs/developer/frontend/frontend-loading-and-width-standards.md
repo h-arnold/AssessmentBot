@@ -13,7 +13,6 @@ Use it alongside:
 
 - Applies to all active frontend surfaces in `src/frontend`, including pages, tab contents, panels, card-like surfaces, table cards, dialogs, and comparable owned regions.
 - Applies to initial blocking load, background refresh, required-data degradation, and short-running mutations.
-- Does not redesign long-running write workflows or background-job progress tracking.
 
 ## 2. Owned-surface terminology
 
@@ -28,7 +27,7 @@ Use it alongside:
 - By default, reuse the standard blocking-error primitive for that region.
 - Unless a stronger documented UX case exists, that primitive should be an Ant Design `Alert` rendered in the affected owned region.
 - For full-page blocking states — where the entire owned surface is replaced because no usable content can be shown — an Ant Design `Result` is an acceptable alternative when the severity and scope warrant a more prominent treatment than a subregion `Alert`. The `Result` provides a centred, full-width outcome card with `title`, optional `subTitle`, and an `extra` action slot for retry/back navigation. The `Alert` remains the default for subregion blocking (e.g., a single panel).
-- **Current example:** The Class page (`src/frontend/src/features/classPage/`) uses `Result` for its six error-type blocking states. Retryable errors (`classQueryError`, `analyserError`, `assignmentDefinitionPartialsFailed`, `assignmentDefinitionPartialsUntrustworthy`) use `Result status="warning"` with `Retry` + `Back to Classes` buttons. Non-retryable errors (`classNotFound`, `adapterError`) use `Result status="error"` with only `Back to Classes`. The deviation from the default `Alert` pattern is documented in `SPEC_CLASS_PAGE.md` §"Error, loading, and empty-state rules".
+- **Current example:** The Class page (`src/frontend/src/features/classPage/`) uses `Result` for its six error-type blocking states. Retryable errors (`classQueryError`, `analyserError`, `assignmentDefinitionPartialsFailed`, `assignmentDefinitionPartialsUntrustworthy`) use `Result status="warning"` with `Retry` + `Back to Classes` buttons. Non-retryable errors (`classNotFound`, `adapterError`) use `Result status="error"` with only `Back to Classes`. The statuses and copy are defined in `src/frontend/src/features/classPage/ClassPageContent.tsx`.
 
 ### 2.3 Outer frame and inner panel
 
@@ -171,12 +170,11 @@ const hasTrustworthyReferenceData =
 
 Heatmap pages and their heatmap content panels consume the full width of their available parent content region. They apply no fixed page or panel maximum, so on ultrawide viewports they keep consuming width instead of settling at the capped page or panel width.
 
-This is a deliberately narrow exception:
+This exception applies only to heatmap pages and their heatmap content panels:
 
-- It applies only to heatmap pages and their heatmap content panels. It is **not** a change to capped sibling pages or to the centred narrow settings-panel widths.
-- Shell content padding still applies; the exception removes the width cap, not the shell frame.
-- The heatmap table keeps its own internal horizontal scrolling. The exception widens the container that holds the table; it does not force the table to fit the viewport.
-- Because the exception removes a cap rather than adding a width, it introduces no new width token. Keep named exceptions few, centralised, and named by intent.
+- Shell content padding continues to apply; only the width cap is removed.
+- The heatmap table keeps its own internal horizontal scrolling; the exception widens the container that holds the table.
+- Keep named exceptions few, centralised, and named by intent.
 
 ### 7.2 Sticky tables in student-table surfaces
 

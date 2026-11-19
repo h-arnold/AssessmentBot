@@ -347,7 +347,7 @@ describe('ABClass metadata storage lifecycle and compatibility', () => {
     expect(result).not.toHaveProperty('metadata');
   });
 
-  it('characterises the vendor false-return deletion flag without applying the deferred fix', () => {
+  it('reports a false full-deletion flag when the vendor drop reports an absent collection', () => {
     const partial = collection('abclass_partials', []);
     const manager = {
       getDb: () => ({ dropCollection: vi.fn(() => false) }),
@@ -359,7 +359,7 @@ describe('ABClass metadata storage lifecycle and compatibility', () => {
     globalThis.DbManager = { getInstance: () => manager };
     expect(new ABClassController().deleteABClass({ classId: 'absent-class' })).toEqual({
       classId: 'absent-class',
-      hasDeletedFullClass: true,
+      hasDeletedFullClass: false,
       hasDeletedClassPartial: false,
     });
   });

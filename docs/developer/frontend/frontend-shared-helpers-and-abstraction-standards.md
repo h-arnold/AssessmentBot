@@ -1,6 +1,6 @@
 # Frontend Shared Helpers and Abstraction Standards
 
-This document is the canonical policy for shared-helper discovery and abstraction decisions in `src/frontend`. For topic-specific docs, see [Section 8](#8-relationship-to-other-canonical-docs).
+This document is the policy for shared-helper discovery and abstraction decisions in `src/frontend`. For topic-specific docs, see [Other canonical docs](#8-relationship-to-other-canonical-docs).
 
 ## 1. Purpose and scope
 
@@ -18,13 +18,13 @@ It applies to production frontend source under `src/frontend/src/**`.
 Before creating any new helper, you must:
 
 1. identify the behaviour you want to share
-2. check the canonical helper locations in Section 3
+2. check the [canonical helper map](#canonical-helper-map-check-these-first)
 3. prefer extending an existing helper when it keeps that helper coherent
 4. create a new helper only when no suitable helper exists
 
 Do not create a new helper only to move code out of a large file.
 
-## 3. Canonical helper map (check these first)
+## Canonical helper map (check these first)
 
 ### 3.1 Server-state and query contracts
 
@@ -36,34 +36,41 @@ Do not create a new helper only to move code out of a large file.
 
 ### 3.1a Hooks and derivation helpers
 
-- Page dataset-state hook and pure helpers: `src/frontend/src/hooks/usePageDataset.ts` — also hosts the shared neutral `computeDatasetBlockingReason` / `DatasetBlockingReason` resolver (a discriminated reason: `none` | `failed` | `untrustworthy` | `queryError`) used by both `classPage` (`useClassPageData.helpers`) and the standalone Heatmaps surface (`heatmapsSurfaceState`) to derive their feature-specific blocking errors from a single precedence decision
-- Once-only conditional callback hook (React 19 StrictMode-safe): `src/frontend/src/hooks/useLogOnce.ts`
-- Shared post-analysis extension point: `src/frontend/src/hooks/usePostAnalysisTasks.ts` owns the generic context/outcome lifecycle, with schemas and the ordered runner under `services/dataAnalysis/postAnalysis/`. `src/frontend/src/hooks/usePagePostAnalysisTasks.ts` is the canonical page eligibility/context wrapper: it builds a memoised context only when the surface is `ready` with complete class, live definitions and a successful averaging result, creates the descriptor list once per mount and forwards the committed selected class ID. Both averaging surfaces call it directly. Register future tasks once in `createPostAnalysisTaskDescriptors` and import actual owners directly, without a facade/barrel. See [lifecycle and registration rules](data-analysis-architecture.md#shared-post-analysis-lifecycle-and-extension).
-- Post-analysis feedback/invalidation: `hooks/postAnalysisFeedback.ts` owns mount/class-scoped notification identity and dismissal memory, using the required `App.useApp().notification` host, and `hooks/postAnalysisInvalidation.ts` completes confirmed metadata saves with both required query settlements inside the cached attempt. See the canonical [feedback](frontend-logging-and-error-handling.md#post-analysis-metadata-failures) and [query](frontend-react-query-and-prefetch.md#post-analysis-metadata-invalidation) contracts. Task diagnostics belong to `services/dataAnalysis/postAnalysis/postAnalysisDiagnostics.ts`, not per-feature loggers.
+- Page dataset-state hook: `src/frontend/src/hooks/usePageDataset.ts`.
+- Shared neutral blocking-reason resolver: `computeDatasetBlockingReason` / `DatasetBlockingReason`, also in `usePageDataset.ts`. The discriminated reason (`none` | `failed` | `untrustworthy` | `queryError`) lets `classPage` (`useClassPageData.helpers`) and the standalone Heatmaps surface (`heatmapsSurfaceState`) derive feature-specific blocking errors from one precedence decision.
+- Once-only conditional callback hook (React 19 StrictMode-safe): `src/frontend/src/hooks/useLogOnce.ts`.
+- Shared post-analysis extension point: `src/frontend/src/hooks/usePostAnalysisTasks.ts` owns the generic context/outcome lifecycle; schemas and the ordered runner live under `services/dataAnalysis/postAnalysis/`.
+- Page eligibility wrapper: `src/frontend/src/hooks/usePagePostAnalysisTasks.ts` builds a memoised context only when the surface is `ready` with complete class, live definitions and a successful averaging result, creates the descriptor list once per mount and forwards the committed selected class ID. Both averaging surfaces call it directly. Register future tasks once in `createPostAnalysisTaskDescriptors` and import actual owners directly, without a facade or barrel. See [lifecycle and registration rules](data-analysis-architecture.md#shared-post-analysis-lifecycle-and-extension).
+- Post-analysis feedback: `hooks/postAnalysisFeedback.ts` owns mount/class-scoped notification identity and dismissal memory using the required `App.useApp().notification` host. See the [feedback contract](frontend-logging-and-error-handling.md#post-analysis-metadata-failures).
+- Post-analysis invalidation: `hooks/postAnalysisInvalidation.ts` completes confirmed metadata saves with both required query settlements inside the cached attempt. See the [query contract](frontend-react-query-and-prefetch.md#post-analysis-metadata-invalidation).
+- Task diagnostics: `services/dataAnalysis/postAnalysis/postAnalysisDiagnostics.ts`.
 
 ### 3.2 Error and transport helpers
 
-- Unknown-error normalisation: `src/frontend/src/errors/normaliseUnknownError.ts`
-- Unknown → `Error` normalisation: `toError(unknown): Error` in `src/frontend/src/errors/normaliseUnknownError.ts` — the canonical `unknown → Error` helper used across features; complements `normaliseUnknownError` (which returns a plain payload) when a caller needs a concrete `Error` instance
+- Unknown-error helpers: `src/frontend/src/errors/normaliseUnknownError.ts` exports `normaliseUnknownError` (plain payload) and `toError` (concrete `Error` instance).
 - Blocking-load trust-boundary helper: `src/frontend/src/errors/blockingLoadError.ts`
 - Shared blocking-error → `Result` config resolver and `BlockingConfig` type: `src/frontend/src/errors/blockingConfig.ts` (per-feature copy maps supply the error-specific titles; the resolver mechanism is shared)
 - Transport error contract: `src/frontend/src/errors/apiTransportError.ts`
-- Frontend logger and redaction/normalisation flow: `src/frontend/src/logging/frontendLogger.ts`; the standalone Heatmaps feature's pipeline and assembly diagnostics route through the bounded-dedupe `logPipelineError` wrapper in `src/frontend/src/features/taskHeatmap/heatmapsPipeline.ts` rather than calling the sink directly, so an identical diagnostic raised on a memo recomputation is logged once.
-- API transport: `callApi`, `parseApiResponse` and `ApiRequestSchema` in `src/frontend/src/services/apiService.ts` — the actual transport owner, not a facade. Import transport symbols here directly.
-- Sequential API request/local-task queue: `callApiQueued`, `runApiQueuedTask`, `getQueueState`, `cancelApiQueued`, and `QueueState` in `src/frontend/src/services/api/apiQueue.ts` — import directly from this owner. Ordinary calls and local tasks share one Map/Set registry with FIFO ordering per job name; different jobs may run in parallel. `runApiQueuedTask(jobName, task)` reserves the lane across the callback's full operation, including awaited read/merge/write work. Synchronous throws and asynchronous rejections preserve the original failure and release the lane. Cancellation rejects pending entries with `{ reason: 'CANCELLED' }` without executing their callbacks; active work continues.
-  - Callbacks and their results stay local, never GAS payloads. Network work inside a task uses `callApi` directly; central transport retry ownership is unchanged. Never await another enqueue on the same lane inside a task: it deadlocks behind the reserved slot. Extend this queue rather than adding a parallel queue.
+- Frontend logger and redaction/normalisation flow: `src/frontend/src/logging/frontendLogger.ts`.
+- Heatmaps pipeline and assembly diagnostics route through the bounded-dedupe `logPipelineError` wrapper in `src/frontend/src/features/taskHeatmap/heatmapsPipeline.ts`, so an identical diagnostic raised on a memo recomputation is logged once.
+- API transport: `callApi`, `parseApiResponse` and `ApiRequestSchema` in `src/frontend/src/services/apiService.ts`. Import transport symbols directly from this owner.
+- Sequential API request/local-task queue: `callApiQueued`, `runApiQueuedTask`, `getQueueState`, `cancelApiQueued` and `QueueState` in `src/frontend/src/services/api/apiQueue.ts`. Import directly from this owner and extend this queue rather than adding a parallel one.
+- Ordinary calls and local tasks share one Map/Set registry with FIFO ordering per job name; different jobs run in parallel. `runApiQueuedTask(jobName, task)` reserves the lane across the callback's full operation, including awaited read/merge/write work. Synchronous throws and asynchronous rejections preserve the original failure and release the lane. Cancellation rejects pending entries with `{ reason: 'CANCELLED' }` without executing their callbacks while active work continues.
+- Callbacks and their results stay local, never GAS payloads. Network work inside a task uses `callApi` directly. Never await another enqueue on the same lane inside a task: it deadlocks behind the reserved slot.
 
 ### 3.3 Feature-shared helpers (existing local precedents)
 
-- Class-page assignment warm-up: `src/frontend/src/features/classPage/useClassPageAssignmentPrefetch.ts` owns the ready-only effect, per-instance class guard and top-three limit; `useClassPageData` calls it directly. See the [prefetch contract](frontend-react-query-and-prefetch.md#current-view-entry-prefetches). This remains feature-local, not a generic prefetch hook.
-- Heatmaps preview-query support: `src/frontend/src/features/taskHeatmap/heatmapsPreviewQueries.ts` owns the typed `buildDisabledQueryOptions<T>(queryKey)` (`skipToken`, returning `UseQueryOptions<T, Error>` without a cast), `buildPreviewInput`, `buildPreviewInputsByAssignmentId` (id-keyed pairing that synthesises a pending input for a deferred assignment with no urgent-keyed result), the stable empty lookup and `AssignmentPreviewCombined`. `useHeatmapsPageData` retains query callbacks, memoised assembly, refresh wiring and diagnostics; live definition analysis stays in its existing pipeline. This is feature-local support, not a global query-helper family.
+- Class-page assignment warm-up: `src/frontend/src/features/classPage/useClassPageAssignmentPrefetch.ts` owns the ready-only effect, per-instance class guard and top-three limit; `useClassPageData` calls it directly. Keep it feature-local. See the [prefetch contract](frontend-react-query-and-prefetch.md#current-view-entry-prefetches).
+- Heatmaps preview-query support: `src/frontend/src/features/taskHeatmap/heatmapsPreviewQueries.ts` owns `buildDisabledQueryOptions<T>(queryKey)` (`skipToken`, returning `UseQueryOptions<T, Error>` without a cast), `buildPreviewInput`, `buildPreviewInputsByAssignmentId` (id-keyed pairing that synthesises a pending input for a deferred assignment with no urgent-keyed result), the stable empty lookup and `AssignmentPreviewCombined`.
+- Query callbacks, memoised assembly, refresh wiring and diagnostics stay in `useHeatmapsPageData`; live definition analysis stays in its existing pipeline. Keep this support feature-local.
 - Classes table shaping/filtering helpers: `src/frontend/src/features/classes/table/ClassesTable.helpers.ts`
 - Classes bulk-mutation orchestration helper (sequential FIFO): `src/frontend/src/features/classes/bulk/runQueuedBatchMutation.ts`
 - Classes batch-mutation shared types: `src/frontend/src/features/classes/bulk/batchMutationEngine.ts`
 - Classes metadata bulk-update helper: `src/frontend/src/features/classes/bulk/bulkMetadataUpdateFlow.ts`
 - Classes query refresh and invalidation contract helpers: `src/frontend/src/features/classes/bulk/queryInvalidation.ts`
 - Classes bulk-mutation outcome resolution: `src/frontend/src/features/classes/bulk/bulkMutationResolution.ts` — turns settled batch results into the alert, close and refresh-required UI state.
-- Classes bulk-mutation failure copy: `src/frontend/src/features/classes/bulk/bulkMutationFailureMessages.ts` — owns the `BulkFailureMessageCopy` type and the six pure action-specific failure-message builders (shared, create, delete, set-active, set-inactive, metadata) plus their user-facing copy. `bulkMutationResolution.ts` re-exports these bindings unchanged for compatibility, so existing consumers keep importing through it; new call sites import the failure-copy helpers from the owning module.
+- Classes bulk-mutation failure copy: `src/frontend/src/features/classes/bulk/bulkMutationFailureMessages.ts` owns `BulkFailureMessageCopy` and the action-specific failure-message builders (shared, create, delete, set-active, set-inactive, metadata) plus their user-facing copy.
+- `bulkMutationResolution.ts` re-exports these bindings for existing consumers; new call sites import them from the owning module.
 - Reference-data workflow helpers: `src/frontend/src/features/referenceData/manageReferenceDataHelpers.ts`
 - Year-group presentation ordering: `src/frontend/src/features/referenceData/yearGroupSorting.ts` — source of truth for immutable, natural year-group ordering.
 - Classes bulk form modal scaffold: `src/frontend/src/features/classes/bulk/BulkFormModalScaffold.tsx` — three-caller shell owning reset-on-cancel, submit-on-OK, inline submission error rendering, and busy semantics.
@@ -84,7 +91,7 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 
 ### 3.5 Shared presentational components
 
-- `PageNavCard` `wrapActions`: opt-in action wrapping on `components/PageHeader/PageHeader.tsx`. True enables outer Flex wrapping with `gap={APP_GAP_SM}` (8px), and action Space wrapping with existing tight spacing. Omitted/false keeps current layout. Only `TaskHeatmapPage`'s normal navigation opts in; its title-error branch stays unchanged. Wrapped single-item rows are left-aligned. No new tag helper or navigation component is needed.
+- `PageNavCard` `wrapActions`: opt-in action wrapping on `components/PageHeader/PageHeader.tsx`. True enables outer Flex wrapping with `gap={APP_GAP_SM}` (8px) and action Space wrapping with existing tight spacing; omitted/false keeps current layout. Only `TaskHeatmapPage`'s normal navigation opts in; its title-error branch stays unchanged. Wrapped single-item rows are left-aligned.
 
 - `ImageRenderer`: shared presentational component at `src/frontend/src/components/ImageRenderer/ImageRenderer.tsx`. Renders a base64 data URL as a constrained `<img>` (maxWidth 100%, height auto, maxHeight 400, default alt "Student response image").
 - `MarkdownRenderer`: shared presentational component at `src/frontend/src/components/MarkdownRenderer/MarkdownRenderer.tsx`. Renders markdown text and tables via `react-markdown` + `remark-gfm` (no `rehype-raw`, for XSS safety), with co-located CSS for basic table styling.
@@ -92,45 +99,51 @@ Test helper placement rules remain governed by `docs/developer/frontend/frontend
 
 ### 3.6 Student-name helpers
 
-- `splitStudentName`: shared deterministic helper module at `src/frontend/src/utils/splitStudentName.ts`. It exports:
-  - `splitStudentName(studentName: string): { forename: string; surname: string }` — the first whitespace-separated token becomes `forename`; the remaining tokens are joined with single spaces as `surname`. Leading, trailing, and repeated internal whitespace is collapsed; an empty or whitespace-only name returns two empty strings. Honourifics are never special-cased.
-  - `compareStudentNamePart(part: 'forename' | 'surname', a, b): number` — selects the requested derived part of two `Readonly<{ studentName: string; studentId: string }>` rows, compares them locale-aware and case-insensitively, and tie-breaks by ascending `studentId`. The comparison is direction-neutral; call sites apply direction inversion.
-- Consumers: the Student Averages table (`features/classPage/studentAveragesTableColumns.tsx` column renderers and per-column sorters, and `features/classPage/classPageModel.ts` explicit derived sort) and the Task Heatmap table (`features/taskHeatmap/TaskHeatmapTable.tsx` two fixed name columns and their sorters). No duplicate per-feature name-splitting logic is permitted.
-- **Standing requirement:** all tables displaying a student name use Forename and Surname columns derived via this shared helper. Default ordering stays full-name ascending through the unchanged `compareStudentNames` comparator.
-- Shared Forename/Surname Ant Design columns: `buildStudentNameColumns<Row>()` at `src/frontend/src/features/shared/studentNameTableColumns.tsx` — the column counterpart consumed by the two tables above. It takes no column options and always emits `fixed: 'start'` on Forename and Surname, because both consumers need fixed name columns and no caller needs the non-fixed variant. Do not introduce a column-options parameter or a non-fixed variant.
-- `src/frontend/src/utils/splitStudentName.ts` is pure: no React, Ant Design, I/O, or state dependencies. `studentNameTableColumns.tsx` is not: it imports Ant Design `Typography` and renders JSX.
+- `splitStudentName` and `compareStudentNamePart`: `src/frontend/src/utils/splitStudentName.ts`. See their JSDoc for signatures and behaviour.
+- Consumers: the Student Averages table (`features/classPage/studentAveragesTableColumns.tsx` and `features/classPage/classPageModel.ts`) and the Task Heatmap table (`features/taskHeatmap/TaskHeatmapTable.tsx`).
+- **Standing requirement:** all tables displaying a student name use Forename and Surname columns derived via this shared helper. Default ordering stays full-name ascending through `compareStudentNames`.
+- Shared Forename/Surname Ant Design columns: `buildStudentNameColumns<Row>()` at `src/frontend/src/features/shared/studentNameTableColumns.tsx`, the column counterpart consumed by the two tables above. It takes no column options and always emits `fixed: 'start'` on both columns, which every consumer needs.
+- `splitStudentName.ts` is pure: no React, Ant Design, I/O, or state dependencies. `studentNameTableColumns.tsx` imports Ant Design `Typography` and renders JSX.
 
 ### 3.7 Data analysis display and projection helpers
 
-- Metric display family: `src/frontend/src/services/dataAnalysis/metricDisplay/` — `resolveMetricTone` and `MetricPill.tsx` (colour and tone), `metricDisplayText.ts` (`formatMetricDisplayText`), `metricComparator.ts` and `metricStateRank.ts` (state-aware column ordering), and the score-range filter helpers (`metricRangeKey.ts`, `metricRangeFilter*.tsx`). One shared vocabulary for metric colour, text, ordering, and filtering across the Class page and the task heatmap; these were planned as shared because cohort, trend, and distribution analyses are the accepted second caller. The colour and label contract (including the `MetricToneColor` union) is cross-spec — do not restate or retype it per feature.
-- Student-name row ordering: `src/frontend/src/services/dataAnalysis/compareStudentNames.ts` — callers consume it directly; do not add a feature-local wrapper. The Forename/Surname column comparator stays in Section 3.6.
-- Heatmap projection: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts` and `heatmapAdapter.merged.ts` — the shared `AveragingResult` → heatmap boundaries; feature-local heatmap helpers stay under `src/frontend/src/features/taskHeatmap/`. The analyser package and `taskKey.ts` inventory lives in `docs/developer/frontend/data-analysis-architecture.md`; do not duplicate it here.
+- Metric display family: `src/frontend/src/services/dataAnalysis/metricDisplay/` — `resolveMetricTone` and `MetricPill.tsx` (colour and tone), `metricDisplayText.ts` (`formatMetricDisplayText`), `metricComparator.ts` and `metricStateRank.ts` (state-aware column ordering), and the score-range filter helpers (`metricRangeKey.ts`, `metricRangeFilter*.tsx`). One shared vocabulary for metric colour, text, ordering and filtering across the Class page and the task heatmap. The colour and label contract (including the `MetricToneColor` union) is shared across specs; do not restate or retype it per feature.
+- Student-name row ordering: `src/frontend/src/services/dataAnalysis/compareStudentNames.ts`. Callers consume it directly; the Forename/Surname column comparator stays in [Student-name helpers](#36-student-name-helpers).
+- Heatmap projection: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts` and `heatmapAdapter.merged.ts` define the shared `AveragingResult` → heatmap boundaries; feature-local heatmap helpers stay under `src/frontend/src/features/taskHeatmap/`. The analyser package and `taskKey.ts` inventory lives in `docs/developer/frontend/data-analysis-architecture.md`.
 
 ### 3.8 Assignment and definition helpers
 
 - Assignment transport: `src/frontend/src/services/assignmentAssessment/` — the `getAssignment` service (`assignmentAssessmentService.ts`) plus `AssignmentFullSchema` / `AssignmentFullResponseSchema` validation (`assignmentAssessment.zod.ts`).
-- Assignment-read normalisation: `src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts` owns the pure full/partial `normaliseAssignmentRead`/`normaliseClassRead` entry points, `assignmentReadItemValidation.ts` owns pure per-item/source validation, corruption replacement and safe diagnostic paths, and `assessmentResult.zod.ts` owns the shared full/partial result, score and cause schemas. Each read service performs a cheap root-only `parseApiResponse` stub parse with the assignment or submission collection emptied, for fail-fast transport errors and the not-found `null` contract, then calls the normaliser, which validates each item exactly once and assembles the typed result. Import these owners directly from the assignment-assessment folder; there is no barrel or facade.
+- Assignment-read normalisation owners: `src/frontend/src/services/assignmentAssessment/assignmentReadNormalisation.ts` (`normaliseAssignmentRead` / `normaliseClassRead`), `assignmentReadItemValidation.ts` (per-item/source validation, corruption replacement, safe diagnostic paths) and `assessmentResult.zod.ts` (full/partial result, score and cause schemas).
+- Each read service performs a cheap root-only `parseApiResponse` stub parse with the collection emptied, then calls the normaliser, which validates each item once and assembles the typed result. Import these owners directly; there is no barrel.
 - Effective weighting: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` — `TaskWeightingIndex` and `computeEffectiveWeight`, the single effective-weight resolver for analyser accumulation and heatmap column projection.
 - Assignment-weighting coercion: `src/frontend/src/services/assignmentDefinition/assignmentDefinitionUtilities.ts` — `coerceAssignmentWeighting(value: unknown): number`, which returns every primitive number unchanged and falls back to the schema-owned `DEFAULT_WEIGHTING_VALUE` only for non-numbers. It is **distinct from `computeEffectiveWeight`** (different nullable/validation semantics) and is the form-level coercion consumed by the wizard dirty checks, the save/reparse builders and recovery approval. The legacy `assignmentWizardFormState.ts` export path re-exports the same binding and must be retained for existing consumers.
 
 ### 3.9 Shared input components
 
-- `SelectWithAddNew`: Ant Design `Select` wrapper at `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.tsx` that appends one `Add new` sentinel option. Selecting it is an immediate **command**, not a value. Consumers: `features/classes/bulk/BulkCreateModal.tsx`, `features/classes/bulk/BulkSetSelectModal.tsx` and `features/assignmentWizard/AssignmentDefinitionWizardReviewContent.tsx`. Contract:
-  - **Dispatch is immediate.** The wrapper calls `onAddNew` synchronously from the selection change and never forwards the sentinel through the caller's `onChange`. It has no `debounceMs` prop; do not reintroduce a delay on this modal-open command. `src/frontend/src/hooks/useDebounce.ts` is unchanged for its other callers.
-  - **Value ownership.** A controlled `value` prop (detected by property presence, so explicit `undefined` counts) stays authoritative, and a nullish value is passed to Ant Design as `null` so its internal uncontrolled sentinel cannot leak. Without a `value` prop the wrapper tracks the normal selection itself, seeded from `defaultValue`; normal `onChange`, `allowClear` and `labelInValue` payloads keep their original shape, including the labelled `{ value, label }` object.
-  - **State stays with the caller.** The wrapper keeps no timers, callback registry or created-entity state. The caller owns the manager-modal open state, and its open transition is idempotent.
-  - Placement rationale: the wrapper is a cross-feature shared component with three active callers, so it belongs in `components/`; its value handling is not a general helper and must stay local to it.
+- `SelectWithAddNew`: Ant Design `Select` wrapper at `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.tsx` that appends one `Add new` sentinel option. Consumers: `features/classes/bulk/BulkCreateModal.tsx`, `features/classes/bulk/BulkSetSelectModal.tsx` and `features/assignmentWizard/AssignmentDefinitionWizardReviewContent.tsx`.
+- Selecting the sentinel is an immediate **command**, not a value: `onAddNew` is called synchronously and the sentinel is never forwarded through `onChange`. The wrapper has no `debounceMs` prop; `useDebounce` keeps its other callers.
+- A controlled `value` prop (detected by property presence, so explicit `undefined` counts) stays authoritative, and a nullish value reaches Ant Design as `null` so its internal sentinel cannot leak. Without `value`, the wrapper tracks the normal selection itself, seeded from `defaultValue`; `onChange`, `allowClear` and `labelInValue` payloads keep their original shape, including the labelled `{ value, label }` object.
+- The caller owns the manager-modal open state and its open transition is idempotent. The wrapper belongs in `components/` because it is cross-feature; its value handling stays local to it.
+
+<a id="928-frontend-abclass-metadata-and-post-analysis"></a>
 
 ### 3.10 ABClass metadata schema
 
-- ABClass metadata schema family: `src/frontend/src/services/abClass/abClassMetadata.zod.ts` — the single frontend owner of the ABClass wire metadata contract. `ABClassMetadataSchema` validates the nullable whole value; `NonNullableABClassMetadataSchema` validates a complete non-null snapshot and is the merge/write-path schema. `ClassAveragesSchema`, `AverageScoresSchema`, `RecentAssignmentSchema`, `CanonicalMetadataTimestampSchema` and their inferred types are exported for the class-read, mutation and post-analysis owners that consume them. Raw own-key/plain-prototype checks run before Zod copies input, and validation enforces canonical UTC timestamps, the numeric-or-`N`/`E`/`excluded` score union, dense zero-to-three recent entries, unique assignment IDs and newest-first non-increasing timestamps. Never duplicate these record rules in a consumer. Both class-read schemas require this schema: `ClassPartialSchema` and `ClassFullSchema` treat metadata as required and nullable as a whole, with no frontend default.
-- Mutation request schemas: `src/frontend/src/services/abClass/abClassMutations.zod.ts` exports `UpsertABClassRequestSchema`, `UpdateABClassRequestSchema` and inferred request types. Upsert requires `classId`, non-null string `cohortKey`/`yearGroupKey` and a positive safe-integer `courseLength`; null keys reject, matching backend `Validate.requireParams`. Update requires `classId` and permits optional nullable cohort/year-group keys, optional positive safe-integer `courseLength` and optional nullable boolean `active`. Explicit nulls survive only for nullable update fields. Strict own-key checks reject supplied undefined, protected roster/assignment fields and unknown keys before enqueue; no coercion or defaults apply. Metadata remains optional and nullable for both mutations: omission preserves the stored value, null clears it, and a supplied snapshot replaces it whole through the shared metadata schema, detached before queueing. Nested metadata patches reject.
-- Queued mutation wrappers: `src/frontend/src/services/abClass/abClassMutationService.ts` exports `upsertABClass`, `updateABClass` and the `CLASSES_BULK_MUTATION_JOB_NAME` lane symbol. Both wrappers validate before admission to the actual `classesBulkMutation` FIFO, then parse the response through `parseApiResponse(ClassPartialSchema, ...)`; transport errors and retry ownership are unchanged. Reserved-slot owners import the lane constant instead of repeating the string. Import these owners directly, without a facade or barrel. Never await these queued wrappers inside an active reservation on the same lane.
+- ABClass metadata schema family: `src/frontend/src/services/abClass/abClassMetadata.zod.ts` is the frontend owner of the ABClass wire metadata contract. `ABClassMetadataSchema` validates the nullable whole value; `NonNullableABClassMetadataSchema` validates a complete non-null snapshot for merge/write paths.
+- `ClassAveragesSchema`, `AverageScoresSchema`, `RecentAssignmentSchema`, `CanonicalMetadataTimestampSchema` and their inferred types are exported for the class-read, mutation and post-analysis owners.
+- Raw own-key/plain-prototype checks run before Zod copies input. Validation enforces canonical UTC timestamps, the numeric-or-`N`/`E`/`excluded` score union, dense zero-to-three recent entries, unique assignment IDs and newest-first non-increasing timestamps. Do not duplicate these rules in a consumer.
+- `ClassPartialSchema` and `ClassFullSchema` require metadata as a whole and nullable, with no frontend default.
+- Mutation request schemas: `src/frontend/src/services/abClass/abClassMutations.zod.ts` exports `UpsertABClassRequestSchema`, `UpdateABClassRequestSchema` and inferred request types.
+- Upsert requires `classId`, non-null string `cohortKey`/`yearGroupKey` and a positive safe-integer `courseLength`; null keys reject, matching backend `Validate.requireParams`. Update requires `classId` and permits optional nullable cohort/year-group keys, optional positive safe-integer `courseLength` and optional nullable boolean `active`. Explicit nulls survive only for nullable update fields.
+- Strict own-key checks reject supplied undefined, protected roster/assignment fields and unknown keys before enqueue; no coercion or defaults apply. Metadata remains optional and nullable for both mutations: omission preserves the stored value, null clears it, and a supplied snapshot replaces it whole through the shared metadata schema, detached before queueing. Nested metadata patches reject.
+- Queued mutation wrappers: `src/frontend/src/services/abClass/abClassMutationService.ts` exports `upsertABClass`, `updateABClass` and the `CLASSES_BULK_MUTATION_JOB_NAME` lane symbol. Both wrappers validate before admission to the `classesBulkMutation` FIFO, then parse the response through `parseApiResponse(ClassPartialSchema, ...)`. Reserved-slot owners import the lane constant instead of repeating the string; import these owners directly. Await these wrappers only outside an active reservation on the same lane.
 - Pure metadata refresh helpers: `services/dataAnalysis/postAnalysis/metadataProjection.ts` owns `getMetadataRefreshDecision`, `compareAssignmentNewestFirst`, `projectAverageScores` and `mergeClassMetadata`: canonical source-time gating, shared newest-first/ID ordering, unrounded score/marker projection and stable newest-first rolling history capped at three assignment instances. `mergeClassMetadata` validates its replacement through `NonNullableABClassMetadataSchema` and returns the non-null snapshot directly.
 - Metadata task identity: `services/dataAnalysis/postAnalysis/postAnalysisTasks.ts` owns `REFRESH_AB_CLASS_METADATA_TASK_ID`, `createPostAnalysisTaskDescriptors`, `sourceVersionSignature` and the metadata attempt key. Feedback, invalidation and diagnostics import the task-ID constant; diagnostics reuse the metadata comparator. Do not duplicate the task-ID literal or the canonical newest-first ordering.
-- Metadata task entry: `services/dataAnalysis/postAnalysis/refreshABClassMetadata.ts` owns `refreshABClassMetadata(context: PostAnalysisContext, now)`, which skips unchanged/stale/empty cached sources before enqueue, calculation or clock access. It uses the shared schema-derived context and declares no narrowed task-local type. It delegates changed candidates to `services/abClass/abClassMetadataService.ts` (`refreshABClassMetadataInQueue`). The writer reserves the `CLASSES_BULK_MUTATION_JOB_NAME` lane across fresh full read, authoritative recheck, full-class and isolated-target standard-weight analysis, complete metadata update and real partial-response parsing. No nested enqueue, upsert, rollback or task retry exists. See [Data Analysis Architecture](data-analysis-architecture.md#metadata-refresh-task-and-persistence) for cache limitations and session-local guarantees. Both averaging surfaces call the shared page hook directly with the unsliced class and committed class ID.
+- Metadata task entry: `services/dataAnalysis/postAnalysis/refreshABClassMetadata.ts` owns `refreshABClassMetadata(context: PostAnalysisContext, now)`, which skips unchanged/stale/empty cached sources before enqueue, calculation or clock access. It uses the shared schema-derived context and delegates changed candidates to `services/abClass/abClassMetadataService.ts` (`refreshABClassMetadataInQueue`).
+- The writer reserves the `CLASSES_BULK_MUTATION_JOB_NAME` lane across fresh full read, authoritative recheck, full-class and isolated-target standard-weight analysis, complete metadata update and real partial-response parsing. Both averaging surfaces call the shared page hook directly with the unsliced class and committed class ID. See [Data Analysis Architecture](data-analysis-architecture.md#metadata-refresh-task-and-persistence) for cache limitations and session-local guarantees.
 
-## 4. Extraction decision rules
+## Extraction decision rules
 
 ### 4.1 Keep logic local when
 
@@ -156,9 +169,18 @@ Reject these patterns during implementation and review:
 
 - single-caller wrapper extraction that does not own an independent contract
 - duplicated orchestration skeletons copied across handlers instead of descriptor-driven derivation
+- a parallel derivation, preview or query path beside an existing owner
 - duplicated routing render sources for the same navigation key set
 - mirrored validation error state where two stores track the same errors without distinct responsibilities
 - ad-hoc helper modules created without checking the canonical helper map
+
+### Library behaviour notes
+
+- `Select.optionRender` exposes no `selected` flag; derive option state from controlled-value membership.
+- Expose a disabled control's reason both as a hover `Tooltip` and an sr-only `aria-describedby` node, with an intermediate `<span>` around the `Tooltip`'s cloned child so the binding survives.
+- `Table.defaultSortOrder` does not apply the initial sort in the installed version; pre-sort `dataSource` (for example `rows.toSorted(compareStudentNames)`).
+- A disabled `Button` needs a `<span>` wrapper for its tooltip, because `Tooltip` does not trigger on a disabled button.
+- Ant Design `Select` advances its internal selection before `onChange` runs, so intercepting the `Add new` sentinel in `onChange` alone cannot stop it appearing as the displayed label; `SelectWithAddNew` owns its own selection.
 
 ## 6. Placement and naming
 
@@ -195,86 +217,3 @@ Use topic-specific docs for runtime policy details:
 - Logging and error-handling policy: `docs/developer/frontend/frontend-logging-and-error-handling.md`
 - Testing helper and harness policy: `docs/developer/frontend/frontend-testing.md`
 - Shell navigation and motion policy: `docs/developer/frontend/frontend-shell-navigation-and-motion.md`
-
-## 9. Helper decision register
-
-Section 3 lists what exists; this section records what was **decided** — especially what the code cannot show: helpers deliberately not extracted, designs rejected or superseded, and delivered decisions whose reasoning must not be undone.
-
-Rules for new entries:
-
-- Record one line: entry ID, decision, owning path, and a brief why. Add the why only when Section 4 would not give the same answer.
-- Durable helper facts (path and contract) belong in Section 3. Implementation detail belongs in code JSDoc or the owning feature folder.
-- Entry numbers are stable; retired entries leave gaps. Entries that only restate delivered code do not belong here.
-
-### Decisions not to extract
-
-- **9.1 Assignments page column filters** — keep local to `src/frontend/src/pages/AssignmentsPage.tsx`: page-local descriptors plus one typed filter setter; a cross-feature filter helper would be speculative.
-- **9.3 Settings tabs** — keep local to `src/frontend/src/pages/SettingsPage.tsx`.
-- **9.4 Selected-row derivation** — the Classes feature root derives `selectedRows` once and passes the subset to `ClassesToolbar`; no child recomputation.
-- **9.5 Backend settings field descriptors** — keep local to `src/frontend/src/features/settings/backend/BackendSettingsPanel.tsx`; Ant Design form meta remains the single validation-error source of truth.
-- **9.7 / 9.8 Classes bulk modal shell** — do not add a generic shared wrapper; the accepted outcome is the narrow three-caller `src/frontend/src/features/classes/bulk/BulkFormModalScaffold.tsx`.
-- **9.8 One-off destructive confirmations** — `src/frontend/src/features/classes/bulk/BulkDeleteModal.tsx` and `src/frontend/src/pages/AssignmentsPage.tsx` stay workflow-specific; no shared confirmation wrapper.
-- **9.11 Classes page grouped view-model** — keep local to `src/frontend/src/pages/classesPageModel.ts`; do not widen the Settings Classes helper family, which serves different merge and workflow needs.
-- **9.14 Topic existence check** — single-caller one-liner in `src/frontend/src/features/classes/AssessTaskModal/AssessTaskModal.tsx`; no existing helper matches the contract.
-- **9.16 / 9.16a AssessTask link and skeleton helpers** — `matchDefinitionForAssignment.ts`, `getLinkableDefinitionsForModal.ts`, `LinkableDefinitionList.tsx` (which also exports the `LinkExistingDefinitionButton` availability leaf), `AssignmentSelectSkeleton.tsx`, and `stringComparison.ts` stay in `src/frontend/src/features/classes/AssessTaskModal/`; two or three in-modal callers each, so they are not promoted.
-- **9.19 Class page and task-heatmap surface** — every adapter, model, hook, dispatcher, presentational component, column-marking header, and E2E scenario helper under `src/frontend/src/features/classPage/**` and `src/frontend/src/features/taskHeatmap/**` stays feature-local per Section 6; promotion requires a documented cross-feature caller (the promoted `AveragesBasisControl` is recorded in §9.27). The embedded heatmap's class-partial preview lookup (`buildClassPartialPreviewLookup.ts`) is feature-local under the same rule.
-
-### Rejected and superseded designs
-
-- **9.31 Generic wizard orchestrator hook and entry-intent taxonomy — rejected.** `useAssessTaskRecoveryFlow` owns stale recovery; only `buildReparseRequest` remains, in `src/frontend/src/features/assignmentWizard/assignmentWizardOrchestrator.ts`. Do not re-propose `resolveWizardEntryMode`, `useAssignmentWizardOrchestrator` or a generic `{kind: ...}` entry intent.
-- **9.32 Debounced `Add new` dispatch — rejected.** Opening a caller-owned modal is an immediate, idempotent state transition, so `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.tsx` dispatches synchronously and has no `debounceMs` prop. `useDebounce` and its other callers are unchanged. Do not reinstate a debounce on this command path.
-
-### Delivered decisions
-
-- **9.30 Always-fixed student-name columns** — no caller needs a non-fixed variant; do not add a column-options parameter or a `sticky`-style option to `studentNameTableColumns.tsx`.
-- **9.33 Select-all dropdown header (issue #342)** — `src/frontend/src/features/taskHeatmap/SelectAllDropdownHeader.tsx` wraps the Topics and Assignments multi-selects in `HeatmapSelectionBar.tsx` (two call sites), owns each Select's controlled `showSearch.searchValue`, and supplies the `popupRender` header. Keep it feature-local; do not promote it to a shared helper without a cross-feature caller.
-
-### Cross-referenced decisions
-
-- **9.24 Stale-definition recovery (issue #301)** — `useAssessTaskFlow`, `AssignmentDefinitionWizardReviewContent`, `assignmentWizardFormState`, and `AssignmentDiscardConfirm`. The modal contract is recorded in `frontend-modal-patterns.md` §3.4 and §3.5.
-- **9.25 Explicit assessment re-run entry (issue #298)** — `ReRunContext` (`src/frontend/src/features/shared/`), `resolveReRunTarget`, `useAssessTaskReRunFlow`, and `AssessTaskReRunSurface`. The modal contract is recorded in `frontend-modal-patterns.md` §3.6.
-
-### Retained non-obvious implementation notes
-
-Behaviour that the code alone does not explain:
-
-- **antd v6 `Select` `optionRender`** exposes no `selected` flag; derive checkbox option state from controlled-value membership (`value` in the current selection), not from a `selected` argument.
-- **Disabled-reason accessibility**: expose a disabled control's reason both as a hover `Tooltip` and as an sr-only `aria-describedby` node; mediate the antd `Tooltip` `cloneElement` wrapper with an intermediate `<span>` so the described-by binding survives.
-- **antd `Table` `defaultSortOrder`** does not apply the initial sort in the installed version; pre-sort the `dataSource` instead (for example `rows.toSorted(compareStudentNames)`).
-- **Disabled `Button` tooltips** need a `<span>` wrapper: antd v6 `Tooltip` does not trigger on a disabled button. This is the established codebase pattern.
-- **antd `Select` advances its internal selection before the wrapper's `onChange` runs.** Intercepting the `Add new` sentinel inside `onChange` is therefore too late to stop it becoming the displayed label unless the wrapper owns the value. `SelectWithAddNew` consequently tracks its own uncontrolled selection (seeded from `defaultValue`) and passes the parent value, or `null` when absent, so an intercepted command never renders as a selected value.
-
-### 9.26 Task preview source link decisions (issue #19)
-
-- Extend the existing preview derivation owners (`buildCellPreviewLookup`, `assembleTaskPreviewData`, `assembleMergedPreviewData`) rather than adding a parallel path.
-- Keep source-URL resolution private to `features/taskHeatmap/buildCellPreviewLookup.ts`; do not generalise it or widen the assignment wizard.
-- Split the metric-cell popover into `TaskMetricPreviewCell` (trigger and open state) and `TaskMetricPreviewContent` (ready/loading/error body); do not create a generic popover abstraction.
-- Reuse the Lucide `ExternalLink` icon at 16px and stroke 1.5 through the existing decorative-icon wrapper.
-- Share the preview fixtures and source-link E2E journeys; the E2E expected-URL oracle stays independent of the production resolver.
-
-### 9.27 Attempt-baseline analysis mode (issue #305)
-
-- Baseline selection and the shared attempt predicate live in `services/dataAnalysis/analysers/attemptBaselineSelection.ts`, as a post-accumulation derivation over per-(student, task) metrics.
-- `AnalysisModeSchema` in `dataAnalysis.zod.ts` has no default: every caller states `analysisMode`, and the result echoes `appliedAnalysisMode`.
-- Pass the mode to `MetricPill` and the student-averages column builder explicitly; do not introduce React context.
-- `buildTaskColumns` takes a required `ReadonlySet<string> | null`; `adaptMetricsToHeatmap` supplies the baseline set or `null` for absolute mode, and the merged chain passes `null` explicitly at each hop.
-- `BaselineAvailability` is owned by `features/shared/baselineAvailability.ts` (resolved in `classPage`, consumed by `taskHeatmap` and the shared control), so `taskHeatmap` never imports `classPage`.
-- `AveragesBasisModeProps` is owned by `features/shared/averagesBasisModeProps.ts` (threaded by `classPage`, consumed by `taskHeatmap` and the shared control), so `taskHeatmap` never imports `classPage`; all three members stay optional so direct card renders keep their original head.
-- `AveragesBasisControl` lives in `components/AveragesBasisControl/` with `renderAveragesBasisControlExtra.tsx` owning the `extra` guard; promoted from `features/classPage/ClassPageModeControl.tsx` because both averaging cards host it.
-- `resolveBaselineAvailability` stays in `useClassPageData.helpers.ts`; its reason strings are module constants.
-- Load the `medium` synthetic views at each call site with `?raw`; do not add a shared loader.
-- The shared `buildInput`/`buildSingleStudentInput` fixture pins `analysisMode: 'absolute'`.
-
-### 9.28 Frontend ABClass metadata and post-analysis
-
-- Contracts and owners are recorded in Section 3.10. Do not add a second metadata schema, mutation wrapper or post-analysis lifecycle.
-- The backend-parity and round-trip suites are test-only; they compare the frontend Zod contract with the real backend validator through existing dispatcher seams.
-- Metadata schema extension (`Not implemented` — planned for the metadata enrichment): `services/abClass/abClassMetadata.zod.ts` remains the single metadata schema owner and is extended to accept legacy and current shapes and emit the five-field shape. No second schema, mutation wrapper or lifecycle is introduced. Reconcile this entry when the schema lands.
-- Class-summary analyser (`Not implemented` — planned for the metadata enrichment): a new shared analyser owned by `src/frontend/src/services/dataAnalysis/` and held in its own `classSummaryAnalyser` field in `DataAnalysisService` alongside the existing `summaryAnalyser` field; the averaging registry is unchanged. It is the single owner for metadata summary calculation — ranking, baseline restriction and per-assignment assembly — and reuses `rollupMetric`, `computeOverallComposite` and `convertToBaselineExcluded`. No averaging logic is added to the metadata writer or any other consumer. `AssignmentSummaryAnalyser` keeps its own field and entry point. Reconcile this entry when the analyser lands.
-
-### 9.29 Explicit assessment errors: response normalisation and E preview
-
-- Shared result schemas and read normalisation live in `services/assignmentAssessment/`: `assessmentResult.zod.ts`, `assignmentReadNormalisation.ts` and `assignmentReadItemValidation.ts`. Import these owners directly; there is no barrel.
-- Both read paths isolate per-item corruption and replace unidentifiable items with the three-criterion `CORRUPT_RECORD` shape.
-- E preview reuses the existing preview owners; do not add a generic popover, preview or query helper. E contributes no numeric weight or data-point count.
-- The preview-only E override and known-partial fallback stay feature-local to `features/taskHeatmap/`.

@@ -22,7 +22,7 @@ Keep the spec focused on intended behaviour, contracts, constraints, and scope b
 
 ---
 
-# [Feature name] Specification
+## [Feature name] Specification
 
 ## Status
 
@@ -334,15 +334,15 @@ Use this section only for constraints that the later action plan must respect.
 - [rollout dependency, migration, or reset note]
 - [explicitly deferred follow-up work]
 
-## V1 scope recommendation
+## Scope
 
-### Include in v1
+### In scope
 
 - [core capability]
 - [core capability]
 - [required validation or contract hardening]
 
-### Defer from v1
+### Deferred
 
 - [non-essential enhancement]
 - [future refinement]

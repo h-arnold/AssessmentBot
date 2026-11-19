@@ -45,6 +45,7 @@ Before providing any feedback, you must:
 3. **Identify the module(s) in scope** and apply only the checks relevant to those modules. Do not apply backend rules to frontend code or vice versa.
 4. **Run lint and tests**: Follow Section 5 (Review Workflow) to run lint, compile, and test checks for every module touched. Do not proceed with manual review until automated checks complete. Run each check once per session and record the outcome in `.opencode/scratchpad/` — see the prime directives.
 5. **Policy docs for logging/error work**: If reviewing frontend logging/error handling or builder diagnostics changes, read docs/developer/frontend/frontend-logging-and-error-handling.md and docs/developer/builder/builder-script.md and treat them as canonical policy references.
+6. **Documentation reviews**: If the change touches docs, read docs/developer/documentation-style-guide.md and apply it to prose, structure, ownership and delivery narrative.
 
 ## 1. Codebase Overview
 
@@ -111,7 +112,9 @@ Consult these resources before and during review. Local docs contain project-spe
 
 - [AGENTS.md](../../AGENTS.md)
 - [CONTRIBUTING.md](../../CONTRIBUTING.md)
+- [Documentation Style Guide](../../docs/developer/documentation-style-guide.md) — writing rules for canonical docs, ADRs and review exclusions
 - [Synthetic Test Data](../../docs/developer/testing/synthetic-test-data.md) — canonical architecture, canonical-fixture policy and the test-only legacy scenario derivation for the deterministic synthetic analysis corpus
+- [Teacher Documentation Workflow](../../docs/developer/teacher-documentation-workflow.md) — when a teacher-facing change needs a tutorial or explainer, and how to produce one
 - [Known Flaky Tests](../../docs/developer/known-flaky-tests.md) — catalogue of known flaky tests and root causes
 
 **Data shapes (all modules — persistence, transport, validation)**:
@@ -330,6 +333,7 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] Are there appropriate e2e playwright tests for any user-visible interaction or browser integration change?
 - [ ] Do the tests meet all requirements outlined in the testing documenation for the relevant module(s)?
 - [ ] Do new or changed tests use an appropriate canonical synthetic fixture when the fixture system provides one? A local realistic fixture is permitted only when no canonical profile or view covers the scenario **and** the owning feature work records a generator-extension plan naming which profile, view, or generator stage to add and where. Invalid/boundary fixtures remain local, and touched existing tests migrate opportunistically only. See `docs/developer/testing/synthetic-test-data.md`.
+- [ ] Do new or touched tests use synthetic corpus fixture data rather than hard-coded fixtures, and derive expectations from the corpus rather than pinning corpus-derived literals, unless a documented exception applies? See the rule in `docs/developer/testing/synthetic-test-data.md`.
 
 ## 7. Reporting Format
 

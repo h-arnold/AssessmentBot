@@ -107,7 +107,7 @@ Some tasks — particularly spreadsheet or formula-based tasks — do not involv
 
 - The SPaG score is recorded as **N** (not applicable).
 - The overall calculation **renormalises** by dropping SPaG and dividing only by the sum of the remaining criteria weightings (see the worked example above).
-- The SPaG metric for the student will show fewer applicable data points than total data points. For example, if a student has 5 pieces of work but 2 are formula tasks, the SPaG metric might show `applicableDataPoints: 3` and `totalDataPoints: 5`. This is not a problem — it simply means SPaG was not relevant for 2 of the 5 submissions.
+- The SPaG metric for the student will show fewer applicable data points than total data points. For example, if a student has 5 pieces of work but 2 are formula tasks, the SPaG metric might show **Applicable data points** of 3 and **Total data points** of 5. This simply means SPaG was not relevant for 2 of the 5 submissions.
 
 ## Understanding the numbers in the results table
 
@@ -120,13 +120,11 @@ When you view analysis results, each metric shows four rows of summary data:
 | **Applicable data points** | How many submissions actually contributed to this metric. For example, if SPaG shows 8 out of 10, it means 2 submissions were formula tasks where SPaG did not apply.                                                                                                                                                                                      |
 | **Total data points**      | The total number of submissions in this group, including those where the metric was not applicable.                                                                                                                                                                                                                                                        |
 
-The **Value** row can now show four kinds of result: a number for computed scores, **N** for work the student did not attempt, **E** for cases where the analyser could not produce a usable score (for example, submissions exist but no assessments were performed), or **Excluded** when work was assessed but none of it contributed to the average (because its weighting was zero, or, in Baseline tasks mode, because the work fell outside the baseline task set). The band colour (red, amber, green, grey, neutral, or dark red) is the visual signal that tells you at a glance which state applies. **N** is always a deliberate signal that the student did not attempt the work — it is not the same as a data problem. **E** means submissions exist but the analyser could not compute a usable value for that metric. **Excluded** is distinct from both: the work exists and may have a score, but the average had nothing to count.
-
-Note: when the analyser encounters the **E** state, `totalDataPoints` may exceed `applicableDataPoints` even when no **N** is recorded. This simply means submissions exist but none of them had usable assessment data for that metric — it is not a sign of missing data.
+Note: when the analyser encounters the **E** state, **Total data points** may exceed **Applicable data points** even when no **N** is recorded. This simply means submissions exist but none of them had usable assessment data for that metric — it is not a sign of missing data.
 
 It is important to know that a single task showing **E** does **not** ruin the whole average for a student or for the class. If one task cannot be scored (and shows **E**), the system simply leaves that task out of the average and works out the result from the remaining tasks that have usable scores. This means a few missing scores in a handful of tasks will not wipe out the overall picture — the remaining data still counts.
 
-**Example**: A student has 5 completed tasks. Their completeness value of 4.2 is based on all 5 tasks (applicable: 5 of 5). Their SPaG value of 3.8 is based on 4 of the 5 tasks (one was a formula task where SPaG was not applicable). The `totalWeight` for SPaG might be lower than for completeness because the formula task carried influence for completeness but not for SPaG.
+**Example**: A student has 5 completed tasks. Their completeness value of 4.2 is based on all 5 tasks (applicable: 5 of 5). Their SPaG value of 3.8 is based on 4 of the 5 tasks (one was a formula task where SPaG was not applicable). The **Total weight** for SPaG might be lower than for completeness because the formula task carried influence for completeness but not for SPaG.
 
 ## Averages basis: all tasks or baseline tasks
 
@@ -169,15 +167,3 @@ If the most-engaged students attempted no task in common, there is no baseline t
 - The choice belongs to the Class page alone — it is available in both the overview and the embedded heatmap view — and is not remembered: leaving the class or reloading the page returns it to **All tasks**.
 - It never rescales or re-marks anyone's work. A task outside the baseline keeps its scores; these averages simply do not count it.
 - Each class works out its own baseline from its own students.
-
-## Planned future analyses
-
-The current analysis shows averages per student, per task, and per class. Future updates will add:
-
-- **Cohort analysis** — compare averages across multiple classes or year groups.
-- **Trend analysis** — see how scores change over time.
-- **Distribution analysis** — see the spread of scores within a class.
-
-These will be added as separate analysis options and will not change the existing averages.
-
-The Class page (the per-class overview surface) is the first place the four states (computed score, **N** for not attempted, **E** for error, and **Excluded** for aggregates whose observed work did not contribute) appear. Cohort, trend, and distribution analyses will reuse the same vocabulary when they are built.

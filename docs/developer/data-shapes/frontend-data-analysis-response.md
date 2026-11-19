@@ -2,11 +2,11 @@
 
 ## Scope
 
-Contract for the frontend-only, in-memory data-analysis response. It has **no backend API,
-persistence collection, transport envelope or migration**. This document covers the ABClass
-metadata lifecycle, the shared post-analysis contracts, both consumer surfaces, the error-aware
-task-preview view models and the attempt-baseline analysis mode (see
-[Attempt-baseline contract changes](#attempt-baseline-contract-changes)).
+Contract for the frontend-only, in-memory data-analysis response; its values stay in memory
+(see [Persistence](#persistence)). This document covers the ABClass metadata lifecycle, the shared
+post-analysis contracts, both consumer surfaces, the error-aware task-preview view models and the
+attempt-baseline analysis mode (see
+[Attempt-baseline analysis mode](#attempt-baseline-analysis-mode)).
 
 Sibling contracts:
 
@@ -74,8 +74,7 @@ analyser's input shapes.
 
 `DataAnalysisService.analyseAssignmentSummary(input, classId, assignmentId)`
 validates the existing `AveragingAnalyserInput` and returns a separate
-`AssignmentSummarySchema` result from `assignmentSummary.zod.ts`. This does not
-add fields to `AveragingResult` or change backend transport/persistence.
+`AssignmentSummarySchema` result from `assignmentSummary.zod.ts`.
 
 The result carries `classId`, `assignmentId`, `totalStudents`, explicit
 `thresholds` (`completeness`, `accuracy`, `incompleteProportion`), `tasks`, and
@@ -97,14 +96,14 @@ assignments from being mixed in the summary. It averages numeric per-student
 display scores equally, including zero-weight evidence, rather than returning a
 weighted assignment grade. No numeric evidence yields `accuracyAverage: null`.
 Ranking and threshold checks use unrounded values; the adaptor formats averages
-to two decimal places. The constructor's first-version policy is completeness
+to two decimal places. The constructor's thresholds are completeness
 at least 4 points out of 5, accuracy strictly below 3 points out of 5, and
 incompleteness strictly above 50%. `completedCount` counts students meeting the
 completeness threshold; it does not imply that their tasks are fully completed.
 
 Presentation lives in `assignmentSummaryAdapter.ts` and
 `features/taskHeatmap/TaskHeatmapSummaryCards.tsx`; see
-the [single-assignment presentation flow](../frontend/data-analysis-architecture.md#single-assignment-summaries-277).
+the [single-assignment presentation flow](../frontend/data-analysis-architecture.md#single-assignment-summaries).
 
 ### `DataAnalysisResponse`
 
@@ -121,7 +120,7 @@ the [single-assignment presentation flow](../frontend/data-analysis-architecture
 | 5   | `perClass`                   | `PerClassResult`                                                        | —           | —         | `PerClassResultSchema`                           | Aggregate scope.                                                                                                                                     |
 | 6   | `appliedCriterionWeightings` | `{ completeness, accuracy, spag: number }`                              | —           | —         | `AppliedCriterionWeightingsSchema`               | Echoes the weightings actually applied.                                                                                                              |
 | 7   | `appliedAnalysisMode`        | `'absolute' \| 'topDecileBaseline'`                                     | —           | —         | `AnalysisModeSchema`                             | Required echo of the mode actually applied to this result.                                                                                           |
-| 8   | `attemptBaseline`            | `{ poolStudentIds: string[]; baselineTaskKeys: string[] } \| undefined` | —           | —         | `AttemptBaselineSchema.optional()`               | Present only when `appliedAnalysisMode` is `'topDecileBaseline'`; see [Attempt-baseline contract changes](#attempt-baseline-contract-changes).       |
+| 8   | `attemptBaseline`            | `{ poolStudentIds: string[]; baselineTaskKeys: string[] } \| undefined` | —           | —         | `AttemptBaselineSchema.optional()`               | Present only when `appliedAnalysisMode` is `'topDecileBaseline'`; see [Attempt-baseline analysis mode](#attempt-baseline-analysis-mode).             |
 | 9   | `perStudentTaskMetrics`      | `PerStudentTaskMetric[] \| undefined`                                   | —           | —         | `z.array(PerStudentTaskMetricSchema).optional()` | Heatmap-facing. The analyser always emits it (an empty array when no per-(student, task) accumulators exist); `.optional()` only tolerates omission. |
 
 ### `PerStudentRow`
@@ -147,7 +146,7 @@ carries `averageContribution`.
 | --- | --------------------- | --------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------ |
 | 1   | `definitionKey`       | `string`              | `z.string()`                |                                                                                                        |
 | 2   | `taskId`              | `string`              | `z.string()`                |                                                                                                        |
-| 3   | `taskTitle`           | `string\|null`        | `z.string().nullable()`     | Always `null` in v1; reserved for cross-reference resolution.                                          |
+| 3   | `taskTitle`           | `string\|null`        | `z.string().nullable()`     | Always `null`; reserved for cross-reference resolution.                                                |
 | 4   | `averageContribution` | `AverageContribution` | `AverageContributionSchema` | Derived from live definition weights.                                                                  |
 | 5   | `completeness`        | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                                                  |
 | 6   | `accuracy`            | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                                                  |
@@ -178,16 +177,16 @@ Aggregate scope. Uses the shared four-state `MetricResultSchema`.
 Task display scope. Uses the narrow three-state `TaskDisplayMetricSchema` and
 carries `averageContribution`.
 
-| #   | Field                 | Type                  | Frontend Zod                | Notes                                                                                   |
-| --- | --------------------- | --------------------- | --------------------------- | --------------------------------------------------------------------------------------- |
-| 1   | `classId`             | `string`              | `z.string()`                | Echoed from the input class.                                                            |
-| 2   | `studentId`           | `string`              | `z.string()`                |                                                                                         |
-| 3   | `taskKey`             | `string`              | `z.string()`                | Built by `buildTaskKey(definitionKey, taskId)`; no assignment-instance component in v1. |
-| 4   | `averageContribution` | `AverageContribution` | `AverageContributionSchema` | Derived from live definition weights.                                                   |
-| 5   | `completeness`        | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                                   |
-| 6   | `accuracy`            | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                                   |
-| 7   | `spag`                | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                                   |
-| 8   | `overall`             | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                                   |
+| #   | Field                 | Type                  | Frontend Zod                | Notes                                                                               |
+| --- | --------------------- | --------------------- | --------------------------- | ----------------------------------------------------------------------------------- |
+| 1   | `classId`             | `string`              | `z.string()`                | Echoed from the input class.                                                        |
+| 2   | `studentId`           | `string`              | `z.string()`                |                                                                                     |
+| 3   | `taskKey`             | `string`              | `z.string()`                | Built by `buildTaskKey(definitionKey, taskId)` from the definition key and task ID. |
+| 4   | `averageContribution` | `AverageContribution` | `AverageContributionSchema` | Derived from live definition weights.                                               |
+| 5   | `completeness`        | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                               |
+| 6   | `accuracy`            | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                               |
+| 7   | `spag`                | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                               |
+| 8   | `overall`             | task display metric   | `TaskDisplayMetricSchema`   | Display accumulation.                                                               |
 
 ### Input shapes
 
@@ -200,15 +199,11 @@ tolerance).
 
 `classes` is `z.array(ClassFullSchema)`, so each analysed class requires the
 shared nullable `ABClassMetadataSchema` owned by
-[Contract: ABClass](abclass.md). The analyser does not read metadata: analysis
-scores and derived outputs are unchanged. Legacy backend absence arrives as
-explicit `null`; a missing or malformed metadata field fails input validation
-rather than being stripped. `dataAnalysis.zod.ts` itself is unchanged; the
-stricter class input comes from `ClassFullSchema`. Its unrelated unknown-field
-stripping is unchanged, as is the separate nullable not-found response wrapper.
-These input shapes are documented here only for boundary completeness; the
-zero-weight feature did not change them. The required metadata field is the
-later ABClass read-contract adoption, not part of that feature.
+[Contract: ABClass](abclass.md). The analyser does not read metadata when
+producing scores or derived outputs. Legacy backend absence arrives as explicit
+`null`; a missing or malformed metadata field fails input validation rather than
+being stripped. Unrelated unknown fields are stripped, and the separate
+not-found response wrapper is nullable, as defined by the owning class schemas.
 
 ### ABClass mutation boundary
 
@@ -224,11 +219,9 @@ matching the unchanged backend required-parameter guard. Null rejects before enq
 read/response keys and optional update keys remain nullable. Optional whole `metadata`
 replacement remains nullable on both mutations.
 
-This changes no analyser input/output shape and does not persist analysis automatically.
-`DataAnalysisService` is unchanged, synchronous and I/O-free.
-`runApiQueuedTask` in the actual queue owner `services/api/apiQueue.ts` accepts a local callback,
-not wire data; no callback/context transport schema is introduced here. Actual transport stays
-in `services/apiService.ts`, with direct-owner imports and no facade/barrel.
+`DataAnalysisService` is synchronous and I/O-free.
+`runApiQueuedTask` in the queue owner `services/api/apiQueue.ts` accepts a local callback held in
+memory; transport stays in `services/apiService.ts`, with direct-owner imports.
 
 ### Metadata refresh execution contracts
 
@@ -239,20 +232,20 @@ outcome data through `postAnalysis.zod.ts`
 Existing class, definition, analysis and metadata schemas retain their own validation boundaries.
 Callbacks and Errors never become wire data.
 
-| Type / actual owner                                                                                                             | Field                          | Type                                          | Notes                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PostAnalysisContext` — `services/dataAnalysis/postAnalysis/postAnalysis.zod.ts`; consumed directly by `refreshABClassMetadata` | `classFull`                    | `ClassFull`                                   | Complete validated class, never a Heatmaps selection or display slice.                                                                                                   |
-| Same                                                                                                                            | `assignmentDefinitionPartials` | `AssignmentDefinitionPartial[]`               | Live registry used for recalculation.                                                                                                                                    |
-| Same                                                                                                                            | `averagingResult`              | `AveragingResult`                             | Successful validated analysis authorises invocation; this field is not read or reparsed by the task, nor persisted as class scores. Caller supplies the trusted context. |
-| `MetadataRefreshInput` — `services/abClass/abClassMetadataService.ts`                                                           | `classId`                      | `string`                                      | Identity for authoritative fresh read.                                                                                                                                   |
-| Same                                                                                                                            | `assignmentDefinitionPartials` | `AssignmentDefinitionPartial[]`               | Every fresh class assignment must resolve before calculation.                                                                                                            |
-| `MetadataRefreshSkipped` — `services/dataAnalysis/postAnalysis/metadataProjection.ts`                                           | `status`                       | `'skipped'`                                   | Shared no-op variant.                                                                                                                                                    |
-| Same                                                                                                                            | `reason`                       | `'noAssignments'\|'unchanged'\|'staleSource'` | Empty assignments, matching source version, or source older than stored history; the tuple is compile-time pinned to `MetadataRefreshSkipped['reason']`.                 |
-| `MetadataRefreshDecision` — same projection owner, changed variant                                                              | `status`                       | `'changed'`                                   | Union alternative to `MetadataRefreshSkipped`.                                                                                                                           |
-| Same                                                                                                                            | `target`                       | `AssignmentPartial`                           | Newest assignment instance after all candidate timestamps validate; selected object, not a detached wire snapshot.                                                       |
-| `RefreshOutcome` — `services/abClass/abClassMetadataService.ts`, saved variant                                                  | `status`                       | `'saved'`                                     | Union alternative to `MetadataRefreshSkipped`.                                                                                                                           |
-| Same                                                                                                                            | `confirmedPersistence`         | `true`                                        | Returned only after successful update and real partial-response parsing; no query refresh has occurred.                                                                  |
-| Same                                                                                                                            | `classPartial`                 | `ClassPartial`                                | `parseApiResponse(ClassPartialSchema, 'updateABClass', data)` output, including required nullable metadata.                                                              |
+| Type / actual owner                                                                                                             | Field                          | Type                                          | Notes                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PostAnalysisContext` — `services/dataAnalysis/postAnalysis/postAnalysis.zod.ts`; consumed directly by `refreshABClassMetadata` | `classFull`                    | `ClassFull`                                   | Complete validated class, never a Heatmaps selection or display slice.                                                                             |
+| Same                                                                                                                            | `assignmentDefinitionPartials` | `AssignmentDefinitionPartial[]`               | Live registry used for recalculation.                                                                                                              |
+| Same                                                                                                                            | `averagingResult`              | `AveragingResult`                             | Successful validated analysis authorising invocation; the task trusts the caller-supplied context without reparsing it or persisting it as scores. |
+| `MetadataRefreshInput` — `services/abClass/abClassMetadataService.ts`                                                           | `classId`                      | `string`                                      | Identity for authoritative fresh read.                                                                                                             |
+| Same                                                                                                                            | `assignmentDefinitionPartials` | `AssignmentDefinitionPartial[]`               | Every fresh class assignment must resolve before calculation.                                                                                      |
+| `MetadataRefreshSkipped` — `services/dataAnalysis/postAnalysis/metadataProjection.ts`                                           | `status`                       | `'skipped'`                                   | Shared no-op variant.                                                                                                                              |
+| Same                                                                                                                            | `reason`                       | `'noAssignments'\|'unchanged'\|'staleSource'` | Empty assignments, matching source version, or source older than stored history; compile-time pinned to `MetadataRefreshSkipped['reason']`.        |
+| `MetadataRefreshDecision` — same projection owner, changed variant                                                              | `status`                       | `'changed'`                                   | Union alternative to `MetadataRefreshSkipped`.                                                                                                     |
+| Same                                                                                                                            | `target`                       | `AssignmentPartial`                           | Newest assignment instance after all candidate timestamps validate, selected from the class read.                                                  |
+| `RefreshOutcome` — `services/abClass/abClassMetadataService.ts`, saved variant                                                  | `status`                       | `'saved'`                                     | Union alternative to `MetadataRefreshSkipped`.                                                                                                     |
+| Same                                                                                                                            | `confirmedPersistence`         | `true`                                        | Returned after a successful update and real partial-response parse.                                                                                |
+| Same                                                                                                                            | `classPartial`                 | `ClassPartial`                                | `parseApiResponse(ClassPartialSchema, 'updateABClass', data)` output, including required nullable metadata.                                        |
 
 `refreshABClassMetadata(context: PostAnalysisContext, now: () => string)` consumes the shared
 lifecycle type directly and declares no task-local context type. It passes `classFull` to the
@@ -282,12 +275,12 @@ imported by `abClassMetadataService.ts`, so both queued mutation wrappers and th
 writer share one lane symbol; no import cycle exists. The queue, transport, projection and
 persistence owners are imported directly, without a facade or second queue.
 
-No-op decisions make no calculation/write/clock call; the cheap gate also makes no network
-call. Every candidate partial timestamp must be canonical UTC; selection is timestamp
+No-op decisions skip calculation, writes, the clock and network access; the cheap gate stays
+local. Every candidate partial timestamp must be canonical UTC; selection is timestamp
 descending then assignment ID ascending via `localeCompare`. Equal stored ID/timestamp
 returns `unchanged` first; otherwise older than its matching entry or any stored recent entry
-returns `staleSource`. Equal timestamps on different IDs remain eligible. This intentionally
-does not refresh after score/weighting/definition/roster-only changes. The three task-owned
+returns `staleSource`. Equal timestamps on different IDs remain eligible; score, weighting,
+definition and roster-only changes do not make a source fresh. The three task-owned
 reasons are compile-time pinned in `postAnalysis.zod.ts`: `SKIPPED_REASONS` is declared with
 `satisfies readonly MetadataRefreshSkipped['reason'][]`, and its single tuple feeds the skipped
 result enum reused by both task-result and outcome schemas. Reason drift therefore fails
@@ -312,31 +305,18 @@ The exact source timestamp, summary clock, stable immutable rolling-three merge 
 [ABClass — metadata writer](abclass.md#metadata-writer-projection-and-task).
 The rolling merge validates through the non-nullable `NonNullableABClassMetadataSchema` and
 returns `NonNullable<ABClassMetadata>`, so the write path has no nullable-union branch;
-`UpdateABClassRequestSchema` validates the whole replacement. The nullable read/request
-contract is unchanged, and no nested validation rules are duplicated in the writer.
+`UpdateABClassRequestSchema` validates the whole replacement.
 
 Failures reject rather than returning a `failed` outcome: calculation/validation/read/write
-failures propagate, not-found is not an upsert, and there is no repair/rollback/per-feature
-retry. Existing analyser failures (including null student-name invariants) remain failures;
-corpus calculation-capability limits do not change production shapes or authorise repairs.
-The shared runner catches these rejections as individual failed outcomes, separately from
-the unchanged task's `RefreshOutcome` union. No query/cache access, invalidation, warning or
-automatic surface invocation exists in these three owners. `confirmedPersistence` is not query-refresh success; a response-parse
-failure can reject after a backend write without producing the saved variant.
+failures propagate and not-found is not an upsert. The shared runner records them as individual
+failed outcomes, separately from the task's `RefreshOutcome` union; a response-parse failure can
+reject after a backend write without producing the saved variant. `confirmedPersistence` records
+the confirmed save, not query-refresh success.
 
 Helper discovery/status is owned by
 [Frontend shared helpers](../frontend/frontend-shared-helpers-and-abstraction-standards.md#928-frontend-abclass-metadata-and-post-analysis).
 
-**Planned writer mapping (`Not implemented`)** — `mergeClassMetadata()` will accept a
-`ClassSummary` instead of separate class/assignment score arguments, retain the rolling
-`recentAssignments` history and summary clock, and map analyser-native `MetricResult` values
-through the existing `projectAverageScores()` mapping. `getMetadataRefreshDecision()` and the
-freshness rules are unchanged. Remove this marker when that mapping lands.
-
 ### Shared post-analysis lifecycle
-
-This extends only frontend in-memory validation/execution; backend shapes and analyser output
-are unchanged.
 
 #### Validated context
 
@@ -351,8 +331,7 @@ Owner: `services/dataAnalysis/postAnalysis/postAnalysis.zod.ts` →
 
 The outer `z.strictObject` rejects extra keys and refines equality of
 `classFull.classId` and `averagingResult.classId`. Missing/null inputs reject; parsing
-copies schema-owned nested data. Nested owners retain their existing strict/strip rules;
-this is not metadata-style raw-prototype validation. The hook parses non-null context
+copies schema-owned nested data. Nested owners apply their own strict/strip rules. The hook parses non-null context
 after commit before any task starts. The runner accepts a trusted typed context and does
 not independently parse it. Invalid context or descriptor-list validation rejects the lifecycle
 boundary, not an individual task. Passing `null` to the hook explicitly requests no work and clears
@@ -425,10 +404,8 @@ failures become failed outcomes. `postAnalysisDiagnostics.ts` owns the shared bo
 diagnostic: taskId/classId, optional newest canonical source assignmentId for metadata (ordered
 by the shared `compareAssignmentNewestFirst` comparator), optional `confirmedPersistence: true`
 on post-save refresh failures, and available
-`ApiTransportError` requestId/errorCode. No full analysis/context payload,
-student/roster data or raw metadata snapshot is added to task-owned diagnostics.
-Existing transport parameter/debug and bounded response-preview diagnostics are unchanged.
-There is no task retry policy, dependency graph or abort handle.
+`ApiTransportError` requestId/errorCode. Task-owned diagnostics stay bounded to those
+identifiers, separate from the transport parameter/debug and response-preview diagnostics.
 
 `postAnalysisTasks.ts` → `createPostAnalysisTaskDescriptors(now: () => string)` returns the
 stable descriptor list containing only `refreshABClassMetadata`. Creating descriptors starts no
@@ -449,7 +426,7 @@ target selection and diagnostics, not to source serialisation.
 `Map<string, Map<string | PostAnalysisContext, Promise<PostAnalysisTaskOutcome>>>`.
 The hook requires three arguments: `context`, `tasks`, and `selectedClassId`
 (`string | null`). The first key is task ID. Keyed tasks supply the second key; unkeyed tasks
-use the **original input context object's identity**, not its freshly parsed copy. Future
+use the **original input context object's identity**, not its freshly parsed copy. Unkeyed
 tasks are therefore independent of metadata source versions.
 
 - Metadata's key is JSON of classId plus newest target assignmentId/updatedAt, or
@@ -467,8 +444,7 @@ tasks are therefore independent of metadata source versions.
 - Outcomes are published incrementally as each task settles, and remain in descriptor order.
   Post-commit mount lifecycle, StrictMode reattachment and cleanup rules are owned by
   [Data Analysis Architecture § Shared post-analysis lifecycle and extension](../frontend/data-analysis-architecture.md#shared-post-analysis-lifecycle-and-extension).
-- This is attempt storage, not a second server-data cache; same-version work from distinct
-  mounts still relies on the writer's fresh in-lane recheck.
+- Same-version work from distinct mounts relies on the writer's fresh in-lane recheck.
 - Both averaging surfaces call the shared page hook `hooks/usePagePostAnalysisTasks.ts`, which
   memoises the non-null context per input set and creates the descriptor list once per mount.
   The feature hooks keep no per-feature context, descriptor list or status alias. Eligibility,
@@ -510,29 +486,19 @@ and technical Errors stay local and have no serialised persistence/transport rep
 
 #### Frontend test-only acceptance boundary
 
-Browser and dispatcher acceptance coverage only. It adds no production helper or
-contract, introduces **no** new execution context, outcome, request or response field, and the
-lifecycle contracts above are unchanged.
+These suites exercise the metadata-refresh contract through the real browser and dispatcher
+without adding production shapes. Test paths are listed in the [File Index](#file-index).
 
-- `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` derives its inputs from
-  the canonical `small` class `class-2`, starting from `metadata: null` and a historical source
-  that omits only the final null-name assignment. Replacement values come from the standard
-  `DataAnalysisService` full-class and isolated-target analyses with explicit metric-state
-  mapping; supplied metadata scores are not used as an oracle.
-- `post-analysis-metadata.persistence.spec.ts` has three journeys covering both averaging
-  surfaces, a full fresh read that produces no repeat write, and a later source version that
-  produces exactly one further write.
-- `post-analysis-metadata.feedback.spec.ts` has eight cases: save-failure warning on standalone
-  Heatmaps with keyboard dismissal and no reopening on rerender; Class-page save failure with
-  analysis intact and navigation cleanup; confirmed-save refresh-failure copy; four desktop/
-  narrow × light/dark containment cases; and a Class-page confirmed-save refresh-failure
-  journey where the detail refresh fails while the list refresh remains deferred, proving that
-  readiness-driven blocking (a `null` context for the same class) does not suppress the settled
-  warning.
-- The Node real-dispatcher bridge and round-trip suite are ABClass transport coverage. They
-  prove frontend consumer compatibility and envelope/error propagation only: the seams supply
-  prepared controller/mutation data, so they are **not** evidence that the real controller,
-  persistence layer or stored-integrity validator ran. Their test-only contract is recorded in
+- The scenario helper builds the canonical `small` class `class-2` historical-source boundary
+  (`metadata: null`, final null-name assignment omitted) and derives replacement values from
+  standard full-class and isolated-target analyses with explicit metric-state mapping.
+- Persistence acceptance covers changed writes on both averaging surfaces, a full fresh read
+  with no repeat write, and a later source version producing a further write.
+- Feedback acceptance covers save-failure and confirmed-save refresh-failure warnings, keyboard
+  dismissal, viewport/theme containment and readiness-null contexts.
+- Node real-dispatcher coverage exercises frontend consumer compatibility and envelope/error
+  propagation with prepared controller/mutation data; controller, persistence and stored-integrity
+  validation are owned by
   [Contract: ABClass — frontend test-only contracts](abclass.md#test-only-synthetic-capability).
 
 ## Sub-entities
@@ -574,8 +540,7 @@ The following public shapes require `averageContribution`:
 | `HeatmapTaskColumn`       | `heatmapAdapter.ts` (TS)     | Embedded heatmap task-group metadata |
 | `MergedHeatmapTaskColumn` | `heatmapAdapter.merged.ts`   | Merged heatmap task-group metadata   |
 
-`PerStudentRow` and `PerClassResult` remain aggregate shapes and do not expose
-task-level contribution metadata.
+Task-level contribution metadata is carried by the four shapes listed above.
 
 ### `MetricResult`
 
@@ -720,9 +685,7 @@ the Class-page zero-data placeholder:
   the `metric` field even when the analyser reported `computed`.
 - Both consumers stand in for an absent submission or metric at task display
   scope, so the value must satisfy the task-level `notAttempted` invariant
-  (`totalDataPoints >= 1`); `totalDataPoints: 1` is the schema-valid choice. The
-  "intentionally different from the Class-page zero-data placeholder" reasoning
-  is unchanged by the task-preview consumer.
+  (`totalDataPoints >= 1`); `totalDataPoints: 1` is the schema-valid choice.
 - The Class-page placeholder represents a genuinely empty aggregate surface and
   uses `totalDataPoints: 0`, accepted only through
   `ClassPageDisplayMetricSchema`.
@@ -936,7 +899,7 @@ by `resolveExcludedMetricAccessibleLabel(analysisMode?)`:
 > Excluded from average: displayed work had zero weighting.
 
 In baseline mode the Class-page consumers thread the mode, so the label names
-both possible causes (see item 7's threading):
+both possible causes (see the baseline-mode excluded label below):
 
 > Excluded from average: displayed work had zero weighting, or fell outside
 > the baseline task set.
@@ -954,9 +917,8 @@ both possible causes (see item 7's threading):
   `includeExcluded` filter toggle, appended as the fifth `|`-separated field of
   the encoded filter key. Legacy four-field keys decode with `includeExcluded`
   set to `false`.
-- Zero-effective-weight heatmap task headers show explanatory text; the layout
-  plan document that originally specified this behaviour has been retired, and
-  the behaviour is display-only with no data-shape impact.
+- Zero-effective-weight heatmap task headers show explanatory text; the
+  behaviour is display-only with no data-shape impact.
 
 ## Validation
 
@@ -979,11 +941,6 @@ both possible causes (see item 7's threading):
   task returns and serialisable lifecycle state, including the optional failed-outcome save
   confirmation. Function/Error handles remain separate typed execution values, never
   transport fields.
-
-**Backend transport validation:**
-
-- None. No backend model, `z_Api` handler, controller, or transport change is
-  associated with this contract.
 
 **Key domain validation rules** (enforced by the analyser or adapters, not visible
 from the schemas alone):
@@ -1020,24 +977,22 @@ from the schemas alone):
 The analyser input accepts `'E'` explicitly instead of inferring failure from absent
 assessments or missing numeric contributions:
 
-| Contract                 | Position                                                                                                                                                                                                                                                 |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AssessmentScore`        | `number \| 'N' \| 'E' \| undefined` (`averagingAnalyser.types.ts`). `'E'` is explicit known-error evidence from the Assessment union.                                                                                                                    |
-| `processItemAssessments` | Reads `assessments[criterion]?.score`; an absent criterion remains `undefined`, while a provided `'E'` is recognised rather than relying on absence.                                                                                                     |
-| `accumulateCriterion`    | Handles numeric and `'N'`; `'E'` (like `undefined`) contributes no numeric sum, no `N` evidence, no denominator weight, no `totalDataPoints` increment and no weight-counter increment. It is error evidence only.                                       |
-| `MetricAccumulator`      | `nCount` still distinguishes `notAttempted` from `error`; the type comment records that explicit error scores are accepted by `AssessmentScore`. Internal accumulator counter names are implementation-local and not part of this data-shape contract.   |
-| Metric resolution        | A wholly errored task resolves all display metrics to `E` from explicit evidence. A lone `E` display has zero applicable/total data points and zero weight. Existing numeric, genuine `N`, zero-weight and aggregate `excluded` semantics are unchanged. |
+| Contract                 | Position                                                                                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AssessmentScore`        | `number \| 'N' \| 'E' \| undefined` (`averagingAnalyser.types.ts`). `'E'` is explicit known-error evidence from the Assessment union.           |
+| `processItemAssessments` | Reads `assessments[criterion]?.score`; a provided `'E'` is recognised as error evidence, absent criteria stay `undefined`.                      |
+| `accumulateCriterion`    | `'E'` is error evidence only: it contributes no numeric sum, `N` evidence, denominator weight, `totalDataPoints` or weight-counter increment.   |
+| `MetricAccumulator`      | `nCount` separates `notAttempted` from `error`; counter names are implementation-local, not part of this contract.                              |
+| Metric resolution        | A wholly errored task resolves display metrics to `E` from explicit evidence; a lone `E` has zero applicable/total data points and zero weight. |
 
 Aggregate rules:
 
-- Explicit `E` increments no numeric/`N` evidence, `totalDataPoints` or weight counter, matching
-  the existing missing-assessment error accounting. No new coverage counter is introduced.
+- Explicit `E` is error evidence only: numeric/`N` evidence, `totalDataPoints` and the weight
+  counter are unaffected, matching missing-assessment error accounting.
 - `E` contributes neither a numeric zero nor denominator weight to averages. Erroneous evidence
   is excluded from averages while healthy sibling data is retained.
-- The public `MetricResult` and `TaskDisplayMetric` output shapes gain no error-history or
-  reasoning fields. `error` already carries value `'E'`; no new state member is added.
-- Existing mixed valid/error aggregate treatment is preserved; this change does not redesign
-  coverage counts, weighting or ranking.
+- Errors are represented in the public `MetricResult` and `TaskDisplayMetric` shapes only by the
+  `error` state with value `'E'`; reasoning and cause stay in the preview shapes.
 - A genuine no-submission contributes no observed item to the analyser and keeps the existing
   no-data `N` display placeholder. Do not insert raw `N` observations that would change existing
   average denominators.
@@ -1067,102 +1022,58 @@ Aggregate rules:
   (`totalDataPoints: 0`) and is accepted only through
   `ClassPageDisplayMetricSchema`; `ClassPageAdapterResultSchema.classMetrics`
   uses the strict shared union and rejects it.
-- `PerTaskRow.taskTitle` is always `null` in v1 because `buildPerTaskRows` does
+- `PerTaskRow.taskTitle` is always `null` because `buildPerTaskRows` does
   not project titles into the analyser's `perTask` display rows. The live
   `TaskPartial` does carry `taskTitle`, and the heatmap adapters read it
   separately from the live partial (`buildTaskColumns`); the analyser field is
-  reserved for future cross-reference resolution.
+  reserved for cross-reference resolution.
 - `MergedHeatmapTaskColumn.averageContribution` is inherited from the shared
   base projection; merged dedupe-by-`taskKey` guarantees one definition-scoped
   value per collapsed column.
 
 **Known discrepancies:**
 
-The reconciliation
-semantics are aligned across the analyser, both heatmap adapters, and the
-Class-page adapter:
+1. **Effective-weight validity is enforced after the wire schema.** A negative or non-finite
+   resolved effective weight is rejected by the shared `computeEffectiveWeight` helper before
+   analyser contribution metadata or a heatmap task-column descriptor is produced. The partial
+   wire schemas still accept negative finite weighting values, and multiplication of finite
+   factors can overflow, so the helper is the single product-validity boundary and
+   `AverageContributionSchema.effectiveWeight` is a second analyser boundary.
+   Classification: **Deliberate boundary** — the helper is the product-validity gate for both
+   analyser accumulation and heatmap column projection.
 
-1. **Aligned** — a negative or non-finite resolved effective weight is rejected
-   by the shared `computeEffectiveWeight` helper before analyser contribution
-   metadata or a heatmap task-column descriptor is produced. The partial wire
-   schemas still accept negative finite weighting values, and multiplication of
-   finite factors can overflow, so the helper is the single product-validity
-   boundary and `AverageContributionSchema.effectiveWeight` is a second
-   analyser boundary.
-2. **Aligned** — `computeOverallComposite` restricts its terminal (`error`,
-   `notAttempted`) state tests to criteria with positive configured criterion
-   weighting. It sums `totalDataPoints` across all three criteria on every path,
-   while keeping `totalWeight` and `applicableDataPoints` contribution-based on
-   the computed path and summing `totalWeight` across all three on the terminal
-   paths.
-3. **Aligned** — `resolveAggregateMetric` and `rollupMetric` retain zero-weight
-   observed numeric and raw `N` inputs in computed and not-attempted aggregate
-   `totalDataPoints`.
-4. **Aligned** — the metadata projection maps the analyser's four-state union into the distinct
-   ABClass score union explicitly, mapping excluded/null to literal `excluded`. The
-   metadata schema enforces finite 0–5 computed values, while `MetricResultSchema.value`
-   remains `z.number()` without those bounds; out-of-range projection fails metadata
-   validation, never clamps or rounds. Assignment refresh timestamps are intentionally
-   stricter than the existing nullable-string read shape; see
-   [ABClass known discrepancy 9](abclass.md#known-discrepancies).
-
-5. **Aligned** — the metadata descriptor translates writer `saved`/`classPartial` into shared
-   `succeeded`/`confirmedPersistence` state, without persisting the display result or
-   transporting local Errors/functions. Context identity equality is checked by the
-   hook; completeness and successful-run provenance remain caller responsibilities.
-6. **Aligned** — `PostAnalysisTaskResultSchema` admits only strict
-   succeeded/skipped results, and the runner parses it before adding descriptor-owned
-   `taskId` and validating outcome data. The former wider outcome-only parse accepted
-   untyped pending/failed task returns with `error: null`; both become runner-owned
-   failed outcomes with non-null local Errors, without blocking later tasks. Types derive
-   from the result schema, whose variants are reused by the outcome schema.
-
-7. **Aligned** — failed lifecycle data permits `confirmedPersistence?: true`,
-   without widening `PostAnalysisTaskResultSchema`. Post-save query refresh failure
-   retains a non-null local normalised Error and save confirmation; feedback selects
-   saved-but-refresh-failed copy instead of claiming the save failed. False/null flags,
-   failed/pending task returns and serialised technical handles remain invalid.
-
-8. **Aligned** — class ownership is explicit and independent of analysis
-   readiness. `usePostAnalysisTasks` requires the committed `selectedClassId` as its third
-   argument; a `null` context for the same class clears published state but does not destroy
-   feedback or detach a pending attempt, while a changed/deselected class and unmount still
-   suppress late feedback. The notification host is the required
-   `App.useApp().notification` context with no production no-host fallback. Refresh-failure
-   diagnostics also carry the bounded scalar `confirmedPersistence: true`. This changes local
-   lifecycle execution only: no persistence, request, response, envelope or analyser shape
-   changes.
+2. **Metadata output is stricter than the read and analyser shapes.** The metadata projection
+   maps the analyser's four-state union into the distinct ABClass score union explicitly,
+   mapping excluded/null to literal `excluded`. The metadata schema enforces finite 0–5
+   computed values, while `MetricResultSchema.value` remains `z.number()` without those
+   bounds; out-of-range projection fails metadata validation, never clamps or rounds.
+   Assignment refresh timestamps are intentionally stricter than the nullable-string read
+   shape; see [ABClass — metadata refresh timestamp strictness](abclass.md#known-discrepancies).
+   Classification: **Deliberate boundary** — stricter parsing is confined to the metadata task
+   boundary so timestamp-only freshness comparisons are trustworthy.
 
 ## Legacy assignment display
 
-Valid legacy scores are included in analysis through the existing heatmap/averaging and E rules,
-with no version-based filtering and no new analyser or card-model field. The task-heatmap
-`Reassessment required` tag is shown from the `'legacy'` marker, task-heatmap only, with no field
-added to persisted metadata.
+Valid legacy scores are included in analysis through the heatmap/averaging and `E` rules. The
+`Reassessment required` tag is shown from the `'legacy'` marker on task heatmaps.
 
-## Attempt-baseline contract changes
+## Attempt-baseline analysis mode
 
-### Attempt-baseline analysis mode
-
-The top-decile attempt-baseline analysis mode adds a required filter field, a result echo and an
-optional baseline block, plus the analyser's baseline-mode behaviour (post-accumulation baseline
-selection, baseline-restricted aggregation, the baseline-mode per-student `excluded` conversion
-and the `attemptBaseline` echo). The heatmap column projection, the summary reconciliation, the
-shared `AveragesBasisControl` in the Class-page table cards and its availability resolver, the
-mode threading to Class-page display labels, the embedded heatmap's baseline marking and caption,
-and the E2E browser coverage are described below. The explicit-`E` analyser input and the preview
-`sourceUrl` field are covered in the sections above.
+The top-decile attempt-baseline analysis mode uses a required filter field, a result echo and an
+optional baseline block, together with the analyser's baseline-mode behaviour: post-accumulation
+baseline selection, baseline-restricted aggregation, the baseline-mode per-student `excluded`
+conversion and the `attemptBaseline` echo. The heatmap column projection, the summary reconciliation,
+the shared `AveragesBasisControl` in the Class-page table cards and its availability resolver,
+the mode threading to Class-page display labels, and the embedded heatmap's baseline marking and
+caption follow.
 
 1. **`AnalysisFilterSchema.analysisMode`** — required enum field
-   `z.enum(['absolute', 'topDecileBaseline'])` on the existing strict filter
-   object. There is no default; every caller states the mode explicitly.
-   `'absolute'` is the explicit representation of current behaviour. The schema requires the
-   field and every input-construction site supplies it.
+   `z.enum(['absolute', 'topDecileBaseline'])` on the strict filter object. The field has no
+   default; every caller states `'absolute'` or `'topDecileBaseline'` explicitly.
 
 2. **`AveragingResultSchema.appliedAnalysisMode`** — required echo enum
-   (same two values) recording the mode actually applied to the per-class
-   result. The schema requires the echo; the analyser emits the input's mode — `'absolute'`, or `'topDecileBaseline'` together with the
-   baseline block.
+   (same two values) recording the mode applied to the per-class result. The analyser echoes its
+   input mode: `'absolute'`, or `'topDecileBaseline'` together with the baseline block.
 
 3. **`AveragingResultSchema.attemptBaseline`** — optional strict object present
    only when `appliedAnalysisMode` is `'topDecileBaseline'`:
@@ -1174,7 +1085,7 @@ and the E2E browser coverage are described below. The explicit-`E` analyser inpu
    }).optional(),
    ```
 
-   Intended domain rules (produced by a post-accumulation baseline-selection derivation; not
+   Domain rules (produced by a post-accumulation baseline-selection derivation; not
    Zod refinements):
    - Candidates = roster students with at least one attempted task within the
      analysis input's in-scope assignments; pool = top
@@ -1219,22 +1130,15 @@ and the E2E browser coverage are described below. The explicit-`E` analyser inpu
      converted); all-`error` rows stay `error` and any mixture with a
      converted criterion converges on `excluded`. A criterion with no
      observed evidence keeps `error`; a student with no per-(student, task)
-     accumulators at all follows today's absolute-mode path (`error` metrics)
+     accumulators at all follows the absolute-mode path (`error` metrics)
      and is never converted.
 
-   The optional block validates exactly as recorded, and the analyser emits it in every
-   baseline-mode result; absolute mode omits it. Baseline selection is the post-accumulation
-   derivation recorded above.
-
-4. **`PerTaskRowSchema` carries no membership flag.** Attempt-baseline membership is derived by
-   consumers from the result's `attemptBaseline.baselineTaskKeys`; the task row has no
-   `includedInAttemptBaseline` field. Per-task row _values_ stay absolute in both modes. **Per-student cell metrics carry no flag:** columns
-   are the only marked heatmap unit (column-level marking in v1; see item 8),
-   so `PerStudentTaskMetric` is unchanged. The array's **contents are also
-   mode-independent**: baseline filtering restricts only the aggregation step,
-   so `perStudentTaskMetrics` carries every observed (student, task) pair in
-   both modes — availability and heatmap substitution paths therefore see
-   identical evidence regardless of mode.
+4. **Task rows and per-student metrics.** Attempt-baseline membership lives only in the result's
+   `attemptBaseline.baselineTaskKeys`, which consumers read to mark heatmap columns; per-task
+   values stay absolute in both modes. Columns are the only marked heatmap unit (see
+   "Heatmap column baseline marking" below). Baseline filtering restricts only the aggregation
+   step, so `perStudentTaskMetrics` carries every observed (student, task) pair in both modes —
+   availability and heatmap substitution paths therefore see identical evidence regardless of mode.
 
    **Baseline narrowing rule.** `attemptBaseline` is optional on the result
    because absolute mode omits it; the analyser always emits it in baseline
@@ -1250,29 +1154,16 @@ and the E2E browser coverage are described below. The explicit-`E` analyser inpu
    evidence must never invoke baseline selection), while the public summary
    input continues to validate the caller's supplied `analysisMode`.
 
-   The internal delegation pin and the required
-   public filter field are in place; the reconciliation confirms the analyser
-   stays internally `'absolute'` and the public summary schema is unchanged.
-
 6. **Downstream aggregate consumers.** Per-assignment aggregates on the Class
    page (recent-assignment cards) are recomputed in baseline mode from
    baseline-restricted per-task evidence: the adapter reads
    `analyserResult.appliedAnalysisMode` and rolls up the filtered rows; when
    the filtered set is empty it rolls up the unfiltered rows per criterion and
-   converts **only `computed` and `notAttempted`** results to `excluded`,
-   preserving observed `totalDataPoints` and constructed with the
-   `ExcludedMetricSchema` literals (`value: null`, `totalWeight: 0`,
-   `applicableDataPoints: 0`; the conversion assumes a source rollup whose
-   resolved `totalDataPoints` is ≥ 1 — the accumulator path guarantees this)
-   with the same observed-evidence semantics as item 3; an already-`excluded`
-   zero-weight rollup keeps its weighting cause. Criteria with no observed
-   evidence stay `error` (no `excluded` is synthesised), the existing `rows.length === 0 → N` no-per-task-rows
-   placeholder branch is untouched, and the converted **per-criterion**
-   results flow through the existing `computeOverallComposite` (the composite
-   itself is never converted): the card `average`'s resolved `totalDataPoints`
-   is the sum of the converted criteria's counts, all-`error` rows stay
-   `error`, and any mixture with a converted criterion converges on
-   `excluded`.
+   applies the same baseline `excluded` conversion as the per-student rule above
+   (only `computed` and `notAttempted` convert, preserving observed
+   `totalDataPoints`, with `ExcludedMetricSchema` literals). Criteria with no
+   observed evidence stay `error`, and the converted per-criterion results flow
+   through `computeOverallComposite`.
 
    The rule lives in the co-located module
    `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts`
@@ -1286,14 +1177,13 @@ and the E2E browser coverage are described below. The explicit-`E` analyser inpu
    `deriveBaselineTaskKeySet` fails fast — its throws (prefixed
    `adaptClassPageToViewModel:`) name the class for a missing or unrecognised
    `appliedAnalysisMode` echo and for a baseline-mode result without its
-   required `attemptBaseline` block, the same narrowing rule as item 8.
-   `baselineAvailability` deliberately gains no entry in this contract: it is a
-   Class-page hook value derived during render (`useClassPageData.helpers.ts`),
-   not part of the analysis response shape.
+   required `attemptBaseline` block, under the baseline narrowing rule.
+   `baselineAvailability` is a Class-page hook value derived during render
+   (`useClassPageData.helpers.ts`), outside the analysis response shape.
 
-7. **Display-only additions (no schema change):** the `excluded` aggregate
-   state would carry two causes (zero weighting vs baseline exclusion); the
-   accessible label becomes mode-aware at the `metricDisplay` layer
+7. **Mode-aware excluded label:** the `excluded` aggregate
+   state has two causes (zero weighting vs baseline exclusion); the
+   accessible label is mode-aware at the `metricDisplay` layer
    (`metricTone`/`MetricPill`/`studentAveragesTableColumns`) without widening
    any shape — in baseline mode the label names **both** possible causes in one
    truthful wording, so no cause field exists. The Heatmaps-page pipeline
@@ -1306,7 +1196,7 @@ and the E2E browser coverage are described below. The explicit-`E` analyser inpu
    `metricTone.ts` exports the
    two-cause baseline wording (`BASELINE_EXCLUDED_METRIC_ACCESSIBLE_LABEL` —
    "Excluded from average: displayed work had zero weighting, or fell outside
-   the baseline task set.") beside the unchanged weighting-only constant, with
+   the baseline task set.") beside the weighting-only constant, with
    the resolver `resolveExcludedMetricAccessibleLabel(analysisMode?)`;
    `MetricPill` accepts the optional `analysisMode` prop for the excluded
    accessible name only.
@@ -1321,7 +1211,7 @@ and the E2E browser coverage are described below. The explicit-`E` analyser inpu
    props only to host `AveragesBasisControl` in its card head, not for
    excluded-label wording.
 
-8. **Heatmap projection addition:** `HeatmapTaskColumn` gains `includedInAttemptBaseline: boolean`, set in
+8. **Heatmap column baseline marking:** `HeatmapTaskColumn` carries `includedInAttemptBaseline: boolean`, set in
    `heatmapAdapter.ts` from a required second `buildTaskColumns` parameter
    typed `ReadonlySet<string> | null` (`null` = absolute mode: every column
    included). **The supplier is `adaptMetricsToHeatmap`** — the only caller
@@ -1331,8 +1221,8 @@ and the E2E browser coverage are described below. The explicit-`E` analyser inpu
    (`adaptMetricsToMergedHeatmap` → `buildMergedTaskColumnsInClassOrder` →
    `buildMergedTaskColumns` → `buildTaskColumns`) passes `null` explicitly at
    each hop. `MergedHeatmapTaskColumn` inherits the field via its existing spread
-   of the base projection. `HeatmapCell` is unchanged: marking is
-   **column-level only in v1**, and cell values stay absolute in both modes.
+   of the base projection. `HeatmapCell` marking is
+   **column-level only**, and cell values stay absolute in both modes.
    Both column descriptors require the field and
    the adapter derives the set from its own analyser result; the fail-fast
    throws name `appliedAnalysisMode` (missing or unrecognised echo) and
@@ -1342,11 +1232,9 @@ and the E2E browser coverage are described below. The explicit-`E` analyser inpu
 9. **Preview error fields.** The derived preview shapes distinguish an
    assessment-only error whose source is available, an unavailable/corrupt source, and a
    `null` `artifactContent` caused by deliberate partial redaction. These fields are
-   in-memory only; they are never added to backend artefacts, persistence, API
-   requests/responses or the transport envelope, and `CellPreviewData`/`TaskPreviewData`
-   remain TS-only, non-Zod. See
-   [Task preview derived shapes](#task-preview-derived-shapes) for the current field
-   tables.
+   in-memory only; `CellPreviewData` and `TaskPreviewData` are TypeScript-only, non-Zod
+   preview shapes. See
+   [Task preview derived shapes](#task-preview-derived-shapes) for the field tables.
 
    - `CellPreviewData.errors` — required
      `Record<HeatmapMetricKey, AssessmentError | null>`; every canonical criterion has an
@@ -1375,62 +1263,8 @@ and the E2E browser coverage are described below. The explicit-`E` analyser inpu
       corruption overrides the affected preview's score/reasoning with `E` even when the
       class-derived heatmap cell still shows a historic numeric value, stating
       `Source preview unavailable. Displayed scores are unchanged; reassess the assignment to refresh them.`
-      This override is preview-local: it must not mutate class-query data, recompute analysed
-      class scores/averages, or persist a read repair. The public `MetricResult` output is
-      unchanged.
-
-## Planned class summary contract (Not implemented)
-
-The following in-memory contract is planned in `SPEC.md` and is **Not implemented**. It is not a
-wire, persistence or envelope shape, and it is recorded here so implementation has a target;
-remove the `Not implemented` marker as each entry is delivered.
-
-- **ClassSummary analyser and schema — `Not implemented`**: a dedicated `classSummary` analyser
-  registered in `DataAnalysisService` produces a validated `ClassSummary`, exposed as
-  `analyseClassSummary(input, options)`. It composes the existing `AveragingAnalyser` and reuses
-  its exported `rollupMetric`, `computeOverallComposite` and `convertToBaselineExcluded` helpers;
-  task metrics are filtered by `taskKey` in the analyser. It owns ranking and per-assignment assembly. No new
-  averaging logic is added outside `DataAnalysisService`, and `AnalysisFilterSchema`,
-  `AveragingAnalyserInputSchema` and `DataAnalysisResponseSchema` are unchanged. The existing
-  `analyse(input, 'averaging')` and `analyseAssignmentSummary()` entry points are unchanged;
-  `AssignmentSummaryAnalyser` stays in its own field and the averaging registry is not widened.
-  The new analyser is held in its own `classSummaryAnalyser` field, matching that existing pattern.
-- **Analyse options — `Not implemented`**: the writer supplies `{ target, recentAssignments }`,
-  where `target` is the result of its existing freshness decision and `recentAssignments` are the
-  newest three fresh-class assignment instances. The analyser performs no freshness selection and
-  derives no rolling history.
-- **ClassSummary shape — `Not implemented`**: `{ classId, allTasks: { classAverages, standings },
-baseline: { available, classAverages, standings }, target, recentAssignments }`. All score
-  values are analyser-native four-state `MetricResult` values; conversion to the metadata score
-  union uses the existing `projectAverageScores()` mapping in the writer. `target` carries the
-  isolated absolute averages for the refreshed assignment; `recentAssignments` describes the
-  newest three fresh-class instances in newest-first order and `recentAssignmentScores[i]`
-  aligns to `recentAssignments[i]`. Baseline values are `null` when `available` is `false`. No
-  summary-clock timestamp is carried; the writer owns stamping.
-- **Isolated baseline score derivation — `Not implemented`**: for each supplied recent assignment,
-  run the existing `AveragingAnalyser` in absolute mode and take `perStudentTaskMetrics`; filter
-  each student's metrics to the whole-class baseline keys by `taskKey`, roll up each criterion
-  with `rollupMetric` and derive `overall` with `computeOverallComposite`. A student with no
-  baseline metrics rolls up unfiltered evidence and applies `convertToBaselineExcluded` to the
-  criterion results before deriving `overall`. No isolated analysis runs in baseline mode.
-- **Ranking rule — `Not implemented`**: rank by `perStudent.overall` where its state is
-  `computed`; top descending, bottom ascending, ties by `studentId` ascending, at most three
-  dense entries per list. Non-numeric `overall` states are not ranked. The two lists per basis
-  are disjoint: take the top three first, then the bottom three from the remaining students.
-- **Baseline unavailability — `Not implemented`**: the documented `deriveAttemptBaseline`
-  failures (roster below 3, fewer than 2 attempt candidates, empty pool intersection) produce
-  `available: false` with null baseline averages and standings; the refresh still succeeds and
-  writes all-task fields. These failures throw a dedicated `AttemptBaselineUnavailableError`
-  extending `Error` with the existing messages; the summary analyser catches only that type and
-  every other thrown value propagates. No message matching or broad catch is used.
-- **Writer consumption — `Not implemented`**: `abClassMetadataService.ts` selects the target and
-  newest assignments using its existing freshness decision, calls `analyseClassSummary()` and maps
-  the result into the extended ABClass metadata shape in
-  [abclass.md](../data-shapes/abclass.md#planned-changes-baseline-averages-and-student-standings-not-implemented);
-  `mergeClassMetadata()` owns the persisted rolling history, target replacement, uniqueness and
-  summary timestamp. No calculation lives in the writer, and `postAnalysisTasks.ts`,
-  `refreshABClassMetadata.ts`, `postAnalysisFeedback.ts` and `postAnalysisInvalidation.ts`
-  remain unchanged.
+      This override stays preview-local: class-query data, analysed scores/averages and the public
+      `MetricResult` output are unaffected, and no repair is persisted.
 
 ## File Index
 
@@ -1458,7 +1292,7 @@ Analyser: `src/frontend/src/services/dataAnalysis/analysers/`
 Heatmap adapters: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`, `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.ts`
 Metric display: `src/frontend/src/services/dataAnalysis/metricDisplay/`
 Class-page adapter schema: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
-Class-page adapter card-rollup rule: `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts` → `rollupCardCriteria` (baseline-mode card aggregates, item 6); `deriveBaselineTaskKeySet` (`src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`)
+Class-page adapter card-rollup rule: `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts` → `rollupCardCriteria` (baseline-mode card aggregates); `deriveBaselineTaskKeySet` (`src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`)
 
 Metadata refresh execution companions:
 ├── `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.ts` → pure decision, shared newest-first comparator, metric mapping, non-nullable rolling merge; `MetadataRefreshSkipped`, `MetadataRefreshDecision`
@@ -1477,8 +1311,8 @@ Shared lifecycle companions:
 
 Frontend test-only acceptance:
 ├── `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` → canonical small class-2 historical-boundary and later-version browser queues
-├── `src/frontend/e2e-tests/post-analysis-metadata.persistence.spec.ts` → three changed-write journeys
-└── `src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts` → eight save/refresh feedback and viewport/theme cases
+├── `src/frontend/e2e-tests/post-analysis-metadata.persistence.spec.ts` → changed-write and fresh-read persistence
+└── `src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts` → save/refresh feedback and viewport/theme containment
 
 Task preview derived shapes:
 ├── `src/frontend/src/features/taskHeatmap/buildCellPreviewLookup.ts` → `CellPreviewData`, `AssessmentError` (owners)

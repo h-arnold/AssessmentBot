@@ -1,7 +1,7 @@
 # Security Approach — Overview
 
-This document describes how AssessmentBot protects the data it processes and stores.
-AssessmentBot handles data about **minors** (student work, assessment records, marks), so
+This document describes how Assessment Bot protects the data it processes and stores.
+Assessment Bot handles data about **minors** (student work, assessment records, marks), so
 security is a first-class design concern rather than an afterthought.
 
 The security posture is **defence in depth**. The primary control is the Google Apps
@@ -11,8 +11,7 @@ gate) supplements that platform security, guarding against accidental misconfigu
 and laying the foundation for finer-grained roles in future. A data-handling discipline
 completes the picture by minimising where sensitive data can exist.
 
-This document set is developer-facing. Each detailed layer document is
-grounded in the actual code; file paths and behaviour are cited rather than paraphrased.
+This document set is developer-facing.
 
 ## Layering model
 
@@ -118,9 +117,9 @@ See [data-handling.md](./data-handling.md).
 ## Accepted risks and trade-offs
 
 Security decisions involve trade-offs. The project records them openly — including the
-vendored-code exposure in the deployed bundle, the bounded revocation latency of the auth
-cache, the deliberate bootstrap fail-open window, and the deferred role-based method
-filtering — with the justification for each in
+vendored `JsonDbApp` code in the bundle (isolated from `google.script.run` by its build-time
+IIFE), the bounded revocation latency of the auth cache, the bounded first-admin bootstrap
+claim, and the deferred role-based method filtering — with the justification for each in
 [accepted-risks.md](./accepted-risks.md).
 
 ## Related documentation

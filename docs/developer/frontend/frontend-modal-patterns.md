@@ -52,8 +52,7 @@ Use this family when:
 Default decision:
 
 - keep local unless two or more destructive confirmation modals need the same busy-state, footer, and copy structure
-- accepted boundary for the classes modal-family compliance refactor: keep `src/frontend/src/features/classes/BulkDeleteModal.tsx` and `AssignmentsDeleteModal` in `src/frontend/src/pages/AssignmentsPage.tsx` local to their workflows
-- shared destructive-confirmation helper status for that refactor: implemented as a local-only outcome
+- keep `src/frontend/src/features/classes/bulk/BulkDeleteModal.tsx` and `AssignmentsDeleteModal` in `src/frontend/src/pages/AssignmentsPage.tsx` local to their workflows
 
 ### 3.2 Classes bulk form modals
 
@@ -81,8 +80,7 @@ Default decision:
 
 - reuse the family shape
 - extract helper behaviour only when repeated shell logic clearly outweighs the helper surface
-- accepted boundary for the classes modal-family compliance refactor: a narrow feature-local `src/frontend/src/features/classes/bulk/BulkFormModalScaffold.tsx` may be introduced for this family only
-- the scaffold is the feature-local shared shell for the three bulk form modals
+- `src/frontend/src/features/classes/bulk/BulkFormModalScaffold.tsx` is the feature-local shared shell for the three bulk form modals
 
 ### 3.3 Reference-data workflow modals
 
@@ -120,7 +118,7 @@ Default decision:
 - extend the existing feature-local helpers for similar reference-data workflows
 - do not replace this family with a generic app-wide CRUD modal abstraction
 - reuse the extracted `ReferenceDataManagementModalScaffold` for the shared outer modal shell, shared close wiring, create-action presentation, and slot placement
-- accepted boundary for the classes reference-data scaffold: reuse `InlineDialog.tsx`, `manageReferenceDataDialogs.tsx`, and `manageReferenceDataHelpers.ts` as-is, and use `ReferenceDataManagementModalScaffold.tsx` for modal shell composition
+- reuse `InlineDialog.tsx`, `manageReferenceDataDialogs.tsx`, and `manageReferenceDataHelpers.ts` for this family, and use `ReferenceDataManagementModalScaffold.tsx` for modal shell composition
 - the scaffold is the feature-scoped shared shell for the reference-data modal family; its callers include `ManageTopicsModal.tsx`
 
 ### 3.4 Assignment definition create/update wizard modal
@@ -135,7 +133,7 @@ Shared traits:
 - explicit in-modal re-parse gating when document URLs change, with mode-specific URL-edit and dismissal behaviour (see below)
 - task-weight editing with feature-specific state rules
 
-Pending document-change contract (issue #306):
+Document URL changes (update mode):
 
 - In update mode, a pending reference or template URL change keeps both URL inputs editable while the form-level lock disables title, topic, year group, assignment weighting, task weightings, and every other conflicting edit control. The lock clears when the user re-parses or restores the persisted URLs.
 - The primary action stays disabled while a change is pending (`isWizardPrimaryActionDisabled`), and the mutation boundary rejects a `save` before transport (`isWizardMutationBlocked`).
@@ -179,10 +177,10 @@ Use this family when:
 Default decision:
 
 - extract one narrow feature-local component for these three approved callers only; do not widen it into a generic app-wide confirmation wrapper
-- helper-change status for this extraction: `Implemented`; `AssignmentDiscardConfirm.tsx` owns the shared nested confirmation copy, footer actions, dismissal wiring, and accessible-name anchoring for the three approved callers.
-- this is distinct from the one-off destructive confirmation family in Section 3.1; that family's shared-helper outcome remains local-only and is unaffected by this extraction.
+- `AssignmentDiscardConfirm.tsx` owns the shared nested confirmation copy, footer actions, dismissal wiring, and accessible-name anchoring for the three approved callers.
+- this is distinct from the one-off destructive confirmation family in Section 3.1, which stays local to its workflows.
 
-Owning-modal dismissal routing (assess-task modal, issue #301):
+Owning-modal dismissal routing (assess-task modal):
 
 - `AssessTaskModal` registers the active in-modal surface's close intent (create review or recovery review) and routes its close affordance, mask click and capture-phase Escape through that handler before falling back to closing itself, so an owning-modal dismissal cannot bypass the dirty guard.
 - The in-modal create branch delegates to `shouldPromptForCreateWizardDismissal` in `assignmentWizardDismissal.ts`: dirty stage-one values and an edited stage-two review prompt for confirmation, while an unchanged review returns to the choice prompt without one.

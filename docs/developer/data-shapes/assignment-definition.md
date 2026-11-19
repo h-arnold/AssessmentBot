@@ -18,7 +18,6 @@ Sibling contracts:
 - [Contract: Assignment](assignment.md) — Assignment embeds a full or partial `AssignmentDefinition` (copy-on-construct).
 - [Component Shape: BaseTaskArtifact](base-task-artifact.md) — the artifact shape embedded in `TaskDefinition.artifacts.{reference,template}`; this contract is its origin.
 - [Contract: Reference Data](reference-data.md) — `primaryTopicKey` references AssignmentTopics; `yearGroupKey` references YearGroups.
-- [Contract: BackendConfig](backend-config.md) — No direct relationship.
 - [Transport envelope](transport-envelope.md) — definition API payloads use the shared `apiHandler` envelope, which leaves the backend as a JSON string; this contract documents only the inner payload.
 
 ---
@@ -36,7 +35,7 @@ a single JsonDbApp collection.
 
 | #   | Field                 | Type                                        | Persistence | Transport | Frontend Zod                                                                         | Notes                                                                                                                                                                                                                             |
 | --- | --------------------- | ------------------------------------------- | ----------- | --------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `primaryTitle`        | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.primaryTitle: z.string()`                         | Canonical assignment title. Always present.                                                                                                                                                                                       |
+| 1   | `primaryTitle`        | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.primaryTitle: z.string()`                         | Assignment title. Always present.                                                                                                                                                                                                 |
 | 2   | `primaryTopic`        | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.primaryTopic: z.string()`                         | Resolved topic display label.                                                                                                                                                                                                     |
 | 3   | `primaryTopicKey`     | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.primaryTopicKey: TrimmedNonEmptyStringSchema`     | Authoritative keyed reference to `assignment_topics`. Never null.                                                                                                                                                                 |
 | 4   | `yearGroupKey`        | `string`                                    | included    | unchanged | `AssignmentDefinitionPartialSchema.yearGroupKey: TrimmedNonEmptyStringSchema`        | Authoritative year-group key. Never null (controller guarantees).                                                                                                                                                                 |
@@ -93,7 +92,7 @@ Key notes:
 - `referenceLastModified` and `templateLastModified` are persisted but **stripped at the
   transport boundary** — the response mapper (`_getFullAssignmentDefinition`) does not include them.
 - `tasks` is stored as a `Record<string, TaskDefinition>` keyed object but arrives at
-  the frontend as a `Array<{taskId, taskTitle, taskWeighting}>` lightweight array after
+  the frontend as an `Array<{taskId, taskTitle, taskWeighting}>` lightweight array after
   response-mapper transformation.
 - Stored dates are ISO strings: the constructor stores `createdAt`/`updatedAt`/
   `referenceLastModified`/`templateLastModified` as supplied strings (or from `new Date().toISOString()`),
@@ -244,7 +243,7 @@ on the raw persisted shape:
 Key contract notes:
 
 - The response shape is shared with `upsertAssignmentDefinition` — both read and write
-  transports use the same canonical editable entity contract (`AssignmentDefinitionSchema`).
+  transports use the same editable entity contract (`AssignmentDefinitionSchema`).
 - Returns `null` when no persisted definition exists for the given `definitionKey`.
 - `DateUtils.normaliseDateFields()` is called on the response before returning from the handler,
   converting `createdAt`/`updatedAt` to ISO strings. The same conversion applies to the
@@ -288,7 +287,7 @@ and **ID-shape** (link flow: `referenceDocumentId` + `templateDocumentId` + `doc
 **Forbidden request fields:** None — the request schema is flexible and controller-owned
 validation handles business rules (duplicate detection, document-ID mismatch, unknown task IDs).
 
-**Response:** `AssignmentDefinitionSchema` — the same canonical full-definition shape
+**Response:** `AssignmentDefinitionSchema` — the same full-definition shape
 returned by `getAssignmentDefinition`. Includes resolved `primaryTopic`, stable `definitionKey`,
 full `tasks` lightweight array, and all metadata.
 
@@ -320,9 +319,7 @@ Key contract notes:
   the same way. The trimmed candidate is then deduplicated case-insensitively
   (`areTrimmedStringsEqualIgnoringCase`) and appended only when absent. Both call sites in
   `useAssessTaskLinkFlow.ts` pass the raw picker values and rely on these helpers, so only trimmed
-  non-empty entries reach the request payload. This is request construction only — no persistence,
-  transport, response or schema change. Regression coverage:
-  `assessTaskLinkPayload.spec.ts`.
+  non-empty entries reach the request payload during request construction.
 
 **Error states:**
 
@@ -336,71 +333,40 @@ Key contract notes:
 
 #### Equivalence, parsing and recovery corrections
 
-The following semantics are the canonical behaviour. Wontfix and Exclude decisions are out of
-scope.
+1. **Artefact equivalence compares serialised content, not runtime state.**
+   `compareTaskEquivalence_` serialises model instances through
+   `BaseTaskArtifact.toJSON()` before comparison, so persisted artefact JSON and a
+   rehydrated artefact model carrying identical content compare equivalent. Compared
+   artefact fields are the [BaseTaskArtifact](base-task-artifact.md) fields (`taskId`,
+   `role`, `pageId`, `documentId`, `content`, `metadata`, `type`); `contentHash`,
+   `uid`/`_uid`, `taskIndex`, `artifactIndex` and live-instance internals such as
+   `TableTaskArtifact._rows` are excluded. Compared task fields are `id`, `pageId`,
+   `taskTitle`, `taskNotes`, `taskMetadata` (absent → `{}`) and the ordered
+   `artifacts.reference`/`artifacts.template` collections; `taskWeighting` and `index`
+   do not affect the decision. `pageId` is required on both sides and compared directly.
+   Optional `taskNotes` normalises to `null` and absent metadata to `{}`, so persisted
+   omissions and parser-produced nulls compare equal.
 
-1. **Artefact equivalence canonicalisation / runtime exclusions.**
-   `compareTaskEquivalence_` compares canonical serialised artefact fields and
-   excludes runtime-only state, so persisted artefact JSON and a rehydrated artefact
-   model instance carrying identical assessment content compare equivalent. Model
-   instances are serialised via `BaseTaskArtifact.toJSON()` before comparison.
-   Canonical compared artefact fields are the documented
-   [BaseTaskArtifact](base-task-artifact.md) fields (`taskId`, `role`, `pageId`,
-   `documentId`, `content`, `metadata`, `type`). Excluded runtime-only fields are
-   `contentHash`, `uid`/`_uid`, `taskIndex`, `artifactIndex`, and any non-serialised
-   live-instance internals (e.g. `TableTaskArtifact._rows`). Task-level fields compared
-   are `id`, `pageId`, `taskTitle`, `taskNotes`, `taskMetadata` (absent → `{}`), and the
-   ordered `artifacts.reference`/`artifacts.template` collections; `taskWeighting` and
-   `index` never affect the decision. `pageId` is required on both sides and is compared
-   directly (no absent→`null` normalisation). The remaining optional scalar (`taskNotes`)
-   normalises to `null` and absent metadata to `{}`, so persisted omissions and
-   parser-produced nulls compare equal.
-   Regression coverage:
-   `tests/y_controllers/AssignmentDefinitionTaskEquivalence.test.js` (canonical
-   fields, exclusions, key/array order, reason precedence) and
-   `tests/y_controllers/AssignmentDefinitionTaskEquivalenceBoundary.test.js`
-   (persisted plain artefact JSON versus a rehydrated `TaskDefinition` via `fromJSON`,
-   reversed direction, TABLE artefacts with live `_rows`, changed content).
-   Source: `AssignmentDefinitionTaskEquivalence.js`.
+2. **Parser results are all-or-nothing.**
+   Any invalid task, or a zero-task parse, blocks persistence of the refreshed
+   definition. The Slides parser records invalid-task presence on the non-enumerable
+   `hasInvalidTasks` marker of the returned task map. `parseTasksOrThrow_` rejects a
+   marked parse and a zero-task parse with `DEFINITION_PARSE_FAILED` before the
+   orchestrator reaches persistence, leaving the stored definition and freshness
+   timestamps unchanged.
 
-2. **All-or-nothing parser result rule.**
-   Any invalid task in parser output, or a zero-task parse, blocks persistence of the
-   refreshed definition; only a fully valid, non-empty parse may persist. The Slides
-   parser path validates each candidate task and records invalid-task presence on the
-   non-enumerable `hasInvalidTasks` marker of the returned task map instead of silently
-   returning the valid remainder. `parseTasksOrThrow_` rejects a marked parse and a
-   zero-task parse with `DEFINITION_PARSE_FAILED` before the orchestrator reaches
-   persistence, leaving the stored definition and freshness timestamps unchanged.
-   Regression coverage:
-   `tests/controllers/assignmentDefinitionController.upsert.recoveryDiagnostics.test.js`
-   (zero-task and mixed valid/invalid outcomes with zero writes).
-   Source: `AssignmentDefinitionTaskParser.js`; `AssignmentDefinitionRecoveryRules.js`.
-
-3. **Recovery invalid-request preconditions.**
+3. **Recovery invalid-request preconditions surface as `INVALID_REQUEST`.**
    A forced reparse without an existing `definitionKey`, and `forceReparse: true`
-   combined with `taskWeightings`, are documented request-contract violations and
-   surface as `INVALID_REQUEST` (`ApiValidationError` without a custom `code`, asserted
-   at the API envelope). `DEFINITION_STALE` and `DEFINITION_PARSE_FAILED` codes are
-   unchanged, and the create-time `updatedAt` null/omission behaviour
-   (Wontfix) is not altered.
-   Regression coverage:
-   `tests/controllers/assignmentDefinitionController.upsert.recoveryDiagnostics.test.js`
-   (envelope assertion for the precondition failure).
-   Source: `AssignmentDefinitionRecoveryRules.js` (`assertRecoveryPreconditions_`).
+   combined with `taskWeightings`, are rejected as `INVALID_REQUEST`
+   (`ApiValidationError` without a custom `code`) before any parsing or persistence.
+   `DEFINITION_STALE` and `DEFINITION_PARSE_FAILED` keep their own codes.
 
-4. **Non-content error classification preservation.**
+4. **Non-content errors keep their own classification.**
    Only recognised content parsing failures map to `DEFINITION_PARSE_FAILED`.
-   `parseTasksOrThrow_` classifies an unclassified native `Error` (name `'Error'`) as a
-   content failure and wraps it with `DEFINITION_PARSE_FAILED`. Typed/named errors —
-   authorisation, rate-limit (`ApiRateLimitError`), and persistence (`PersistError`) —
-   are rethrown unchanged, so their own error type drives the envelope mapping rather
-   than being reclassified as a parse failure (see
+   `parseTasksOrThrow_` wraps an unclassified native `Error` (name `'Error'`) with that
+   code. Authorisation, rate-limit (`ApiRateLimitError`) and persistence (`PersistError`)
+   errors are rethrown with their original type, which drives the envelope mapping (see
    [`transport-envelope.md`](transport-envelope.md#recovery-classification-semantics)).
-   Regression coverage:
-   `tests/controllers/assignmentDefinitionController.upsert.recoveryDiagnostics.test.js`
-   (rate-limit, persistence, and authorisation classifications preserved; logger seam
-   asserts safe context and the original parser error).
-   Source: `AssignmentDefinitionRecoveryRules.js` (`isRecognisedContentParsingFailure_`).
 
 #### Reparse, freshness and weighting semantics
 
@@ -424,7 +390,7 @@ scope.
 #### Parse-failure semantics
 
 - A stable, non-retriable `DEFINITION_PARSE_FAILED` code (see
-  [`transport-envelope.md`](transport-envelope.md#error-code-definition_parse_failed))
+  [`transport-envelope.md`](transport-envelope.md))
   covers recognised document/task parsing failures. The envelope mapper honours
   `ApiValidationError.code`, so the backend rejection surfaces with this code.
 - An invalid task or a zero-task result blocks the refresh and persists nothing; the
@@ -567,8 +533,7 @@ The definition-write availability invariant is owned by
   validation through the shared `parseApiResponse()` helper in
   `src/frontend/src/services/apiService.ts`. Schema-validation failures therefore emit
   the shared bounded diagnostics (`method`, structured `zodIssues`, truncated
-  `responsePreview`) before the `ZodError` is rethrown. Regression coverage:
-  `src/frontend/src/services/assignmentDefinition/assignmentDefinitionService.parseApiResponse.spec.ts`.
+  `responsePreview`) before the `ZodError` is rethrown.
 
 **Backend transport validation:**
 
@@ -597,7 +562,7 @@ The definition-write availability invariant is owned by
 - A non-null request `updatedAt` token that mismatches the stored `updatedAt` rejects the save with `DEFINITION_STALE` (`ApiValidationError` carrying that code) and no writes.
 - Recognised document/task parsing failures (throwing parser or zero-task result) reject with `DEFINITION_PARSE_FAILED` (`ApiValidationError` carrying that code) and nothing persisted.
 - The response mapper throws if `yearGroupKey` cannot be resolved to a valid year-group label.
-- The response mapper throws if any required field is `undefined` in the canonical response.
+- The response mapper throws if any required field is `undefined` in the response.
 - `deleteAssignmentDefinition` is idempotent: repeated deletes for the same key still succeed.
 - The `_validateFull()` method in the model enforces `referenceDocumentId` and `templateDocumentId` are truthy for full definitions (create path). Partial definitions do not require doc IDs.
 - New definition writes validate shared artefacts on the final resolved tasks before constructing or persisting the definition: non-`IMAGE` reference/template artefacts require non-null `content` and a string `contentHash`; a pending `IMAGE` is permitted; a `SPREADSHEET` reference must contain at least one assessable formula. Blank `TEXT`/array templates remain valid. The validator requires the resolved task and its `artifacts.reference`/`artifacts.template` arrays, so a malformed task fails loudly instead of being skipped. `AssignmentDefinitionValidation.validateSharedArtifacts()` owns this check; `AssignmentDefinitionUpsertOrchestrator` invokes it before persistence. Existing error propagation and rollback are retained, and there is no run-time eligibility preflight. See [Component Shape: BaseTaskArtifact § Availability by parent store](base-task-artifact.md#availability-by-parent-store).

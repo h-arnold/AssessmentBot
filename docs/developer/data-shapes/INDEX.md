@@ -2,34 +2,30 @@
 
 This folder contains the authoritative data-shape specifications for every
 contract that crosses a persistence, transport, or validation boundary in
-AssessmentBot. Each contract file is the single source of truth for what
+Assessment Bot. Each contract file is the single source of truth for what
 that shape _should_ be — code must conform to the spec, not the other way
 around.
 
-**Workflow:** When changing code that affects a data shape (persistence
-serialisation, API transport, or frontend validation), update the relevant
-contract file in this folder _before_ or _concurrently with_ the code
-change. If a discrepancy is found between code and spec, fix whichever is
-wrong. The spec is not documentation of legacy drift — it is the canonical
-reference.
+The process for updating these specs is defined in
+[`.opencode/agents/data-shapes-agent.md`](../../../.opencode/agents/data-shapes-agent.md).
 
 ## Contract Registry
 
-| Contract                            | File                                                                       | Persistence                                                        | API Endpoints                                                                                                                                                                                                                            | Sub-entities                                                                                                                  |
-| ----------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **ABClass**                         | [`abclass.md`](abclass.md)                                                 | Main doc + `abclass_partials` registry                             | `getABClassPartials`, `getABClass`, `upsertABClass`, `updateABClass`, `deleteABClass`                                                                                                                                                    | Teacher, Student, ABClassMetadata (embedded, nullable snapshot), AssignmentPartial (embedded transport)                       |
-| **AssignmentDefinition**            | [`assignment-definition.md`](assignment-definition.md)                     | `assignment_definitions` registry + `assdef_full_*` full cache     | `getAssignmentDefinitionPartials`, `getAssignmentDefinition`, `upsertAssignmentDefinition`, `deleteAssignmentDefinition`                                                                                                                 | TaskDefinition, BaseTaskArtifact                                                                                              |
-| **Assignment**                      | [`assignment.md`](assignment.md)                                           | `assign_full_*` full records                                       | `getAssignment`, `startAssessmentRun`                                                                                                                                                                                                    | StudentSubmission, StudentSubmissionItem, Assessment, Feedback, AssignmentDefinition (embedded), BaseTaskArtifact (cross-ref) |
-| **BackendConfig**                   | [`backend-config.md`](backend-config.md)                                   | Singleton document                                                 | `getBackendConfig`, `setBackendConfig`                                                                                                                                                                                                   | —                                                                                                                             |
-| **Reference Data**                  | [`reference-data.md`](reference-data.md)                                   | Cohorts, YearGroups, AssignmentTopics collections                  | `getCohorts`, `createCohort`, `updateCohort`, `deleteCohort`, `getYearGroups`, `createYearGroup`, `updateYearGroup`, `deleteYearGroup`, `getAssignmentTopics`, `createAssignmentTopic`, `updateAssignmentTopic`, `deleteAssignmentTopic` | —                                                                                                                             |
-| **RequestStore**                    | [`request-store.md`](request-store.md)                                     | User Properties (JSON blob)                                        | None — internal backend mechanism                                                                                                                                                                                                        | —                                                                                                                             |
-| **GoogleClassrooms**                | [`google-classrooms.md`](google-classrooms.md)                             | None (upstream API passthrough)                                    | `getGoogleClassrooms`, `getGoogleClassroomAssignments`                                                                                                                                                                                   | —                                                                                                                             |
-| **AuthCache**                       | [`auth-cache.md`](auth-cache.md)                                           | CacheService (script cache, 6h TTL)                                | None — internal to `AuthService.checkAccess()`                                                                                                                                                                                           | —                                                                                                                             |
-| **TriggerContext**                  | [`trigger-context.md`](trigger-context.md)                                 | Script Properties (`trigger:<uid>:method`, `trigger:<uid>:params`) | None — internal trigger context storage                                                                                                                                                                                                  | —                                                                                                                             |
-| **AuthUsers**                       | [`auth-users.md`](auth-users.md)                                           | Auth fields inside the `__CONFIG_STORE_KEY__` blob                 | `getApplicationAccess`, `getAuthenticationSettings`, `setAuthenticationSettings`                                                                                                                                                         | AuthUserEntry (embedded)                                                                                                      |
-| **Frontend Data Analysis Response** | [`frontend-data-analysis-response.md`](frontend-data-analysis-response.md) | None — derived frontend validation contract                        | None — in-memory `DataAnalysisService` output                                                                                                                                                                                            | AverageContribution, MetricResult, ClassPageDisplayMetric (adapter-local), CellPreviewData, TaskPreviewData                   |
+| Contract                            | File                                                                       | Persistence                                                              | API Endpoints                                                                                                                                                                                                                            | Sub-entities                                                                                                                  |
+| ----------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **ABClass**                         | [`abclass.md`](abclass.md)                                                 | Main doc + `abclass_partials` registry                                   | `getABClassPartials`, `getABClass`, `upsertABClass`, `updateABClass`, `deleteABClass`                                                                                                                                                    | Teacher, Student, ABClassMetadata (embedded, nullable snapshot), AssignmentPartial (embedded transport)                       |
+| **AssignmentDefinition**            | [`assignment-definition.md`](assignment-definition.md)                     | `assignment_definitions` registry + `assdef_full_*` full cache           | `getAssignmentDefinitionPartials`, `getAssignmentDefinition`, `upsertAssignmentDefinition`, `deleteAssignmentDefinition`                                                                                                                 | TaskDefinition, BaseTaskArtifact                                                                                              |
+| **Assignment**                      | [`assignment.md`](assignment.md)                                           | `assign_full_*` full records                                             | `getAssignment`, `startAssessmentRun`                                                                                                                                                                                                    | StudentSubmission, StudentSubmissionItem, Assessment, Feedback, AssignmentDefinition (embedded), BaseTaskArtifact (cross-ref) |
+| **BackendConfig**                   | [`backend-config.md`](backend-config.md)                                   | Singleton document                                                       | `getBackendConfig`, `setBackendConfig`                                                                                                                                                                                                   | —                                                                                                                             |
+| **Reference Data**                  | [`reference-data.md`](reference-data.md)                                   | Cohorts, YearGroups, AssignmentTopics collections                        | `getCohorts`, `createCohort`, `updateCohort`, `deleteCohort`, `getYearGroups`, `createYearGroup`, `updateYearGroup`, `deleteYearGroup`, `getAssignmentTopics`, `createAssignmentTopic`, `updateAssignmentTopic`, `deleteAssignmentTopic` | —                                                                                                                             |
+| **RequestStore**                    | [`request-store.md`](request-store.md)                                     | User Properties (JSON blob)                                              | None — internal backend mechanism                                                                                                                                                                                                        | —                                                                                                                             |
+| **GoogleClassrooms**                | [`google-classrooms.md`](google-classrooms.md)                             | None (upstream API passthrough)                                          | `getGoogleClassrooms`, `getGoogleClassroomAssignments`                                                                                                                                                                                   | —                                                                                                                             |
+| **AuthCache**                       | [`auth-cache.md`](auth-cache.md)                                           | CacheService (script cache; TTL via `CacheManager.CACHE_EXPIRY_SECONDS`) | None — internal to `AuthService.checkAccess()`                                                                                                                                                                                           | —                                                                                                                             |
+| **TriggerContext**                  | [`trigger-context.md`](trigger-context.md)                                 | Script Properties (`trigger:<uid>:method`, `trigger:<uid>:params`)       | None — internal trigger context storage                                                                                                                                                                                                  | —                                                                                                                             |
+| **AuthUsers**                       | [`auth-users.md`](auth-users.md)                                           | Auth fields inside the `__CONFIG_STORE_KEY__` blob                       | `getApplicationAccess`, `getAuthenticationSettings`, `setAuthenticationSettings`                                                                                                                                                         | AuthUserEntry (embedded)                                                                                                      |
+| **Frontend Data Analysis Response** | [`frontend-data-analysis-response.md`](frontend-data-analysis-response.md) | None — derived frontend validation contract                              | None — in-memory `DataAnalysisService` output                                                                                                                                                                                            | AverageContribution, MetricResult, ClassPageDisplayMetric (adapter-local), CellPreviewData, TaskPreviewData                   |
 
-All eleven contracts conform to their documented shapes. The read marker union is
+The read marker union is
 `1 | 'legacy'` on both read paths, and legacy reads are prepared by
 `AssignmentRehydration.prepareLegacyReadSubmissions()` (see
 [assessment.md § Legacy read preparation](assessment.md#legacy-read-preparation)). Legacy
@@ -38,8 +34,8 @@ All eleven contracts conform to their documented shapes. The read marker union i
 
 ## Component Shapes
 
-Three shapes are embedded by more than one contract and are large enough to warrant
-their own files. They have no independent persistence collection, no standalone
+These component shapes are embedded by more than one contract and are large enough to
+warrant their own files. They have no independent persistence collection, no standalone
 endpoint and no root frontend schema; they are documented once here and cross-referenced
 from every contract that embeds them.
 
@@ -66,8 +62,9 @@ Containment links:
 - **Reference Data** (Cohorts, YearGroups, AssignmentTopics) is standalone — no embedded sub-entities.
 - **RequestStore** is standalone — internal backend mechanism, no embedded sub-entities.
 - **GoogleClassrooms** is an upstream API passthrough — no persistence, no embedded sub-entities.
-- **AuthCache** is standalone — in-memory `CacheService` entry with a 6-hour TTL, no durable
-  persistence, no embedded sub-entities.
+- **AuthCache** is standalone — in-memory `CacheService` entry whose TTL is defined by
+  `CacheManager.CACHE_EXPIRY_SECONDS` (see [AuthCache](auth-cache.md)), with no durable
+  persistence and no embedded sub-entities.
 - **TriggerContext** is standalone — internal Script Properties trigger-context store keyed
   by triggerUid, no embedded sub-entities.
 - **AuthUsers** is standalone — auth fields embedded in the shared `__CONFIG_STORE_KEY__`
@@ -84,7 +81,7 @@ Containment links:
 
 ## Documented Contracts
 
-All eleven contracts and three component shapes are documented in this directory.
+The contracts and component shapes listed above are documented in this directory.
 
 ## Transport Envelope
 
@@ -93,8 +90,3 @@ All API endpoints share the same transport envelope. See
 `apiHandler` success/error shape. Contract files document the `data`
 payload inside that envelope — they do not duplicate the envelope
 structure.
-
-## Agent Instructions
-
-The process for creating and maintaining these specs is defined in
-[`.opencode/agents/data-shapes-agent.md`](../../../.opencode/agents/data-shapes-agent.md).

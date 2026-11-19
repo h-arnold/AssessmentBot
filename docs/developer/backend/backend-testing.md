@@ -4,7 +4,7 @@ Guidance for writing and maintaining tests for the Google Apps Script (GAS) back
 
 ## Overview
 
-AssessmentBot uses **Vitest** in a Node environment. Backend tests exercise logic, serialisation, state management, persistence workflows and error behaviour against mocked GAS services. They never call live GAS, Drive, Classroom or network services.
+Assessment Bot uses **Vitest** in a Node environment. Backend tests exercise logic, serialisation, state management, persistence workflows and error behaviour against mocked GAS services. They never call live GAS, Drive, Classroom or network services.
 
 Production backend code is concatenated into one GAS script, not loaded as a Node module graph. Tests must adapt to that runtime model rather than making production files behave like Node modules.
 
@@ -21,14 +21,14 @@ Configuration lives in `vitest.config.js`, which defines four projects:
 
 GAS concatenates backend files in filename order, so file order is part of runtime behaviour. Numeric prefixes encode that order:
 
-| Prefix        | Role                                                                                                                                                          |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `00_*`        | Foundational primitives and constants, loaded first                                                                                                           |
-| `01_*`–`03_*` | Ordered support files used by later files                                                                                                                     |
-| `98_*`        | Main implementation for a concern                                                                                                                             |
-| `99_*`        | Legacy globals or thin entry helpers loaded after the implementation; do not add new transport here (see [API Layer](api-layer.md#relationship-to-globalsjs)) |
-| `y_*`         | Controller layer                                                                                                                                              |
-| `z_*`         | API and entry layer, loaded after controllers                                                                                                                 |
+| Prefix        | Role                                                                                                                                |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `00_*`        | Foundational primitives and constants, loaded first                                                                                 |
+| `01_*`–`03_*` | Ordered support files used by later files                                                                                           |
+| `98_*`        | Main implementation for a concern                                                                                                   |
+| `99_*`        | Legacy globals or thin entry helpers loaded after the implementation; do not add new transport here (see [API Layer](api-layer.md)) |
+| `y_*`         | Controller layer                                                                                                                    |
+| `z_*`         | API and entry layer, loaded after controllers                                                                                       |
 
 Rules:
 
@@ -92,12 +92,12 @@ npm test
 
 ## Coverage Gate
 
-`npm run test:backend:coverage` enforces the global thresholds in `vitest.config.js`: 85% for statements, branches, functions and lines, measured by V8 across `src/backend/**/*.js`.
+`npm run test:backend:coverage` enforces the global thresholds in `vitest.config.js` for statements, branches, functions and lines, measured by V8 across `src/backend/**/*.js`.
 
 - Do not waive, suppress or lower a threshold to make the aggregate green.
 - `npm run test:coverage` chains every project and stops at the first failing scope. Run each scope's `:coverage` command explicitly when you need results after an earlier failure.
-- The regression checker is **not** a coverage gate. Its `backend-test-coverage-check` runs `npm run test:backend` without coverage, so it can pass while `npm run test:coverage` fails. Use the `:coverage` scripts as evidence, and do not reconfigure the checker to mask the gap.
-- Read current totals from the coverage run. Do not copy historical figures into this document; they go stale quickly.
+- The regression checker's `backend-test-coverage-check` runs `npm run test:backend` without coverage, so it can pass while `npm run test:coverage` fails.
+- Read current totals from the coverage run.
 
 ## Test Layout
 
@@ -130,6 +130,8 @@ npm test
 ## Canonical Synthetic Fixtures
 
 When a test needs realistic analysis-domain data, use the deterministic synthetic corpus. All new or changed tests must use a canonical synthetic fixture when the corpus covers the scenario. For the directive, its exception path and the generator-extension process, see [Synthetic Test Data](../testing/synthetic-test-data.md#policy-canonical-fixtures-for-tests).
+
+New and newly touched tests must use corpus fixture data rather than hard-coded literals and derive expectations from the corpus; see [Writing tests against the regenerated corpus](../testing/synthetic-test-data.md#writing-tests-against-the-regenerated-corpus) and [canonical-fixture policy](../testing/synthetic-test-data.md#policy-canonical-fixtures-for-tests).
 
 Load a committed view with `loadSyntheticAnalysisProfile(profileName, viewName)` from `scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js`. Views are deeply frozen; clone before adapting or mutating. For corpus topology, profile and view selection, mutation isolation and commands, see [Synthetic Test Data](../testing/synthetic-test-data.md).
 
@@ -178,12 +180,12 @@ Transport-level suite placement is pinned in [Frontend Testing § Test naming an
 
 Most suites are self-describing. The following splits are not obvious from filenames alone:
 
-- **LLM terminal outcomes** are split by concern across `llmRequestManager.{eligibility,outcomes,failures,runStop,cache,cacheValidation,provenance}.test.js`. All share the real `BaseRequestManager`, `LLMRequestManager`, `Assessment` and item owners through `llmRequestManagerHarness.js`; run-stop scenarios additionally use `llmRunStopHarness.js`.
-- **Image hydration** spans eight `imageManager*.test.js` suites, which share setup through `imageManagerTestHelpers.js`. Most are hermetic manager/model/transport probes. `imageManager.integration.test.js` connects the real `SlidesAssignment.processImages()` caller and controller/store seam, and `imageManager.processAllSubmissions.test.js` connects `processAllSubmissions()` extraction orchestration. Neither is durable-persistence or live-GAS evidence.
+- **LLM terminal outcomes** are split by concern across `llmRequestManager.{eligibility,outcomes,failures,runStop,cache,cacheValidation,provenance}.test.js` plus `llmRequestManager.seedPhase.test.js`, `llmRequestManager.transportCallerPolicy.test.js`, `llmRequestManager.runStop.multiTask.test.js`, `llmRequestManager.transportCallerPolicy.scenarios.test.js` and `llmRunStopHarness.multiTaskCapability.test.js`. All share the real `BaseRequestManager`, `LLMRequestManager`, `Assessment` and item owners through `llmRequestManagerHarness.js`; run-stop scenarios additionally use `llmRunStopHarness.js`. `seedPhase` pins the two-phase partition and dispatch contract, `runStop.multiTask` covers same-batch survivors across two tasks, `transportCallerPolicy.scenarios` holds the hand-built dispatch rows and `multiTaskCapability` probes the opt-in selector; the split keeps each file within the 500-line backend ceiling.
+- **Image hydration** spans the `imageManager*.test.js` suites, which share setup through `imageManagerTestHelpers.js`. Most are hermetic manager/model/transport probes. `imageManager.integration.test.js` connects the real `SlidesAssignment.processImages()` caller and controller/store seam, and `imageManager.processAllSubmissions.test.js` connects `processAllSubmissions()` extraction orchestration. Neither is durable-persistence or live-GAS evidence.
 - **Reference-data controller** cases are split by responsibility into `referenceDataController.test.js` (cohorts) and the `yearGroups`, `assignmentTopics` and `transportResponses` companions, with setup helpers in `referenceDataTestSupport.js`.
 - **Backend configuration transport** is covered by `tests/api/backendConfigApi.test.js`. Keep broader dispatcher and allowlist coverage in `tests/api/apiHandler/`.
 - **Assignment persistence completion gate** is split across `tests/controllers/ABClassController/ABClassAssignmentOps.unit.test.js` and `ABClassAssignmentOps.completionGate.test.js`. The unit file owns the criterion-map, coverage and shared-artefact rejection rows plus the prepared write-projection and write-order cases. The completion-gate companion owns the marker-1 graph/source contradictions the gate must reject itself: task/submission identity mismatches, unknown-task items, an emptied task list, missing structure, null-content hash contradictions, artefact identity/role faults, null-parent placeholder metadata/feedback, and the pre-write class-save rejection. Its rows restore the `small` canonical assignment, mutate one local invariant, and assert no store operation, no marker stamp and no serializer call before the hard rejection, so a rejection cannot be satisfied by a later partial-construction or wiring fault.
-- **Completed-run failed-task counting** is covered by the `completed-run failed-item counting` block in `tests/controllers/assignmentController.hydration.test.js`. It restores the `medium` canonical assignment and pins once-per-item counting (four failed items across twelve error criteria), plus loud failures for missing submissions, items and assessments structures. The end-to-end completion feedback path, including the separate `N tasks failed.` progress detail, is covered by `tests/controllers/assignmentRunCompletion.test.js`.
+- **Completed-run failed-task counting** is covered by the `completed-run failed-item counting` block in `tests/controllers/assignmentController.hydration.test.js`. It restores the `medium` canonical assignment and pins once-per-item counting plus loud failures for missing submissions, items and assessments structures. The end-to-end completion feedback path, including the separate `N tasks failed.` progress detail, is covered by `tests/controllers/assignmentRunCompletion.test.js`.
 
 ## Test Conventions
 
@@ -218,7 +220,9 @@ Most suites are self-describing. The following splits are not obvious from filen
 
 Remaining helpers are domain-specific and belong with their own suites: `assignmentDefinition*TestHelpers.js`, `backendConfigTestHelpers.js`, `controllerTestHelpers.js`, `driveManagerFacadeMocks.js`, `feedbackTestHelpers.js`, `imageManagerTestHelpers.js`, `slidesParserTestHarness.js` and `validationTestHelpers.js`.
 
-`imageManagerTestHelpers.js` owns the shared setup for the eight `imageManager*.test.js` suites: the dummy and real `BaseRequestManager` global installers, `loadImageManager()`, `buildManager(overrides)`, the `imageArtifact`, `httpOutcome` and `networkOutcome` factories, the global-mock `beforeEach`/`afterEach` registrars, and the shared LLM-bypass expectation.
+`imageManagerTestHelpers.js` owns the shared setup for the `imageManager*.test.js` suites: the dummy and real `BaseRequestManager` global installers, `loadImageManager()`, `buildManager(overrides)`, the `imageArtifact`, `httpOutcome` and `networkOutcome` factories, the global-mock `beforeEach`/`afterEach` registrars, and the shared LLM-bypass expectation.
+
+`llmRunStopHarness.js` keeps single-task candidate selection as its default. The opt-in `selectionMode: 'multi-task'` (or `createMultiTaskRunStopAssignment`) requires numeric-healthy TEXT candidates on at least two tasks of one assignment for same-batch-survivor scenarios; both modes use the unchanged type-matching realism gate and fail loudly when no qualifying assignment exists. See the helper's JSDoc for the full API.
 
 See the JSDoc in each helper for its API. Do not duplicate that reference here.
 
@@ -274,7 +278,7 @@ Treat these as regressions if they reappear.
 
 ### 1. Stale import paths
 
-Use the real current path. The API layer lives in `src/backend/z_Api`, not `src/backend/Api`. Configuration files keep their numeric prefixes (`03_validators.js`, `98_ConfigurationManagerClass.js`). Use `#backend/*` for backend owners in new and touched suites.
+Import backend owners from `src/backend/z_Api`. Configuration files keep their numeric prefixes (`03_validators.js`, `98_ConfigurationManagerClass.js`). Use `#backend/*` for backend owners in new and touched suites.
 
 ### 2. Test fallbacks in production runtime code
 

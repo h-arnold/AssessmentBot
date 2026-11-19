@@ -29,6 +29,9 @@ const REPOSITORY_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const COMMITTED_FIXTURE_ROOT = 'tests/__mocks__/data/synthetic-analysis';
 const EDITABLE_DEFINITIONS_FILE_NAME = 'editableDefinitions.json';
 const UNKNOWN_DEFINITION_KEY = 'definition-not-generated';
+// Raised because the committed corpus grew to 4/6/10 tasks per definition and
+// coverage instrumentation slows byte-for-byte regeneration.
+const FORMATTER_HEAVY_TEST_TIMEOUT_MS = 40_000;
 
 /** Strict `AssignmentDefinitionSchema` record field set; freshness fields are omitted. */
 const EXPECTED_RECORD_KEYS = [
@@ -387,31 +390,35 @@ describe('editable-definitions validation suite', () => {
 });
 
 describe('committed editable-definitions fixture regeneration', () => {
-  it('regenerates editableDefinitions.json byte-for-byte for every committed profile', async () => {
-    const outputRoot = mkdtempSync(
-      join(REPOSITORY_ROOT, '.opencode/scratchpad/synthetic-editable-definitions-')
-    );
-    temporaryRoots.push(outputRoot);
-    await generateCommittedProfiles({ outputRoot });
-
-    for (const profileName of COMMITTED_PROFILE_NAMES) {
-      const regeneratedPath = join(outputRoot, profileName, EDITABLE_DEFINITIONS_FILE_NAME);
-      expect(
-        existsSync(regeneratedPath),
-        `${profileName} regeneration must emit ${EDITABLE_DEFINITIONS_FILE_NAME}`
-      ).toBe(true);
-
-      const committed = readFileSync(
-        join(REPOSITORY_ROOT, COMMITTED_FIXTURE_ROOT, profileName, EDITABLE_DEFINITIONS_FILE_NAME)
+  it(
+    'regenerates editableDefinitions.json byte-for-byte for every committed profile',
+    async () => {
+      const outputRoot = mkdtempSync(
+        join(REPOSITORY_ROOT, '.opencode/scratchpad/synthetic-editable-definitions-')
       );
-      const regenerated = readFileSync(regeneratedPath);
+      temporaryRoots.push(outputRoot);
+      await generateCommittedProfiles({ outputRoot });
 
-      expect(
-        regenerated.equals(committed),
-        `${profileName}/${EDITABLE_DEFINITIONS_FILE_NAME} must regenerate byte-for-byte`
-      ).toBe(true);
-    }
-  });
+      for (const profileName of COMMITTED_PROFILE_NAMES) {
+        const regeneratedPath = join(outputRoot, profileName, EDITABLE_DEFINITIONS_FILE_NAME);
+        expect(
+          existsSync(regeneratedPath),
+          `${profileName} regeneration must emit ${EDITABLE_DEFINITIONS_FILE_NAME}`
+        ).toBe(true);
+
+        const committed = readFileSync(
+          join(REPOSITORY_ROOT, COMMITTED_FIXTURE_ROOT, profileName, EDITABLE_DEFINITIONS_FILE_NAME)
+        );
+        const regenerated = readFileSync(regeneratedPath);
+
+        expect(
+          regenerated.equals(committed),
+          `${profileName}/${EDITABLE_DEFINITIONS_FILE_NAME} must regenerate byte-for-byte`
+        ).toBe(true);
+      }
+    },
+    FORMATTER_HEAVY_TEST_TIMEOUT_MS
+  );
 });
 
 describe('honourific-free editable-definition names', () => {

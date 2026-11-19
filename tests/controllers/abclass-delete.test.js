@@ -35,12 +35,11 @@ function createDeleteHarness({
     },
   });
 
-  dropCollectionSpy = dropCollectionImpl ? vi.fn(dropCollectionImpl) : vi.fn();
+  dropCollectionSpy = dropCollectionImpl ? vi.fn(dropCollectionImpl) : vi.fn(() => true);
 
   const dropCollection = vi.fn((classId) => dropCollectionSpy(classId));
 
   mockDbManager = {
-    dropCollection,
     getDb: vi.fn(() => ({
       dropCollection,
     })),
@@ -119,7 +118,7 @@ describe('ABClassController delete orchestration', () => {
     expect(partialsCollection.save).not.toHaveBeenCalled();
   });
 
-  it('keeps the full-deletion flag true when a non-throwing drop returns false', () => {
+  it('reports a false full-deletion flag and skips partial writes when a silent false drop finds an absent collection', () => {
     createDeleteHarness({
       partialDoc: null,
       dropCollectionImpl: () => false,
@@ -129,9 +128,11 @@ describe('ABClassController delete orchestration', () => {
 
     expect(controller.deleteABClass({ classId: 'class-001' })).toEqual({
       classId: 'class-001',
-      hasDeletedFullClass: true,
+      hasDeletedFullClass: false,
       hasDeletedClassPartial: false,
     });
+    expect(partialsCollection.deleteOne).not.toHaveBeenCalled();
+    expect(partialsCollection.save).not.toHaveBeenCalled();
   });
 
   it('returns mixed flags when the full collection exists but the partial is already missing', () => {
@@ -149,9 +150,7 @@ describe('ABClassController delete orchestration', () => {
   it('returns mixed flags when the partial exists but the full collection is already missing', () => {
     createDeleteHarness({
       partialDoc: { classId: 'class-001' },
-      dropCollectionImpl: () => {
-        throw createMissingCollectionError();
-      },
+      dropCollectionImpl: () => false,
     });
     loadControllerModule();
     const controller = new ABClassController();

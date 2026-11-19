@@ -165,12 +165,11 @@ describe('CURRENT artefact body/hash pairing', () => {
 describe('CURRENT shared task summaries and timestamp selection', () => {
   it('rejects duplicate partial summary IDs before coverage can collapse', () => {
     const partial = rawPartialEmbeddedSnapshot(currentAssignmentJson());
+    const expectedTaskIds = partial.assignmentDefinition.tasks.map((task) => task.taskId);
     const [first, second] = partial.assignmentDefinition.tasks;
     second.taskId = first.taskId;
-    expect(partial.assignmentDefinition.tasks.map((task) => task.taskId)).toEqual([
-      first.taskId,
-      first.taskId,
-    ]);
+    expectedTaskIds[1] = expectedTaskIds[0];
+    expect(partial.assignmentDefinition.tasks.map((task) => task.taskId)).toEqual(expectedTaskIds);
     expect(partial.submissions).toHaveLength(currentAssignmentJson().submissions.length);
     expect(() => restoreAssignment(partial)).toThrow();
   });

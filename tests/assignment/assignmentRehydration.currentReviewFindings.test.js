@@ -3,6 +3,7 @@ const Assignment = require('#backend/AssignmentProcessor/Assignment/index.js');
 const { StudentSubmissionItem } = require('#backend/Models/StudentSubmission/index.js');
 import {
   HEAD_TASK_ID,
+  KNOWN_TASK_IDS,
   SIBLING_TASK_ID,
   currentAssignmentJson,
   rawPartialEmbeddedSnapshot,
@@ -163,20 +164,16 @@ describe('CURRENT shared dataset integrity', () => {
   it('rejects duplicate partial summary IDs with no submissions', () => {
     const record = rawPartialEmbeddedSnapshot(currentAssignmentJson());
     record.submissions = [];
+    const expectedTaskIds = [...KNOWN_TASK_IDS];
     record.assignmentDefinition.tasks[1].taskId = record.assignmentDefinition.tasks[0].taskId;
+    expectedTaskIds[1] = expectedTaskIds[0];
     expect(record.submissions).toEqual([]);
-    expect(record.assignmentDefinition.tasks.map(({ taskId }) => taskId)).toEqual([
-      HEAD_TASK_ID,
-      HEAD_TASK_ID,
-    ]);
+    expect(record.assignmentDefinition.tasks.map(({ taskId }) => taskId)).toEqual(expectedTaskIds);
     expect(() => restoreAssignment(record, 'partial')).toThrow();
 
     const healthy = rawPartialEmbeddedSnapshot(currentAssignmentJson());
     healthy.submissions = [];
-    expect(healthy.assignmentDefinition.tasks.map(({ taskId }) => taskId)).toEqual([
-      HEAD_TASK_ID,
-      SIBLING_TASK_ID,
-    ]);
+    expect(healthy.assignmentDefinition.tasks.map(({ taskId }) => taskId)).toEqual(KNOWN_TASK_IDS);
     expect(() => restoreAssignment(healthy, 'partial')).not.toThrow();
   });
 });

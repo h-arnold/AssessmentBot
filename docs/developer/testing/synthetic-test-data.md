@@ -33,7 +33,7 @@ Out of scope:
 | Validation                    | `scripts/synthetic-test-data/validateSyntheticAnalysisGraph.js`    | Orchestrates reference integrity, redaction, serialisability, profile-count invariants, and class-`metadata` integrity via `validateClassMetadata.js`. Assessment guards live in `assessmentEntryGuards.js`, `artefactSourceGuards.js`, `validationRecordGuards.js` and `validateAssessmentState.js`, sharing the pre-existing `invariantGuards.js` primitives. |
 | Metadata integrity helper     | `scripts/synthetic-test-data/validateClassMetadata.js`             | Generator-owned raw `metadata` shape, linkage, timestamp and cross-view parity checks.                                                                                                                                                                                                                                                                          |
 | Test-only model-input adapter | `scripts/synthetic-test-data/toBackendModelInputs.js`              | Adapts canonical views into backend ABClass/Assignment/definition model inputs; imported only by tests.                                                                                                                                                                                                                                                         |
-| Staged writer                 | `scripts/synthetic-test-data/fixtureWriter.js`                     | Validates, stages, and atomically replaces committed profiles. Owns Prettier-formatted JSON serialisation and exposes an asynchronous write API.                                                                                                                                                                                                                |
+| Staged writer                 | `scripts/synthetic-test-data/fixtureWriter.js`                     | Validates, stages, and atomically replaces committed profiles. Owns Prettier-formatted JSON serialisation, including a streaming fallback for oversized views, and exposes an asynchronous write API.                                                                                                                                                           |
 | Regeneration CLI              | `scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js` | Compact regeneration and the explicit full mode; every mode entry point is asynchronous and must be awaited.                                                                                                                                                                                                                                                    |
 | Immutable loader              | `scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js`      | Synchronously reads a named committed view and deep-freezes it.                                                                                                                                                                                                                                                                                                 |
 | Dispatcher round-trip bridge  | `scripts/synthetic-test-data/apiHandlerRoundTripBridge.js`         | Installs read/mutation `apiHandlerTestUtils` seams, dispatches the real `apiHandler`, restores every seam.                                                                                                                                                                                                                                                      |
@@ -41,7 +41,7 @@ Out of scope:
 | Committed fixtures            | `tests/__mocks__/data/synthetic-analysis/<profile>/`               | Transport views and manifest only.                                                                                                                                                                                                                                                                                                                              |
 | Ignored full output           | `.opencode/scratchpad/synthetic-analysis-full/`                    | On-demand large-full transport/manifest output; never committed.                                                                                                                                                                                                                                                                                                |
 | Integration project           | `tests/synthetic-analysis/**/*.test.ts`                            | Node Vitest project with the GAS globals from `tests/setupGlobals.js`; the Node-project `tests/syntheticModelInputs.node.test.js` smoke and the shared tests-only `backendModelInputAssertions.js` helper sit alongside it.                                                                                                                                     |
-| Stress project                | `tests/synthetic-analysis-stress/**/*.test.ts`                     | Opt-in full-large suite with a raised timeout budget.                                                                                                                                                                                                                                                                                                           |
+| Stress project                | `tests/synthetic-analysis-stress/**/*.test.ts`                     | Opt-in full-large suite with a 120,000 ms per-file timeout and a heap-configured npm script.                                                                                                                                                                                                                                                                    |
 
 Dependency direction:
 
@@ -79,14 +79,16 @@ A definition hydrates into a full assignment only when it is a full definition: 
 
 Each profile name and its fixed integer seed identify a corpus exactly. Seeds are distinct per profile so a seed change is observable as changed synthetic values while all invariants still hold.
 
-| Profile                |  Seed | Classes | Students per class | Assignments per class | Year groups | Committed               |
-| ---------------------- | ----: | ------: | -----------------: | --------------------: | ----------: | ----------------------- |
-| `small`                | 17031 |       3 |                  6 |                     4 |           3 | Yes                     |
-| `medium`               | 28042 |       4 |                 12 |                     6 |           4 | Yes                     |
-| `large-representative` | 39053 |       4 |                  6 |                     5 |           4 | Yes                     |
-| `large-full`           | 41064 |     100 |                 30 |                   100 |          24 | No; generated on demand |
+| Profile                |  Seed | Classes | Students per class | Assignments per class | Tasks per definition | Year groups | Committed               |
+| ---------------------- | ----: | ------: | -----------------: | --------------------: | -------------------: | ----------: | ----------------------- |
+| `small`                | 17031 |       3 |                  6 |                     4 |                    4 |           3 | Yes                     |
+| `medium`               | 28042 |       4 |                 12 |                     6 |                    6 |           4 | Yes                     |
+| `large-representative` | 39053 |       4 |                  6 |                     5 |                   10 |           4 | Yes                     |
+| `large-full`           | 41064 |      48 |                 30 |                    50 |                   15 |           8 | No; generated on demand |
 
-The `large-full` profile represents 3,000 students across 100 classes of 30, distributed four or five per Year Group 7–30, with 100 assignments per class. Each class applies the documented 5%/10%/70%/15% completion bands, derived from the class roster and generated submissions rather than stored as a persistence or transport field.
+"Tasks per definition" is the task count of each full assignment definition. The artefact-type allocation and its task-count-dependent TEXT guarantee are described in [Generated content](#generated-content-artefacts-contract-marker-and-outcomes).
+
+The `large-full` profile uses the parameters in `profileDefinitions.js`: 48 classes of 30 students across Year Groups 7–14 (six classes per year group), with 50 assignments per class. Each class applies the documented 6%/10%/70/14 completion bands (3/5/35/7 assignments per class) with completion ranges 20–49%, 50–79%, 80–95% and 96–100%, derived from the class roster and generated submissions rather than stored as a persistence or transport field.
 
 The `large-representative` projection is deliberately small. Its manifest declares its own entity counts **and** the canonical full-large parameters, so it must never be treated as a substitute for the full stress graph.
 
@@ -108,20 +110,20 @@ Any generator change affecting names requires regenerating the committed profile
 
 ## Student-identifier convention
 
-`generateClassRosters.js` builds every roster student ID as a deterministic, digit-only 21-character string: the literal prefix `1`, a 10-digit zero-padded class index, then a 10-digit zero-padded student index. Every profile keeps both indices well inside their segment width, so a generated ID is always exactly `1 + 10 + 10 = 21` characters. The identifier is composed by padding each index as text rather than by converting a number, so no precision-sensitive arithmetic is ever applied to it.
+`generateClassRosters.js` builds every roster student ID as a deterministic, digit-only string: a literal prefix followed by zero-padded class and student indices, with the widths defined in that file. Every profile keeps both indices inside their segment width, so IDs have a fixed length. The identifier is composed by padding each index as text rather than by converting a number, so no precision-sensitive arithmetic is ever applied to it.
 
 This is a test-only synthetic realism convention, not a production contract:
 
 - It constrains the corpus only. Official Google Classroom `UserProfile.id` and `Student.userId` remain opaque string contracts; neither a fixed length nor digit-only formatting is guaranteed, and the production schemas stay digit-agnostic.
 - No production validation tightening or numeric conversion is authorised by this convention. A production schema must accept any string student ID, including non-digit values.
 
-The fictional 21-digit calibration sample used in `tests/synthetic-analysis/syntheticCorpusConventions.test.ts` is a test-only precision probe. Never substitute a real user identifier.
+The fictional calibration sample used in `tests/synthetic-analysis/syntheticCorpusConventions.test.ts` is a test-only precision probe. Never substitute a real user identifier.
 
 Consequences:
 
 - IDs are stable across repeat runs: re-running a profile with its recorded seed reproduces every committed byte, and the JSON transport views preserve each ID as an exact string.
 - Regeneration with `npm run fixtures:synthetic` rewrites the committed rosters and every dependent view (submissions and assignments carry the same IDs), then commits only the files that change. Fixtures that need a roster ID must derive it from the roster records rather than restating a literal.
-- `tests/synthetic-analysis/syntheticCorpusConventions.test.ts` pins the convention for generated and committed rosters across every profile: digit-only 21-character strings, string precision through JSON, per-profile uniqueness, deterministic repeat runs, cross-view roster/submission linkage, and production-schema opacity to digit formatting.
+- The roster identifier convention — digit-only, fixed-length strings built from zero-padded indices — is defined in `generateClassRosters.js` and pinned for generated and committed rosters across every profile by `tests/synthetic-analysis/syntheticCorpusConventions.test.ts`.
 
 ## Assignment-timestamp convention
 
@@ -131,7 +133,7 @@ The convention keeps the corpus realistic:
 
 - Class-embedded partial and full transport records carry exactly equal creation and update timestamps.
 - Embedded `updatedAt` values are strictly chronological by assignment index (oldest first), so a recent-assignment slice reads the newest record.
-- No clock, Faker, seed, or count changes are involved, so the corpus stays byte-reproducibly regenerable.
+- The offset follows only from the recorded seed, so regeneration reproduces every committed byte.
 
 Boundary probes that need equal `updatedAt` values across entries must clone a canonical snapshot locally. Do not weaken generated timestamps or add equal-timestamp rows to the corpus to manufacture them.
 
@@ -140,8 +142,8 @@ Regeneration with `npm run fixtures:synthetic` rewrites the dependent `classesBy
 This is **fixture realism only**, not a production nullable-contract change:
 
 - `updatedAt` stays a nullable transport field. `AssignmentFullSchema.updatedAt` and `AssignmentPartialSchema.updatedAt` still accept `string | null`; production schemas and backend behaviour are untouched.
-- Nullable transport acceptance is covered by explicit **local null-boundary probes**, not by generated null population. `tests/synthetic-analysis/syntheticCorpusConventions.test.ts` clones a canonical class-embedded assignment partial and a canonical full assignment, sets `updatedAt = null`, and parses both through the real frontend schemas. `tests/synthetic-analysis/syntheticGraphShapeCoverage.test.ts` clones a canonical class, nulls its first assignment's `updatedAt`, and re-parses it through `ClassFullSchema`.
-- The Class page's fail-closed rejection of a null or unparseable `updatedAt` is unchanged and tested with independent local invalid probes in `src/frontend/src/features/classPage/classPageAdapter.trustValidation.spec.ts`. Do not use canonical rows to assert that rejection.
+- Nullable transport acceptance is covered by local null-boundary probes in `tests/synthetic-analysis/syntheticCorpusConventions.test.ts` and `tests/synthetic-analysis/syntheticGraphShapeCoverage.test.ts`.
+- The Class page rejects a null or unparseable `updatedAt`, asserted with local invalid probes in `src/frontend/src/features/classPage/classPageAdapter.trustValidation.spec.ts`. Do not use canonical rows to assert that rejection.
 
 ## Generated content: artefacts, contract marker and outcomes
 
@@ -152,26 +154,10 @@ selected assignment from canonical views. It is pure and test-only: it reads no 
 neither the loader nor any generator, and changes no corpus, validator or committed fixture. The
 corpus stays version-1-only, so this helper is the only way Node tests obtain a legacy scenario.
 
-```js
-deriveLegacyAssignmentScenario({ profileName, assignmentId, variant, sources });
-```
-
-- `profileName` is used only in error messages.
-- `assignmentId` selects the assignment; the helper finds its owning class from
-  `sources.classesById`.
-- `variant` is explicit and has no default. `'stored'` deletes `assessmentContractVersion` from both
-  derived forms; `'read'` sets it to `'legacy'` on both.
-- `sources` holds caller-supplied `classesById` and `assignmentsByKey` views. Callers load them, for
-  example with `loadSyntheticAnalysisProfile`, which returns deep-frozen views.
-
-It returns `{ classId, classView, assignmentsByKey, full, classEmbedded }`. `full` and
-`classEmbedded` are the selected assignment's standalone and class-embedded forms, taken from the
-returned `assignmentsByKey` and `classView` copies. Outputs are deep clones, deterministic across
-calls and independently owned; inputs are never mutated. Scores, identities, artefacts, feedback and
-timestamps pass through unchanged.
-
-An unsupported variant, or an assignment absent from either view, throws an error naming the
-selection. Invalid item maps, `null` roots and other malformed data stay in local probes.
+`deriveLegacyAssignmentScenario` derives deep-cloned legacy forms from caller-supplied views without
+touching the corpus; see its JSDoc in
+[`deriveLegacyAssignmentScenario.js`](../../../scripts/synthetic-test-data/deriveLegacyAssignmentScenario.js)
+for the options, return shape and failure behaviour.
 
 `tests/synthetic-analysis/syntheticLegacyScenarios.test.ts` uses the `small` `class-0` /
 `assignment-0-1` healthy primary and the `medium` `class-0` / `assignment-0-2` mixed healthy/E
@@ -182,8 +168,7 @@ JSON through their existing typed fixture helpers and change only the linked mar
 reads through the real `apiHandler` and the real frontend services behind the `'legacy'` marker,
 and guards that neither read writes storage nor persists read-time state.
 
-The helper adds no profile, view or model-input adapter. The bullet notes below describe the
-generated version-1 corpus, which this derivation leaves untouched.
+The bullets below describe the generated version-1 corpus that the derivation reads without changing.
 
 - **Artefact types.** The existing definition and submission builders cycle `TEXT`, `IMAGE` and
   `SPREADSHEET` bodies using deterministic index arithmetic, applied by two different formulas:
@@ -224,16 +209,15 @@ generated version-1 corpus, which this derivation leaves untouched.
   `artefactSourceGuards.js` (source body/hash, null-parent placeholders and definition artefacts)
   and `validateAssessmentState.js` (submission coverage and per-item orchestration).
   `validateSyntheticAnalysisGraph.js` orchestrates the three validators. They require marker `1`,
-  exactly the three criteria, strict `stage`/`code` pairs from the Assessment catalogue's twelve
-  pairs, declared-task coverage for document-bearing submissions, and
+  exactly the three criteria, strict `stage`/`code` pairs from the catalogue in
+  `src/backend/Models/Assessment.js`, declared-task coverage for document-bearing submissions, and
   representation-correct source state. A null-parent map may contain only acquisition or validation
   E entries and must match the canonical base placeholder. Null content must pair with null hash;
   beside present content, a full record must carry a usable raw body (TEXT string, image data URL,
   or 2D spreadsheet grid) and a non-blank hash. Blank templates and a successfully read blank student
   SPREADSHEET grid remain accepted. Spreadsheet feedback stays in the existing cell-reference
   form.
-- **Pipeline.** Outcomes flow through the existing projections; the corpus adds no profile, view or
-  model-input adapter.
+- **Pipeline.** Outcomes flow through the existing projections.
 - **Unchanged metadata.** Supplied class `metadata` remains an independently generated snapshot,
   not a value derived from the assessment maps.
 
@@ -260,8 +244,8 @@ generated version-1 corpus, which this derivation leaves untouched.
 
 The corpus generates, validates and adapts raw class `metadata` supplied snapshots. The generator
 stage, the raw-view integrity helper and the model-input adapter are test-only infrastructure:
-production `src/backend` source never imports them, and the fixtures stay supplied snapshots that
-no backend code calculates or refreshes. Production acceptance, persistence, read projection and
+production `src/backend` source never imports them, and backend code consumes the supplied snapshots
+as-is. Production acceptance, persistence, read projection and
 transport adaptation are documented in
 [abclass.md § Sub-entity: ABClassMetadata](../data-shapes/abclass.md#sub-entity-abclassmetadata)
 and [api-layer.md § ABClass metadata helpers](../backend/api-layer.md#abclass-metadata-helpers).
@@ -283,8 +267,8 @@ coverage lands.
   existing projection copies it into `transport.classPartials` and `transport.classesById` as
   an independently cloned value.
 - Every profile — `small`, `medium`, `large-representative` and the on-demand `large-full` —
-  runs the same stage. It reads no clock and consumes no Faker values, so existing seeds,
-  entity counts, assignment timestamp conventions and byte reproducibility are unchanged.
+  runs the same stage. The stage is deterministic: it reads no clock and consumes no Faker values,
+  preserving seeds, entity counts, assignment timestamp conventions and byte reproducibility.
 - Values are deliberately generated supplied snapshots: the stage performs no averaging and
   derives no cross-metric relationship. Each selected template fills both `classAverages` and
   every recent entry's `averages`, so committed entries explicitly cover numeric/fractional,
@@ -292,9 +276,8 @@ coverage lands.
 - Non-null samples always include complete class averages. Each non-null variant uses its
   class's newest generated assignment `updatedAt` for `classAverages.updatedAt`, including
   zero-entry variants. Every entry's `assignmentId`, `assignmentDefinitionKey` and `updatedAt`
-  come exactly from a real generated assignment of that class, newest first. This pins
-  deterministic fixture bytes; it adds no production relationship between summary and entry
-  timestamps.
+  come exactly from a real generated assignment of that class, newest first, so summary and entry
+  timestamps share the same generated assignments.
 - Coverage cases are selected deterministically by profile and class index:
 
   | Profile                | Class-index cases (template / recent entries)                       |
@@ -326,25 +309,15 @@ coverage lands.
 
 ### Frontend Zod parity
 
-- `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts` compares the frontend `ABClassMetadataSchema` with the real backend `ABClassMetadata.validateMetadata` for all three compact profiles, plus strict raw-object, score, identifier, ordering and canonical-timestamp boundary probes. It calls `generateSyntheticAnalysisGraph()` directly, so the generated snapshots stay in memory and the committed views are not rewritten.
+- `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts` compares the frontend `ABClassMetadataSchema` with the backend `ABClassMetadata.validateMetadata` across the compact profiles and boundary probes. It calls `generateSyntheticAnalysisGraph()` directly, so the generated snapshots stay in memory.
 - Frontend Vitest schema coverage selects the committed `small`, `medium` and `large-representative` class-partial views through `src/frontend/src/test/abClass/abClassMetadataFixtures.ts` (raw `?raw` imports plus `cloneMetadata`). Backend imports stay test-local; frontend production code never imports `scripts/` or backend modules.
 - Runner-neutral typed fixture providers use `src/frontend/src/test/abClass/abClassMetadataSharedFixtures.ts`: direct JSON loading, schema validation, freezing and detached cloning own `CANONICAL_NON_NULL_METADATA` / `createCanonicalMetadataFixture()`. The Vitest-only raw selectors re-export those bindings for compatibility; shared browser import chains must not import the raw selector module. `ClassFullFixtureDefaults` owns the focused full-class builders' defaults and preserves explicit `metadata: null`, applying the canonical snapshot only for omitted/undefined metadata. `src/frontend/e2e-tests/helpers/class-metadata-fixtures.ts` serves cloned `small`-profile snapshots to browser scenarios. Supplied values remain snapshots, not calculated-average oracles.
 
 ### Node dispatcher metadata round trip
 
-`tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` composes the script-owned
-bridge, the frontend round-trip adapter and the real frontend `callApi`, service schemas and queued
-mutation wrappers. It proves:
-
-- full and partial reads retain the canonical metadata snapshot through the real
-  `apiHandler` and shared response schemas;
-- queued update and upsert preserve omission, clear on null and replace the whole
-  snapshot, with the fresh read reflecting each change;
-- own-`undefined` metadata rejects before the dispatcher is invoked;
-- malformed dispatch input returns `INVALID_REQUEST`, while a throwing class seam
-  returns `INTERNAL_ERROR`;
-- two bridge instances keep isolated state, every dispatcher seam is restored after
-  success and failure, and caller-owned spies survive teardown.
+The metadata round-trip bridge exercises the real `callApi`, service schemas and queued
+mutation wrappers; see
+[`syntheticABClassMetadataRoundTrip.test.ts`](../../../tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts).
 
 The bridge extension is test-only: it composes the existing `apiHandlerTestUtils`
 controller and transport seams, including class-partial reads and metadata mutation
@@ -367,13 +340,11 @@ never from supplied metadata scores, for both full-class and isolated-target cal
 feature consumers call the shared page hook directly; query invalidation and warning feedback are
 owned by their frontend contracts.
 
-**Current corpus limitation:** every one of the 11 committed compact classes has
-a null submission `studentName` in its newest assignment. The existing analyser
-rejects that instance in isolation (`buildPerStudentRows: null studentName`), even
-where full-class analysis succeeds. These fixtures therefore do not cover successful
-refresh of untouched newest canonical targets. This is a test-data/analysis trust
-boundary, not a missing metadata product function or permission to repair
-production data.
+Every committed compact class has a null submission `studentName` in its newest
+assignment. The analyser rejects that instance in isolation
+(`buildPerStudentRows: null studentName`), so these fixtures do not cover successful
+refresh of untouched newest canonical targets. This is a test-data and analysis
+trust boundary.
 
 `src/frontend/src/test/abClass/metadataRefreshFixtures.ts` models the preceding source
 version by cloning and omitting **only the final assignment**. Remaining names,
@@ -392,17 +363,17 @@ released queue lane. `metadataEvidenceOracle.ts` derives independent numeric
 expectations from assessment records and live weights; supplied recent metadata
 remains retention evidence only. Do not normalise names or scores, change the
 generator, regenerate the corpus or repair the production analyser to make these
-fixtures pass. Successful untouched-newest-corpus refresh remains an explicit
-evidence gap.
+fixtures pass.
 
 ### Regeneration and scope
 
-- Only `classPartials.json` and `classesById.json` change for each compact profile; the other
-  four committed views carry no class `metadata` and are rewritten byte-identically.
+- The metadata stage changes only `classPartials.json` and `classesById.json` for each compact
+  profile; the other four committed views carry no class `metadata` and are rewritten
+  byte-identically by that stage. Other generator changes, such as task counts, rewrite those
+  views too.
 - Regenerate through the existing CLI only; never hand-edit JSON. The same stage covers the
   full graph, and full-stress output is never committed.
-- No new profile or view is introduced by the metadata stage, and no frontend adapter change is
-  required.
+- The metadata stage works within the existing profiles and views.
 - The compact synthetic project, the opt-in full-large stress project and the
   committed-fixture regeneration comparison all exercise the metadata stage. Synthetic
   coverage is restricted to `scripts/synthetic-test-data/**/*.js`, and the Node-project
@@ -415,12 +386,12 @@ evidence gap.
 
 ### Writer formatting and asynchronous contract
 
-- **Format ownership.** `fixtureWriter.js` owns the persisted JSON representation. Each view starts as `JSON.stringify(view, null, 2)` plus a trailing newline, then is formatted with the installed Prettier API (`resolveConfig` and `format`). Do not hand-edit generated JSON or add a second formatter.
+- **Format ownership.** `fixtureWriter.js` owns the persisted JSON representation. Each view starts as `JSON.stringify(view, null, 2)` plus a trailing newline, then is formatted with the installed Prettier API (`resolveConfig` and `format`). Do not hand-edit generated JSON or add a second formatter. A view that exceeds V8's maximum string length is written entry by entry straight to its staging file, reproducing the same bytes without allocating an oversized string; the rescaled `large-full` `assignmentsByKey` view needs this path.
 - **Canonical configuration.** Formatter resolution uses the file's canonical committed path, `tests/__mocks__/data/synthetic-analysis/<profile>/<file>.json`, not the staging directory or a `--output-root` target. Scratch, staging and committed runs therefore produce the same bytes as the pre-commit hook's `prettier --write`.
 - **Async staging, synchronous replacement.** `stageProfileFixtures`, `writeProfileFixtures`, `generateCommittedProfiles`, `generateFullProfile`, `runCli` and `executeCli` return Promises. Await staging/serialisation before committing. `commitStagedProfiles` is synchronous: its swap, backup, rollback and cleanup operations use synchronous filesystem calls, and its errors propagate directly to its caller.
 - **Stage before swap.** Compact regeneration awaits every profile's serialisation and staging before `commitStagedProfiles` starts replacing directories. The swap, backup, rollback and final cleanup steps are synchronous filesystem operations, and `discardStagedProfile` stays synchronous cleanup.
-- **Loader unchanged.** `loadSyntheticAnalysisProfile` remains synchronous and returns deep-frozen views; asynchronous writing does not change how tests load the committed corpus.
-- **Evidence.** `syntheticCommittedFixtureRegeneration.test.ts` asserts committed-byte equality, Prettier idempotence for each canonical committed file path and identical bytes across two runs. `syntheticFixtureWriteSafety.test.ts` covers staged-write cleanup and set-level rollback.
+- **Loader contract.** `loadSyntheticAnalysisProfile` stays synchronous and returns deep-frozen views to tests loading the committed corpus.
+- **Evidence.** Committed bytes stay reproducible and staging rolls back on failure; see `syntheticCommittedFixtureRegeneration.test.ts` and `syntheticFixtureWriteSafety.test.ts`.
 
 ## Commands
 
@@ -473,11 +444,57 @@ The test path exercises the complete production transport chain — `callApi`, s
 
 ## Policy: canonical fixtures for tests
 
-**Canonical-fixture directive:** All new or changed tests must use an appropriate canonical synthetic fixture when the synthetic fixture system provides data for the scenario. If the required realistic data is not yet supported, the test may use a local realistic fixture only when the owning feature work records a generator-extension plan. Deliberately invalid or boundary fixtures remain local. When you otherwise touch an existing test, migrate it to a canonical fixture opportunistically. This policy is intentionally broader than the analysis graph: it applies automatically as later domains are added, and it does not require a wholesale fixture migration.
+**Canonical-fixture directive:** All new or changed tests must use an appropriate canonical synthetic fixture when the synthetic fixture system provides data for the scenario. New and newly touched tests must derive expectations from the corpus data shape rather than pinning corpus-derived literals (task-key lists, counts): such pins break on regeneration without indicating a production defect. If the required realistic data is not yet supported, the test may use a local realistic fixture only when the owning feature work records a generator or corpus plan. Deliberately invalid or boundary fixtures remain local. When you otherwise touch an existing test, migrate it to a canonical fixture opportunistically. This policy is broader than the analysis graph: it applies automatically as later domains are added.
 
-**Exception and extension path:** A local realistic fixture is permitted only when no canonical profile or view covers the required scenario. The owning feature work must then record a generator or corpus plan — which profile, view, or generator stage to add and where, or which existing profile to rescale — before or alongside the test, so the gap is tracked rather than hidden. The plan is not limited to adding a profile or view: rescaling an existing profile's parameters (for example tasks per definition) and regenerating through the CLI is the preferred response where the existing profiles can carry the required realism; a new profile is warranted only for a distinct corpus shape. Any such plan must be measurement-anchored — generate the largest affected profile under `--expose-gc` and observe generation time and `process.memoryUsage()`, and record the stress-project timeout and any heap or RAM implications — before committing to one. Regeneration rewrites committed fixture bytes, so put the options and measured costs to the user before committing to a plan. Invalid-data, boundary, and narrowly targeted cases never need canonical fixtures.
+**Two exceptions to the corpus-data default** — each applies only to its stated case and carries its own justification:
+
+- **Realism gap.** The corpus lacks a realistic scenario the product encounters. A local realistic fixture is permitted only when no canonical profile or view covers the scenario and the owning feature work records a generator or corpus plan before or alongside the test, naming the profile, view or generator stage to add or the existing profile to rescale. Prefer rescaling an existing profile (for example tasks per definition) and regenerating through the CLI where it can carry the required realism; add a new profile only for a distinct corpus shape. Anchor the plan to measurements: generate the largest affected profile under `--expose-gc`, observe generation time and `process.memoryUsage()`, and record the stress-project timeout and heap or RAM implications. Regeneration rewrites committed fixture bytes, so put the options and measured costs to the user before committing.
+- **Algorithmic boundary.** A minimal local input is needed to isolate a branch the corpus should not be forced to contain, such as a pool-minimum or tie-break boundary. Include an inline comment justifying why the corpus cannot express the condition. Invalid-data, boundary and narrowly targeted cases stay local under this exception with the same inline justification.
 
 **Regeneration is the intended response to legitimate corpus change.** When a generator or profile change deliberately alters fixture bytes, re-run `npm run fixtures:synthetic` (or the full CLI where applicable) and commit the changed files; `syntheticCommittedFixtureRegeneration.test.ts` re-pins the committed bytes mechanically. Failures surfaced elsewhere afterwards are signal, to be triaged as potential defects. Do not weaken generator output, relax invariant or type-matching gates in shared harnesses, re-anchor assertions to the old bytes to make them pass, hand-edit JSON, or design a competing realistic builder to avoid the regeneration.
+
+## Writing tests against the regenerated corpus
+
+Fixture data must come from the corpus, as described in [Policy: canonical fixtures for tests](#policy-canonical-fixtures-for-tests); the rules below govern the expectations derived from it.
+
+The corpus exists to stay current with data shapes. A regenerated fixture should change values freely and fail a test only when production code needs updating to handle a new shape; a failure on regeneration is signal to be triaged as a potential defect, not noise to suppress.
+
+A test that consumes regenerated synthetic data must therefore derive its expectations from the data shape, or from a small controlled input whose values are known by construction. Do not pin corpus-derived literals — specific task-key lists, counts, or fixture preconditions asserting exact regenerated keys. Such pins are vacuous: they break on every regeneration without signalling a production defect.
+
+### Reusable helpers
+
+These owners already derive expectations from corpus data. Reuse or extend one before writing a new derivation.
+
+| Helper                                                                                                                                           | Purpose                                                                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/assignment/assignmentRehydrationCurrentSupport.js`                                                                                        | `KNOWN_TASK_IDS` is derived at load from the canonical `small` `assignment-0-1` definition; `HEAD_TASK_ID` and `SIBLING_TASK_ID` index into it.                                                                              |
+| `tests/assignment/assignmentExtraction.parserFailures.test.js`                                                                                   | Local `alignStoredItemsWithDefinition()` filters each stored submission's item keys to the composed definition's task IDs.                                                                                                   |
+| `tests/assignment/assignmentLegacyReadPreparation.corruption.test.js`, `tests/assignment/assignmentLegacyReadPreparationSupport.js`              | Task pins come from `embeddedTaskIds(restoreLegacy(healthyFullRecord()))`; `embeddedTaskIds()` reads the embedded definition's task IDs.                                                                                     |
+| `src/frontend/src/test/assignmentAssessment/assignmentReadNormalisation.fixtures.ts`                                                             | `twoItemKeys(submission)` returns the first two item keys from the submission itself, throwing with a fixture diagnostic when fewer exist.                                                                                   |
+| `src/frontend/src/services/dataAnalysis/dataAnalysis.mediumBaselineRoundTrip.spec.ts`                                                            | `deriveCorpusBaseline()` is an independent oracle over the raw committed view; `isAttemptItem()` and `collectAttemptedTaskKeys()` apply the item-level attempt predicate, and `collectErrorCodes()` gathers raw error codes. |
+| `src/frontend/src/test/abClass/metadataEvidenceOracle.ts`                                                                                        | `calculateNumericEvidence()` derives numerical expectations from raw assessment evidence and live definitions, never supplied metadata or production projection.                                                             |
+| `src/frontend/src/test/dataAnalysis/legacyAssessmentParityOracle.ts`, `src/frontend/src/test/dataAnalysis/legacyAssessmentParityExpectations.ts` | Observation collection over canonical fixtures plus independent expected-aggregation; expected numbers never restate analyser outputs.                                                                                       |
+| `tests/helpers/llmRunStopHarness.js`, `tests/requestHandlers/llmRunStopHarness.multiTaskCapability.test.js`                                      | Opt-in `selectionMode: 'multi-task'` / `createMultiTaskRunStopAssignment()` selects numeric-healthy TEXT candidates across two or more tasks; the capability test proves the selector works.                                 |
+
+### Patterns
+
+**Pattern A — derive from the composed input.** Compute the expected keys from the payload after the test's own mutation, then assert the output matches them and that removed keys are absent. This asserts the invariant "no task is materialised or inferred".
+
+```ts
+const providedTaskKeys = Object.keys(submission.items); // after the test's mutation
+expect(Object.keys(output.items)).toEqual(providedTaskKeys);
+expect(Object.keys(output.items)).not.toContain(removedKey);
+```
+
+**Pattern B — independent raw-corpus oracle.** Walk the raw committed JSON view with an item-level predicate to compute the expected baseline, pool or key set, then compare production output against it. The oracle must not call the production analyser or service under test, or the test becomes self-fulfilling.
+
+```ts
+const oracle = deriveCorpusBaseline(rawClassView); // raw JSON + item-level predicate only
+expect(result.baselineTaskKeys).toEqual(oracle.baselineTaskKeys);
+expect(result.poolStudentIds).toEqual(oracle.poolStudentIds);
+```
+
+A fixture precondition must assert a structural guard (for example "at least two tasks exist") with `if (...) throw ...`, not an exact regenerated key list. Fixed hand-built inputs that do not consume regenerated corpus data remain free to pin exact values. If a regeneration reveals that production genuinely mishandles a new shape, report it as a real defect; do not re-anchor the expectation to make the test pass.
 
 ## CI and stress policy
 
@@ -485,7 +502,8 @@ The test path exercises the complete production transport chain — `callApi`, s
 - `npm run run-all-checks` and `npm run test:coverage` stop at the first failing scope. If an earlier scope fails, run `npm run test:synthetic:coverage` explicitly and report its actual result; never claim a skipped synthetic scope passed.
 - An initial parallel coverage invocation can fail to acquire the shared coverage report directory. Rerun sequentially; treat that lock failure as infrastructure, not as a synthetic-suite or coverage defect.
 - The full-large stress suite is opt-in via `test:synthetic:stress` and is not part of `test`, `test:coverage`, or `run-all-checks`.
-- The stress project has an explicit raised timeout budget because the full graph is intentionally large.
+- The stress project's `testTimeout` is 120,000 ms per file. The rescaled graph (48 classes × 50 assignments × 30 students, 15 tasks per definition) generates roughly 900k–1.08 million items and takes around 187 s for the full suite; `assignmentsByKey.json` alone is about 1.36 GB.
+- `test:synthetic:stress` sets `NODE_OPTIONS="--max-old-space-size=8192 --expose-gc"`: Node's default heap is too small, and the full graph needs roughly 10 GiB of available RAM.
 - Committed fixture regeneration must stay byte-for-byte reproducible: a mismatch fails the committed-fixture comparison spec.
 
 ## Safe change and removal

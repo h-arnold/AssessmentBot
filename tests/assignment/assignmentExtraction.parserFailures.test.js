@@ -35,6 +35,23 @@ const unavailableSourceAssessments = Object.fromEntries(
   ['completeness', 'accuracy', 'spag'].map((criterion) => [criterion, unavailableSourceResult])
 );
 
+/**
+ * Keeps stored item keys aligned with the trimmed two-task definition these
+ * probes compose: the canonical assignment now carries four tasks, so its
+ * stored submissions would otherwise include items for tasks the local
+ * definition does not declare.
+ *
+ * @param {object} assignmentJSON Cloned assignment record being composed.
+ */
+function alignStoredItemsWithDefinition(assignmentJSON) {
+  const taskIds = Object.keys(assignmentJSON.assignmentDefinition.tasks);
+  for (const submission of assignmentJSON.submissions) {
+    submission.items = Object.fromEntries(
+      Object.entries(submission.items).filter(([taskId]) => taskIds.includes(taskId))
+    );
+  }
+}
+
 describe('assignment parser failures', () => {
   let restoreGlobals;
 
@@ -80,6 +97,7 @@ describe('assignment parser failures', () => {
       })
     );
     assignmentJSON.assignmentDefinition.tasks = definitions;
+    alignStoredItemsWithDefinition(assignmentJSON);
     const nativeGetRange = vi.fn(() => ({ getFormulas: vi.fn(() => [['=A1']]) }));
     globalThis.SpreadsheetApp.openById.mockImplementation(() => ({
       getSheets: () => [
@@ -190,6 +208,7 @@ describe('assignment parser failures', () => {
       [canonicalTextTask.id]: healthyTaskJSON,
       [failedTaskId]: failedTaskJSON,
     };
+    alignStoredItemsWithDefinition(assignmentJSON);
     const assignment = SlidesAssignment.fromJSON(assignmentJSON, 'full');
     const task = assignment.assignmentDefinition.tasks[failedTaskId];
     const healthyTask = assignment.assignmentDefinition.tasks[healthyTaskId];

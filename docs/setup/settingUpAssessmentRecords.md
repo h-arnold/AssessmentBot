@@ -1,19 +1,19 @@
-# 📚 Create Classroom Assessment Records
+# Create Classroom Assessment Records
 
-## 📄 Overview
+## Overview
 
 This guide explains how to create Assessment Records using Assessment Bot. These records allow you to track the progress of all students in a selected class and form the core of the tool.
 
-- [📚 Create Classroom Assessment Records](#create-classroom-assessment-records)
-  - [📄 Overview](#overview)
-  - [🚀 Quickstart](#quickstart)
-  - [📒 Creating the Assessment Records](#creating-the-assessment-records)
-    - [✅ Prerequisites](#prerequisites)
-    - [🪜 Steps to Follow](#steps-to-follow)
+- [Create Classroom Assessment Records](#create-classroom-assessment-records)
+  - [Overview](#overview)
+  - [Quickstart](#quickstart)
+  - [Creating the Assessment Records](#creating-the-assessment-records)
+    - [Prerequisites](#prerequisites)
+    - [Steps to Follow](#steps-to-follow)
 
 ---
 
-## 🚀 Quickstart
+## Quickstart
 
 To quickly test Assessment Bot using the frontend application:
 
@@ -24,9 +24,9 @@ To quickly test Assessment Bot using the frontend application:
 
 ---
 
-## 📒 Creating the Assessment Records
+## Creating the Assessment Records
 
-### ✅ Prerequisites
+### Prerequisites
 
 - You have [configured Assessment Bot](./configOptions.md).
 - You have at least one Google Classroom associated with the account running Assessment Bot.
@@ -34,7 +34,7 @@ To quickly test Assessment Bot using the frontend application:
 
 ---
 
-### 🪜 Steps to Follow
+### Steps to Follow
 
 1. Open the Assessment Bot frontend application and click **Settings** in the navigation sidebar.
 
@@ -51,8 +51,8 @@ To quickly test Assessment Bot using the frontend application:
    - Click **Set year group** to assign or change the year group key.
    - Use **Manage cohorts** or **Manage year groups** from the toolbar to create and edit reference data.
 
-5. Navigate to the **Assignments** page in the sidebar and [start assessing!](../howTos/README.md)
+5. Navigate to the **Assignments** page in the sidebar, then [begin assessing](../howTos/run-an-assessment/index.md).
 
 ---
 
-💡 **Tip**: Make sure to thoroughly test each step in a safe environment before rolling out to a wider set of classrooms.
+**Before rolling out:** test each step in a safe environment. This lets you catch configuration mistakes before they affect a wider set of classrooms.

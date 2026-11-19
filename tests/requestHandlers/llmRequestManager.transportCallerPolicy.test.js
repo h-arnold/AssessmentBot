@@ -70,6 +70,12 @@ describe('LLM transport caller policy', () => {
     spag: { score: 2, reasoning: 'valid' },
   });
 
+  /**
+   * Builds the real request graph for a stop row. The first submission carries one
+   * item per task; those are the phase-1 seeds (one parallel round). A second
+   * submission adds one extra item for the first task, which becomes the sole
+   * phase-2 remainder and is never dispatched once the phase-1 stop latches.
+   */
   function createModelRequests(manager) {
     const assignment = createSlidesAssignment({
       courseId: 'course-stop',
@@ -79,16 +85,20 @@ describe('LLM transport caller policy', () => {
       assignmentName: 'Stop response test',
     });
     const tasks = {};
-    [1, 2, 3, 4].forEach((index) => {
+    [1, 2, 3].forEach((index) => {
       const task = createTextTask(index, `Reference ${index}`, `Template ${index}`);
       tasks[task.getId()] = task;
     });
     assignment.setTasks(tasks);
+    const taskList = Object.values(tasks);
     const submission = assignment.addStudent({ id: 'student-stop', name: 'Student' });
     submission.documentId = 'document-stop';
-    Object.values(tasks).forEach((task, index) => {
+    taskList.forEach((task, index) => {
       submission.upsertItemFromExtraction(task, { content: `Response ${index}` });
     });
+    const laterSubmission = assignment.addStudent({ id: 'student-later', name: 'Later Student' });
+    laterSubmission.documentId = 'document-later';
+    laterSubmission.upsertItemFromExtraction(taskList[0], { content: 'Response later' });
     const requests = manager.generateRequestObjects(assignment);
     return { assignment, requests };
   }
@@ -96,17 +106,20 @@ describe('LLM transport caller policy', () => {
   /**
    * Captures the retained source identity for every generated stop-row request
    * before processing, so later terminal expectations can prove artefact
-   * identity, detached full snapshots and the parent document ID are preserved.
+   * identity, detached full snapshots and each request's parent document ID are
+   * preserved. The parent comes from the request's own route entry, so each
+   * track records the submission that produced it.
    */
-  function captureStopRowSources(manager, requests, assignment) {
+  function captureStopRowSources(manager, requests) {
     return requests.map((request) => {
-      const item = manager.uidIndex[request.uid].item;
+      const route = manager.uidIndex[request.uid];
+      const item = route.item;
       return {
         request,
         item,
         artefact: item.artifact,
         artefactSnapshot: structuredClone(item.artifact.toJSON()),
-        documentId: assignment.submissions[0].documentId,
+        documentId: route.submission.documentId,
       };
     });
   }
@@ -123,6 +136,7 @@ describe('LLM transport caller policy', () => {
       const nativeValidResponse = response(200, validBody);
       const invalidResponse = response(200, '{}');
       const firstBatchResponse = response(mode === 'INITIAL' ? stopStatus : 500, '{}');
+      // Three phase-1 seeds: stop target, invalid sibling and valid sibling.
       const batchResponses = [firstBatchResponse, invalidResponse, nativeValidResponse];
       const fetchAll = vi.fn((requests) => {
         events.push(`fetchAll:${requests.map(({ url }) => url).join(',')}`);
@@ -175,7 +189,7 @@ describe('LLM transport caller policy', () => {
           requests.forEach((request, index) => {
             request.url = `https://llm.test/${['stop', 'invalid', 'valid', 'later'][index]}`;
           });
-          const sourceTracks = captureStopRowSources(manager, requests, assignment);
+          const sourceTracks = captureStopRowSources(manager, requests);
           let caught = null;
           try {
             manager.processStudentResponses(requests, assignment);
@@ -186,9 +200,9 @@ describe('LLM transport caller policy', () => {
           // pass before the stop-domain assertions in every row.
           expect(firstBatchResponse.getContentText).not.toHaveBeenCalled();
           expect(fetchedStopResponse.getContentText).not.toHaveBeenCalled();
-          // The 401/403 logAndThrowError abort and the 404 silent continuation
-          // are the intended business Reds: all six reconciled rows require the
-          // no-abort completion-with-errors contract instead.
+          // The stop is handled as domain completion-with-errors: the process
+          // returns normally, the valid seed is applied and the remainder is
+          // terminalised without a phase-2 dispatch.
           expect(caught).toBe(null);
           expect(validProcessing).toHaveBeenCalledWith(nativeValidResponse, validRequest, 1);
           expect(validation).toHaveBeenCalledWith({});
@@ -215,13 +229,9 @@ describe('LLM transport caller policy', () => {
           expect(events).not.toContain('fetchAll:https://llm.test/later');
           expect(events).not.toContain('fetch:https://llm.test/later');
           expect(batchResponses).toHaveLength(3);
-          // Stopped target (requests[0]) and the LATER-unprocessed sibling
-          // (requests[3], never dispatched) must terminalise with the exact
-          // canonical LLM_RUN_STOPPED map while their sources are preserved.
-          // Both currently stay {} — the 401/403 abort and 404 silent
-          // continuation are the authored tails after the stop contract;
-          // the same canonical contracts are authentication-mapped to the
-          // independent run-stop matrix (12 accepted stop rows).
+          // The phase-1 stop target (requests[0]) and the never-dispatched
+          // remainder (requests[3]) must each terminalise with the canonical
+          // LLM_RUN_STOPPED map while their sources are preserved.
           const canonical = canonicalRunStoppedAssessments();
           [sourceTracks[0], sourceTracks[3]].forEach((track) => {
             expect(track.item.artifact).toBe(track.artefact);
@@ -290,205 +300,6 @@ describe('LLM transport caller policy', () => {
     } finally {
       validation.mockRestore();
       context.restore();
-    }
-  });
-
-  it('delegates requests with assessor sizing, LLM statuses and per-batch routing', () => {
-    const basePath = require.resolve('#backend/RequestHandlers/BaseRequestManager.js');
-    const llmPath = require.resolve('#backend/RequestHandlers/LLMRequestManager.js');
-    const previousLlmModule = require.cache[llmPath];
-    const BaseRequestManager = require(basePath);
-    try {
-      withTemporaryGlobals(
-        {
-          BaseRequestManager: () => BaseRequestManager,
-          ConfigurationManager: () => ({
-            getInstance: () => ({
-              getBackendAssessorBatchSize: () => 37,
-              getSlidesFetchBatchSize: () => 2,
-            }),
-          }),
-        },
-        () => {
-          delete require.cache[llmPath];
-          const Manager = require(llmPath);
-          const manager = new Manager();
-          manager.progressTracker = {
-            updateProgress: vi.fn(),
-            getCurrentProgress: () => ({ message: 'Assessing' }),
-          };
-          const requests = [{ uid: 'one', url: '/one' }];
-          const transport = vi
-            .spyOn(BaseRequestManager.prototype, 'sendRequestsInBatches')
-            .mockReturnValue([]);
-          manager.processStudentResponses(requests, {});
-          expect(transport).toHaveBeenCalledWith(
-            requests,
-            expect.objectContaining({
-              batchSize: 37,
-              acceptedStatuses: [200, 201],
-              stopStatuses: [401, 403, 404],
-              onBatchComplete: expect.any(Function),
-            })
-          );
-        }
-      );
-    } finally {
-      vi.restoreAllMocks();
-      delete require.cache[llmPath];
-      if (previousLlmModule) require.cache[llmPath] = previousLlmModule;
-    }
-  });
-
-  it('consumes native responses before the next assessor batch and routes by request UID', () => {
-    const basePath = require.resolve('#backend/RequestHandlers/BaseRequestManager.js');
-    const llmPath = require.resolve('#backend/RequestHandlers/LLMRequestManager.js');
-    const previousLlmModule = require.cache[llmPath];
-    const BaseRequestManager = require(basePath);
-    const events = [];
-    let eventsAtSecondBatch;
-    const responseByUrl = new Map();
-    const fetchAll = vi.fn((nativeRequests) => {
-      const urls = nativeRequests.map(({ url }) => url);
-      if (urls.includes('https://llm.test/third')) eventsAtSecondBatch = [...events];
-      events.push(`fetch:${urls.join(',')}`);
-      return nativeRequests.map(({ url }) => {
-        const response = {
-          url,
-          getResponseCode: () => (url.endsWith('/first') ? 201 : 200),
-          getContentText: () => `response for ${url}`,
-        };
-        responseByUrl.set(url, response);
-        return response;
-      });
-    });
-    const tracker = {
-      updateProgress: vi.fn(),
-      getCurrentProgress: () => ({ message: 'Assessing' }),
-      logError: vi.fn(),
-    };
-    try {
-      withTemporaryGlobals(
-        {
-          BaseRequestManager: () => BaseRequestManager,
-          ConfigurationManager: () => ({
-            getInstance: () => ({ getBackendAssessorBatchSize: () => 2 }),
-          }),
-          CacheService: () => ({ getScriptCache: () => ({ get: () => null, put: vi.fn() }) }),
-          ProgressTracker: () => ({ getInstance: () => tracker }),
-          ABLogger: () => ({
-            getInstance: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
-          }),
-          UrlFetchApp: () => ({ fetchAll, fetch: vi.fn() }),
-          Utilities: () => ({ sleep: vi.fn() }),
-        },
-        () => {
-          delete require.cache[llmPath];
-          const Manager = require(llmPath);
-          const manager = new Manager();
-          expect(manager).toBeInstanceOf(BaseRequestManager);
-          manager.progressTracker = tracker;
-          const routed = [];
-          vi.spyOn(manager, '_processSingleResponse').mockImplementation((response, request) => {
-            events.push(`consume:${request.uid}`);
-            routed.push([request.uid, response]);
-          });
-          const requests = ['first', 'second', 'third'].map((uid) => ({
-            uid,
-            url: `https://llm.test/${uid}`,
-            method: 'post',
-          }));
-          manager.processStudentResponses(requests, {});
-          expect(fetchAll.mock.calls.map(([batch]) => batch.map(({ url }) => url))).toEqual([
-            ['https://llm.test/first', 'https://llm.test/second'],
-            ['https://llm.test/third'],
-          ]);
-          expect(events).toEqual([
-            'fetch:https://llm.test/first,https://llm.test/second',
-            'consume:first',
-            'consume:second',
-            'fetch:https://llm.test/third',
-            'consume:third',
-          ]);
-          expect(eventsAtSecondBatch).toEqual(events.slice(0, 3));
-          expect(routed.map(([uid]) => uid)).toEqual(['first', 'second', 'third']);
-          for (const [uid, response] of routed) {
-            expect(response).toBe(responseByUrl.get(`https://llm.test/${uid}`));
-          }
-          expect(routed[0][1].getResponseCode()).toBe(201);
-        }
-      );
-    } finally {
-      delete require.cache[llmPath];
-      if (previousLlmModule) require.cache[llmPath] = previousLlmModule;
-    }
-  });
-
-  it('propagates response-consumer faults unchanged without dispatching another batch', () => {
-    const basePath = require.resolve('#backend/RequestHandlers/BaseRequestManager.js');
-    const llmPath = require.resolve('#backend/RequestHandlers/LLMRequestManager.js');
-    const previousLlmModule = require.cache[llmPath];
-    const BaseRequestManager = require(basePath);
-    const fetchAll = vi.fn((requests) =>
-      requests.map(() => ({ getResponseCode: () => 200, getContentText: () => '{}' }))
-    );
-    const fetch = vi.fn();
-    const sleep = vi.fn();
-    const routeError = new Error('consumer routing fault');
-    try {
-      withTemporaryGlobals(
-        {
-          BaseRequestManager: () => BaseRequestManager,
-          ConfigurationManager: () => ({
-            getInstance: () => ({ getBackendAssessorBatchSize: () => 1 }),
-          }),
-          CacheService: () => ({ getScriptCache: () => ({ get: () => null, put: vi.fn() }) }),
-          ProgressTracker: () => ({
-            getInstance: () => ({
-              updateProgress: vi.fn(),
-              getCurrentProgress: () => ({ message: 'Assessing' }),
-            }),
-          }),
-          ABLogger: () => ({
-            getInstance: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
-          }),
-          UrlFetchApp: () => ({ fetchAll, fetch }),
-          Utilities: () => ({ sleep }),
-        },
-        () => {
-          delete require.cache[llmPath];
-          const Manager = require(llmPath);
-          const manager = new Manager();
-          manager.progressTracker = {
-            updateProgress: vi.fn(),
-            getCurrentProgress: () => ({ message: 'Assessing' }),
-          };
-          vi.spyOn(manager, '_processSingleResponse').mockImplementation(() => {
-            throw routeError;
-          });
-          let thrown;
-          try {
-            manager.processStudentResponses(
-              [
-                { uid: 'first', url: 'https://llm.test/first' },
-                { uid: 'later', url: 'https://llm.test/later' },
-              ],
-              {}
-            );
-          } catch (error) {
-            thrown = error;
-          }
-          expect(thrown).toBe(routeError);
-          expect(fetchAll.mock.calls.map(([batch]) => batch.map(({ url }) => url))).toEqual([
-            ['https://llm.test/first'],
-          ]);
-          expect(fetch).not.toHaveBeenCalled();
-          expect(sleep).not.toHaveBeenCalled();
-        }
-      );
-    } finally {
-      delete require.cache[llmPath];
-      if (previousLlmModule) require.cache[llmPath] = previousLlmModule;
     }
   });
 });

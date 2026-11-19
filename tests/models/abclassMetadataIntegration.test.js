@@ -296,7 +296,8 @@ describe('ABClass metadata construction and serialization boundaries', () => {
     expect(sawNullOwner).toBe(true);
     expect(assignmentCount).toBe(12);
     expect(submissionCount).toBe(42);
-    expect(itemCount).toBe(66);
+    // The regenerated small corpus carries four tasks per definition, raising the item total.
+    expect(itemCount).toBe(114);
     for (const active of [true, false, null]) {
       const source = Object.values(canonicalClasses('small'))[1];
       const model = withTemporaryGlobals(teacherGlobal, () =>

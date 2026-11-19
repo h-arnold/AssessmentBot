@@ -2,7 +2,7 @@
 
 ## Status
 
-✅ **Accepted** - Implemented (2025-05-19)
+Accepted
 
 ## Context
 
@@ -17,25 +17,14 @@ The assignment definition creation path contained significant technical debt:
 
 1. **Single Canonical Reference**: `yearGroupKey` (string) is the ONLY year-group reference in active code
 2. **Controller-Resolution Pattern**: Controllers accept `yearGroupKey: string | null` and resolve to non-null before model calls
-3. **Model Boundary Contract**: Model constructor and `fromJSON()` receive non-null `yearGroupKey` (string) only
+3. **Model Boundary Contract**: Model constructor and `fromJSON()` receive non-null `yearGroupKey` (string) only, and accept `yearGroupLabel` as a parameter resolved by the controller
 4. **Fail-Fast Validation**: Model throws `TypeError` when deprecated `yearGroup` is present, surfacing missed migration entries
 5. **Single Creation Method**: `upsertDefinition` is the sole creation/update entry point; `ensureDefinition` removed
 6. **Model-Owned Defaults**: All value defaulting (e.g., `assignmentWeighting` → 1) moved to model constructor
-7. **Validation Ownership**: Clear separation per §0.2:
+7. **Validation Ownership**: Clear separation per `src/backend/AGENTS.md` §6.1:
    - Transport validation → API layer
    - Domain validation → Controller
    - Data defaults/integrity → Model
-
-### Key Changes
-
-| Component                     | Before                                          | After                                           |
-| ----------------------------- | ----------------------------------------------- | ----------------------------------------------- |
-| Year Group Field              | `yearGroup` (number) OR `yearGroupKey` (string) | `yearGroupKey` (string) ONLY                    |
-| Creation Method               | `ensureDefinition` OR `upsertDefinition`        | `upsertDefinition` ONLY                         |
-| `yearGroupLabel`              | Model-resolved or undefined                     | Controller-resolved, model accepts as parameter |
-| `assignmentWeighting` Default | Applied in API layer or controller              | Applied in model constructor (defaults to 1)    |
-| Validation                    | Mixed across layers                             | Clear ownership boundaries                      |
-| Deprecated Field Handling     | Silently ignored                                | Throws TypeError at model boundary              |
 
 ## Consequences
 
@@ -54,23 +43,17 @@ The assignment definition creation path contained significant technical debt:
    - **Mitigation**: No legacy data to preserve; existing definitions must be re-created through new flow
 2. **No Backwards Compatibility**: Legacy code using `yearGroup` will break
    - **Mitigation**: Explicitly accepted; the `src/AdminSheet` directory has been fully removed from the repository.
-3. **Definition Key Format Change**: Old keys (e.g., `Math_Algebra_10`) won't match new keys (e.g., `Math_Algebra_year-group-10`)
-   - **Mitigation**: Acceptable as part of architectural cleanup
-
-### Neutral
-
-1. **Migration Required**: All active code paths must be updated to use `yearGroupKey`
-2. **Test Updates**: Tests for removed functionality must be deleted; tests for changed functionality must be updated
+3. **Definition Key Format**: Keys embed the `yearGroupKey` string, for example `Math_Algebra_year-group-10`.
 
 ## Alternatives Considered
 
-### Option A: Dual-Field Support with Runtime Conversion
+### Dual-Field Support with Runtime Conversion
 
 - **Pros**: Backwards compatible, gradual migration possible
 - **Cons**: Perpetuates ambiguity, adds complexity, violates fail-fast principle, requires ongoing dual-path maintenance
 - **Rejected**: Does not address root causes of the technical debt
 
-### Option C: Flatten to Model Getters/Setters
+### Flatten to Model Getters/Setters
 
 - **Pros**: Pure OOP approach
 - **Cons**: Over-engineering, requires extensive refactoring beyond scope, not aligned with existing codebase patterns
@@ -87,30 +70,12 @@ This approach was selected because it:
 5. **Maintainability**: Reduces code paths and simplifies the mental model for developers
 6. **Test Coverage**: Easier to test with clear, single-responsibility components
 
-## Implementation References
-
-The original specification, delivery plan and code review for this decision were
-transient planning artefacts and are no longer tracked in the repository. The decision
-is recorded in the implementation commits and the current `yearGroupKey` contracts in
-`docs/developer/data-shapes/`.
-
-- **Commit Range**: multiple commits implementing the `yearGroupKey` migration
-
 ## Related Documents
 
 - `src/backend/AGENTS.md` §6.1 - Validation ownership rules
-- `docs/developer/backend/api-layer.md` - Shared helper status
+- `docs/developer/backend/api-layer.md` - Shared helpers
 - `docs/developer/backend/backend-testing.md` - Testing standards
 
 ## Decision Date
 
 2025-05-19
-
-## Supersedes
-
-None - This is the first ADR in the decisions series.
-
----
-
-_Generated by Mistral Vibe_
-_Co-Authored-By: Mistral Vibe <vibe@mistral.ai>_
