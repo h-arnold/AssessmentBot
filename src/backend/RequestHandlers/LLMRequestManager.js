@@ -324,11 +324,11 @@ class LLMRequestManager extends BaseRequestManager {
    * @private
    */
   _requireUsableHashes(item, referenceTask, templateTask, studentArtifact) {
-    [
-      ['reference', referenceTask],
-      ['template', templateTask],
-      ['student', studentArtifact],
-    ].forEach(([role, artifact]) => {
+    Object.entries({
+      reference: referenceTask,
+      template: templateTask,
+      student: studentArtifact,
+    }).forEach(([role, artifact]) => {
       if (typeof artifact.contentHash !== 'string' || artifact.contentHash.length === 0) {
         throw new Error(
           `Stored ${role} content has no usable contentHash for taskId ${item.taskId}.`
