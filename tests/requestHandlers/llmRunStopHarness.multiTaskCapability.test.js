@@ -37,6 +37,12 @@ describe('run-stop harness multi-task capability', () => {
     expect(new Set(fixture.numeric.map((entry) => entry.item.artifact.getUid())).size).toBe(3);
   });
 
+  it('fails loudly on an unsupported run-stop selection mode', () => {
+    expect(() =>
+      createRunStopAssignment(MEDIUM_PROFILE, 3, { selectionMode: 'unsupported' })
+    ).toThrow('Unsupported run-stop selection mode "unsupported"');
+  });
+
   it('fails loudly when candidate selection cannot find the required TEXT/numeric pairs', () => {
     // Algorithmic boundary: the corpus's distinct-student guard caps numeric TEXT
     // candidates at 12 per medium assignment, so no corpus-backed count can reach

@@ -242,9 +242,23 @@ describe('AssignmentController - completed-run failed-item counting', () => {
     const controller = new AssignmentController();
     const assignment = restoreCanonicalAssignment();
 
-    // Canonical medium assignment-0-4 carries twelve all-three-E items and thirty-six E
-    // criteria in total, so this pins once-per-item counting rather than per-criterion.
-    expect(controller._countFailedSubmissionItems(assignment)).toBe(12);
+    // Independent raw-corpus oracle: count items whose three canonical criteria are
+    // all E. A regeneration then only fails this test if once-per-item counting drifts.
+    const criteria = ['completeness', 'accuracy', 'spag'];
+    const raw = loadBackendModelInputs('medium').assignmentsByKey['assignment-0-4'];
+    const expectedFailedItemCount = raw.submissions.reduce(
+      (count, submission) =>
+        count +
+        Object.values(submission.items ?? {}).filter((item) =>
+          criteria.every((criterion) => item.assessments?.[criterion]?.score === 'E')
+        ).length,
+      0
+    );
+    if (expectedFailedItemCount === 0) {
+      throw new Error('Medium canonical oracle found no all-three-E items to count.');
+    }
+
+    expect(controller._countFailedSubmissionItems(assignment)).toBe(expectedFailedItemCount);
   });
 
   it('fails loudly when the submissions structure is missing', () => {

@@ -127,30 +127,38 @@ describe('AssignmentController processSelectedAssignment run completion', () => 
     expect(embedded.assessmentContractVersion).toBe(1);
   });
 
-  it('derives the regenerated medium mixed-E split from six tasks and five submitters', () => {
+  it('derives the regenerated medium mixed-E split from the raw corpus shape', () => {
+    // Independent raw-corpus oracle: derive counts from the committed view shape.
+    const raw = loadBackendModelInputs('medium').assignmentsByKey['assignment-0-4'];
+    const tasksPerDef = Object.keys(raw.tasks).length;
+    const hasE = (s) =>
+      Object.values(s.items).some((item) =>
+        Object.values(item.assessments ?? {}).some((entry) => entry?.score === 'E')
+      );
+    const docSubs = raw.submissions.filter((s) => Object.keys(s.items ?? {}).length > 0);
+    const corpusFailed = docSubs.filter(hasE);
+    if (
+      tasksPerDef === 0 ||
+      docSubs.length === 0 ||
+      corpusFailed.length === 0 ||
+      corpusFailed.length === docSubs.length
+    ) {
+      throw new Error('Medium oracle lacks tasks, submissions or a mixed-E split.');
+    }
+
     const flow = createCompletedRun('medium', 'assignment-0-4');
     flow.run();
     const stored = fullRecordOf(flow);
-    const submissions = stored.submissions.filter(
-      (submission) => Object.keys(submission.items ?? {}).length > 0
-    );
-    const tasksPerDefinition = 6;
-    const failedSubmitters = submissions.filter((submission) =>
-      Object.values(submission.items).some((item) =>
-        Object.values(item.assessments ?? {}).some((entry) => entry.score === 'E')
-      )
-    );
+    const submissions = stored.submissions.filter((s) => Object.keys(s.items ?? {}).length > 0);
+    const failed = submissions.filter(hasE);
 
-    expect(submissions).toHaveLength(5);
-    expect(failedSubmitters).toHaveLength(2);
-    for (const submission of failedSubmitters) {
-      expect(Object.keys(submission.items)).toHaveLength(tasksPerDefinition);
-    }
-    expect(countItems(stored, true)).toBe(failedSubmitters.length * tasksPerDefinition);
-    expect(countItems(stored, false)).toBe(
-      (submissions.length - failedSubmitters.length) * tasksPerDefinition
-    );
-    expect(countItems(stored, true) + countItems(stored, false)).toBe(30);
+    expect(submissions).toHaveLength(docSubs.length);
+    expect(failed).toHaveLength(corpusFailed.length);
+    for (const s of failed) expect(Object.keys(s.items)).toHaveLength(tasksPerDef);
+    expect(countItems(stored, true)).toBe(failed.length * tasksPerDef);
+    expect(countItems(stored, false)).toBe((submissions.length - failed.length) * tasksPerDef);
+    const total = countItems(stored, true) + countItems(stored, false);
+    expect(total).toBe(submissions.length * tasksPerDef);
   });
 
   it('reports the exact completion-with-errors message as the final progress update and toast', () => {

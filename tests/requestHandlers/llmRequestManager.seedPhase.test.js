@@ -351,6 +351,7 @@ describe('LLM two-phase dispatch orchestration', () => {
     });
     expect(state.caught).toBe(null);
     expect(state.oracle.remainder).toHaveLength(0);
+    expect(state.infoLogs.filter(([m]) => /seed/i.test(String(m)))).toEqual([]);
     expect(state.sendCalls).toHaveLength(1);
     expect(state.sendCalls[0].batchSize).toBe(state.oracle.seeds.length);
     expect(state.sendCalls[0].requests.map((r) => r.uid)).toEqual(state.requests.map((r) => r.uid));
@@ -466,9 +467,8 @@ describe('LLM seed-round progress and logging', () => {
     });
     const seedLogs = state.infoLogs.filter(([message]) => /seed/i.test(String(message)));
     expect(seedLogs.length).toBeGreaterThan(0);
-    const tokens = new Set(String(seedLogs[0][0]).match(/\d+/g) ?? []);
-    expect(tokens.has(String(state.oracle.seeds.length))).toBe(true);
-    expect(tokens.has(String(state.requests.length))).toBe(true);
+    expect(seedLogs[0][1].seedCount).toBe(state.oracle.seeds.length);
+    expect(seedLogs[0][1].requestCount).toBe(state.requests.length);
     const allLogText = state.infoLogs
       .flat()
       .map((value) => String(value))
