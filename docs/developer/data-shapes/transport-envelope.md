@@ -88,7 +88,7 @@ back to the generic `INVALID_REQUEST` mapping.
 Stable, non-retriable `ApiValidationError` code for recognised
 document/task parsing failures. `_mapErrorToFailureEnvelope` honours
 `ApiValidationError.code`, so the envelope surfaces this code, and the frontend error
-registry entry (`map-error-to-ui.ts`) maps it to safe user copy: “The assignment documents
+registry entry (`src/frontend/src/errors/map-error-to-ui.ts`) maps it to safe user copy: “The assignment documents
 could not be parsed. Check the reference and template documents, then try again.”
 Raw diagnostic details stay in logs, not user copy. An invalid task or a zero-task
 result must not persist a partial definition or start an assessment. Authorisation,
@@ -97,7 +97,7 @@ classified as parse failures.
 
 #### Recovery classification semantics
 
-The following semantics are the canonical behaviour.
+The following rules describe the current behaviour.
 
 1. **Recovery invalid-request preconditions map to `INVALID_REQUEST`.**
    A forced reparse without an existing `definitionKey`, and `forceReparse: true`
@@ -223,11 +223,10 @@ Canonical frontend contract:
 - `ApiErrorEnvelope` (`apiTransportError.ts`) declares
   `details?: Record<string, unknown>`, and `ApiTransportError` exposes
   `public readonly details: Record<string, unknown> | undefined`.
-- `DEFINITION_STALE` remains the only code that populates `details` today, with the
-  documented shape `{ definitionKey, referenceStale, isTemplateStale,
-referenceLastModified, templateLastModified }`. The field stays optional and open
-  because the envelope contract permits future codes to attach their own structured
-  metadata.
+- `DEFINITION_STALE` is the only code that populates `details`, with the documented shape
+  `{ definitionKey, referenceStale, isTemplateStale, referenceLastModified, templateLastModified }`.
+  The field stays optional and open because the envelope contract permits other codes to
+  attach their own structured metadata.
 - Absent details stay `undefined`; consumers must not default them.
 
 Sources: `src/backend/z_Api/z_apiHandler.js` (`_failure()`,

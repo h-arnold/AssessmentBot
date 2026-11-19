@@ -5,9 +5,9 @@ submission items (submission). Base class for all artifact types; subclasses ove
 `getType()` and `normalizeContent()`.
 
 Backend model: `src/backend/Models/Artifacts/0_BaseTaskArtifact.js`
-Subclasses: `1_TextTaskArtifact.js` (`'TEXT'`), `TableTaskArtifact` (`'TABLE'`),
-`SpreadsheetTaskArtifact` (`'SPREADSHEET'`), `ImageTaskArtifact` (`'IMAGE'`)
-Factory: `src/backend/Models/Artifacts/ArtifactFactory.js` → `ArtifactFactory.create()`
+Subclasses: `1_TextTaskArtifact.js` (`'TEXT'`), `2_TableTaskArtifact.js` (`'TABLE'`),
+`3_SpreadsheetTaskArtifact.js` (`'SPREADSHEET'`), `4_ImageTaskArtifact.js` (`'IMAGE'`)
+Factory: `src/backend/Models/Artifacts/5_ArtifactFactory.js` → `ArtifactFactory.create()`
 Frontend Zod (full): `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `BaseTaskArtifactSchema`
 Frontend Zod (partial): `src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts` → `BaseTaskArtifactPartialSchema`
 
@@ -27,17 +27,17 @@ This shape participates in two parent persistence shapes via `toJSON()` and
 
 ### `toJSON()` — full participation
 
-| #   | Field         | Type                  | Persistence | Transport | Frontend Zod (full)                                                                                | Notes                                                              |
-| --- | ------------- | --------------------- | ----------- | --------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| 1   | `taskId`      | `string`              | included    | unchanged | `BaseTaskArtifactFields.taskId: z.string()`                                                        | Parent task ID.                                                    |
-| 2   | `role`        | `string`              | included    | unchanged | `BaseTaskArtifactFields.role: z.string()`                                                          | One of `'reference'`, `'template'`, `'submission'`.                |
-| 3   | `pageId`      | `string\|null`        | included    | unchanged | `BaseTaskArtifactFields.pageId: z.string().nullable()`                                             | Source page ID. Constructor defaults to `null`.                    |
-| 4   | `documentId`  | `string\|null`        | included    | unchanged | `BaseTaskArtifactFields.documentId: z.string().nullable()`                                         | Drive document ID. Constructor defaults to `null`.                 |
-| 5   | `content`     | `string\|Array\|null` | included    | unchanged | Per-variant in the discriminated union — see [§ Concrete artifact types](#concrete-artifact-types) | Heavy content payload; shape depends on `type`.                    |
-| 6   | `contentHash` | `string\|null`        | included    | unchanged | `BaseTaskArtifactFields.contentHash: z.string().nullable()`                                        | Hash of content for change detection.                              |
-| 7   | `metadata`    | `object`              | included    | unchanged | `BaseTaskArtifactFields.metadata: z.record(z.string(), z.unknown())`                               | Arbitrary metadata key-value store.                                |
-| 8   | `uid`         | `string`              | included    | unchanged | `BaseTaskArtifactFields.uid: z.string()`                                                           | Unique ID: `{taskId}-{taskIndex}-{role}-{pageId}-{artifactIndex}`. |
-| 9   | `type`        | `string`              | included    | unchanged | Discriminant of `BaseTaskArtifactSchema` (`'TEXT'\|'TABLE'\|'SPREADSHEET'\|'IMAGE'\|'base'`)       | Artifact type identifier. **Not** a Drive MIME type.               |
+| #   | Field         | Type                  | Persistence | Transport | Frontend Zod (full)                                                                                | Notes                                                                               |
+| --- | ------------- | --------------------- | ----------- | --------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 1   | `taskId`      | `string`              | included    | unchanged | `BaseTaskArtifactFields.taskId: z.string()`                                                        | Parent task ID.                                                                     |
+| 2   | `role`        | `string`              | included    | unchanged | `BaseTaskArtifactFields.role: z.string()`                                                          | One of `'reference'`, `'template'`, `'submission'`.                                 |
+| 3   | `pageId`      | `string\|null`        | included    | unchanged | `BaseTaskArtifactFields.pageId: z.string().nullable()`                                             | Source page ID. Constructor defaults to `null`.                                     |
+| 4   | `documentId`  | `string\|null`        | included    | unchanged | `BaseTaskArtifactFields.documentId: z.string().nullable()`                                         | Drive document ID. Constructor defaults to `null`.                                  |
+| 5   | `content`     | `string\|Array\|null` | included    | unchanged | Per-variant in the discriminated union — see [§ Concrete artifact types](#concrete-artifact-types) | Heavy content payload; shape depends on `type`.                                     |
+| 6   | `contentHash` | `string\|null`        | included    | unchanged | `BaseTaskArtifactFields.contentHash: z.string().nullable()`                                        | Hash of content for change detection.                                               |
+| 7   | `metadata`    | `object`              | included    | unchanged | `BaseTaskArtifactFields.metadata: z.record(z.string(), z.unknown())`                               | Arbitrary metadata key-value store.                                                 |
+| 8   | `uid`         | `string`              | included    | unchanged | `BaseTaskArtifactFields.uid: z.string()`                                                           | Unique ID: `{taskId}-{taskIndex ?? '0'}-{role}-{pageId \|\| 'na'}-{artifactIndex}`. |
+| 9   | `type`        | `string`              | included    | unchanged | Discriminant of `BaseTaskArtifactSchema` (`'TEXT'\|'TABLE'\|'SPREADSHEET'\|'IMAGE'\|'base'`)       | Artifact type identifier. **Not** a Drive MIME type.                                |
 
 ### `toPartialJSON()` — partial participation
 
@@ -103,16 +103,16 @@ corresponds to one variant.
 | `type` value    | Class                     | `normalizeContent()` behaviour                                                                                                                                                 | Frontend discriminated union content shape                                 |
 | --------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
 | `'TEXT'`        | `TextTaskArtifact`        | Returns trimmed LF-only string; null/undefined→null; non-string coerced via `String()`                                                                                         | `z.string().nullable()`                                                    |
-| `'TABLE'`       | `TableTaskArtifact`       | Returns Markdown table string; null→null (logged); string→trimmed string; 2D array→padded rows→Markdown; 50×50 hard limit; throws on limit exceeded                            | `z.union([z.string(), z.null()])`                                          |
+| `'TABLE'`       | `TableTaskArtifact`       | Returns Markdown table string; null→null (logged); string→trimmed string; 2D array→padded rows→Markdown; 50×50 hard limit; throws on limit exceeded                            | `z.string().nullable()` (grouped with TEXT and IMAGE)                      |
 | `'SPREADSHEET'` | `SpreadsheetTaskArtifact` | Returns trimmed 2D array; null→null; string→null; fully blank/all-null grid→`[]`; formula strings canonicalised (space-stripped, uppercased); trailing empty rows/cols trimmed | `z.array(z.array(z.union([z.number(), z.string(), z.null()]))).nullable()` |
 | `'IMAGE'`       | `ImageTaskArtifact`       | Returns trimmed string (data URL) or null; null→null; non-string→null; empty→null                                                                                              | `z.string().nullable()`                                                    |
 | `'base'`        | `BaseTaskArtifact`        | Returns raw content as-is                                                                                                                                                      | `z.unknown()`                                                              |
 
 Key notes:
 
-- The `content` field shape differs per type: `TEXT` uses a string, `TABLE` uses a
-  Markdown-formatted string, `SPREADSHEET` uses a 2D array of `(number|string|null)`,
-  `IMAGE` uses a base64 data URL string, `base` uses `unknown`.
+- TEXT, TABLE and IMAGE share the `z.string().nullable()` content expression; the
+  discriminated union keeps them as separate `type` branches. SPREADSHEET uses a 2D array
+  of `(number|string|null)` and `base` uses `unknown`.
 - `contentHash` is `string|null` on all full variants and omitted entirely from the
   partial schema.
 - `ArtifactFactory.create()` dispatches on `type` (uppercased): TEXT→TextTaskArtifact,
@@ -125,7 +125,7 @@ Key notes:
 - A successfully read blank/all-null `SPREADSHEET` grid normalises to `[]`, including
   a blank template, and therefore receives the normal hash of `[]` through
   construction, persistence and restoration. A literal `null` remains unavailable
-  content, not blank content. Existing normalisation of populated formulas is unchanged.
+  content, not blank content.
 
 ### Availability by parent store
 
@@ -150,13 +150,12 @@ Rules:
 - At new definition writes, non-`IMAGE` artifacts must already have non-null content
   and a string hash. Valid blank `TEXT`/array templates are not rejected as empty.
   `AssignmentDefinitionValidation.validateSharedArtifacts()` owns this
-  definition-write invariant; do not add separate parser/API validators or change
-  definition rollback semantics.
+  definition-write invariant.
 - A spreadsheet reference task with zero assessable formulae is an invalid shared
   definition, not a valid blank template. It is rejected at the new-definition-write
   boundary; the parser normally creates no task for a formula-free reference, and the
   write validator rejects any resolved task that still carries one before persistence.
-  This adds **no** run-time eligibility preflight. Blank templates canonicalised to
+  Blank templates canonicalised to
   `[]` remain valid, and blank student ranges retain the current formula scores
   (completeness `0`, accuracy `0`, SPaG `N`).
 - The strict non-null requirement for **completed full assignments** is a
@@ -177,9 +176,8 @@ Rules:
   with null content/hash. See
   [Contract: Student Submission § Image hydration outcomes](student-submission.md#image-hydration-outcomes).
 - Old definitions that cannot meet the non-`IMAGE` invariant may be reparsed through
-  the existing definition workflow. A stored definition is not revalidated at run
-  start; it is validated on its next definition write. No result-version marker is
-  added to definitions.
+  the existing definition workflow. A stored definition is validated on its next
+  definition write.
 
 ---
 
@@ -248,10 +246,10 @@ Persistence models:        src/backend/Models/Artifacts/
   │     └── BaseTaskArtifact.toPartialJSON() — partial shape (content/contentHash = null)
   │     └── BaseTaskArtifact.baseFromJSON()  — deserialisation
   ├── 1_TextTaskArtifact.js                  — 'TEXT' normalisation
-  ├── TableTaskArtifact.js                   — 'TABLE' normalisation (50×50 limit)
-  ├── SpreadsheetTaskArtifact.js             — 'SPREADSHEET' normalisation
-  ├── ImageTaskArtifact.js                   — 'IMAGE' normalisation, setContentFromBlob()
-  └── ArtifactFactory.js                     — create() dispatch on type
+  ├── 2_TableTaskArtifact.js                 — 'TABLE' normalisation (50×50 limit)
+  ├── 3_SpreadsheetTaskArtifact.js           — 'SPREADSHEET' normalisation
+  ├── 4_ImageTaskArtifact.js                 — 'IMAGE' normalisation, setContentFromBlob()
+  └── 5_ArtifactFactory.js                   — create() dispatch on type
 
 Parent models:
   ├── src/backend/Models/TaskDefinition.js   — createArtifact(), artifacts.{reference,template}

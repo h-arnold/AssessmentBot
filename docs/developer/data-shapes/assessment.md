@@ -91,7 +91,7 @@ Key notes:
 
 ### Legacy `submissions` preservation
 
-Implemented. A legacy (non-marker-1) record's present `submissions` value keeps its stored
+A legacy (non-marker-1) record's present `submissions` value keeps its stored
 shape through restoration, `toJSON()`, `toPartialJSON()` and an ordinary class save: an array
 is preserved as stored, explicit `null` stays `null` (never `[]`), a plain object is emitted
 as an independently owned date-normalised copy (never `[]`), and only an absent property keeps
@@ -118,7 +118,7 @@ Key contract notes:
   aliases `partialAssessmentResultSchema`, so both read schemas enforce the finite
   fractional 0–5 range, the `'E'` branch and the non-blank E reasoning refinement. Both
   read services run the read normaliser, so the contextual item/source checks are active
-  at runtime; see [Known discrepancies](#validation).
+  at runtime; see [Validation](#validation).
 - The transport never renames or defaults an assessment field. Partial reasoning
   stripping happens in the model, not at the boundary.
 
@@ -187,59 +187,14 @@ None. This shape embeds no other shape; `error` is an inline `{ stage, code }` o
   marking failure does not imply unavailable source content. See
   [Contract: Student Submission § Source artefact content and hash semantics](student-submission.md#source-artefact-content-and-hash-semantics).
 
-**Known discrepancies:**
-
-1. **Full and partial consumer schemas match the `Assessment` range and `E` union.**
-   `AssessmentSchema` aliases the shared `assessmentResultSchema` and
-   `PartialAssessmentEntrySchema` aliases `partialAssessmentResultSchema`. Both enforce
-   finite fractional 0–5, `'N'`, and `'E'` with non-blank reasoning plus a catalogue
-   cause. A full or partial backend result the shared schema accepts is not rejected by
-   the consumer schemas.
-
-2. **Partial projection retains `E` reasoning/cause and the partial consumer accepts it.**
-   `StudentSubmissionItem.toPartialJSON()` preserves an `'E'` entry intact
-   (`{ score: 'E', reasoning, error }`) while numeric and `'N'` entries remain
-   `{ score }`. `PartialAssessmentEntrySchema` aliases `partialAssessmentResultSchema`,
-   so a class-embedded `E` validates with its explanation.
-
-3. **The shared result/cause owner is consumed by both read schemas and both read services run the normaliser.**
-   `assessmentResult.zod.ts` is consumed by `assignmentAssessment.zod.ts` and
-   `classDetailService.zod.ts`. `assignmentAssessmentService.getAssignment()` and
-   `classDetailService.getABClass()` each call `parseApiResponse` on a root/envelope stub
-   only (`submissions: []` / `assignments: []`), then call
-   `normaliseAssignmentRead()` / `normaliseClassRead()`, which performs the single
-   per-item validation pass. Per-item isolation and contextual source/marker checks are
-   active at runtime.
-
-4. **Duplicate partial score declarations are absent.**
-   `classDetailService.zod.ts` declares no `MAX_ASSESSMENT_SCORE`,
-   `PartialAssessmentScoreSchema` or `PartialAssessmentScore`;
-   `PartialAssessmentEntrySchema` aliases the shared result owner. The one cross-module
-   consumer, `tests/synthetic-analysis/syntheticGraphIntegrityAndScenarios.test.ts`,
-   uses `assessmentScoreSchema` and retains its non-`E` assertions.
-
-5. **Adjacent schema comments describe the activated contract.**
-   Comments beside `AssessmentSchema` and the class-detail partial entry declarations
-   state the fractional 0–5 range, the `'E'` branch and retained partial `E`
-   reasoning/cause.
-
-6. **`ASSESSMENT_FAILED` has no producer.**
-   The catalogue entry exists in `Assessment.js` and is accepted by the frontend cause
-   schema, but no backend boundary currently emits it: the assessment-stage owner has no
-   separate ordinary assessment-failure boundary. The entry is reserved for a real boundary;
-   do not add a blanket catch to give it a producer.
-
 ---
 
 ### LLM assessment outcomes and validated cache reuse
 
 Owned by `src/backend/RequestHandlers/LLMRequestManager.js` (terminal outcomes,
 shared live/cache validation and internal cache identity) and
-`src/backend/RequestHandlers/CacheManager.js` (generic best-effort `get`/`put`). This
-slice adds no persisted field, no transport field, no service-envelope change, no
-run-status document and no schema-version change. It wires the existing assessment-stage
-catalogue into the existing atomic `StudentSubmissionItem.setError()` primitive; the LLM
-service request payload and response body are unchanged.
+`src/backend/RequestHandlers/CacheManager.js` (generic best-effort `get`/`put`).
+LLM outcomes are recorded through `StudentSubmissionItem.setError()`.
 
 | Situation                                                                                                                                | Scope         | Recorded result                                                                      | Source artefact                      | Notes                                                                                                                                                                                                                                                                                                                                                                     |
 | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -297,11 +252,9 @@ Rules:
 - A missing or invalid provenance value is a wiring fault, not a service result: a value
   that is not a safe integer in `1..maxAttempts` (including `undefined`, `null`, numeric
   strings, fractions, `NaN`, infinities and unsafe integers) throws a contextual `Error`
-  before `setError` and before any catalogue mutation. No default attempt count, new
-  cause or retry is introduced.
-- `ASSESSMENT_FAILED` has no producer: the owner has no separate ordinary assessment-failure
-  boundary. The catalogue entry stays available for a real boundary; do not add a blanket catch
-  to manufacture one.
+  before `setError` and before any catalogue mutation.
+- The `ASSESSMENT_FAILED` catalogue entry remains accepted for a boundary that emits it; the
+  assessment-stage owner has no separate ordinary assessment-failure boundary.
 - Completion persistence, completion-time marker stamping and completion-with-errors
   feedback are enforced at the write boundary; handled errors persist beside healthy
   results and the marker is stamped only after completed-result validation succeeds.
@@ -312,13 +265,11 @@ Before any collection mutation, `ABClassAssignmentOps.persistAssignmentRun()` va
 completed results and prepares independent full and partial payloads. It preflights all
 four projections together: the full assignment payload, its embedded partial, the
 prospective updated full-class payload and the prospective `abclass_partials` payload.
-The existing class persistence preparation owner is reused; no projection is first
-attempted after the full assignment has committed, and the prepared snapshots are
-preserved through each write. The authoritative full assignment write still precedes the
-class save and class-partials write. There is no cross-collection transaction; a storage
-failure throws, logs the failed phase and whether the full write committed, and never
-reports a completed run. Do not add unconditional saving in `finally` or claim rollback
-guarantees.
+The existing class persistence preparation owner is reused; every projection is prepared
+before the full assignment commits, and the prepared snapshots are preserved through each
+write. The authoritative full assignment write still precedes the class save and
+class-partials write. A storage failure throws, logs the failed phase and whether the full
+write committed, and never reports a completed run.
 
 The completed-write gate (`ABClassAssignmentValidation._validateCompletedAssignmentRun()`)
 rejects, before marker stamping, serialisation or any collection mutation:
@@ -350,12 +301,12 @@ partial assignment. It is an assessment-result marker, not a definition-version 
 
 | Field                       | Type        | Persistence                                                                                                                                                                                                                                                               | Transport                                                                                                       | Frontend Zod                                   | Notes                                                                                                                                                                                                                                                   |
 | --------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `assessmentContractVersion` | `1 \| null` | Newly completed results are validated then stamped `1` before serialization. Legacy absence, `null` or unsupported values are preserved verbatim with the legacy body, including a present non-array `submissions` value; stored values are never validated or rewritten. | Always present. `1` for current results; `'legacy'` for every other stored marker, set on the read output only. | `z.union([z.literal(1), z.literal('legacy')])` | Storage may omit the marker, store `null`, or retain an unsupported legacy value; that stored state means the result requires reassessment. The backend read transport maps every non-`1` stored marker to `'legacy'` beside prepared read submissions. |
+| `assessmentContractVersion` | `1 \| null` | Newly completed results are validated then stamped `1` before serialisation. Legacy absence, `null` or unsupported values are preserved verbatim with the legacy body, including a present non-array `submissions` value; stored values are never validated or rewritten. | Always present. `1` for current results; `'legacy'` for every other stored marker, set on the read output only. | `z.union([z.literal(1), z.literal('legacy')])` | Storage may omit the marker, store `null`, or retain an unsupported legacy value; that stored state means the result requires reassessment. The backend read transport maps every non-`1` stored marker to `'legacy'` beside prepared read submissions. |
 
 Persistence rules:
 
 - Newly completed/reassessed assignments are validated then stamped with
-  `assessmentContractVersion = 1` before either full or partial serialization. Both
+  `assessmentContractVersion = 1` before either full or partial serialisation. Both
   persisted projections therefore carry `1`. See
   [§ Write boundary — preflight before any write](#write-boundary-preflight-before-any-write).
 - Storage may omit the marker, or retain `null`/an unsupported legacy value. Restoration
@@ -392,13 +343,12 @@ Transport and frontend-validation rules:
 
 ### Legacy read preparation
 
-> **Status: active on both read paths.** The public owner
-> `AssignmentRehydration.prepareLegacyReadSubmissions(assignment, form)` delegates to
-> `AssignmentLegacyRead.prepare()` in `02_AssignmentLegacyRead.js`. Both
-> `AssignmentSerialisation.toReadJSON()` (full) and `ABClassResponseMapper._toReadView()`
-> (partial) invoke it before response validation and definition-key replacement. Both
-> read services then validate the prepared entries; the browser does not prepare a second
-> legacy graph.
+The public owner `AssignmentRehydration.prepareLegacyReadSubmissions(assignment, form)`
+delegates to `AssignmentLegacyRead.prepare()` in `02_AssignmentLegacyRead.js`. Both
+`AssignmentSerialisation.toReadJSON()` (full) and `ABClassResponseMapper._toReadView()`
+(partial) invoke it before response validation and definition-key replacement. Both read
+services then validate the prepared entries; the browser does not prepare a second legacy
+graph.
 
 That public entry is the sole backend owner of legacy read preparation. It applies when a
 **stored** full record or class-embedded partial carries any `assessmentContractVersion`
@@ -406,8 +356,7 @@ other than `1` (absent, `null` or unsupported); its read output always carries
 `assessmentContractVersion: 'legacy'`. A missing or unsupported **wire** marker is instead an
 invalid root under strict frontend validation, not a legacy-result signal for the browser.
 The internal `form` argument is exactly `'full' | 'partial'`: full for `getAssignment`,
-partial for `getABClass`. It selects output serialisation only, never a weaker validator, and
-is not a new transport parameter.
+partial for `getABClass`. It selects output serialisation only, never a weaker validator.
 
 | Read path       | Invocation                                                                                                                                                                                                                                                                                                                    | Inputs                                                                                                                                                                                        | Output                                                                                    |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -460,15 +409,9 @@ Format gate and persistence preservation:
 - An invalid root/definition or untrustworthy required identity still fails the owned
   dataset; preparation must not invent missing identities.
 
-> **Temporary compatibility.** The legacy persistence and read-preparation
-> compatibility path — including the separate `Assignment.toReadJSON()` wrapper — is
-> migration compatibility, not an intended permanent second serialiser. Review it on
-> **24 April 2027** to decide whether legacy assessments have likely been rerun and the
-> path can be retired. That date is a review checkpoint only: it does not expire, remove
-> or change the path automatically. Retiring the path first requires confirming that
-> remaining stored legacy assessments no longer need it and that ordinary persistence
-> cannot be damaged. No scheduled notification, automatic migration, data deletion,
-> background backfill or forced reassessment is promised or authorised.
+The legacy persistence and read-preparation path, including the separate
+`Assignment.toReadJSON()` wrapper, remains in use for stored legacy records on both read
+paths.
 
 ### Marker-1 CURRENT restoration
 
@@ -483,33 +426,15 @@ The representation mode is threaded from `Assignment.fromJSON()` through
 `SlidesAssignment.fromJSON()` / `SheetsAssignment.fromJSON()` and
 `StudentSubmission.fromJSON()` into `StudentSubmissionItem.fromJSON()`.
 
-| Aspect                  | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Activation              | `assessmentContractVersion === 1` only. Newly completed runs are validated and stamped before both persistence serialisers emit the marker. Marker-less, `null` and unsupported records are retained as ordinary instance state without reconstruction; the read transport emits `'legacy'` after read preparation. Both frontend read schemas require `1 \| 'legacy'` and both read services parse only a root/envelope stub and then run the normaliser as the single per-item validation pass. See [Known discrepancies](#validation). |
-| Root and task list      | Validated once, before any model constructor runs: non-blank `courseId` / `assignmentId` strings, `submissions` as an array, and a non-empty embedded `assignmentDefinition.tasks`. In the full task-map form every key is non-blank and equals the embedded task's canonical `id`; an optional `taskId` must match that key. In the partial summary-array form every `taskId` is a non-empty unique string. Any failure throws and fails the owned dataset.                                                                              |
-| Shared identities       | The same task-list check runs with an empty `submissions` array, so duplicate or inconsistent definition identities cannot be hidden by having no students. A submission must carry a non-blank string `studentId` and an `assignmentId` equal to the root assignment ID. Unknown stored task keys outside the authoritative task list throw; associations are never guessed.                                                                                                                                                             |
-| Empty no-submission     | A submission with parent `documentId: null` and an empty item object remains an empty submission record. It is not expanded into placeholders or fabricated `N` items.                                                                                                                                                                                                                                                                                                                                                                    |
-| Raw item validation     | Before construction, each item must match its authoritative task key. Its artefact must carry the same `taskId`, `role: 'submission'`, one of `base` / `TEXT` / `TABLE` / `IMAGE` / `SPREADSHEET`, a non-empty string `uid`, and `string\|null` `documentId` / `pageId`. Full mode requires own `content` and `contentHash` keys; body/hash are both `null` or both present with a string hash. Bodies are type-checked (`TEXT` / `TABLE` string or `null`, `IMAGE` image data URL or `null`, `SPREADSHEET` 2D primitive grid or `null`). |
-| Completed criteria      | Exactly `completeness`, `accuracy` and `spag`, with no extra keys. Full entries must be complete `Assessment` results. Partial entries are finite 0–5 numeric or `'N'` score-only objects, or an `'E'` with non-blank `reasoning` and a catalogue `error`.                                                                                                                                                                                                                                                                                |
-| Source consistency      | Full document-bearing items may carry null body/hash only when all three results are `'E'` with an `acquisition`, `extraction` or `validation` stage. Partial document-bearing records are redaction-exempt and are not checked for source presence or hashed. A null-parent item must be the canonical base placeholder: `type: 'base'`, `role: 'submission'`, null `documentId` / `pageId` / `content` / `contentHash`, empty `metadata` and `feedback`, and all three results `'E'` with an `acquisition` or `validation` stage.       |
-| Isolation               | An object item failing raw validation is replaced by a canonical `CORRUPT_RECORD` placeholder on all three criteria, created through the model constructors with the known task/student association. Healthy siblings and valid acquisition/validation placeholders are preserved. A missing known task receives the same placeholder; the placeholder is never constructed from the offending raw item.                                                                                                                                  |
-| Exact-once construction | Each healthy raw item is validated once and constructed at most once. An already-materialised `StudentSubmissionItem` instance is serialised in the requested mode, validated, and retained as the same instance when healthy; a serialisation or construction fault propagates unchanged, with no retry or corruption conversion.                                                                                                                                                                                                        |
-| Timestamps              | Valid stored submission `createdAt` / `updatedAt` values are retained independently. Otherwise `createdAt` falls back to the assignment `createdAt`; `updatedAt` falls back to the assignment `updatedAt` when non-null, otherwise the assignment `createdAt`. An invalid assignment timestamp throws. The wall clock is never used.                                                                                                                                                                                                      |
+The item-level marker-1 restoration rules are owned by the item model and documented in
+[Component Shape: Student Submission § Marker-1 item restoration rules](student-submission.md#marker-1-item-restoration-rules).
 
-`TABLE` artefact bodies remain supported as stored `string \| null` for document-bearing
-items, consistent with the existing artefact contract; marker-1 restoration neither
-generates TABLE fixtures nor introduces new TABLE feature work.
-
-The synthetic generator, projection and strict graph validators emit and accept marker-1
-records, real PNG/raw-grid bodies, paired reference formulae and retained partial `E`
-details. Production persistence and both read transports emit the marker; the backend legacy
+Production persistence and both read transports emit the marker; the backend legacy
 read preparation and the frontend read normaliser run in both read services. The analyser
 accepts explicit `E` input. The completed-write gates (including pending-image rejection and
 completion-time marker stamping) are enforced at the write boundary. Preview error states are
 described in
-[Frontend Data Analysis Response § Attempt-baseline contract changes](frontend-data-analysis-response.md#attempt-baseline-contract-changes).
-
----
+[Frontend Data Analysis Response § Attempt-baseline analysis mode](frontend-data-analysis-response.md#attempt-baseline-analysis-mode).
 
 ---
 

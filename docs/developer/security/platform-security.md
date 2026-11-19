@@ -1,13 +1,10 @@
 # Google Apps Script Platform Security
 
-This document is **Layer 1** of the AssessmentBot security approach (see the
+This document is **Layer 1** of the Assessment Bot security approach (see the
 [security overview](./README.md) for the full layering model). It covers the Google Apps
 Script (GAS) platform controls that govern _who can invoke the web app_, _with whose
 identity and authorisation the script runs_, and _how data is exposed through Drive and
-scheduled execution_. Layer 1 is the **primary control**: it is sufficient on its own
-when correctly configured. Layers 2–4 exist as defence in depth for the cases where
-misconfiguration happens, the deployed surface is larger than the UI, or data should not
-exist where it does not have to.
+scheduled execution_.
 
 ## Deployment configuration
 
@@ -39,10 +36,9 @@ The pairing matters because it is what makes `Session.getActiveUser().getEmail()
 the signed-in user's email — the identity used by Layer 2's `AuthService` gate. When the
 web app runs "as the user accessing" it and only domain members can reach it, GAS
 resolves the active user to the signed-in domain account rather than the deployer or an
-empty string. This was verified against the official Apps Script `Session` reference
-during planning: a deployment that used `USER_DEPLOYING`, or
-allowed anonymous access, could yield the deployer's identity or a blank email and would
-break the entire application authentication model.
+empty string. A deployment that used `USER_DEPLOYING`, or allowed anonymous access, could
+yield the deployer's identity or a blank email and break the application authentication
+model.
 
 The identity model has one hard prerequisite: **`access: DOMAIN` is only valid within a
 Google Workspace domain**. A deployment on a personal (Gmail) identity cannot use `DOMAIN`
@@ -112,8 +108,9 @@ were added, with users re-authorising on next access.
 
 Assessment records live in Google Sheets/Drive and student work lives in Drive, so the
 permissions on those Drive objects are the platform-layer control protecting the data.
-`src/backend/GoogleDriveManager/DriveManager.js` is the module that manipulates those
-objects, and its sharing model is deliberately narrow:
+The `GoogleDriveManager` facade (`src/backend/GoogleDriveManager/DriveManager/index.js`) is
+the entrypoint for those objects; its methods delegate to focused subclasses in the same
+directory. Its sharing model is deliberately narrow:
 
 - **`shareFolder(destinationFolderId, emails)`** shares a destination folder with named
   individuals by calling `destinationFolder.addEditor(email)` for each address. There is
@@ -173,10 +170,9 @@ Two mechanisms tie trigger execution back to the rest of the security model:
 > **Recommended operational practice.** When the trigger handler model changes, drain and
 > replace old triggers before deploying: triggers installed by previous versions point at
 > the old entrypoint (`triggerProcessSelectedAssignment`) and will fail or run stale code
-> once it is removed. This migration is documented in the v0.7.6/v0.7.7 rollout steps.
-> Because triggers inherit their creator's identity, an operator who leaves the
-> organisation should have their scheduled triggers reviewed and re-created under a
-> remaining authorised user.
+> once it is removed. Because triggers inherit their creator's identity, an operator who
+> leaves the organisation should have their scheduled triggers reviewed and re-created under
+> a remaining authorised user.
 
 ## Related documentation
 
@@ -186,7 +182,8 @@ Two mechanisms tie trigger execution back to the rest of the security model:
   `AuthService` group-membership gate that re-authorises every API call and trigger
   execution.
 - [Accepted risks and trade-offs](./accepted-risks.md) — risks accepted at the platform
-  layer (e.g. revocation latency, bootstrap fail-open) and the reasoning behind them.
+  layer (e.g. revocation latency, the bounded first-admin bootstrap claim) and the reasoning
+  behind them.
 - [Managing OAuth scopes](../backend/oauth-scopes.md) — canonical scope-management
   process; `src/backend/appsscript.json` is the source of truth.
 - [Data shapes INDEX](../data-shapes/INDEX.md) — canonical contracts, including

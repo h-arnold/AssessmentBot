@@ -13,10 +13,10 @@ These two tiers keep the heatmap matrix compact (no unnecessary `.00` noise) whi
 
 ## Source Constants
 
-| Constant                     | Value | File                                                                            | Role                                                                                                                                                                  |
-| ---------------------------- | ----- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `INDIVIDUAL_SCORE_PRECISION` | `0`   | `src/frontend/src/features/taskHeatmap/taskHeatmapTableColumns.tsx` (line 107)  | Controls precision for individual student task scores in both the visible heatmap score text and the cell `aria-label`, both formatted via `formatMetricDisplayText`. |
-| `DEFAULT_PRECISION`          | `2`   | `src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx` (line 12) | Default precision for all `MetricPill` instances. Used by average-display components.                                                                                 |
+| Constant                     | Value | File                                                                  | Role                                                                                                                                                                  |
+| ---------------------------- | ----- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INDIVIDUAL_SCORE_PRECISION` | `0`   | `src/frontend/src/features/taskHeatmap/taskHeatmapTableColumns.tsx`   | Controls precision for individual student task scores in both the visible heatmap score text and the cell `aria-label`, both formatted via `formatMetricDisplayText`. |
+| `DEFAULT_PRECISION`          | `2`   | `src/frontend/src/services/dataAnalysis/metricDisplay/MetricPill.tsx` | Default precision for all `MetricPill` instances. Used by average-display components.                                                                                 |
 
 ## How It Works
 

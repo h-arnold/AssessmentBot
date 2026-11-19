@@ -21,7 +21,7 @@ npm run test:frontend
 # Frontend tests in watch mode
 npm run test:frontend:watch
 
-# Frontend unit/component coverage check (minimum 85%)
+# Frontend unit/component coverage check
 npm run test:frontend:coverage
 
 # Type-check the frontend app, Node tooling, and E2E projects (see ../builder/TypeScriptAndLintConfigHierarchy.md)
@@ -84,12 +84,12 @@ Where a Vitest test covers visible rendering, add or update a Playwright test th
   - user sees light/dark mode switch reflected in the rendered UI
   - user sees motion disabled or minimal when reduced-motion preference is active
 
-### Example split for the task-preview source link (issue #19)
+### Example split for the task-preview source link
 
-The issue #19 source link moves duplicated interaction coverage to the layer that actually exercises it.
+The source link's duplicated interaction coverage belongs in the layer that exercises it.
 
-- **Vitest owns the keyboard and focus-readiness matrix.** `TaskMetricPreviewCell.focus.spec.tsx` and `TaskMetricPreviewCell.focusSession.spec.tsx` render the real `TaskMetricPreviewCell`, which mounts the real Ant Design portal and the real `TaskPreviewCard`. They pin Enter/Space activation and the single source-link focus transfer, Escape from the trigger and from inside the portal, untrapped Tab/Shift+Tab, the deferred-readiness transfer, and focus retention across loading, error, no-source and user-departure states. `TaskMetricPreviewCell.openChange.spec.tsx` pins the open-callback re-decision behind a Popover seam. Do not mirror this matrix assertion-for-assertion in Playwright: once the real portal is rendered, repeating it adds no confidence, and the unit harness observes focus transfers directly. The browser suite still exercises the keyboard journey through the narrow geometry matrix and the keyboard-focused capture, so the interaction keeps its required real-browser coverage.
-- **Playwright retains browser-visible behaviour only.** `task-preview-source-link.spec.ts` covers the real hover tooltip, the exact outgoing editor URL and new-tab navigation from both entry points, and the source-URL boundary variants. `task-preview-source-link.states.spec.ts` pins the unavailable-source rendering case. `task-preview-source-link.visual.spec.ts` runs the layout document's seven measured geometry checks plus the representative visual samples across desktop 1440×900 and narrow 390×844, light and dark, both entry points and the TEXT/IMAGE/TABLE card bodies.
+- **Vitest owns the keyboard and focus-readiness matrix.** `TaskMetricPreviewCell.focus.spec.tsx`, `TaskMetricPreviewCell.focusSession.spec.tsx` and `TaskMetricPreviewCell.openChange.spec.tsx` render the real portal and preview card.
+- **Playwright owns the browser-visible behaviour.** `task-preview-source-link.spec.ts`, `task-preview-source-link.states.spec.ts` and `task-preview-source-link.visual.spec.ts` cover the tooltip, outgoing editor URL, navigation, source-URL boundaries, unavailable-source rendering and measured layout.
 
 When adding coverage to a duplicated interaction matrix, extend the unit suite. Add an E2E case only when the assertion needs a real browser: layout geometry, native navigation, tooltips, or cross-component runtime integration.
 
@@ -97,22 +97,19 @@ When adding coverage to a duplicated interaction matrix, extend the unit suite. 
 
 The preview's error states split the same way.
 
-- **Vitest owns the state matrix.** `TaskPreviewCard.errors.spec.tsx` pins the card's source-region states and copy: a known `E` keeps its reasoning, an unavailable source replaces the renderer with the non-dismissible inline `Alert`, a pending full fetch shows only the source-region skeleton, an assessment-only `E` keeps rendering its surviving content, a genuine no-submission stays the ready `N` placeholder with no `Alert`, and a stored `REASSESSMENT_REQUIRED` error gets the reassessment copy. `TaskMetricPreviewContent.spec.tsx` pins the pending/failed/ready body decision, including the known-error fallback that never leaves a perpetual skeleton. `assembleTaskPreviewData.errors.spec.ts`, `assembleMergedPreviewData.errors.spec.ts`, `heatmapsPreviewQueries.spec.ts` and `buildCellPreviewLookup.errors.spec.ts` pin derivation and precedence. `useHeatmapsPageData.knownErrorPreview.spec.ts` holds the hook-level known-error material split out of `useHeatmapsPageData.preview.spec.ts`.
-- **Playwright owns the browser journeys.** `assessment-error-previews.spec.ts` covers the embedded surface and `assessment-error-merged-previews.spec.ts` the standalone merged surface: a healthy sibling beside an assessment `E` with valid source, an `E` without usable source, a known class-partial `E` while the full read is pending and after it terminally fails, the preview-only corruption notice with unchanged class cells, refresh from `E` to a current result, the two-instance shared-definition leak check, untrapped Tab, and narrow-viewport wrapping of the unavailable-source copy. The legacy read journeys live in `legacy-assignment-results.spec.ts`: eleven journeys, nine serving a legacy full read (real legacy scores and source previews beside a corrupt-task `E`, a readable legacy TEXT preview, the status tag and rerun flows) and two marker-1 probes (a corrupt record and a stored error). Its helpers are `src/frontend/e2e-tests/helpers/legacy-assignment-results-journeys.ts` for scenario plumbing (response queues, overrides, navigation helpers) and `src/frontend/e2e-tests/helpers/legacy-reassessment-tag-layout.ts` for locators, geometry, ordering and readability. The assessment-error scenario, navigation and locator helpers are `src/frontend/e2e-tests/helpers/assessment-error-preview-{fixtures,journeys}.ts`; legacy variants are marker-only clones of canonical JSON that retain real scores and content.
+- **Vitest owns the state matrix.** `TaskPreviewCard.errors.spec.tsx`, `TaskMetricPreviewContent.spec.tsx`, `assembleTaskPreviewData.errors.spec.ts`, `assembleMergedPreviewData.errors.spec.ts`, `heatmapsPreviewQueries.spec.ts`, `buildCellPreviewLookup.errors.spec.ts` and `useHeatmapsPageData.knownErrorPreview.spec.ts` cover card source-region states, body decisions, derivation precedence and the hook-level known-error material.
+- **Playwright owns the browser journeys.** `assessment-error-previews.spec.ts`, `assessment-error-merged-previews.spec.ts` and `legacy-assignment-results.spec.ts` cover the embedded, standalone and legacy read surfaces. See [Assessment-error preview journeys](frontend-playwright-e2e.md#shared-helpers-and-imports) for the journeys and their shared helpers.
 
-Do not duplicate the whole state matrix in Playwright, and do not weaken the unit assertions to make a browser journey pass.
+Keep the state matrix in Vitest and the browser journeys in Playwright; a browser journey must not drive weakened unit assertions.
 
 ### Example split for the Select Add new command
 
 `SelectWithAddNew` appends an `Add new` sentinel that dispatches a command rather than selecting a value. Keep the split strict.
 
-- **Vitest owns the command and value matrix.**
-  - `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.spec.tsx` renders the real Ant Design `Select` and pins immediate dispatch (asserted without advancing timers), sentinel interception for both scalar and `labelInValue` payloads, and controlled/`defaultValue`/`allowClear`/normal-selection preservation.
-  - `src/frontend/src/components/SelectWithAddNew/SelectWithAddNew.integration.spec.tsx` exercises the real `BulkCreateModal` boundary.
-  - `src/frontend/src/features/classes/ClassesManagementPanel.addNew.spec.tsx` exercises the real panel-owned modal state: the manager opens over the still-open create modal, and repeated selection yields exactly one manager.
-- **Playwright owns the browser journey.** `src/frontend/e2e-tests/select-with-add-new-workflow.spec.ts` must verify what only a real browser shows: the true accessible names of the stacked dialogs, real close motion, and the create-and-auto-select journey.
+- **Vitest owns the command and value matrix.** `SelectWithAddNew.spec.tsx`, `SelectWithAddNew.integration.spec.tsx` and `ClassesManagementPanel.addNew.spec.tsx` render the real `Select` and modal boundaries.
+- **Playwright owns the browser journey.** `select-with-add-new-workflow.spec.ts` verifies what only a real browser shows: the accessible names of the stacked dialogs, close motion and the create-and-auto-select journey.
 
-Do not mock `useDebounce` or the `Select` for these specs, and do not add fixed sleeps, timer advances or weakened retries to make the command appear. A delayed assertion is a defect to diagnose, not to paper over.
+Keep mocks, fixed sleeps, timer advances and weakened retries out of these specs. A delayed assertion is a defect to diagnose.
 
 ## Test naming and traceability
 
@@ -154,7 +151,7 @@ Frontend production code must never import backend modules for this contract; th
 ABClass mutation tests keep admission and response parsing real:
 
 - `services/abClass/abClassMutations.zod.spec.ts` covers required non-null string cohort/year-group keys for upsert (null rejects), optional nullable update keys, safe identifiers/course lengths, all protected fields, own undefined (including mixed valid edits), and omitted/null/whole-replacement metadata for both mutations. Nested patches reject; parsed snapshots detach from caller input.
-- `services/abClass/abClassMutationService.spec.ts` mocks only `callApi`, retaining the actual queue, request schemas and `parseApiResponse`. It proves pre-enqueue rejection even with an occupied `classesBulkMutation` lane, snapshot detachment before waiting, real partial-response validation/diagnostics, null metadata retention, unrelated response stripping, and unchanged `INVALID_REQUEST`/`INTERNAL_ERROR` identity and correlation.
+- `services/abClass/abClassMutationService.spec.ts` mocks only `callApi`, retaining the actual queue, request schemas and `parseApiResponse`.
 - Shared canonical request/response factories live in `src/test/abClass/abClassMutationFixtures.ts`. Upsert configuration selects committed `small` class-0 with both keys non-null; response selection is independent and may retain nullable configuration keys. Complete replacements use shared canonical metadata; keep deliberate invalid/boundary probes local. Parameterised registrations must execute every row, not merely type-check. Test upsert null-key rejection before enqueue/network separately from update null-key preservation and omission; never replace an explicit null with a fixture fallback.
 
 Queued wrappers must not be awaited inside an active same-lane reservation. Test
@@ -183,15 +180,13 @@ and live weights independently of production calculation/projection; supplied
 metadata scores are never an oracle. Other scope/projection assertions also use
 the real analyser, so do not present those alone as independent arithmetic proof.
 
-Success inputs are **explicit historical-source boundary clones**, not untouched
-newest canonical classes: all 11 compact classes have a null submission
-`studentName` in their newest assignment, which existing isolated analysis rejects.
-The clones omit only the final assignment, preserving remaining names/scores.
-Three untouched canonical failure probes assert rejection without write or clock
-access and with lane release. Exact selected versions and scope limitations are
+Success inputs are **explicit historical-source boundary clones**: the compact
+classes ship a null submission `studentName` in their newest assignment, which
+existing isolated analysis rejects. The clones omit only the final assignment,
+preserving remaining names and scores. Untouched canonical failure probes assert
+rejection without write or clock access and with lane release. Exact selected versions and scope limitations are
 recorded in [Synthetic Test Data](../testing/synthetic-test-data.md#metadata-refresh-analysis-boundaries).
-No generator change, regeneration or production repair is implied. Invalidation
-and feedback coverage is described below.
+Invalidation and feedback coverage is described below.
 
 ### Shared post-analysis lifecycle tests
 
@@ -218,8 +213,8 @@ The generic lifecycle, feedback and invalidation coverage is split by responsibi
   source identity, and a local unkeyed task continuing independently of metadata
   skip/failure. Throwing source-key computation preserves Error identity or normalises
   scalar failures, caches the failed attempt and still allows later independent work.
-- `features/classPage/useClassPageData.postAnalysis.spec.ts` (6 cases) and
-  `features/taskHeatmap/useHeatmapsPageData.postAnalysis.spec.ts` (7 cases): mock
+- `features/classPage/useClassPageData.postAnalysis.spec.ts` and
+  `features/taskHeatmap/useHeatmapsPageData.postAnalysis.spec.ts`: mock
   only the lower-level lifecycle hook and prove each feature's shared page hook passes
   the complete unsliced class, live definitions, the successful averaging result, the
   appropriate class ID — committed for the class page, deferred for Heatmaps — and the
@@ -233,9 +228,9 @@ reuse the existing metadata refresh fixtures and their historical-source limitat
 It mounts the real Ant Design `App` host, because the notification host is required and
 production has no missing-host fallback. Ordering/failure/extension probes are local
 descriptors, not future production tasks. Use explicit promise gates for
-pending/replay/cleanup checks. Cleanup proves suppressed state publication, not
-cancellation of active work. Future task tests must cover their own key and eligibility
-rules; metadata freshness is never a global gate. See the
+pending/replay/cleanup checks. Cleanup only suppresses state publication. Future task tests
+must cover their own key and eligibility rules; metadata freshness is never a global gate.
+See the
 [registration contract](data-analysis-architecture.md#shared-post-analysis-lifecycle-and-extension).
 
 These suites render the real context-aware Ant Design `App` host and use the
@@ -260,36 +255,20 @@ cleanup, `completeNotificationLeave` waits for the actual leave-active class,
 dispatches `animationend` inside `act`, then asserts actual DOM removal. Do not
 disable production motion, manufacture a leave or weaken removal assertions.
 
-Consumer binding is implemented. Playwright runtime types and dispatch inventory
-register `upsertABClass` and `updateABClass`, and the nine existing Heatmaps
-summary journeys use explicit equal-version metadata boundaries so no background
-write occurs. The consumer-binding cases (6 Class page + 7 Heatmaps) sit in the
-suites above.
+Playwright runtime types and the dispatch inventory register `upsertABClass` and
+`updateABClass`. The Heatmaps summary journeys set explicit equal-version metadata
+boundaries so the metadata task takes its no-op path; the consumer-binding cases
+sit in the suites above.
 
 ### Post-analysis metadata browser and Node integration coverage
 
-The changed-write and feedback journeys live in two browser specs plus a Node
+The changed-write and feedback journeys live in browser specs plus a Node
 dispatcher suite:
 
-- `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` builds
-  canonical `small` class-2 scenarios. The historical source omits only the final
-  assignment because the committed newest instance has the known null
-  `studentName`; remaining names, assessments and supplied metadata are unchanged.
-  Do not "repair" the corpus to create this boundary.
-- `post-analysis-metadata.persistence.spec.ts`: Class page writes once and
-  re-reads; standalone Heatmaps writes once with no loop on the same source; a
-  newer assignment version writes once on manual refresh (six reads and two
-  writes).
-- `post-analysis-metadata.feedback.spec.ts`: persistent safe save-failure copy on
-  both surfaces, the distinct confirmed-save/refresh-failure copy, retention of
-  that warning on the Class page when readiness blocks during a still-pending list
-  refresh, keyboard dismissal, no reopen on the same source, navigation cleanup,
-  and containment/theme checks at 1440×900 and 390×844 in light and dark.
-- `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts`: real
-  `apiHandler` read and mutation round trip through `callApi`, service schemas and
-  queued wrappers. It uses the existing test seams and is not real
-  controller/persistence evidence; see
-  [Synthetic Test Data](../testing/synthetic-test-data.md#node-dispatcher-metadata-round-trip).
+- `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` builds canonical `small` class-2 historical-source scenarios; keep the committed null-`studentName` boundary rather than "repairing" the corpus.
+- `post-analysis-metadata.persistence.spec.ts` covers changed writes and re-reads on both surfaces.
+- `post-analysis-metadata.feedback.spec.ts` covers save-failure and confirmed-save feedback, dismissal and navigation cleanup.
+- `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` exercises the `apiHandler` read and mutation round trip through `callApi`, service schemas and queued wrappers; see [Synthetic Test Data](../testing/synthetic-test-data.md#node-dispatcher-metadata-round-trip).
 
 Both browser specs use the existing runtime response queues. Keep strict dispatch:
 an unknown method or exhausted queue must still fail. Run the full browser suite
@@ -297,11 +276,10 @@ with `npm run test:e2e` from `src/frontend`.
 
 ### API transport and queue suites
 
-The former `services/apiService.spec.ts` is split into seven suites under
-`services/api/`: `apiTransport.spec.ts`, `apiTransport.retry.spec.ts`, and
-`apiQueue.{enqueue,processing,state,retry,cancellation}.spec.ts`. Transport tests
-exercise the actual `services/apiService.ts` owner; queue tests exercise
-`services/api/apiQueue.ts` directly, not a compatibility facade.
+API transport coverage lives under `services/api/`: `apiTransport.spec.ts`,
+`apiTransport.retry.spec.ts` and `apiQueue.{enqueue,processing,state,retry,cancellation}.spec.ts`.
+Transport tests exercise `services/apiService.ts`; queue tests exercise
+`services/api/apiQueue.ts` directly.
 
 Shared setup lives in `src/test/api/apiServiceTransportTestHelpers.ts`, reusing
 `apiServiceTestMocks.ts`. After `vi.resetModules()`, use `loadCallApi()` /
@@ -336,7 +314,7 @@ When tests cover logging/error pathways, keep expectations aligned with that doc
 
 ## Coverage requirement
 
-Frontend unit/component tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `src/frontend/vite.config.ts` and checked via `npm run test:frontend:coverage`.
+Frontend unit/component tests must meet the coverage threshold enforced in `src/frontend/vite.config.ts`, checked via `npm run test:frontend:coverage`.
 
 `npm run test:coverage` chains the project coverage scripts and stops at the first failing scope. If it stops before the frontend scope, run `npm run test:frontend:coverage` explicitly and report that actual result. Never describe an unreached scope as passing, and do not treat a regression-checker comparison as a coverage gate: its checks can pass without measuring coverage.
 
@@ -386,14 +364,14 @@ When adding test scenarios, prefer extending an existing helper before copying s
 
 Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-scoped subfolders are allowed when they keep related fixtures together, but production feature folders should stay free of shared test helpers.
 
-- Shared DOM guard helpers: `src/frontend/src/test/shared/domGuards.ts` — `requireElement` and `requireTableElement` assert-and-narrow queried DOM elements, throwing `TypeError` with a descriptive message instead of using non-null assertions. `resolveStickyTables(wrapper, surface)` resolves a sticky table's split halves to `{ headerHolder, body, headerTable, bodyTable }`, naming the `surface` in each per-element `TypeError`. The three sticky specs resolve their tables this way instead of repeating the selector block; see [Sticky student tables render as a split](#8-sticky-student-tables-render-as-a-split).
+- Shared DOM guard helpers: `src/frontend/src/test/shared/domGuards.ts` — `requireElement` and `requireTableElement` assert-and-narrow queried DOM elements, throwing `TypeError` with a descriptive message instead of using non-null assertions. `resolveStickyTables(wrapper, surface)` resolves a sticky table's split halves to `{ headerHolder, body, headerTable, bodyTable }`, naming the `surface` in each per-element `TypeError`. The three sticky specs resolve their tables this way instead of repeating the selector block; see [Sticky student tables render as a split](#sticky-student-tables-render-as-a-split).
 - Shared document-order button-name helpers: `src/frontend/src/test/shared/buttonOrderingTestHelpers.ts` — `getAccessibleButtonNames()` and `getAccessibleButtonIndex(name)` read accessible button names in document order, and `expectReRunButtonOrdering()` asserts the re-run navigation-card placement shared by the class-page and heatmap specs. Use these so relative action placement is asserted against the same accessible names in every spec.
-- Data-analysis test fixtures: `src/frontend/src/test/dataAnalysis/fixtures.ts` — moved from `src/frontend/src/services/dataAnalysis/test/fixtures.ts` to the canonical shared-helpers location.
+- Data-analysis test fixtures: `src/frontend/src/test/dataAnalysis/fixtures.ts` — the shared-helpers location for data-analysis fixtures.
 - Data-analysis assertion helpers: `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts` — shared module exporting `expectMetricResult` and `checkMetricInvariant` (extracted from `averagingAnalyser.spec.ts`).
 - Synthetic analysis API round-trip adapter: `src/frontend/src/test/syntheticApiRoundTripAdapter.ts` — exports `createSyntheticApiRoundTripRunner(invokeRequest)`, a thin test-only adapter that composes the script-owned synthetic `apiHandler` bridge with `googleScriptRunHarness`. The bridge hands the real `apiHandler` JSON string to the harness, which passes strings through unchanged, so the envelope is serialised once by the backend and parsed once by `apiService`. The adapter also preserves raw failures and per-request callback isolation, and it imports no `scripts/` code. See [Synthetic Test Data](../testing/synthetic-test-data.md).
 - Heatmap table test fixtures: `src/frontend/src/test/taskHeatmapTableTestHelpers.ts` — exports the `buildHeatmapResult(overrides?)` and `buildCell()` composition helpers plus the pinned task-column constants, cell-preview lookups and the rendered-row/cell probes (`getRenderedRowKeys`, `getHeatmapCellByLabel`) shared by the `TaskHeatmapTable.*` and student-name-column specs.
 - Task-preview fixture selection: `src/frontend/src/test/taskHeatmap/previewFixtures.ts` — selects the canonical `small` `class-2` roster and its populated Slides `assignment-2-1` and Sheets `assignment-2-2` records through the frontend raw-JSON import convention, validates every selected full record through `ClassFullSchema` / `AssignmentFullSchema`, and derives and deep-freezes the preview identifiers, labels, metric values and content so the suites assert real record data rather than restated literals. It also exposes clone/build helpers so callers never mutate the shared records.
-- Task-preview source-action and focus-session helper: `src/frontend/src/test/taskHeatmap/previewSourceActionTestHelpers.ts` — owns the single shared contract for the issue #19 source action and the metric cell's preview focus session: the action's accessible name, the canonical editor URL derived through the production lookup, a no-source boundary cell, and a harness that renders the real `TaskMetricPreviewCell` between focusable neighbours with focus-transfer observation and overlay open/dismiss waits. The no-source boundary cell keeps the canonical per-criterion reasoning and error causes, so only the source link differs. Its four callers are `TaskPreviewCard.sourceLink.spec.tsx`, `TaskMetricPreviewContent.spec.tsx`, `TaskMetricPreviewCell.focus.spec.tsx` and `TaskMetricPreviewCell.focusSession.spec.tsx`.
+- Task-preview source-action and focus-session helper: `src/frontend/src/test/taskHeatmap/previewSourceActionTestHelpers.ts` — owns the single shared contract for the task-preview source action and the metric cell's preview focus session: the action's accessible name, the canonical editor URL derived through the production lookup, a no-source boundary cell, and a harness that renders the real `TaskMetricPreviewCell` between focusable neighbours with focus-transfer observation and overlay open/dismiss waits. The no-source boundary cell keeps the canonical per-criterion reasoning and error causes, so only the source link differs. Its four callers are `TaskPreviewCard.sourceLink.spec.tsx`, `TaskMetricPreviewContent.spec.tsx`, `TaskMetricPreviewCell.focus.spec.tsx` and `TaskMetricPreviewCell.focusSession.spec.tsx`.
 - Heatmaps hook ready-dataset mock factory: `src/frontend/src/test/taskHeatmap/hookMockFactories.ts` — exports `createReadyHeatmapsDatasetResult(datasetKey)` to build the ready query and dataset-state pair returned by the mocked `usePageDataset`, selecting `classPartials` or `assignmentDefinitionPartials` data for the requested key; shared by `useHeatmapsPageData.spec.ts`, `useHeatmapsPageData.preview.spec.ts`, `useHeatmapsPageData.knownErrorPreview.spec.ts` and `useHeatmapsPageData.postAnalysis.spec.ts`.
 - Heatmaps hook mock setup: `src/frontend/src/test/taskHeatmap/useHeatmapsPageData.mockSetup.ts` registers the `useHeatmapsPageData` hook doubles (`useQuery`, `useQueries`, `usePageDataset`, the shared query-options factories, `DataAnalysisService.analyse`, `adaptMetricsToMergedHeatmap`, `assembleMergedPreviewData`) and exports nothing, because `unicorn/no-top-level-side-effects` rejects top-level exports beside registration. Specs import it before `./useHeatmapsPageData`; `useHeatmapsPageData.knownErrorPreview.spec.ts` consumes it. The hoisted doubles are published through `useHeatmapsPageDataMockHandles.ts`, whose `heatmapsPageDataMockHandles.current` slot the setup module fills, because the class-shaped analysis-service mock cannot be reached through `vi.mocked(DataAnalysisService)`. `useHeatmapsPageDataSpecMocks.ts` binds them as `heatmapsPageDataMocks` and exports `installUseQueriesMock`, `createHeatmapsPageDataHarness` and `mockWarmupDatasetsReady`; it has no registration side effects and throws if imported before the setup module.
 - Class-page test helpers: `src/frontend/src/test/classPage/classPageFixtures.ts` exports `createReadyClassPageData(overrides?)`, `createClassPageAdapterResult(overrides?)` and `buildStudentAverageRow(overrides?)`, plus the shared class/identifier fixtures for the Class page composition specs (`ClassPage.spec.tsx`, `ClassPageContent.spec.tsx`); `createClassPageAdapterResult` takes a `studentAverages` override, and `buildStudentAverageRow` composes one row from per-metric results, the way `buildHeatmapResult({ rows })` composes heatmap rows from `buildCell()`; `useClassPageDataTestFixtures.ts` provides the pure query/dataset builders and the shared `createClassPageDataWrapper` provider wrapper for the hook suites; and `useClassPageDataMockHandles.ts` exports `createUseClassPageDataMockHandles()`, which binds typed `vi.mocked` handles for the hook's mocked dependencies (`useQuery`, `usePageDataset`, `getABClassQueryOptions`, `DataAnalysisService.analyse`, `adaptClassPageToViewModel`) for the main, blocking, and memoisation hook specs. The hook suites register their doubles through the registration-only `useClassPageData.mockSetup.ts`; `useClassPageData.assignmentQueries.spec.ts` keeps its own handle bindings, and `useClassPageData.diagnostics.spec.ts` declares local hoisted mocks and consumes only `createReadyClassQueryResult`.
@@ -416,126 +394,13 @@ When several specs mock the same modules identically, prefer a **registration-on
 - Keep each spec's own isolation hooks, resetting with `vi.resetAllMocks()` per [Mock Reset Best Practices](#mock-reset-best-practices). Vitest evaluates the setup module once per spec file, so each file gets its own registered doubles; resetting per file keeps implementations and call history clean. Do not substitute `vi.clearAllMocks()`, which clears call history only and leaves mock implementations in place.
 - Do not add `eslint-disable` comments to make the pattern fit. The setup module passes the frontend ESLint config unchanged, and disabling a lint rule to accommodate it is not acceptable.
 
-The setup modules named in the helper bullet list above are the current examples. Apply the pattern when you add or touch a spec whose registrations are identical to a sibling's, migrating that spec opportunistically instead of repeating the block locally. Specs that still inline identical registrations — for example `AssessTaskModal.inModalCreate.spec.tsx` — remain transitional; migrate them when you next touch them, not as a wholesale conversion.
+The setup modules named in the helper bullet list above are examples. Apply the pattern when you add or touch a spec whose registrations are identical to a sibling's, instead of repeating the block locally.
 
 When specs need genuinely different registrations — different mocked modules, module shapes, or hoist-time configuration — keep the mocks local instead: build them in a pure factory or `vi.hoisted(...)` block and register them with a local `vi.mock(...)`. `useClassPageData.diagnostics.spec.ts` and `AppAuthGate.auth.spec.tsx` follow this local approach.
 
-### Classes Modal Test Helpers
+### Classes test helpers
 
-The `src/frontend/src/test/classes/modalTestHelpers.tsx` module provides reusable utilities for testing modal components in the Classes feature:
-
-- **Interaction helpers:**
-  - `changeCourseLength(value: string): void` - Changes the course length input value
-  - `chooseOption(fieldLabel: string, optionLabel: string): Promise<void>` - Opens a selector and chooses an option by visible label
-
-- **Assertion utilities:**
-  - `assertValidationMessage(message: string): Promise<void>` - Asserts that a validation message is displayed
-  - `assertErrorMessage(message: string): Promise<void>` - Asserts that an error message is displayed
-  - `assertControlDisabled(role: string, name: string): void` - Asserts that a control is disabled
-
-- **Mock creators:**
-  - `createMockConfirm(): Function` - Creates a mock confirm function for successful submissions
-  - `createMockConfirmWithError(error: Error): Function` - Creates a mock confirm function that rejects with an error
-
-These helpers eliminate duplication across modal test files and ensure consistent testing patterns.
-
-### Classes Page Test Helpers
-
-The `src/frontend/src/test/classes/classesPageTestHelpers.ts` module is the compatibility facade for ClassesPage test helpers. It re-exports the public symbols of four owning modules and keeps the E2E serialisation helper:
-
-- `classesPageTestFixtures.ts` — fixture factories, fixture constants and default ClassPartial metadata.
-- `classesPageRenderHelpers.tsx` — query-client preparation and rendering.
-- `classesPageModelAssertions.ts` — view-model verification and type guards.
-- `classesPageScreenAssertions.tsx` — DOM/screen-query assertion utilities.
-
-Existing imports through `classesPageTestHelpers` stay valid. The sections below describe the facade's public surface.
-
-- **Rendering helpers:**
-  - `renderClassesPage(options?: RenderClassesPageOptions)` — Renders ClassesPage with pre-populated query client data. Accepts optional `classPartials` and `yearGroups` overrides; defaults to `MOCK_CLASS_PARTIALS` and `MOCK_YEAR_GROUPS`.
-  - `renderEmptyClassesPage()` — Renders ClassesPage with empty query data for empty-state tests.
-  - `renderInvalidClassesPage()` — Renders ClassesPage with invalid class partials for trust-failure tests.
-  - `createQueryClientWithClassesData(classPartials, yearGroups)` — Creates a query client with pre-populated ClassesPage data for setup-before-render workflows.
-
-- **Model verification helpers:**
-  - `verifyClassesPageModel(classPartials, yearGroups)` — Builds and verifies the ClassesPage view model, returning the model result plus `isInvalid` and `isEmpty` flags.
-  - `isValidPanelViewModel(modelResult)` / `isInvalidDataViewModel(modelResult)` — Type guards for discriminated model results.
-
-- **Assertion utilities:**
-  - `assertCollapseRegion(namePattern?)` / `assertNoCollapseRegion(namePattern?)` — Assert presence/absence of year-group collapse regions.
-  - `assertBlockingAlert()` / `assertNoBlockingAlert()` — Assert presence/absence of trust-failure blocking alerts.
-  - `assertLoadingSkeleton()` / `assertNoLoadingSkeleton()` — Assert presence/absence of skeleton loading indicators.
-  - `assertEmptyState(messagePattern?)` — Assert empty-state message is present.
-  - `assertClassesPageHeading()` — Assert the page heading is present.
-  - `getClassCardByName(namePattern)` / `assertClassCardExists(namePattern)` — Locate and assert class cards.
-  - `assertPanelHasClassCount(modelResult, yearGroupKey, expectedClassCount)` — Assert a panel has the expected number of classes.
-  - `assertPanelHeader(labelPattern)` / `assertPanelHeaderExpanded(labelPattern, expectedExpanded)` — Assert panel header presence and expansion state.
-  - `assertPanelContainsClass(panelLabelPattern, cardNamePattern)` — Assert a panel contains a specific class card.
-  - `assertPanelEmpty(panelLabelPattern)` — Assert a panel shows an empty-state message.
-
-- **Shared ClassPartial/YearGroup fixtures (use these instead of defining local duplicates):**
-  - `MOCK_YEAR_GROUPS` / `MOCK_CLASS_PARTIALS` — Default three-year-group fixture with three classes.
-  - `MOCK_EMPTY_YEAR_GROUPS` / `MOCK_EMPTY_CLASS_PARTIALS` — Empty fixtures for empty-state tests.
-  - `MOCK_INVALID_CLASS_PARTIALS` — Invalid data fixture for trust-failure tests.
-  - `MIXED_ORDER_YEAR_GROUPS` / `MIXED_ORDER_CLASS_PARTIALS` — Year groups in mixed order (sorted alphabetically by the page).
-  - `YEAR_GROUPS_WITH_EMPTY` / `CLASS_PARTIALS_FOR_EMPTY_PANEL` — Year 9 has no classes, Year 10 has one class (empty-panel tests).
-  - `ALPHABETICAL_ORDER_CLASS_PARTIALS` — Three classes needing alphabetical ordering by className.
-  - `TIE_BREAK_CLASS_PARTIALS` — Classes with same className but different classId for tie-break sort tests.
-  - `SINGLE_YEAR_GROUP` — Single year group for focused tests.
-
-**Fixture factories — `createFixtureClassPartial` and `createFixtureYearGroup`:**
-
-All shared fixture constants are built from two exported factory functions that provide sensible defaults and keep fixture construction concise:
-
-`createFixtureClassPartial(overrides)` — Creates a `ClassPartial` fixture. Only `classId` is required; all other fields default to the project's conventional fixture defaults (`className: 'Test Class'`, `cohortKey: null`, `courseLength: 1`, `yearGroupKey: 'default-yg'`, `classOwner: null`, `teachers: []`, `active: null`, `metadata: createCanonicalMetadataFixture()`). Every class read requires the whole nullable metadata snapshot, so the default is a detached canonical non-null snapshot; null-metadata boundary fixtures must pass `metadata: null` explicitly.
-
-`createFixtureYearGroup(key, name)` — Creates a `YearGroup` fixture with the given key and name.
-
-Usage example — creating a minimal fixture with only the fields you care about:
-
-```typescript
-const myClass = createFixtureClassPartial({
-  classId: 'c-1',
-  className: 'My Class',
-  yearGroupKey: 'yg-10',
-});
-// All other fields use defaults (cohortKey: null, courseLength: 1, etc.)
-
-const myYearGroup = createFixtureYearGroup('yg-10', 'Year 10');
-```
-
-The six shared fixture constant arrays (`MOCK_CLASS_PARTIALS`, `MOCK_INVALID_CLASS_PARTIALS`, `MIXED_ORDER_CLASS_PARTIALS`, `CLASS_PARTIALS_FOR_EMPTY_PANEL`, `ALPHABETICAL_ORDER_CLASS_PARTIALS`, `TIE_BREAK_CLASS_PARTIALS`) are all built from these factories, typically one line per class partial entry. When adding new fixture constants, prefer these factories over ad-hoc object literals.
-
-**Fixture naming convention:** Fixtures holding `ClassPartial[]` arrays use the `_CLASS_PARTIALS` suffix (for example `ALPHABETICAL_ORDER_CLASS_PARTIALS`, not `ALPHABETICAL_ORDER_CLASSES`). This aligns with the `ClassPartial` type name and avoids ambiguity with full `Class` model fixtures held in `src/frontend/src/test/classes/classesTestHelpers.ts`.
-
-**E2E serialisation helper — `toPlainClassPartials(classPartials)`:**
-Converts typed `ClassPartial[]` fixtures to plain JavaScript objects suitable for JSON serialisation in Playwright `addInitScript` scenarios. The whole nullable `metadata` snapshot is carried verbatim, because every successful class read requires it. Use this instead of ad-hoc `.map()` spread operators:
-
-```typescript
-// ✅ Correct: use the canonical helper
-classPartials: toPlainClassPartials(MIXED_ORDER_CLASS_PARTIALS);
-
-// ❌ Avoid: ad-hoc spread in each scenario factory
-classPartials: MIXED_ORDER_CLASS_PARTIALS.map((cp) => ({
-  classId: cp.classId,
-  className: cp.className /* ... */,
-}));
-```
-
-**E2E scenario factory — `createClassesOrderScenario(classPartials)`:**
-The E2E helper `src/frontend/e2e-tests/helpers/classes-page-end-to-end-helpers.ts` provides a single parameterised `createClassesOrderScenario(classPartials)` factory instead of separate `createClassesAlphabeticalOrderScenario()` and `createClassesTieBreakOrderScenario()` functions. Pass `ALPHABETICAL_ORDER_CLASS_PARTIALS`, `TIE_BREAK_CLASS_PARTIALS`, or any other `ClassPartial[]` fixture:
-
-```typescript
-import { createClassesOrderScenario } from '../helpers/classes-page-end-to-end-helpers';
-import {
-  ALPHABETICAL_ORDER_CLASS_PARTIALS,
-  TIE_BREAK_CLASS_PARTIALS,
-} from '../../src/test/classes/classesPageTestHelpers';
-
-const alphabeticalScenario = createClassesOrderScenario(
-  toPlainClassPartials(ALPHABETICAL_ORDER_CLASS_PARTIALS)
-);
-const tieBreakScenario = createClassesOrderScenario(toPlainClassPartials(TIE_BREAK_CLASS_PARTIALS));
-```
+`src/frontend/src/test/classes/modalTestHelpers.tsx` owns the Classes modal interaction, assertion and mock helpers. `src/frontend/src/test/classes/classesPageTestHelpers.ts` is the compatibility facade for ClassesPage helpers: it re-exports `classesPageTestFixtures.ts`, `classesPageRenderHelpers.tsx`, `classesPageModelAssertions.ts` and `classesPageScreenAssertions.tsx`, and keeps `toPlainClassPartials` for E2E serialisation. Existing imports through the facade stay valid; new call sites import owning modules directly.
 
 Production source must not import from `src/test/**`. The frontend ESLint config enforces that boundary so helper placement and import paths stay explicit.
 
@@ -817,158 +682,21 @@ function createStartupWarmupState(
 - E2E tests: `src/frontend/e2e-tests/**/*.spec.ts` (see `frontend-playwright-e2e.md`)
 - Playwright config: `src/frontend/playwright.config.ts`
 
-## CSS and Style Testing
+## CSS and style testing
 
-### Vitest CSS ?inline Import Handling
+`src/frontend/vite.config.ts` sets `css: true` so Vitest processes `?inline` CSS imports. Specs such as `appStylesRaw.ts` rely on this to read raw CSS strings.
 
-**Problem:** By default, Vitest does NOT automatically process CSS files with `?inline` queries during tests. When tests import CSS like `import rawStyles from '../index.css?inline'`, the import returns `undefined` without proper configuration.
+HappyDOM has incomplete `getComputedStyle` support, which Ant Design uses for layout calculations. The shared setup installs `getComputedStyleMock` in `src/frontend/src/test/setup.ts` on both `globalThis` and `window`; use that setup rather than defining a local mock. For the setup location, see [Test file layout](#test-file-layout).
 
-**Solution:** Enable CSS processing in the Vite test configuration by setting `css: true` in `vite.config.ts`:
+## Ant Design testing patterns
 
-```typescript
-export default defineConfig({
-  test: {
-    // Enable CSS processing for ?inline imports
-    css: true,
-    // ... other test config
-  },
-});
-```
+These patterns cover behaviour in the installed Ant Design version (and `@rc-component/dialog`)
+that makes older test assumptions fail silently. Apply them when writing modal, select or
+state-transition tests. The exact version is pinned in `src/frontend/package.json`.
 
-This allows Vite's CSS plugin to transform `?inline` imports so they return the raw CSS string content during tests.
+### Modal mask (backdrop) click
 
-**Impact:** Without this setting, patterns like `appStylesRaw.ts` that import and parse CSS selectors will fail because the import resolves to `undefined`.
-
-**Reference:**
-
-- [Vitest Configuration - css option](https://vitest.dev/config/#css)
-
-### getComputedStyle Mocking (HappyDOM Limitation)
-
-**Problem:** HappyDOM has incomplete `getComputedStyle` support:
-
-- Missing the `pseudoElement` parameter in the function signature
-- Unreliable or missing values for CSS custom properties
-- Returns empty strings for common Ant Design properties (width, height, display, position, etc.)
-
-Ant Design components use `getComputedStyle` internally for layout calculations, so incomplete mocks cause rendering issues and test failures.
-
-**Solution:** Provide a global mock that:
-
-- Matches the real signature: `(element: Element, pseudoElement?: string | null) => CSSStyleDeclaration`
-- Returns realistic values for properties Ant Design commonly checks
-
-**Minimal recommended mock implementation:**
-
-```typescript
-function getComputedStyleMock(
-  element?: Element,
-  pseudoElement?: string | null
-): CSSStyleDeclaration {
-  const essentialProperties: Record<string, string> = {
-    // Layout
-    display: 'block',
-    width: '100px',
-    height: 'auto',
-    'box-sizing': 'border-box',
-    position: 'static',
-    overflow: 'visible',
-
-    // Spacing
-    padding: '0px',
-    margin: '0px',
-
-    // Borders
-    'border-width': '0px',
-    'border-style': 'solid',
-
-    // Colors
-    'background-color': 'rgb(255, 255, 255)',
-    color: 'rgb(0, 0, 0)',
-
-    // Text
-    'font-size': '14px',
-    'line-height': '1.5',
-
-    // Positioning (Modal/Dropdown/Tooltip)
-    'z-index': 'auto',
-    left: '0px',
-    top: '0px',
-  };
-
-  const propertyNames = Object.keys(essentialProperties);
-
-  return {
-    getPropertyValue: (property: string) => essentialProperties[property] || '',
-    setProperty: () => {},
-    removeProperty: () => {},
-    cssText: '',
-    length: propertyNames.length,
-    parentRule: null,
-    item: (index: number) => propertyNames[index] || '',
-  } as unknown as CSSStyleDeclaration; // Double assertion required: mock implements only the ~20 properties Ant Design reads, not all 500+ of CSSStyleDeclaration. `unknown` is the type-safe way to assert intentional type override for test doubles.
-}
-
-// Define on both globalThis and window for compatibility
-Object.defineProperty(globalThis, 'getComputedStyle', {
-  configurable: true,
-  value: getComputedStyleMock,
-  writable: true,
-});
-
-Object.defineProperty(globalThis.window, 'getComputedStyle', {
-  configurable: true,
-  value: getComputedStyleMock,
-  writable: true,
-});
-```
-
-**Reference:**
-
-- [HappyDOM getComputedStyle limitations](https://github.com/capricorn86/happy-dom/issues)
-- [MDN getComputedStyle](https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle)
-
-### Vitest vi.mock Gotchas
-
-**Problem:** Vitest's `vi.mock` accepts only **2 arguments** (importPath, factoryFunction). The Jest pattern of adding `{ virtual: true }` as a third argument does **not** work in Vitest.
-
-```typescript
-// ❌ AVOID: Jest-style third argument not supported in Vitest
-vi.mock('./some-module', () => ({ ... }), { virtual: true });
-
-// ✅ CORRECT: Use only 2 arguments for Vitest
-vi.mock('./some-module', () => ({ ... }));
-```
-
-**For virtual modules in Vitest**, use the `vi.hoisted` pattern or configure via `vite.config.ts` mocks instead.
-
-**Reference:**
-
-- [Vitest vi.mock documentation](https://vitest.dev/api/vi.html#vi-mock)
-
-### Ant Design CSS Dependencies
-
-Ant Design components rely on `getComputedStyle` for layout calculations. When mocking this API, ensure your mock returns **non-empty values** for these commonly checked properties:
-
-| Component             | Properties Checked                                                                      |
-| --------------------- | --------------------------------------------------------------------------------------- |
-| Modal                 | `position`, `z-index`, `left`, `top`, `width`, `height`, `display`                      |
-| Table                 | `width`, `height`, `overflow`, `display`                                                |
-| Menu/Dropdown/Tooltip | `width`, `height`, `transform`, `display`, `z-index`                                    |
-| Select                | `width`, `position`, `z-index`, `display`                                               |
-| General               | `box-sizing`, `padding`, `margin`, `border-*`, `background-color`, `color`, `font-size` |
-
-**Common failure pattern:** A mock that returns empty strings for all properties causes Ant Design components to miscalculate dimensions, leading to hidden elements, incorrect positioning, or rendering failures.
-
-## antd v6 Testing Patterns
-
-These patterns address behavioural differences in antd v6 (and `@rc-component/dialog`)
-that cause tests written for antd v5 to fail silently. Apply them proactively when writing
-modal, select, or state-transition tests against antd v6.
-
-### 1. Modal mask (backdrop) click
-
-antd v6 delegates modal rendering to `@rc-component/dialog`, which uses a **mousedown‑then‑mouseup
+Ant Design delegates modal rendering to `@rc-component/dialog`, which uses a **mousedown‑then‑mouseup
 pair** on the `.ant-modal-wrap` element — not the `.ant-modal-mask` sibling. The handler checks
 `e.target === wrapperRef.current` on both events.
 
@@ -991,9 +719,9 @@ expect(onClose).toHaveBeenCalledTimes(1);
 
 Do **not** use `fireEvent.click()` on the mask — it will silently fail in JSDOM.
 
-### 2. Select placeholder text
+### Select placeholder text
 
-antd v6 attaches `role="combobox"` to a void `<input type="search">` element. Void elements
+Ant Design attaches `role="combobox"` to a void `<input type="search">` element. Void elements
 have no `textContent`, so `expect(select).toHaveTextContent('placeholder')` always fails.
 
 Use a more specific query instead:
@@ -1010,9 +738,9 @@ expect(container.querySelector('.ant-select-selection-placeholder')).toHaveTextC
 );
 ```
 
-### 3. Selected value rendered in multiple DOM locations
+### Selected value rendered in multiple DOM locations
 
-antd v6 renders the currently selected Select value in several places for accessibility
+Ant Design renders the currently selected Select value in several places for accessibility
 (an `aria-live` region, the Select display area, etc.). `getByText()` will throw
 `Found multiple elements` errors.
 
@@ -1030,7 +758,7 @@ expect(items.length).toBeGreaterThan(0);
 within(dialog).getAllByText('Essay');
 ```
 
-### 4. React 19 forbids render after unmount
+### React 19 forbids render after unmount
 
 React 19 throws `Cannot update an unmounted root` when `rerender()` is called after
 `unmount()`. Testing state transitions across modal open/close cycles must use
@@ -1050,13 +778,13 @@ cleanup();
 render(<Modal open={false} />);
 ```
 
-### 5. Playwright-specific antd v6 patterns
+### Playwright-specific Ant Design patterns
 
-For Playwright-specific antd v6 patterns (StrictMode double-effect handling, `Typography.Text`
+For Playwright-specific Ant Design patterns (StrictMode double-effect handling, `Typography.Text`
 visibility, E2E runtime mock infrastructure, `selectVisibleOption`, and modal mask clicks in
 a real browser), see `docs/developer/frontend/frontend-playwright-e2e.md`.
 
-### 6. Stacked dialogs share the test-only `aria-labelledby` id
+### Stacked dialogs share the test-only `aria-labelledby` id
 
 The installed `@rc-component/util` `useId` returns the constant `test-id` when
 `process.env.NODE_ENV === 'test'`, so every dialog rendered in one test shares
@@ -1076,7 +804,7 @@ Treat this as a bounded harness caveat, not as licence to drop accessible-name c
 browsers assign unique ids, so the Playwright journey still asserts each dialog's true
 accessible name.
 
-### 7. rc-select reads legacy `which`/`keyCode`
+### rc-select reads legacy `which`/`keyCode`
 
 The installed `@rc-component/select` `OptionList.onKeyDown` switches on `event.which`, but
 `user-event` deliberately leaves the deprecated `keyCode`/`which` fields at zero, so
@@ -1086,7 +814,7 @@ and assert `aria-activedescendant` before pressing Enter. Keep the keyboard expe
 do not replace it with a hidden-option assertion or drop the real-browser keyboard/closemotion
 coverage.
 
-### 8. Sticky student tables render as a split
+### Sticky student tables render as a split
 
 The Student Averages table and the Task Heatmap (embedded and standalone) enable Ant Design's
 `sticky` mode, so each renders as two tables plus a scrollbar:
@@ -1115,7 +843,7 @@ measure row. For the same reason, assert headers by role rather than by text.
 ## `act()` Warning Avoidance
 
 The project runs React 19 with `happy-dom` as the test environment. React 19 enforces
-strict `act()` compliance, and the happy-dom / antd v6 / React Query combination can
+strict `act()` compliance, and the happy-dom / Ant Design / React Query combination can
 produce `act(...)` warnings even in correctly passing tests. None of these warnings
 indicate bugs in application code, but they clutter output and obscure real failures.
 
@@ -1163,12 +891,11 @@ indicate bugs in application code, but they clutter output and obscure real fail
    `await screen.findByText('expected text')`. Once the element is visible, the
    animation has settled.
 
-5. **Set `globalThis.IS_REACT_ACT_ENVIRONMENT = true` in `setup.ts`** when writing
-   new test files. This suppresses the "not configured to support act" warning
-   variant and is already done by RTL during operations anyway.
+5. **The shared setup sets `globalThis.IS_REACT_ACT_ENVIRONMENT = true`.** Specs
+   must not set it themselves.
 
 6. **Avoid `fireEvent.mouseDown` / `fireEvent.click` on antd Select components.**
-   antd v6 Select triggers dropdown rendering through `rc-motion` via a
+   Ant Design Select triggers dropdown rendering through `rc-motion` via a
    mousedown-then-click sequence. Use `userEvent.click(...)` or
    `userEvent.selectOptions(...)` instead, which handle the full gesture and wait for
    motion to settle.

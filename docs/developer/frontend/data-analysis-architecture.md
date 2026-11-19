@@ -117,7 +117,7 @@ metric value. `includedInAverage` is true exactly when `effectiveWeight > 0`.
 
 ## Attempt-baseline mode (post-accumulation)
 
-The attempt-baseline analysis mode (issue #305) changes which tasks the
+The attempt-baseline analysis mode changes which tasks the
 Class-page aggregates rest on. The Class page owns the mode state and hosts the
 shared `AveragesBasisControl` in both averaging table cards (Student Averages
 overview and embedded heatmap); the standalone Heatmaps surface renders no mode
@@ -150,7 +150,7 @@ Its pipeline placement is fixed:
    `heatmapAdapter.ts`. A student whose observed tasks all fall outside the
    set resolves to the aggregate-only `excluded` state under the
    observed-evidence rules recorded in the
-   [data-shape contract](../data-shapes/frontend-data-analysis-response.md#attempt-baseline-contract-changes).
+   [data-shape contract](../data-shapes/frontend-data-analysis-response.md#attempt-baseline-analysis-mode).
 4. **Consumers recompute from the restricted evidence.** The Class-page card
    rollup (`classPageAdapter.baselineCardRollup.ts`) applies the same
    restriction to the recent-assignment aggregates, reading the result's
@@ -167,7 +167,7 @@ the mode toggles.
 
 ## Presentation flow
 
-### Single-assignment summaries (#277)
+### Single-assignment summaries
 
 `DataAnalysisService.analyseAssignmentSummary` validates the existing source
 input and the separate `AssignmentSummarySchema` output. Its pure
@@ -199,7 +199,7 @@ service and presentation adaptor. A single selected assignment displays its
 summaries; multiple selected assignments display a notice in each card asking
 the user to select one assignment. This also applies to assignments sharing a
 definition. The existing merged heatmap remains unchanged. SPaG summaries are
-outside this first-version scope.
+not part of this summary analyser.
 
 Summary analysis or adaptor failures preserve the valid heatmap and replace only
 the summary cards with a local `Alert` titled 'The summary could not be built'.
@@ -292,9 +292,8 @@ Both averaging surfaces call the shared page hook `hooks/usePagePostAnalysisTask
 unsliced class, live definition partials and the successful averaging result, or
 `null` when the surface is not ready, and always forwards the committed class ID. On the standalone Heatmaps surface the
 selected assignments drive display only; metadata calculation always uses every
-class assignment. The task never writes descriptive summary results. Test-only Node
-dispatcher and browser changed-write/failure-feedback coverage is recorded in
-[Frontend Testing](frontend-testing.md#post-analysis-metadata-browser-and-node-integration-coverage).
+class assignment. The task never writes descriptive summary results; test coverage is
+documented in [Frontend Testing](frontend-testing.md#post-analysis-metadata-browser-and-node-integration-coverage).
 
 `postAnalysis/metadataProjection.ts` owns pure freshness, score projection and
 rolling merge. Every candidate source timestamp must be canonical UTC; newest
@@ -332,10 +331,8 @@ writes on their next fresh read, preserving rolling history and skipping duplica
 versions. It is **not a cross-session lock**. Failures propagate and release the
 lane; no task retry, rollback or production data repair is added.
 
-Successful writer tests currently use explicit historical-source boundary clones;
-untouched newest canonical instances expose an existing analyser null-name
-rejection. See [Synthetic Test Data](../testing/synthetic-test-data.md#metadata-refresh-analysis-boundaries)
-for the exact limitation and evidence scope, not a claim of newest-corpus success.
+The metadata-refresh analysis boundary is documented in
+[Synthetic Test Data](../testing/synthetic-test-data.md#metadata-refresh-analysis-boundaries).
 
 ## Shared post-analysis lifecycle and extension
 
@@ -442,11 +439,3 @@ const descriptor: PostAnalysisTaskDescriptor = {
   policy. Reuse existing transport/queue and schema owners for persistence.
 - Add runner and hook tests for ordering, failure isolation and the new task's
   key/eligibility contract. See [Frontend Testing](frontend-testing.md#shared-post-analysis-lifecycle-tests).
-
-## Non-goals
-
-- Changing stored weight values or their validation.
-- Changing criterion weighting or SPaG renormalisation.
-- Re-keying `perStudentTaskMetrics` by assignment instance.
-- Adding a weight-editing workflow, a new route, endpoint, or persistence
-  model.

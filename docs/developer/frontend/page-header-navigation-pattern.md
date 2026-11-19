@@ -79,4 +79,4 @@ not part of `PageTitleCard` or `PageNavCard`.
 - Spacing and card sizing: [frontend-spacing-and-padding-standards.md](frontend-spacing-and-padding-standards.md)
 - Shell navigation and breadcrumbs: [frontend-shell-navigation-and-motion.md](frontend-shell-navigation-and-motion.md)
 - Loading and width behaviour: [frontend-loading-and-width-standards.md](frontend-loading-and-width-standards.md)
-- Assessment modal and re-run contract: [frontend-modal-patterns.md §3.6](frontend-modal-patterns.md#36-assess-task-modal-re-run-entry)
+- Assessment modal and re-run contract: [Assess Task modal re-run entry](frontend-modal-patterns.md#36-assess-task-modal-re-run-entry)

@@ -110,7 +110,7 @@ The alias convention for choosing between relative and alias imports is defined 
   - `crossRuntimeUnicornPreferenceRules` — the four cross-runtime preferences (`catch-error-name`, `no-null`, `no-keyword-prefix`, `filename-case`), applied to backend source and to frontend TypeScript/TSX files only.
 - Keeps each rule's rationale, caveats and issue links beside the rule it explains.
 - Runtime-specific and file-scoped overrides stay local to their leaf config; only preferences shared across runtimes live here.
-- Parameter defaults outside constructors are permitted only for six existing conversions: `absentToNull_`, the class-table filter-key map callback, the optional folder-ID form transform, the heatmap class-selection callback, and the two teacher-name schema transforms. These preserve their existing null, undefined and empty-value behaviour. This is a scoped exception to constructor-owned defaults (root `AGENTS.md` §2.1 rule 10), not a general ownership-policy change.
+- Parameter defaults outside constructors are permitted only where the shared ESLint configs explicitly exempt a site from `unicorn/prefer-default-parameters`. The exempted set is the file-scoped overrides in `eslint.config.js` and `src/frontend/eslint.config.js`; those sites keep their existing null, undefined and empty-value behaviour. This is a scoped exception to constructor-owned defaults (root `AGENTS.md` §2.1 rule 10).
 
 ### 3) Component ESLint configs
 
@@ -135,30 +135,12 @@ The alias convention for choosing between relative and alias imports is defined 
 - `eslint.config.js` (repo root)
   - Remains focused on backend JavaScript linting rules.
   - Applies shared `eslint-plugin-security` and Unicode hardening rules as errors for backend source.
-  - Keeps `require-unicode-regexp` disabled for root `tests/**/*.js` and disables `security/detect-object-injection` backend-wide after full-audit triage showed only false positives; robust validation and input sanitisation at the trust boundaries are the preferred controls.
+  - Keeps `require-unicode-regexp` disabled for root `tests/**/*.js` and disables `security/detect-object-injection` backend-wide after full-audit triage showed only false positives; validation and input sanitisation at the trust boundaries are the preferred controls.
   - Disables `unicorn/prefer-private-class-fields` for backend files only. The Apps Script script parser rejects private class fields, so `#` members cause parse errors at push time; see the upstream [V8 runtime class limitations](https://developers.google.com/apps-script/guides/v8-runtime#class_limitations). The rule also misreads `BaseSingleton._createInstance`, a factory hook subclasses intentionally override: a `#private` method cannot provide equivalent inheritance semantics. The frontend config retains the rule.
   - Bans class field declarations and logical assignment operators in backend source via `no-restricted-syntax` (`PropertyDefinition`, `StaticBlock` and `AssignmentExpression[operator='||='|…]` selectors). The Apps Script script parser — not the V8 runtime — is the constraint: it rejects a class body field declaration with a parse error at push time (`ParseError: Unexpected token ;` for a bare field, `Unexpected token =` for a field with an initialiser), and rejects ES2021 logical assignment with `ParseError: Unexpected token =`. The deployed project therefore never compiles. Backend fields are declared in the constructor with a JSDoc `@type` annotation, and logical assignment is written as an explicit `if` statement. The ban covers instance fields, static fields and `#private` fields in one selector, and applies to `src/backend/**` only; Node-side test code is unaffected.
   - Disables `unicorn/prefer-class-fields` for backend files only, alongside `unicorn/prefer-private-class-fields`. This rule recommends class field declarations and **autofixes** constructor assignments into them, which would rewrite valid backend code into syntax the Apps Script parser rejects and break the next `clasp push`. The frontend config retains the rule, where class fields are valid.
   - Disables `unicorn/no-undeclared-class-members` for `src/backend/AssignmentProcessor/Assignment/index.js` only, because its five lazy sub-class helpers are installed as prototype getters (`Object.defineProperty(Assignment.prototype, ...)`) that the rule cannot trace; declaring them as class fields would shadow those getters and break lazy and constructor-free `Object.create(Assignment.prototype)` construction. Enforcement stays at `error` for all other backend classes.
-  - Disables `unicorn/no-global-object-property-assignment` through an explicit, user-authorised file-scoped override for the 17 GAS export files that intentionally publish namespace or proxy properties on the global object:
-    - `src/backend/00_BaseSingleton.js`
-    - `src/backend/Assessors/0_SpreadsheetFormulaEquivalence.js`
-    - `src/backend/ConfigurationManager/98_ConfigurationManagerClass.js`
-    - `src/backend/Models/Artifacts/0_BaseTaskArtifact.js`
-    - `src/backend/Models/Artifacts/1_TextTaskArtifact.js`
-    - `src/backend/Models/Artifacts/2_TableTaskArtifact.js`
-    - `src/backend/Models/Artifacts/3_SpreadsheetTaskArtifact.js`
-    - `src/backend/Models/Artifacts/4_ImageTaskArtifact.js`
-    - `src/backend/Models/Artifacts/5_ArtifactFactory.js`
-    - `src/backend/Utils/ABLogger.js`
-    - `src/backend/Utils/AuthService.js`
-    - `src/backend/Utils/BatchUpdateUtility.js`
-    - `src/backend/Utils/GoogleGroupsAuthService.js`
-    - `src/backend/Utils/ProgressTracker.js`
-    - `src/backend/Utils/ScriptAppManager.js`
-    - `src/backend/Utils/ScriptPropertiesAuthService.js`
-    - `src/backend/Utils/Utils.js`
-      This is a scoped exception, not a backend-wide disable: the rule stays at `error` for every other backend file (including `src/backend/z_Api/z_apiHandler.js`) and for frontend files. The exception lives in the shared `eslint.config.js` file list; do not use inline `eslint-disable` comments for these publications.
+  - Disables `unicorn/no-global-object-property-assignment` through an explicit file-scoped override for the GAS export files that publish namespace or proxy properties on the global object. The exempted file list lives in `eslint.config.js`; use it rather than inline `eslint-disable` comments for these publications. The rule stays at `error` for every other backend file (including `src/backend/z_Api/z_apiHandler.js`) and for frontend files.
   - Does not replace frontend/builder TypeScript lint configs.
   - Temporarily disables `unicorn/try-complexity` for backend source pending the same [exception-boundary review](https://github.com/h-arnold/AssessmentBot/issues/325); existing logging and error-handling policy remains in force.
   - Disables `unicorn/prefer-string-repeat`. Short blank-input fixtures (three or five spaces) are clearer as literals than `' '.repeat(n)` expressions; keeping the literal is a deliberate readability preference.
@@ -219,10 +201,9 @@ The Apps Script parser **rejects** logical assignment with `ParseError: Unexpect
 
 ## Running lint and type checks
 
-The canonical `typescript` dependency is TypeScript 6.0.3 for type-aware ESLint parsing and
-services; it remains below TypeScript 7 because the current typescript-eslint release does not
-support TypeScript 7. Project compilation uses the separately installed TypeScript 7 alias
-(`@typescript/native`) explicitly, so npm's `.bin/tsc` selection cannot change the compiler.
+The `typescript` dependency drives type-aware ESLint parsing and services. Project compilation
+uses the separate `@typescript/native` alias explicitly, so npm's `.bin/tsc` selection cannot
+change the compiler; see `package.json` for the pinned versions.
 The root builder compile script and frontend build script invoke
 `node node_modules/@typescript/native/bin/tsc` (from their respective package roots).
 

@@ -16,9 +16,6 @@ Sibling contracts:
 
 - [Contract: ABClass](abclass.md) — Google Classroom data feeds into ABClass upsert flows.
 - [Contract: Assignment](assignment.md) — Assignment data is carried as partials inside ABClass.
-- [Contract: AssignmentDefinition](assignment-definition.md) — No direct relationship.
-- [Contract: BackendConfig](backend-config.md) — No direct relationship.
-- [Contract: Reference Data](reference-data.md) — No direct relationship.
 
 ---
 
@@ -60,18 +57,18 @@ Key contract notes:
   `Date` objects in the response.
 - If `ClassroomApiClient.fetchAllActiveClassrooms()` encounters an error, it logs the
   error and returns an empty array (the transport handler receives `[]`).
-- The frontend `GoogleClassroomSchema` does **not** use `.strict()` — unexpected fields
-  (e.g. `enrollmentCode`) are silently tolerated.
+- The frontend `GoogleClassroomSchema` does not use `.strict()`; it tolerates an extra
+  field such as a newly added upstream property.
 
 ### `getGoogleClassroomAssignments` (read)
 
-| Aspect           | Detail                                                                                                                                                         |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Backend handler  | `src/backend/z_Api/googleClassroomAssignments.js` → `getGoogleClassroomAssignments_()`                                                                         |
-| Controller       | None (handler calls `ClassroomApiClient` directly)                                                                                                             |
-| Response mapper  | None                                                                                                                                                           |
-| Frontend Zod     | `src/frontend/src/services/googleClassrooms/googleClassroomAssignments.zod.ts` → `GoogleClassroomAssignmentSchema`, `GoogleClassroomAssignmentsResponseSchema` |
-| Frontend service | `src/frontend/src/services/googleClassrooms/googleClassroomAssignmentsService.ts` → `getGoogleClassroomAssignments()`                                          |
+| Aspect           | Detail                                                                                                                                                                                  |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend handler  | `src/backend/z_Api/googleClassroomAssignments.js` → `getGoogleClassroomAssignments_()`                                                                                                  |
+| Controller       | None (handler calls `ClassroomApiClient` directly)                                                                                                                                      |
+| Response mapper  | None                                                                                                                                                                                    |
+| Frontend Zod     | `src/frontend/src/services/googleClassrooms/googleClassroomAssignments.zod.ts` → `GoogleClassroomAssignmentsResponseSchema` (built on module-private `GoogleClassroomAssignmentSchema`) |
+| Frontend service | `src/frontend/src/services/googleClassrooms/googleClassroomAssignmentsService.ts` → `getGoogleClassroomAssignments()`                                                                   |
 
 **Request:**
 
@@ -131,8 +128,7 @@ with no embedded sub-entities.
 
 - `NonEmptyStringSchema` — `z.string().trim().min(1)` (shared-internal constant, not exported).
 - `GoogleClassroomSchema` — `z.object({ classId, className })` — no `.strict()` — tolerates
-  extra fields (e.g. `enrollmentCode` from the raw upstream response if it leaked through).
-  Both fields use `NonEmptyStringSchema` (trimmed, non-empty).
+  extra fields. Both fields use `NonEmptyStringSchema` (trimmed, non-empty).
 - `GoogleClassroomsResponseSchema` — `z.array(GoogleClassroomSchema)`.
 
 **Frontend Zod (`googleClassroomAssignments.zod.ts`):**
@@ -168,31 +164,19 @@ with no embedded sub-entities.
 1. **`GoogleClassroomSchema` does not use `.strict()`; `GoogleClassroomAssignmentSchema` uses `.strict()`.**
    - `GoogleClassroomSchema` tolerates extra fields (no `.strict()`).
    - `GoogleClassroomAssignmentSchema` rejects extra fields (`.strict()`).
-   - The classrooms endpoint may pass through upstream fields
-     that the frontend does not consume. The assignments endpoint deliberately rejects unknown
-     fields to catch accidental data leaks (like `updateTime` which is fetched but not
+   - The classrooms endpoint tolerates extra fields; the assignments endpoint rejects unknown
+     fields to catch accidental data leaks (such as `updateTime`, which is fetched but not
      included in the transport response).
 
-2. **`updateTime` is fetched for sorting but entirely discarded.**
-   - `ClassroomApiClient.fetchCourseWork()` returns `{ id, title, updateTime, creationTime, topicId }`
-     and sorts by `updateTime` descending.
-   - The transport handler maps to `{ assignmentId, title, creationTime, topicId, topicName }` —
-     `updateTime` is deliberately excluded after sorting.
-   - `updateTime` is needed only for server-side sorting and
-     has no meaning for the frontend. No discrepancy exists.
-
-3. **`NonEmptyStringSchema` vs bare `z.string().min(1)` — inconsistent trimming.**
+2. **`NonEmptyStringSchema` vs bare `z.string().min(1)` — inconsistent trimming.**
    - The classrooms schema uses `NonEmptyStringSchema` which applies `.trim().min(1)`.
    - The assignments schema uses bare `z.string().min(1)` without `.trim()`.
    - Backend ensures `classId` is already trimmed before it reaches validation, so this
      is not a runtime issue for `classId` — but `assignmentId` and `title` are not trimmed
      in the Zod schema, meaning leading/trailing whitespace would pass frontend validation
      even though the backend does not expect it.
-   - **Risk:** If a future upstream change introduces whitespace in
-     `assignmentId` or `title`, the assignments Zod schema would accept it while the classrooms
-     schema would not. Consider adding `.trim()` to the assignments schema for consistency.
 
-4. **Backend validation uses `!classroom.id` (truthy check); frontend uses `NonEmptyStringSchema` (`.trim().min(1)`).**
+3. **Backend validation uses `!classroom.id` (truthy check); frontend uses `NonEmptyStringSchema` (`.trim().min(1)`).**
    - Backend `getGoogleClassrooms_()` treats `id` as a truthiness check (`!classroom.id`).
    - Frontend validates `classId` via `z.string().trim().min(1)` — a string of only whitespace
      would fail the frontend but pass the backend.
@@ -231,7 +215,7 @@ Frontend:
   ├── src/frontend/src/services/googleClassrooms/googleClassroomsService.ts
   │     → getGoogleClassrooms()
   ├── src/frontend/src/services/googleClassrooms/googleClassroomAssignments.zod.ts
-  │     → GoogleClassroomAssignmentSchema (.strict()), GoogleClassroomAssignmentsResponseSchema
+  │     → GoogleClassroomAssignmentsResponseSchema (module-private GoogleClassroomAssignmentSchema is .strict())
   └── src/frontend/src/services/googleClassrooms/googleClassroomAssignmentsService.ts
         → getGoogleClassroomAssignments(classId)
 ```
