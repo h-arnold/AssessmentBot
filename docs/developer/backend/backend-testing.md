@@ -131,6 +131,8 @@ npm test
 
 When a test needs realistic analysis-domain data, use the deterministic synthetic corpus. All new or changed tests must use a canonical synthetic fixture when the corpus covers the scenario. For the directive, its exception path and the generator-extension process, see [Synthetic Test Data](../testing/synthetic-test-data.md#policy-canonical-fixtures-for-tests).
 
+New and newly touched tests must use corpus fixture data rather than hard-coded literals and derive expectations from the corpus; see [Writing tests against the regenerated corpus](../testing/synthetic-test-data.md#writing-tests-against-the-regenerated-corpus) and [canonical-fixture policy](../testing/synthetic-test-data.md#policy-canonical-fixtures-for-tests).
+
 Load a committed view with `loadSyntheticAnalysisProfile(profileName, viewName)` from `scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js`. Views are deeply frozen; clone before adapting or mutating. For corpus topology, profile and view selection, mutation isolation and commands, see [Synthetic Test Data](../testing/synthetic-test-data.md).
 
 ### Backend model-input adapter
@@ -178,7 +180,7 @@ Transport-level suite placement is pinned in [Frontend Testing § Test naming an
 
 Most suites are self-describing. The following splits are not obvious from filenames alone:
 
-- **LLM terminal outcomes** are split by concern across `llmRequestManager.{eligibility,outcomes,failures,runStop,cache,cacheValidation,provenance}.test.js`. All share the real `BaseRequestManager`, `LLMRequestManager`, `Assessment` and item owners through `llmRequestManagerHarness.js`; run-stop scenarios additionally use `llmRunStopHarness.js`.
+- **LLM terminal outcomes** are split by concern across `llmRequestManager.{eligibility,outcomes,failures,runStop,cache,cacheValidation,provenance}.test.js` plus `llmRequestManager.seedPhase.test.js`, `llmRequestManager.transportCallerPolicy.test.js`, `llmRequestManager.runStop.multiTask.test.js`, `llmRequestManager.transportCallerPolicy.scenarios.test.js` and `llmRunStopHarness.multiTaskCapability.test.js`. All share the real `BaseRequestManager`, `LLMRequestManager`, `Assessment` and item owners through `llmRequestManagerHarness.js`; run-stop scenarios additionally use `llmRunStopHarness.js`. `seedPhase` pins the two-phase partition and dispatch contract, `runStop.multiTask` covers same-batch survivors across two tasks, `transportCallerPolicy.scenarios` holds the hand-built dispatch rows and `multiTaskCapability` probes the opt-in selector; the split keeps each file within the 500-line backend ceiling.
 - **Image hydration** spans the `imageManager*.test.js` suites, which share setup through `imageManagerTestHelpers.js`. Most are hermetic manager/model/transport probes. `imageManager.integration.test.js` connects the real `SlidesAssignment.processImages()` caller and controller/store seam, and `imageManager.processAllSubmissions.test.js` connects `processAllSubmissions()` extraction orchestration. Neither is durable-persistence or live-GAS evidence.
 - **Reference-data controller** cases are split by responsibility into `referenceDataController.test.js` (cohorts) and the `yearGroups`, `assignmentTopics` and `transportResponses` companions, with setup helpers in `referenceDataTestSupport.js`.
 - **Backend configuration transport** is covered by `tests/api/backendConfigApi.test.js`. Keep broader dispatcher and allowlist coverage in `tests/api/apiHandler/`.
@@ -219,6 +221,8 @@ Most suites are self-describing. The following splits are not obvious from filen
 Remaining helpers are domain-specific and belong with their own suites: `assignmentDefinition*TestHelpers.js`, `backendConfigTestHelpers.js`, `controllerTestHelpers.js`, `driveManagerFacadeMocks.js`, `feedbackTestHelpers.js`, `imageManagerTestHelpers.js`, `slidesParserTestHarness.js` and `validationTestHelpers.js`.
 
 `imageManagerTestHelpers.js` owns the shared setup for the `imageManager*.test.js` suites: the dummy and real `BaseRequestManager` global installers, `loadImageManager()`, `buildManager(overrides)`, the `imageArtifact`, `httpOutcome` and `networkOutcome` factories, the global-mock `beforeEach`/`afterEach` registrars, and the shared LLM-bypass expectation.
+
+`llmRunStopHarness.js` keeps single-task candidate selection as its default. The opt-in `selectionMode: 'multi-task'` (or `createMultiTaskRunStopAssignment`) requires numeric-healthy TEXT candidates on at least two tasks of one assignment for same-batch-survivor scenarios; both modes use the unchanged type-matching realism gate and fail loudly when no qualifying assignment exists. See the helper's JSDoc for the full API.
 
 See the JSDoc in each helper for its API. Do not duplicate that reference here.
 

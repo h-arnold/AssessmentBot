@@ -22,10 +22,14 @@ export const CRITERIA = ['completeness', 'accuracy', 'spag'];
 
 /** Canonical assignment (with populated submissions) used by every current-format case. */
 export const CURRENT_ASSIGNMENT_ID = 'assignment-0-1';
-/** The two embedded definition task keys shared by every canonical submission. */
-export const KNOWN_TASK_IDS = ['task-1-0', 'task-1-1'];
-export const HEAD_TASK_ID = 'task-1-0';
-export const SIBLING_TASK_ID = 'task-1-1';
+/** The embedded definition task keys shared by every canonical submission. */
+export const KNOWN_TASK_IDS = Object.keys(
+  loadSyntheticAnalysisProfile('small', 'assignmentsByKey')[CURRENT_ASSIGNMENT_ID]
+    .assignmentDefinition.tasks
+);
+/** The head and sibling tasks used by the corruption-isolation probes. */
+export const HEAD_TASK_ID = KNOWN_TASK_IDS[0];
+export const SIBLING_TASK_ID = KNOWN_TASK_IDS[1];
 export const DOCUMENT_SUBMISSION_INDEX = 0;
 export const NULL_DOCUMENT_SUBMISSION_INDEX = 2;
 

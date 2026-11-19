@@ -165,9 +165,12 @@ describe('ABClassController.readClass corruption isolation', () => {
     expectCorruptPlaceholder(corruptSubmission.items[CORRUPT_TASK_ID]);
     // Its healthy sibling survives the class-partial projection unchanged.
     expect(corruptSubmission.items[SIBLING_TASK_ID].assessments).toEqual(siblingBefore.assessments);
-    expect(Object.keys(corruptSubmission.items).sort()).toEqual(
-      [CORRUPT_TASK_ID, SIBLING_TASK_ID].sort()
-    );
+    // Derive expected task keys from the fixture's assignment definition so the
+    // expectation stays independent of the production path under test.
+    const expectedTaskIds = Object.keys(
+      loadBackendModelInputs('small').assignmentsByKey[ASSIGNMENT_ID].assignmentDefinition.tasks
+    ).sort();
+    expect(Object.keys(corruptSubmission.items).sort()).toEqual(expectedTaskIds);
     // Every other submission in the class is served untouched.
     expect(assignment.submissions).toHaveLength(embedded.submissions.length);
     const healthyAfter = submissionOf(assignment, healthyBefore.studentId);

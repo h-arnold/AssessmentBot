@@ -45,18 +45,19 @@ const EXPECTED_RECENT_COUNTS = [null, 0, 1, 2, 3] as const;
 
 describe('large-full canonical class metadata', () => {
   let graph: FullGraph;
+  // Generation of the rescaled large-full profile exceeds the default hook budget.
   beforeAll(() => {
     graph = generateSyntheticAnalysisGraph('large-full') as FullGraph;
-  });
+  }, 120_000);
 
   it('applies the compact matrix, source linkage, raw parity, and domain contract at full scale', () => {
     expect(graph.manifest.seed).toBe(41064);
     expect(graph.manifest.generatedEntityCounts).toMatchObject({
-      classes: 100,
-      students: 3000,
-      assignments: 10000,
+      classes: 48,
+      students: 1440,
+      assignments: 2400,
     });
-    expect(graph.persistence.classes).toHaveLength(100);
+    expect(graph.persistence.classes).toHaveLength(48);
     let nonNullCount = 0;
     const domain = (globalThis as any).ABClassMetadata;
 
@@ -89,7 +90,7 @@ describe('large-full canonical class metadata', () => {
       const sourceAssignments = graph.persistence.assignments
         .filter(({ courseId }) => courseId === classDocument.classId)
         .toSorted((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
-      expect(sourceAssignments).toHaveLength(100);
+      expect(sourceAssignments).toHaveLength(50);
       const templateIndex = Math.floor(index / 5) % SCORE_TEMPLATES.length;
       const template = SCORE_TEMPLATES[templateIndex];
       expect(metadata.classAverages).toStrictEqual({
@@ -123,7 +124,7 @@ describe('large-full canonical class metadata', () => {
         ).toBe(true);
       }
     });
-    expect(nonNullCount).toBe(80);
+    expect(nonNullCount).toBe(38);
   }, 30_000);
 
   it('composes the full graph through the same metadata stage as compact profiles', () => {

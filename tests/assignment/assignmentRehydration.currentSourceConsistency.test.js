@@ -96,7 +96,7 @@ describe('current-format full read null-source consistency', () => {
       const submission = restored.submissions.find((candidate) => candidate.documentId === null);
       expectCorruptRecordPlaceholder(submission.items[HEAD_TASK_ID]);
       expectSiblingIntact(submission, siblingJson);
-      expect(Object.keys(submission.items).sort()).toEqual([HEAD_TASK_ID, SIBLING_TASK_ID]);
+      expect(Object.keys(submission.items).sort()).toEqual([...KNOWN_TASK_IDS].sort());
     }
   );
 

@@ -96,8 +96,9 @@ describe('normaliseAssignmentRead legacy full payload', () => {
     const input = legacyProbe();
     const [firstSubmission] = input.submissions;
     if (!firstSubmission) throw new Error('Expected canonical submissions');
-    const [remainingTask, missingTask] = twoItemKeys(firstSubmission);
+    const [, missingTask] = twoItemKeys(firstSubmission);
     delete firstSubmission.items[missingTask];
+    const providedTaskKeys = Object.keys(firstSubmission.items);
     const original = structuredClone(input);
     const output = normaliseAssignmentRead(input);
     expect(input).toEqual(original);
@@ -106,7 +107,8 @@ describe('normaliseAssignmentRead legacy full payload', () => {
     const resultItems = output.submissions[0]?.items;
     if (!resultItems) throw new Error('Expected normalised items');
     // The browser-side fallback is marker-1 only; legacy coverage is backend-owned.
-    expect(Object.keys(resultItems)).toEqual([remainingTask]);
+    expect(Object.keys(resultItems)).toEqual(providedTaskKeys);
+    expect(Object.keys(resultItems)).not.toContain(missingTask);
     expect(AssignmentFullSchema.safeParse(output).success).toBe(true);
   });
 

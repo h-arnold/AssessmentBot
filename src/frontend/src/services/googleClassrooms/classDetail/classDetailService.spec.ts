@@ -141,8 +141,9 @@ describe('classDetailService.getABClass', () => {
     )!;
     payload.assignments = [assignment];
     const submission = assignment.submissions[0]!;
-    const [healthyTask, corruptTask] = Object.keys(submission.items);
-    expect(Object.keys(submission.items)).toEqual(['task-1-0', 'task-1-1']);
+    const taskKeys = Object.keys(submission.items);
+    const [healthyTask, corruptTask] = taskKeys;
+    if (!healthyTask || !corruptTask) throw new Error('Expected at least two tasks in the fixture');
     const originalTaskIds = Object.keys(submission.items);
     const originalStudentIds = assignment.submissions.map(({ studentId }) => studentId);
     for (const item of Object.values(submission.items)) {

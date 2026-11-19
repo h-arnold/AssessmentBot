@@ -16,6 +16,9 @@ const FULL_OUTPUT_ROOT = '.opencode/scratchpad/synthetic-analysis-full';
 const COMMITTED_FIXTURE_ROOT = 'tests/__mocks__/data/synthetic-analysis';
 const TEMPORARY_OUTPUT_PREFIX = 'synthetic-cli-arguments-';
 const OUTPUT_ROOT_FLAG = '--output-root';
+// Raised because the committed corpus grew to 4/6/10 tasks per definition and
+// coverage instrumentation slows byte-for-byte regeneration.
+const FORMATTER_HEAVY_TEST_TIMEOUT_MS = 40_000;
 
 const temporaryRoots: string[] = [];
 
@@ -93,13 +96,17 @@ describe('synthetic analysis fixture full-output containment', () => {
 });
 
 describe('synthetic analysis fixture CLI dispatch', () => {
-  it('writes compact profiles to an explicit output root', async () => {
-    const outputRoot = createTemporaryOutputRoot();
+  it(
+    'writes compact profiles to an explicit output root',
+    async () => {
+      const outputRoot = createTemporaryOutputRoot();
 
-    await runCli([OUTPUT_ROOT_FLAG, outputRoot]);
+      await runCli([OUTPUT_ROOT_FLAG, outputRoot]);
 
-    expect(existsSync(join(outputRoot, 'small', 'manifest.json'))).toBe(true);
-  });
+      expect(existsSync(join(outputRoot, 'small', 'manifest.json'))).toBe(true);
+    },
+    FORMATTER_HEAVY_TEST_TIMEOUT_MS
+  );
 
   it('rejects a disallowed full output root before generating the large graph', async () => {
     const outsideRoot = createTemporaryOutputRoot();

@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { currentAssignmentJson, restoreAssignment } from './assignmentRehydrationCurrentSupport.js';
+import {
+  KNOWN_TASK_IDS,
+  currentAssignmentJson,
+  restoreAssignment,
+} from './assignmentRehydrationCurrentSupport.js';
 import { healthyFullRecord, storedLegacyRecord } from './assignmentLegacyReadPreparationSupport.js';
 
 const { StudentSubmission } = require('#backend/Models/StudentSubmission/index.js');
@@ -104,7 +108,7 @@ describe('legacy assignment restoration and persistence', () => {
     (_label, marker) => {
       const record = historicalAssignment(marker, true);
       expect(Array.isArray(record.assignmentDefinition.tasks)).toBe(true);
-      expect(record.assignmentDefinition.tasks).toHaveLength(2);
+      expect(record.assignmentDefinition.tasks).toHaveLength(KNOWN_TASK_IDS.length);
       expect(typeof StudentSubmission.fromJSON).toBe('function');
       expect(typeof StudentSubmissionItem.fromJSON).toBe('function');
       const submissionRestore = vi.spyOn(StudentSubmission, 'fromJSON');

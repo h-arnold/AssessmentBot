@@ -288,6 +288,11 @@ g.CacheService = {
 // cache manager override globalThis.CacheManager in their own beforeEach.
 g.CacheManager = require('../src/backend/RequestHandlers/CacheManager.js').CacheManager;
 
+// Seed-dispatch helpers for LLMRequestManager (GAS concatenation exposes the
+// LLMSeedPhase object as a global; mirror that for Node suites driving the
+// manager through tests/helpers/llmRequestManagerHarness.js).
+g.LLMSeedPhase = require('../src/backend/RequestHandlers/LLMSeedPhase.js');
+
 // Register the real AuthService singleton as a global (mirrors the GAS concatenated
 // environment, where AuthService resolves as a global). The ApiDispatcher auth gate
 // (`z_apiHandler.js`) calls AuthService.getInstance().checkAccess() before dispatch.

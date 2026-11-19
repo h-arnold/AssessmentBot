@@ -1,12 +1,10 @@
 /**
  * Medium-corpus baseline-mode round trip through the data-analysis service.
- * Pins the committed `medium` profile's attempt-baseline claims: pool sizing at
- * the structural minimum of two, the pool-boundary tie broken by ascending
- * student id, E-condition non-candidacy for rosters 1 and 2, and the per-class
- * outside-baseline pair. The heatmap-projection cases pin the adapter's
- * column-level `includedInAttemptBaseline` projection of the same corpus.
- * The committed views are imported at this call site with the `?raw` suffix:
- * record loading stays at the call site and no shared loader is created.
+ * Checks attempt-baseline claims against an oracle derived from the raw view:
+ * pool ranking with an ascending-student-id tie-break, a non-degenerate
+ * baseline, per-class outside-baseline keys, and E-condition non-candidacy.
+ * Heatmap cases pin the adapter's column-level `includedInAttemptBaseline`
+ * projection. Views are imported here with the `?raw` suffix.
  * @see docs/developer/testing/synthetic-test-data.md
  */
 
@@ -26,7 +24,7 @@ const MEDIUM_CLASS_ID = 'class-0';
 /** All four committed `medium` class ids. */
 const MEDIUM_CLASS_IDS = ['class-0', 'class-1', 'class-2', 'class-3'];
 
-/** Roster index of the sole top attempter (nine distinct task keys). */
+/** Roster index of the sole top attempter. */
 const ROSTER_INDEX_TOP_ATTEMPTER = 0;
 
 /** Roster indices whose items are all-`E` (zero attempts despite participation). */
@@ -37,59 +35,26 @@ const ROSTER_INDEX_ERROR_CONDITION_SECOND = 2;
 const ROSTER_INDEX_POOL_BOUNDARY = 3;
 const ROSTER_INDEX_POOL_BOUNDARY_RIVAL = 4;
 
-/** Assignments each participating `medium` student submitted to. */
-const EXPECTED_ERROR_ROSTER_PARTICIPATION = 5;
+/**
+ * Ascending task-key comparator shared by the oracle and the pinned projections.
+ * @param {string} a - First task key.
+ * @param {string} b - Second task key.
+ * @returns {number} Negative, zero or positive per ascending order.
+ */
+const ascending = (a: string, b: string) => a.localeCompare(b);
 
-/** Number of submitted items carried by the top attempter. */
-const EXPECTED_TOP_ATTEMPTER_ITEM_COUNT = 9;
+type MediumPartial = { definitionKey: string; tasks: Array<{ taskId: string }> };
 
-/** Distinct attempted task keys carried by the pool-boundary roster student. */
-const EXPECTED_BOUNDARY_ATTEMPT_COUNT = 7;
+/** Pool bounds: minimum size and the ten-percent fraction divisor. */
+const POOL_MINIMUM = 2;
+const POOL_FRACTION_DIVISOR = 10;
 
-/** Number of baseline task keys derived for every `medium` class. */
-const EXPECTED_BASELINE_KEY_COUNT = 7;
-
-/** Number of per-task rows derived for every `medium` class (nine task keys). */
-const EXPECTED_PER_TASK_ROW_COUNT = 9;
-
-/** Distinct task keys projected across every assignment of one `medium` class. */
-const EXPECTED_PROJECTED_TASK_KEY_COUNT = 9;
-
-/** The outside-baseline task keys per class (the pool leader's extra attempts). */
-const OUTSIDE_BASELINE_KEYS_BY_CLASS: Record<string, string[]> = {
-  'class-0': ['definition-2-slides::task-2-0', 'definition-2-slides::task-2-1'],
-  'class-1': ['definition-0-slides::task-0-0', 'definition-0-slides::task-0-1'],
-  'class-2': ['definition-2-slides::task-2-0', 'definition-2-slides::task-2-1'],
-  'class-3': ['definition-0-slides::task-0-0', 'definition-0-slides::task-0-1'],
-};
-
-/** All nine projected task keys per class, ascending. */
-const EXPECTED_PROJECTED_TASK_KEYS = [
-  'definition-0-slides::task-0-0',
-  'definition-0-slides::task-0-1',
-  'definition-1-sheets::task-1-0',
-  'definition-1-sheets::task-1-1',
-  'definition-2-slides::task-2-0',
-  'definition-2-slides::task-2-1',
-  'definition-3-sheets::task-3-0',
-  'definition-3-sheets::task-3-1',
-  'definition-partial-0::task-partial-0-0',
-];
-
-/** Per-class baseline keys: the projected set minus the outside pair. */
-const EXPECTED_BASELINE_KEYS_BY_CLASS: Record<string, string[]> = Object.fromEntries(
-  MEDIUM_CLASS_IDS.map((classId): [string, string[]] => {
-    return [
-      classId,
-      EXPECTED_PROJECTED_TASK_KEYS.filter(
-        (key) => !OUTSIDE_BASELINE_KEYS_BY_CLASS[classId].includes(key)
-      ),
-    ];
-  })
-);
-
-/** Class-0/2 baseline key set (ascending): the projected set minus its outside pair. */
-const EXPECTED_BASELINE_TASK_KEYS = EXPECTED_BASELINE_KEYS_BY_CLASS[MEDIUM_CLASS_ID];
+/** Every task key carried by the committed partial definitions, ascending. */
+const PROJECTED_TASK_KEYS = (JSON.parse(mediumPartialsRaw) as MediumPartial[])
+  .flatMap((definition) =>
+    definition.tasks.map((task) => buildTaskKey(definition.definitionKey, task.taskId))
+  )
+  .toSorted(ascending);
 
 type MediumAssessment = { score: number | 'N' | 'E'; error?: { code: string } };
 type MediumItem = { assessments?: Record<string, MediumAssessment> };
@@ -143,8 +108,7 @@ function requireRosterStudent(classRecord: MediumClass, rosterIndex: number): { 
 }
 
 /**
- * Whether the submission item is an attempt (data-shape item 3): at least one
- * criterion assessment carries a numeric score.
+ * Whether the submission item is an attempt: one numeric criterion score.
  * @param {MediumItem} item - The submission item.
  * @returns {boolean} True when the item is an attempt.
  */
@@ -155,8 +119,7 @@ function isAttemptItem(item: MediumItem): boolean {
 }
 
 /**
- * Collect a roster student's attempted task keys from one assignment into the
- * given set.
+ * Collect a roster student's attempted task keys from one assignment.
  * @param {MediumAssignment} assignment - The assignment to walk.
  * @param {string} studentId - The student whose items are collected.
  * @param {Set<string>} attemptedTaskKeys - The accumulator set (mutated).
@@ -177,8 +140,7 @@ function collectAttemptedTaskKeysFromAssignment(
 }
 
 /**
- * Collect a roster student's attempted task keys (data-shape item 3: at least one
- * numeric criterion score on the submission item).
+ * Collect a roster student's attempted task keys.
  * @param {MediumClass} classRecord - The parsed class record.
  * @param {number} rosterIndex - The roster index to collect for.
  * @returns {Set<string>} The student's distinct attempted task keys.
@@ -210,8 +172,7 @@ function countAssignmentsWithSubmissions(classRecord: MediumClass, rosterIndex: 
 }
 
 /**
- * Whether the submission item carries a raw-`N` SPaG assessment alongside a
- * numeric completeness or accuracy score (the corpus's attempt-with-raw-N shape).
+ * Whether a raw-`N` SPaG score sits beside a numeric sibling.
  * @param {MediumItem} item - The submission item.
  * @returns {boolean} True when the item matches the shape.
  */
@@ -223,8 +184,7 @@ function hasSpagNotAttemptedWithNumericSibling(item: MediumItem): boolean {
 }
 
 /**
- * Count a roster student's submitted items whose SPaG assessment is raw `N`
- * alongside a numeric completeness or accuracy score.
+ * Count a roster student's raw-`N`-with-numeric submitted items.
  * @param {MediumClass} classRecord - The parsed class record.
  * @param {number} rosterIndex - The roster index to count for.
  * @returns {number} The matching item count.
@@ -246,49 +206,78 @@ function countSpagNotAttemptedWithNumericSibling(
   return matchingItemCount;
 }
 
+/**
+ * Derive the pool/baseline oracle from the raw committed view only.
+ * @param {MediumClass} classRecord - The parsed class record.
+ * @returns {{ poolStudentIds: string[]; baselineTaskKeys: string[] }} The derived oracle.
+ */
+function deriveCorpusBaseline(classRecord: MediumClass): {
+  poolStudentIds: string[];
+  baselineTaskKeys: string[];
+} {
+  const attempted = new Map<string, Set<string>>();
+  for (const [index, student] of classRecord.students.entries()) {
+    attempted.set(student.id, collectAttemptedTaskKeys(classRecord, index));
+  }
+  const rosterIds = classRecord.students.map((student) => student.id);
+  const candidates = rosterIds.filter((id) => attempted.get(id)!.size > 0);
+  const poolSize = Math.min(
+    candidates.length,
+    Math.max(POOL_MINIMUM, Math.ceil(rosterIds.length / POOL_FRACTION_DIVISOR))
+  );
+  const poolStudentIds = candidates
+    .toSorted((a, b) => attempted.get(b)!.size - attempted.get(a)!.size || a.localeCompare(b))
+    .slice(0, poolSize);
+  const shared = new Set(
+    [...attempted.get(poolStudentIds[0])!].filter((key) =>
+      poolStudentIds.slice(1).every((id) => attempted.get(id)!.has(key))
+    )
+  );
+  return {
+    poolStudentIds,
+    baselineTaskKeys: [...shared].toSorted(ascending),
+  };
+}
+
 describe('medium corpus baseline-mode round trip', () => {
-  it('sizes the pool at two and breaks the roster-boundary tie by studentId', () => {
+  it('ranks the pool by distinct attempts with an ascending studentId tie-break', () => {
     const [result] = new DataAnalysisService().analyse(
       buildMediumInput('topDecileBaseline', [MEDIUM_CLASS_ID])
     );
     const classRecord = parseMediumClasses()[MEDIUM_CLASS_ID];
+    const oracle = deriveCorpusBaseline(classRecord);
 
-    // Roster indices 3 and 4 tie at seven distinct attempts with identical
-    // attempt sets; ascending student id displaces index 4 from the pool.
+    // The boundary and its rival tie on attempt count with identical attempt
+    // sets; the lower student id must win the pool place.
     const boundaryKeys = collectAttemptedTaskKeys(classRecord, ROSTER_INDEX_POOL_BOUNDARY);
     const rivalKeys = collectAttemptedTaskKeys(classRecord, ROSTER_INDEX_POOL_BOUNDARY_RIVAL);
-    expect(boundaryKeys.size).toBe(EXPECTED_BOUNDARY_ATTEMPT_COUNT);
-    expect([...rivalKeys].toSorted((a, b) => a.localeCompare(b))).toEqual(
-      [...boundaryKeys].toSorted((a, b) => a.localeCompare(b))
-    );
+    expect([...rivalKeys].toSorted(ascending)).toEqual([...boundaryKeys].toSorted(ascending));
 
     expect(result.appliedAnalysisMode).toBe('topDecileBaseline');
-    expect(result.attemptBaseline?.poolStudentIds).toEqual([
-      classRecord.students[ROSTER_INDEX_TOP_ATTEMPTER].id,
-      classRecord.students[ROSTER_INDEX_POOL_BOUNDARY].id,
-    ]);
-    expect(
-      result.attemptBaseline?.poolStudentIds.includes(
-        classRecord.students[ROSTER_INDEX_POOL_BOUNDARY_RIVAL].id
-      )
-    ).toBe(false);
+    expect(result.attemptBaseline?.poolStudentIds).toEqual(oracle.poolStudentIds);
+    expect(result.attemptBaseline?.poolStudentIds).toContain(
+      classRecord.students[ROSTER_INDEX_POOL_BOUNDARY].id
+    );
+    expect(result.attemptBaseline?.poolStudentIds).not.toContain(
+      classRecord.students[ROSTER_INDEX_POOL_BOUNDARY_RIVAL].id
+    );
   });
 
-  it('excludes the E-condition rosters from candidacy despite five-assignment participation', () => {
+  it('excludes the E-condition rosters from candidacy despite participation', () => {
     const classRecord = parseMediumClasses()[MEDIUM_CLASS_ID];
 
     // The corpus's non-attempt evidence: every assessment on both rosters'
-    // nine items is an explicit E with the named cause.
+    // submitted items is an explicit E with the named cause.
     const errorCodesFirst = collectErrorCodes(classRecord, ROSTER_INDEX_ERROR_CONDITION_FIRST);
     const errorCodesSecond = collectErrorCodes(classRecord, ROSTER_INDEX_ERROR_CONDITION_SECOND);
     expect(errorCodesFirst).toEqual(new Set(['ASSESSMENT_FAILED']));
     expect(errorCodesSecond).toEqual(new Set(['SOURCE_UNREADABLE']));
-    expect(countAssignmentsWithSubmissions(classRecord, ROSTER_INDEX_ERROR_CONDITION_FIRST)).toBe(
-      EXPECTED_ERROR_ROSTER_PARTICIPATION
-    );
-    expect(countAssignmentsWithSubmissions(classRecord, ROSTER_INDEX_ERROR_CONDITION_SECOND)).toBe(
-      EXPECTED_ERROR_ROSTER_PARTICIPATION
-    );
+    expect(
+      countAssignmentsWithSubmissions(classRecord, ROSTER_INDEX_ERROR_CONDITION_FIRST)
+    ).toBeGreaterThan(0);
+    expect(
+      countAssignmentsWithSubmissions(classRecord, ROSTER_INDEX_ERROR_CONDITION_SECOND)
+    ).toBeGreaterThan(0);
 
     const [result] = new DataAnalysisService().analyse(
       buildMediumInput('topDecileBaseline', [MEDIUM_CLASS_ID])
@@ -307,32 +296,43 @@ describe('medium corpus baseline-mode round trip', () => {
 
   it('treats raw-N-alongside-numeric items as attempts at the top attempter', () => {
     const classRecord = parseMediumClasses()[MEDIUM_CLASS_ID];
+    const topAttempterId = classRecord.students[ROSTER_INDEX_TOP_ATTEMPTER].id;
+    let submittedItemCount = 0;
+    for (const assignment of classRecord.assignments) {
+      for (const submission of assignment.submissions) {
+        if (submission.studentId === topAttempterId) {
+          submittedItemCount += Object.keys(submission.items).length;
+        }
+      }
+    }
 
     // Every item the top attempter submitted carries a raw-N SPaG assessment
     // beside a numeric completeness or accuracy score, and the student leads
     // the pool — so those items counted as attempts.
     expect(countSpagNotAttemptedWithNumericSibling(classRecord, ROSTER_INDEX_TOP_ATTEMPTER)).toBe(
-      EXPECTED_TOP_ATTEMPTER_ITEM_COUNT
+      submittedItemCount
     );
 
     const [result] = new DataAnalysisService().analyse(
       buildMediumInput('topDecileBaseline', [MEDIUM_CLASS_ID])
     );
-    expect(result.attemptBaseline?.poolStudentIds[0]).toBe(
-      classRecord.students[ROSTER_INDEX_TOP_ATTEMPTER].id
-    );
+    expect(result.attemptBaseline?.poolStudentIds[0]).toBe(topAttempterId);
   });
 
-  it('intersects the pool attempt sets into the seven-key non-degenerate baseline', () => {
+  it('intersects the pool attempt sets into a non-degenerate baseline', () => {
     const [result] = new DataAnalysisService().analyse(
       buildMediumInput('topDecileBaseline', [MEDIUM_CLASS_ID])
     );
+    const oracle = deriveCorpusBaseline(parseMediumClasses()[MEDIUM_CLASS_ID]);
 
-    expect(result.attemptBaseline?.baselineTaskKeys).toEqual(EXPECTED_BASELINE_TASK_KEYS);
-    expect(result.perTask).toHaveLength(EXPECTED_PER_TASK_ROW_COUNT);
+    expect(result.attemptBaseline?.baselineTaskKeys).toEqual(oracle.baselineTaskKeys);
+    expect(oracle.baselineTaskKeys.length).toBeGreaterThan(0);
+    expect(
+      result.perTask.map((row) => buildTaskKey(row.definitionKey, row.taskId)).toSorted(ascending)
+    ).toEqual(PROJECTED_TASK_KEYS);
   });
 
-  it('derives the per-class outside-baseline pair from the baseline task keys across all classes', () => {
+  it('derives each class outside-baseline keys as the complement of its baseline in the attempt space', () => {
     const results = new DataAnalysisService().analyse(
       buildMediumInput('topDecileBaseline', MEDIUM_CLASS_IDS)
     );
@@ -343,17 +343,17 @@ describe('medium corpus baseline-mode round trip', () => {
       if (!attemptBaseline) {
         throw new Error('baseline-mode result is missing the attemptBaseline block');
       }
-      const outsideKeys = OUTSIDE_BASELINE_KEYS_BY_CLASS[result.classId];
-      // Attempt-baseline membership is derived from the result's baseline task
-      // keys: rows whose key sits outside the set are the outside-baseline pair.
+      const oracle = deriveCorpusBaseline(parseMediumClasses()[result.classId]);
+      // Outside-baseline rows are those whose key sits outside the result's
+      // baseline set; the complement is taken over the corpus's projected keys.
       const baselineTaskKeys = new Set(attemptBaseline.baselineTaskKeys);
       const outsideRows = result.perTask.filter(
         (row) => !baselineTaskKeys.has(buildTaskKey(row.definitionKey, row.taskId))
       );
-      expect(outsideRows.map((row) => buildTaskKey(row.definitionKey, row.taskId))).toEqual(
-        outsideKeys
-      );
-      expect(result.perTask.length - outsideRows.length).toBe(EXPECTED_BASELINE_KEY_COUNT);
+      expect(
+        outsideRows.map((row) => buildTaskKey(row.definitionKey, row.taskId)).toSorted(ascending)
+      ).toEqual(PROJECTED_TASK_KEYS.filter((key) => !baselineTaskKeys.has(key)));
+      expect(result.perTask.length - outsideRows.length).toBe(oracle.baselineTaskKeys.length);
     }
   });
 
@@ -382,9 +382,13 @@ describe('medium corpus heatmap column projection', () => {
     const input = buildMediumInput('topDecileBaseline', MEDIUM_CLASS_IDS);
     const results = new DataAnalysisService().analyse(input);
 
-    for (const [classIndex, classId] of MEDIUM_CLASS_IDS.entries()) {
-      const result = results[classIndex];
-      const classFull = input.classes[classIndex];
+    for (const result of results) {
+      const classFull = input.classes.find((classRecord) => classRecord.classId === result.classId);
+      if (!classFull) {
+        throw new Error(
+          `medium round-trip spec: no input class for result class ${result.classId}`
+        );
+      }
       const includedFlags = new Map<string, boolean>();
       for (const assignment of classFull.assignments) {
         const heatmap = adaptMetricsToHeatmap(
@@ -398,8 +402,8 @@ describe('medium corpus heatmap column projection', () => {
         }
       }
 
-      const outsideKeys = OUTSIDE_BASELINE_KEYS_BY_CLASS[classId];
-      expect(includedFlags.size).toBe(EXPECTED_PROJECTED_TASK_KEY_COUNT);
+      const oracle = deriveCorpusBaseline(parseMediumClasses()[result.classId]);
+      expect(includedFlags.size).toBe(PROJECTED_TASK_KEYS.length);
       const excludedKeys: string[] = [];
       const includedKeys: string[] = [];
       for (const [key, included] of includedFlags) {
@@ -409,12 +413,11 @@ describe('medium corpus heatmap column projection', () => {
           excludedKeys.push(key);
         }
       }
-      expect(excludedKeys.toSorted((a, b) => a.localeCompare(b))).toEqual(
-        outsideKeys.toSorted((a, b) => a.localeCompare(b))
+      const baselineSet = new Set(oracle.baselineTaskKeys);
+      expect(excludedKeys.toSorted(ascending)).toEqual(
+        PROJECTED_TASK_KEYS.filter((key) => !baselineSet.has(key))
       );
-      expect(includedKeys.toSorted((a, b) => a.localeCompare(b))).toEqual(
-        EXPECTED_BASELINE_KEYS_BY_CLASS[classId]
-      );
+      expect(includedKeys.toSorted(ascending)).toEqual(oracle.baselineTaskKeys);
     }
   });
 
@@ -451,7 +454,9 @@ describe('medium corpus heatmap column projection', () => {
       input.assignmentDefinitionPartials
     );
 
-    expect(merged.taskColumns).toHaveLength(EXPECTED_PROJECTED_TASK_KEY_COUNT);
+    expect(merged.taskColumns.map((column) => column.taskKey).toSorted(ascending)).toEqual(
+      PROJECTED_TASK_KEYS
+    );
     for (const column of merged.taskColumns) {
       expect(column.includedInAttemptBaseline).toBe(true);
     }

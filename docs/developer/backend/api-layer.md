@@ -38,15 +38,8 @@ Transport helpers are trailing-underscore functions in the relevant `z_Api` file
 - `adaptMetadataRequestError_(methodName, parameters, operation)` (`src/backend/z_Api/abclass/abclassMutations.js`) — converts request-tagged metadata failures into `ApiValidationError`; see [Transport error adaptation](#transport-error-adaptation).
 - `validateUpsertParameters_()` and `validateReadParameters_()` (`src/backend/z_Api/assignmentDefinition/`) — request validators for definition upsert and read; see [Assignment-definition upsert validation split](#assignment-definition-upsert-validation-split-upsertassignmentdefinition).
 - `toTransportPartialRow_` (`src/backend/z_Api/assignmentDefinitionTransport.js`) — normalises a model or plain object into a transport partial row.
-
-The two helpers below are `Not implemented`.
-
-- LLM seed partition helper (`Not implemented`)
-  - Owning layer/path: `src/backend/RequestHandlers/`, dedicated sibling module (for example `LLMSeedPhase.js`).
-  - Behaviour: derives the ephemeral `{ seeds, remainder }` split of generated LLM requests after the input guards; seeds are the first eligible request per `TaskDefinition.getId()` in generation order; both arrays preserve order; fails loudly on duplicate UID, missing `uidIndex` route entry and missing `taskDefinition` (messages name the offending UID). Called once from `LLMRequestManager.processStudentResponses()`; no persistence or transport surface.
-- LLM shared batch-outcome consumer (`Not implemented`)
-  - Owning layer/path: `src/backend/RequestHandlers/`.
-  - Behaviour: single consumer for seed-phase and remainder-phase batch outcomes; keeps accepted-first sort, assigned/cached writeback, error mapping, stop-status detection, shared `runStopped`, progress update and exactly-once UID routing.
+- `LLMSeedPhase.partitionRequests(requests, uidIndex)` (`src/backend/RequestHandlers/LLMSeedPhase.js`) — splits requests into `{ seeds, remainder }`, with the first eligible request per `TaskDefinition.getId()` in generation order as the seed and both arrays preserving order; throws naming the offending UID for a missing route entry or one without `taskDefinition`; duplicate UIDs are rejected by the caller `LLMRequestManager.processStudentResponses()` before partitioning, not by this helper; seeds form one parallel round bypassing the batch-size throttle; called once from `processStudentResponses()`, with no persistence or transport surface and no payload logging.
+- `LLMSeedPhase.createBatchConsumer(manager, state)` (`src/backend/RequestHandlers/LLMSeedPhase.js`) — the single `onBatchComplete` consumer shared by the seed and remainder phases; latches `manager.runStopped` on a stop, sorts accepted outcomes before failures, consumes each UID exactly once (throwing on an unknown or duplicate UID), updates progress and delegates writeback to `manager._processSingleResponse()`, returning `!manager.runStopped`; final placement is the sibling module, not `LLMRequestManager.js`.
 
 ## ABClass metadata helpers
 

@@ -10,29 +10,82 @@
 /** Canonical large-full profile name. */
 export const LARGE_FULL_PROFILE_NAME = 'large-full';
 /** Canonical large-full class count. */
-export const LARGE_FULL_CLASS_COUNT = 100;
+export const LARGE_FULL_CLASS_COUNT = 48;
 /** Canonical large-full students per class. */
 export const LARGE_FULL_STUDENTS_PER_CLASS = 30;
 /** Canonical large-full assignments per class. */
-export const LARGE_FULL_ASSIGNMENTS_PER_CLASS = 100;
-/** Number of Year Groups 7-30 represented by the large-full profile. */
-export const LARGE_FULL_YEAR_GROUP_COUNT = 24;
+export const LARGE_FULL_ASSIGNMENTS_PER_CLASS = 50;
+/** Number of Year Groups 7–14 represented by the large-full profile. */
+export const LARGE_FULL_YEAR_GROUP_COUNT = 8;
 
 /**
- * The documented large-full completion bands.
+ * The documented large-full assignment bands.
  *
  * @remarks
- * Each band records its share of a class's 100 assignments and the derived
- * completion-percentage range (submitting students divided by the class roster).
- * Completion is always derived from the generated submissions, never stored as a
- * persistence or transport field.
+ * Each band records its assignment index range, its share of a class's 50
+ * assignments, the derived completion-percentage range (submitting students
+ * divided by the class roster), and the discrete completion percentages used
+ * when generating submissions. Completion is always derived from the generated
+ * submissions, never stored as a persistence or transport field. The step
+ * percentages are fixed corpus inputs and are deliberately not recomputed from
+ * the completion range, because doing so would change the generated data.
  */
-export const LARGE_FULL_COMPLETION_BANDS = Object.freeze([
-  Object.freeze({ sharePercent: 5, minCompletedPercent: 20, maxCompletedPercent: 49 }),
-  Object.freeze({ sharePercent: 10, minCompletedPercent: 50, maxCompletedPercent: 79 }),
-  Object.freeze({ sharePercent: 70, minCompletedPercent: 80, maxCompletedPercent: 95 }),
-  Object.freeze({ sharePercent: 15, minCompletedPercent: 96, maxCompletedPercent: 100 }),
+export const LARGE_FULL_BANDS = Object.freeze([
+  Object.freeze({
+    startIndex: 0,
+    endIndex: 3,
+    sharePercent: 6,
+    minCompletedPercent: 20,
+    maxCompletedPercent: 49,
+    basePercent: 20,
+    stepPercent: 4,
+    stepCount: 5,
+  }),
+  Object.freeze({
+    startIndex: 3,
+    endIndex: 8,
+    sharePercent: 10,
+    minCompletedPercent: 50,
+    maxCompletedPercent: 79,
+    basePercent: 50,
+    stepPercent: 6,
+    stepCount: 5,
+  }),
+  Object.freeze({
+    startIndex: 8,
+    endIndex: 43,
+    sharePercent: 70,
+    minCompletedPercent: 80,
+    maxCompletedPercent: 95,
+    basePercent: 80,
+    stepPercent: 3,
+    stepCount: 5,
+  }),
+  Object.freeze({
+    startIndex: 43,
+    endIndex: 50,
+    sharePercent: 14,
+    minCompletedPercent: 96,
+    maxCompletedPercent: 100,
+    basePercent: 96,
+    stepPercent: 4,
+    stepCount: 2,
+  }),
 ]);
+
+/** Completion bands consumed by transport-graph validation. */
+export const LARGE_FULL_COMPLETION_BANDS = Object.freeze(
+  LARGE_FULL_BANDS.map(({ sharePercent, minCompletedPercent, maxCompletedPercent }) =>
+    Object.freeze({ sharePercent, minCompletedPercent, maxCompletedPercent })
+  )
+);
+
+/** Submission bands consumed by deterministic submission-count generation. */
+export const LARGE_FULL_SUBMISSION_BANDS = Object.freeze(
+  LARGE_FULL_BANDS.map(({ startIndex, endIndex, basePercent, stepPercent, stepCount }) =>
+    Object.freeze({ startIndex, endIndex, basePercent, stepPercent, stepCount })
+  )
+);
 
 const SEED_SMALL = 17_031;
 const SEED_MEDIUM = 28_042;

@@ -142,6 +142,8 @@ describe('LLMRequestManager assignment-run integration', () => {
 
     manager = new LLMRequestManagerFresh();
     manager.configManager = createDummyConfigurationManager();
+    // Stub gap: the real ProgressTracker exposes getCurrentProgress.
+    manager.progressTracker.getCurrentProgress = () => ({ message: 'Assessing' });
   });
 
   afterEach(() => {
@@ -238,10 +240,8 @@ describe('LLMRequestManager assignment-run integration', () => {
 
   it('proves the suite cache collaborator serves generic get/put with the shared CacheManager TTL', () => {
     // Collaborator capability/continuity reached before any business outcome:
-    // every retained generation/N/assignment/native-response control receives
-    // the real generic CacheManager owner, so this exercises — not merely
-    // presence-checks — the generic surface a sole-caller get/put cut-over
-    // needs, plus the actual shared TTL constant.
+    // every retained control receives the real generic CacheManager owner,
+    // exercising the generic get/put surface and shared TTL a cut-over needs.
     const collaborator = manager.cacheManager;
     expect(collaborator).toBeInstanceOf(RealCacheManager);
     expect(typeof collaborator.get).toBe('function');
@@ -367,7 +367,9 @@ describe('LLMRequestManager assignment-run integration', () => {
   it('terminalises an invalid successful response without a semantic retry dispatch', () => {
     const targetItem = assignment.submissions[0].getItem(Object.keys(assignment.getTasks())[0]);
     const request = { uid: 'invalid-outcome', url: 'https://service.test/assess', method: 'post' };
-    manager.uidIndex = { 'invalid-outcome': { item: targetItem } };
+    // Minimal local route: mocked transport cannot inject a corpus outcome for a chosen UID.
+    const taskDefinition = assignment.assignmentDefinition.tasks[targetItem.taskId];
+    manager.uidIndex = { 'invalid-outcome': { item: targetItem, taskDefinition } };
     const sendRequestWithRetries = vi.spyOn(manager, 'sendRequestWithRetries');
     manager.sendRequestsInBatches = vi.fn((_requests, options) => {
       options.onBatchComplete([
@@ -396,9 +398,10 @@ describe('LLMRequestManager assignment-run integration', () => {
     } catch (error) {
       caught = error;
     }
-    // One consumed batch: no semantic retry dispatch and no later dispatch.
+    // One seed round only (batchSize = seeds.length); no remainder dispatch.
     expect(sendRequestWithRetries).not.toHaveBeenCalled();
     expect(manager.sendRequestsInBatches).toHaveBeenCalledTimes(1);
+    expect(manager.sendRequestsInBatches.mock.calls[0][1].batchSize).toBe(1);
     // No run abort: processing completes with an explicit terminal outcome.
     expect(caught).toBe(null);
     // The invalid unit terminalises atomically instead of retrying optimistically.
@@ -433,7 +436,9 @@ describe('LLMRequestManager assignment-run integration', () => {
       const nativeResponse = { getResponseCode: () => 200, getContentText: () => '{}' };
       outcomes[0].response = nativeResponse;
       let callbackReturned = false;
-      manager.uidIndex = { valid: { item: targetItem } };
+      // Minimal local route: mocked transport cannot inject a corpus outcome for a chosen UID.
+      const taskDefinition = assignment.assignmentDefinition.tasks[targetItem.taskId];
+      manager.uidIndex = { valid: { item: targetItem, taskDefinition } };
       manager.sendRequestsInBatches = vi.fn((_requests, options) => {
         options.onBatchComplete(outcomes);
         callbackReturned = true;

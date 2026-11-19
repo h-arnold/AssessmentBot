@@ -409,15 +409,17 @@ After this stage, a submission is either genuinely no-submission (`documentId: n
 
 **Method**: `processStudentResponses(requests, assignment)`
 
-- **Purpose**: Sends requests through the shared batch transport and applies final outcomes
+- **Purpose**: Dispatches generated requests in two phases through the shared batch transport and applies final outcomes. The seed partition helper and batch-outcome consumer live in the sibling `LLMSeedPhase` (`src/backend/RequestHandlers/LLMSeedPhase.js`) and are shared by both phases.
 - **Process**:
-  1. Resets the run-stop latch and the routed-attempt provenance map. Returns before input validation when `requests` is empty; otherwise validates the assignment and rejects duplicate request UIDs.
-  2. Calls `sendRequestsInBatches()` once with the configured assessor batch size, accepted statuses `[200, 201]` and stop statuses `[401, 403, 404]`.
-  3. For each completed batch, rejects unknown/duplicate outcome UIDs, records a run stop when any outcome is 401/403/404, applies accepted responses before non-success outcomes, and routes each outcome by its retained request UID. Immediately before routing, it records that outcome's attempt count in the invocation-local map.
-  4. Returns exactly `false` to the sender when stopped, preventing later batches while completed same-batch successes are retained.
-  5. After the sender returns, if the run stopped, terminalises every eligible item that was never routed as `LLM_RUN_STOPPED` with no further HTTP.
+  1. Resets the run-stop latch. Returns before input validation when `requests` is empty; otherwise validates the assignment, rejects duplicate request UIDs and builds a UID-to-request map.
+  2. Calls `LLMSeedPhase.partitionRequests()` to split requests into `seeds` (the first eligible request per `TaskDefinition.getId()` in generation order) and `remainder` (all others, in generation order). A duplicate UID, missing UID route entry or missing `taskDefinition` fails loudly before any dispatch, naming the UID.
+  3. **Seed round**: when seeds exist, dispatches them as one parallel `fetchAll` round through `sendRequestsInBatches()` with `batchSize = seeds.length`, deliberately bypassing `getBackendAssessorBatchSize()`. At info level logs the seed count and total request count without payload content; this log is emitted only on a two-phase split, when `remainder.length > 0` in `LLMRequestManager.processStudentResponses()`.
+  4. **Remainder round**: when a remainder exists and the seed round did not stop, restores the progress base message captured before the seed round and dispatches the remainder with `batchSize = getBackendAssessorBatchSize()`. Both rounds use accepted statuses `[200, 201]` and stop statuses `[401, 403, 404]`. An empty remainder or a stop in the seed round skips this round entirely.
+  5. Both rounds use the single `LLMSeedPhase.createBatchConsumer()`: it latches the shared `runStopped` on a stop status, rejects unknown/duplicate outcome UIDs, routes accepted responses before non-success outcomes by retained UID, passes each outcome's attempt count to `_processSingleResponse()` as provenance, and returns exactly `false` to stop later batches while completed same-batch successes are retained.
+  6. After the sender returns, if `runStopped`, terminalises every eligible item whose UID was not routed as `LLM_RUN_STOPPED` with no further HTTP.
+- **Added latency**: the seed round is one extra LLM round-trip, completed before the remainder is dispatched.
 
-**Method**: `_processSingleResponse(response, request)`
+**Method**: `_processSingleResponse(response, request, attempts)`
 
 - **Process**:
   1. Resolves the routed entry and item by UID; a missing route throws.

@@ -39,7 +39,7 @@
     "test:builder:coverage": "vitest run --config scripts/builder/vitest.config.ts --coverage --pool=forks",
     "test:synthetic": "vitest run --project synthetic-analysis",
     "test:synthetic:coverage": "vitest run --project synthetic-analysis --coverage --coverage.include 'scripts/synthetic-test-data/**/*.js'",
-    "test:synthetic:stress": "vitest run --project synthetic-analysis-stress",
+    "test:synthetic:stress": "NODE_OPTIONS=\"--max-old-space-size=8192 --expose-gc\" vitest run --project synthetic-analysis-stress",
     "test:plugins": "vitest run --project plugins",
     "test:plugins:coverage": "vitest run --coverage --project plugins --coverage.include '.opencode/plugins/at-mention-inject/*.ts'",
     "fixtures:synthetic": "node --no-warnings scripts/synthetic-test-data/generateSyntheticAnalysisFixtures.js",

@@ -84,6 +84,86 @@
             }
           ]
         }
+      },
+      "task-0-2": {
+        "id": "task-0-2",
+        "taskTitle": "Synthetic Task 1.3",
+        "pageId": "page-task-0-2",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 2,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-0-2",
+              "role": "reference",
+              "pageId": "page-task-0-2",
+              "documentId": "document-reference-task-0-2",
+              "content": [
+                ["reference synthetic content for task-0-2", 1],
+                [null, "=SUM(B1:B2)"]
+              ],
+              "contentHash": "hash-reference-task-0-2",
+              "metadata": {},
+              "uid": "uid-reference-task-0-2",
+              "type": "SPREADSHEET"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-0-2",
+              "role": "template",
+              "pageId": "page-task-0-2",
+              "documentId": "document-template-task-0-2",
+              "content": [
+                ["template synthetic content for task-0-2", 1],
+                [null, "=SUM(B1:B2)"]
+              ],
+              "contentHash": "hash-template-task-0-2",
+              "metadata": {},
+              "uid": "uid-template-task-0-2",
+              "type": "SPREADSHEET"
+            }
+          ]
+        }
+      },
+      "task-0-3": {
+        "id": "task-0-3",
+        "taskTitle": "Synthetic Task 1.4",
+        "pageId": "page-task-0-3",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 3,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-0-3",
+              "role": "reference",
+              "pageId": "page-task-0-3",
+              "documentId": "document-reference-task-0-3",
+              "content": "reference synthetic content for task-0-3",
+              "contentHash": "hash-reference-task-0-3",
+              "metadata": {},
+              "uid": "uid-reference-task-0-3",
+              "type": "TEXT"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-0-3",
+              "role": "template",
+              "pageId": "page-task-0-3",
+              "documentId": "document-template-task-0-3",
+              "content": "template synthetic content for task-0-3",
+              "contentHash": "hash-template-task-0-3",
+              "metadata": {},
+              "uid": "uid-template-task-0-3",
+              "type": "TEXT"
+            }
+          ]
+        }
       }
     },
     "submissions": [],
@@ -173,6 +253,86 @@
                 "metadata": {},
                 "uid": "uid-template-task-0-1",
                 "type": "IMAGE"
+              }
+            ]
+          }
+        },
+        "task-0-2": {
+          "id": "task-0-2",
+          "taskTitle": "Synthetic Task 1.3",
+          "pageId": "page-task-0-2",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 2,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-0-2",
+                "role": "reference",
+                "pageId": "page-task-0-2",
+                "documentId": "document-reference-task-0-2",
+                "content": [
+                  ["reference synthetic content for task-0-2", 1],
+                  [null, "=SUM(B1:B2)"]
+                ],
+                "contentHash": "hash-reference-task-0-2",
+                "metadata": {},
+                "uid": "uid-reference-task-0-2",
+                "type": "SPREADSHEET"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-0-2",
+                "role": "template",
+                "pageId": "page-task-0-2",
+                "documentId": "document-template-task-0-2",
+                "content": [
+                  ["template synthetic content for task-0-2", 1],
+                  [null, "=SUM(B1:B2)"]
+                ],
+                "contentHash": "hash-template-task-0-2",
+                "metadata": {},
+                "uid": "uid-template-task-0-2",
+                "type": "SPREADSHEET"
+              }
+            ]
+          }
+        },
+        "task-0-3": {
+          "id": "task-0-3",
+          "taskTitle": "Synthetic Task 1.4",
+          "pageId": "page-task-0-3",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 3,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-0-3",
+                "role": "reference",
+                "pageId": "page-task-0-3",
+                "documentId": "document-reference-task-0-3",
+                "content": "reference synthetic content for task-0-3",
+                "contentHash": "hash-reference-task-0-3",
+                "metadata": {},
+                "uid": "uid-reference-task-0-3",
+                "type": "TEXT"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-0-3",
+                "role": "template",
+                "pageId": "page-task-0-3",
+                "documentId": "document-template-task-0-3",
+                "content": "template synthetic content for task-0-3",
+                "contentHash": "hash-template-task-0-3",
+                "metadata": {},
+                "uid": "uid-template-task-0-3",
+                "type": "TEXT"
               }
             ]
           }
@@ -273,6 +433,80 @@
             }
           ]
         }
+      },
+      "task-1-2": {
+        "id": "task-1-2",
+        "taskTitle": "Synthetic Task 2.3",
+        "pageId": "page-task-1-2",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 2,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-1-2",
+              "role": "reference",
+              "pageId": "page-task-1-2",
+              "documentId": "document-reference-task-1-2",
+              "content": "reference synthetic content for task-1-2",
+              "contentHash": "hash-reference-task-1-2",
+              "metadata": {},
+              "uid": "uid-reference-task-1-2",
+              "type": "TEXT"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-1-2",
+              "role": "template",
+              "pageId": "page-task-1-2",
+              "documentId": "document-template-task-1-2",
+              "content": "template synthetic content for task-1-2",
+              "contentHash": "hash-template-task-1-2",
+              "metadata": {},
+              "uid": "uid-template-task-1-2",
+              "type": "TEXT"
+            }
+          ]
+        }
+      },
+      "task-1-3": {
+        "id": "task-1-3",
+        "taskTitle": "Synthetic Task 2.4",
+        "pageId": "page-task-1-3",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 3,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-1-3",
+              "role": "reference",
+              "pageId": "page-task-1-3",
+              "documentId": "document-reference-task-1-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAABCAIAAAAjP3vEAAAAR0lEQVR4nDWMQQqAMBDE8pT9QA/ii6RUFMFC24u/F1J6CUN2CQ0KnHLuF7IjoMOnGXApB9w+hKzrWtYIa9VaaA47DyTY5A4/wQMOvgsCmS8AAAAASUVORK5CYII=",
+              "contentHash": "hash-reference-task-1-3",
+              "metadata": {},
+              "uid": "uid-reference-task-1-3",
+              "type": "IMAGE"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-1-3",
+              "role": "template",
+              "pageId": "page-task-1-3",
+              "documentId": "document-template-task-1-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACcAAAABCAIAAADSNCBJAAAAR0lEQVR4nDXMywmAMBQF0VNKGnAhViQhovjFZGP3whM3l2EGrkZh52Jj5DOJysMRZg7ZWMhRM+dfyw+JKfwd3OKwstLRxw68mN0Oa1LvTw0AAAAASUVORK5CYII=",
+              "contentHash": "hash-template-task-1-3",
+              "metadata": {},
+              "uid": "uid-template-task-1-3",
+              "type": "IMAGE"
+            }
+          ]
+        }
       }
     },
     "submissions": [
@@ -330,6 +564,85 @@
               "metadata": {},
               "uid": "uid-assignment-0-1-100000000000000000000-task-1-1",
               "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 0,
+                "reasoning": "Synthetic completeness rationale for student index 0."
+              },
+              "accuracy": {
+                "score": 0,
+                "reasoning": "Synthetic accuracy rationale for student index 0."
+              },
+              "spag": {
+                "score": "N",
+                "reasoning": "Synthetic SPaG rationale for student index 0."
+              }
+            },
+            "feedback": {
+              "cellReference": {
+                "type": "cellReference",
+                "createdAt": "2024-01-02T10:01:00.000Z"
+              }
+            }
+          },
+          "task-1-2": {
+            "id": "ssi-assignment-0-1-100000000000000000000-task-1-2",
+            "taskId": "task-1-2",
+            "artifact": {
+              "taskId": "task-1-2",
+              "role": "submission",
+              "pageId": "page-task-1-2",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000000-task-1-2",
+              "content": [
+                [
+                  "Synthetic submission content for assignment-0-1-100000000000000000000-task-1-2",
+                  1
+                ],
+                [
+                  null,
+                  "Synthetic submission content for assignment-0-1-100000000000000000000-task-1-2 (B2)"
+                ]
+              ],
+              "contentHash": "hash-assignment-0-1-100000000000000000000-task-1-2",
+              "metadata": {},
+              "uid": "uid-assignment-0-1-100000000000000000000-task-1-2",
+              "type": "SPREADSHEET"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 0,
+                "reasoning": "Synthetic completeness rationale for student index 0."
+              },
+              "accuracy": {
+                "score": 0,
+                "reasoning": "Synthetic accuracy rationale for student index 0."
+              },
+              "spag": {
+                "score": "N",
+                "reasoning": "Synthetic SPaG rationale for student index 0."
+              }
+            },
+            "feedback": {
+              "cellReference": {
+                "type": "cellReference",
+                "createdAt": "2024-01-02T10:01:00.000Z"
+              }
+            }
+          },
+          "task-1-3": {
+            "id": "ssi-assignment-0-1-100000000000000000000-task-1-3",
+            "taskId": "task-1-3",
+            "artifact": {
+              "taskId": "task-1-3",
+              "role": "submission",
+              "pageId": "page-task-1-3",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000000-task-1-3",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000000-task-1-3",
+              "contentHash": "hash-assignment-0-1-100000000000000000000-task-1-3",
+              "metadata": {},
+              "uid": "uid-assignment-0-1-100000000000000000000-task-1-3",
+              "type": "TEXT"
             },
             "assessments": {
               "completeness": {
@@ -454,6 +767,90 @@
               }
             },
             "feedback": {}
+          },
+          "task-1-2": {
+            "id": "ssi-assignment-0-1-100000000000000000001-task-1-2",
+            "taskId": "task-1-2",
+            "artifact": {
+              "taskId": "task-1-2",
+              "role": "submission",
+              "pageId": "page-task-1-2",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000001-task-1-2",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000001-task-1-2",
+              "contentHash": "hash-assignment-0-1-100000000000000000001-task-1-2",
+              "metadata": {},
+              "uid": "uid-assignment-0-1-100000000000000000001-task-1-2",
+              "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-1-3": {
+            "id": "ssi-assignment-0-1-100000000000000000001-task-1-3",
+            "taskId": "task-1-3",
+            "artifact": {
+              "taskId": "task-1-3",
+              "role": "submission",
+              "pageId": "page-task-1-3",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000001-task-1-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAE4AAAABCAIAAAD/xg/zAAAAXUlEQVR4nJ2N2wmAMBRDzyhdQKg4ihOoVC1SC7Z+uL0QudBvIYQQ8mCEB06osEOQiLCAgwI3zJBkFiFCVsUplq0eTDhY5V/SU1PclElNuAMv7o39X3wL1R6PZnaAF9CEGHssJeS8AAAAAElFTkSuQmCC",
+              "contentHash": "hash-assignment-0-1-100000000000000000001-task-1-3",
+              "metadata": {},
+              "uid": "uid-assignment-0-1-100000000000000000001-task-1-3",
+              "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              }
+            },
+            "feedback": {}
           }
         },
         "createdAt": "2024-01-02T10:07:00.000Z",
@@ -519,6 +916,90 @@
               "contentHash": null,
               "metadata": {},
               "uid": "uid-assignment-0-1-100000000000000000002-task-1-1",
+              "type": "base"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-1-2": {
+            "id": "ssi-assignment-0-1-100000000000000000002-task-1-2",
+            "taskId": "task-1-2",
+            "artifact": {
+              "taskId": "task-1-2",
+              "role": "submission",
+              "pageId": null,
+              "documentId": null,
+              "content": null,
+              "contentHash": null,
+              "metadata": {},
+              "uid": "uid-assignment-0-1-100000000000000000002-task-1-2",
+              "type": "base"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-1-3": {
+            "id": "ssi-assignment-0-1-100000000000000000002-task-1-3",
+            "taskId": "task-1-3",
+            "artifact": {
+              "taskId": "task-1-3",
+              "role": "submission",
+              "pageId": null,
+              "documentId": null,
+              "content": null,
+              "contentHash": null,
+              "metadata": {},
+              "uid": "uid-assignment-0-1-100000000000000000002-task-1-3",
               "type": "base"
             },
             "assessments": {
@@ -618,6 +1099,75 @@
               }
             },
             "feedback": {}
+          },
+          "task-1-2": {
+            "id": "ssi-assignment-0-1-100000000000000000003-task-1-2",
+            "taskId": "task-1-2",
+            "artifact": {
+              "taskId": "task-1-2",
+              "role": "submission",
+              "pageId": "page-task-1-2",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000003-task-1-2",
+              "content": [
+                [
+                  "Synthetic submission content for assignment-0-1-100000000000000000003-task-1-2",
+                  1
+                ],
+                [
+                  null,
+                  "Synthetic submission content for assignment-0-1-100000000000000000003-task-1-2 (B2)"
+                ]
+              ],
+              "contentHash": "hash-assignment-0-1-100000000000000000003-task-1-2",
+              "metadata": {},
+              "uid": "uid-assignment-0-1-100000000000000000003-task-1-2",
+              "type": "SPREADSHEET"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 3,
+                "reasoning": "Synthetic completeness rationale for student index 3."
+              },
+              "accuracy": {
+                "score": 3,
+                "reasoning": "Synthetic accuracy rationale for student index 3."
+              },
+              "spag": {
+                "score": 3,
+                "reasoning": "Synthetic SPaG rationale for student index 3."
+              }
+            },
+            "feedback": {}
+          },
+          "task-1-3": {
+            "id": "ssi-assignment-0-1-100000000000000000003-task-1-3",
+            "taskId": "task-1-3",
+            "artifact": {
+              "taskId": "task-1-3",
+              "role": "submission",
+              "pageId": "page-task-1-3",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000003-task-1-3",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000003-task-1-3",
+              "contentHash": "hash-assignment-0-1-100000000000000000003-task-1-3",
+              "metadata": {},
+              "uid": "uid-assignment-0-1-100000000000000000003-task-1-3",
+              "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 3,
+                "reasoning": "Synthetic completeness rationale for student index 3."
+              },
+              "accuracy": {
+                "score": 3,
+                "reasoning": "Synthetic accuracy rationale for student index 3."
+              },
+              "spag": {
+                "score": 3,
+                "reasoning": "Synthetic SPaG rationale for student index 3."
+              }
+            },
+            "feedback": {}
           }
         },
         "createdAt": "2024-01-02T10:21:00.000Z",
@@ -697,6 +1247,66 @@
               }
             },
             "feedback": {}
+          },
+          "task-1-2": {
+            "id": "ssi-assignment-0-1-100000000000000000004-task-1-2",
+            "taskId": "task-1-2",
+            "artifact": {
+              "taskId": "task-1-2",
+              "role": "submission",
+              "pageId": "page-task-1-2",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000004-task-1-2",
+              "content": "Synthetic submission content for assignment-0-1-100000000000000000004-task-1-2",
+              "contentHash": "hash-assignment-0-1-100000000000000000004-task-1-2",
+              "metadata": {},
+              "uid": "uid-assignment-0-1-100000000000000000004-task-1-2",
+              "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 4,
+                "reasoning": "Synthetic completeness rationale for student index 4."
+              },
+              "accuracy": {
+                "score": 4,
+                "reasoning": "Synthetic accuracy rationale for student index 4."
+              },
+              "spag": {
+                "score": 4,
+                "reasoning": "Synthetic SPaG rationale for student index 4."
+              }
+            },
+            "feedback": {}
+          },
+          "task-1-3": {
+            "id": "ssi-assignment-0-1-100000000000000000004-task-1-3",
+            "taskId": "task-1-3",
+            "artifact": {
+              "taskId": "task-1-3",
+              "role": "submission",
+              "pageId": "page-task-1-3",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000004-task-1-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAE4AAAABCAIAAAD/xg/zAAAAXklEQVR4nJ2N2wmAMBRDzyhdQKjoJk6gUrVILdj64fZC4EK/hRBCyIMJXrigwgFBIsIKDgo8sECSWYQIWRWnWLZ6MOFgk39Lz01xVyY14Q68uDf2fzFqodrj2cwO8AHQ3hh+HmdotAAAAABJRU5ErkJggg==",
+              "contentHash": "hash-assignment-0-1-100000000000000000004-task-1-3",
+              "metadata": {},
+              "uid": "uid-assignment-0-1-100000000000000000004-task-1-3",
+              "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 4,
+                "reasoning": "Synthetic completeness rationale for student index 4."
+              },
+              "accuracy": {
+                "score": 4,
+                "reasoning": "Synthetic accuracy rationale for student index 4."
+              },
+              "spag": {
+                "score": 4,
+                "reasoning": "Synthetic SPaG rationale for student index 4."
+              }
+            },
+            "feedback": {}
           }
         },
         "createdAt": "2024-01-02T10:28:00.000Z",
@@ -760,6 +1370,75 @@
               "metadata": {},
               "uid": "uid-assignment-0-1-100000000000000000005-task-1-1",
               "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 5,
+                "reasoning": "Synthetic completeness rationale for student index 5."
+              },
+              "accuracy": {
+                "score": 5,
+                "reasoning": "Synthetic accuracy rationale for student index 5."
+              },
+              "spag": {
+                "score": 5,
+                "reasoning": "Synthetic SPaG rationale for student index 5."
+              }
+            },
+            "feedback": {}
+          },
+          "task-1-2": {
+            "id": "ssi-assignment-0-1-100000000000000000005-task-1-2",
+            "taskId": "task-1-2",
+            "artifact": {
+              "taskId": "task-1-2",
+              "role": "submission",
+              "pageId": "page-task-1-2",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000005-task-1-2",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAE4AAAABCAIAAAD/xg/zAAAAXklEQVR4nJ2N2wmAMBRDzyhdQKiCkziBStUitWDrh9sLgQv9FkIIIQ8meOGCCgcEiQgrOCjwwAJJZhEiZFWcYtnqwYSDTf4tPTfFXZnUhDvw4t7Y/8WohWqPZzM7wAfQ+Rh+T8BObgAAAABJRU5ErkJggg==",
+              "contentHash": "hash-assignment-0-1-100000000000000000005-task-1-2",
+              "metadata": {},
+              "uid": "uid-assignment-0-1-100000000000000000005-task-1-2",
+              "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 5,
+                "reasoning": "Synthetic completeness rationale for student index 5."
+              },
+              "accuracy": {
+                "score": 5,
+                "reasoning": "Synthetic accuracy rationale for student index 5."
+              },
+              "spag": {
+                "score": 5,
+                "reasoning": "Synthetic SPaG rationale for student index 5."
+              }
+            },
+            "feedback": {}
+          },
+          "task-1-3": {
+            "id": "ssi-assignment-0-1-100000000000000000005-task-1-3",
+            "taskId": "task-1-3",
+            "artifact": {
+              "taskId": "task-1-3",
+              "role": "submission",
+              "pageId": "page-task-1-3",
+              "documentId": "artifact-document-assignment-0-1-100000000000000000005-task-1-3",
+              "content": [
+                [
+                  "Synthetic submission content for assignment-0-1-100000000000000000005-task-1-3",
+                  1
+                ],
+                [
+                  null,
+                  "Synthetic submission content for assignment-0-1-100000000000000000005-task-1-3 (B2)"
+                ]
+              ],
+              "contentHash": "hash-assignment-0-1-100000000000000000005-task-1-3",
+              "metadata": {},
+              "uid": "uid-assignment-0-1-100000000000000000005-task-1-3",
+              "type": "SPREADSHEET"
             },
             "assessments": {
               "completeness": {
@@ -877,6 +1556,80 @@
               }
             ]
           }
+        },
+        "task-1-2": {
+          "id": "task-1-2",
+          "taskTitle": "Synthetic Task 2.3",
+          "pageId": "page-task-1-2",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 2,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-1-2",
+                "role": "reference",
+                "pageId": "page-task-1-2",
+                "documentId": "document-reference-task-1-2",
+                "content": "reference synthetic content for task-1-2",
+                "contentHash": "hash-reference-task-1-2",
+                "metadata": {},
+                "uid": "uid-reference-task-1-2",
+                "type": "TEXT"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-1-2",
+                "role": "template",
+                "pageId": "page-task-1-2",
+                "documentId": "document-template-task-1-2",
+                "content": "template synthetic content for task-1-2",
+                "contentHash": "hash-template-task-1-2",
+                "metadata": {},
+                "uid": "uid-template-task-1-2",
+                "type": "TEXT"
+              }
+            ]
+          }
+        },
+        "task-1-3": {
+          "id": "task-1-3",
+          "taskTitle": "Synthetic Task 2.4",
+          "pageId": "page-task-1-3",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 3,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-1-3",
+                "role": "reference",
+                "pageId": "page-task-1-3",
+                "documentId": "document-reference-task-1-3",
+                "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAABCAIAAAAjP3vEAAAAR0lEQVR4nDWMQQqAMBDE8pT9QA/ii6RUFMFC24u/F1J6CUN2CQ0KnHLuF7IjoMOnGXApB9w+hKzrWtYIa9VaaA47DyTY5A4/wQMOvgsCmS8AAAAASUVORK5CYII=",
+                "contentHash": "hash-reference-task-1-3",
+                "metadata": {},
+                "uid": "uid-reference-task-1-3",
+                "type": "IMAGE"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-1-3",
+                "role": "template",
+                "pageId": "page-task-1-3",
+                "documentId": "document-template-task-1-3",
+                "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACcAAAABCAIAAADSNCBJAAAAR0lEQVR4nDXMywmAMBQF0VNKGnAhViQhovjFZGP3whM3l2EGrkZh52Jj5DOJysMRZg7ZWMhRM+dfyw+JKfwd3OKwstLRxw68mN0Oa1LvTw0AAAAASUVORK5CYII=",
+                "contentHash": "hash-template-task-1-3",
+                "metadata": {},
+                "uid": "uid-template-task-1-3",
+                "type": "IMAGE"
+              }
+            ]
+          }
         }
       },
       "createdAt": "2024-01-02T09:10:00.000Z",
@@ -974,6 +1727,86 @@
             }
           ]
         }
+      },
+      "task-2-2": {
+        "id": "task-2-2",
+        "taskTitle": "Synthetic Task 3.3",
+        "pageId": "page-task-2-2",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 2,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-2-2",
+              "role": "reference",
+              "pageId": "page-task-2-2",
+              "documentId": "document-reference-task-2-2",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAABCAIAAAAjP3vEAAAARklEQVR4nDWMQQqAMBDE8pT9QC/+SKSiCBbaXvy9kLKXMGSX0KHCKdd+4XAEDPg0Ey7lhNuHkC2vNUdYa9ZCs9t5oMCW/AHBCQ6+thQmnQAAAABJRU5ErkJggg==",
+              "contentHash": "hash-reference-task-2-2",
+              "metadata": {},
+              "uid": "uid-reference-task-2-2",
+              "type": "IMAGE"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-2-2",
+              "role": "template",
+              "pageId": "page-task-2-2",
+              "documentId": "document-template-task-2-2",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACcAAAABCAIAAADSNCBJAAAARklEQVR4nDXMywmAMBQF0VNKGnBjRxIiil9MNnYvPMnmMszA1Sgc3OxM/CZReTnDLCEbKzlq5uq1dEjM4Z/gFoeVjYGx7weY4w5rHPwNKAAAAABJRU5ErkJggg==",
+              "contentHash": "hash-template-task-2-2",
+              "metadata": {},
+              "uid": "uid-template-task-2-2",
+              "type": "IMAGE"
+            }
+          ]
+        }
+      },
+      "task-2-3": {
+        "id": "task-2-3",
+        "taskTitle": "Synthetic Task 3.4",
+        "pageId": "page-task-2-3",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 3,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-2-3",
+              "role": "reference",
+              "pageId": "page-task-2-3",
+              "documentId": "document-reference-task-2-3",
+              "content": [
+                ["reference synthetic content for task-2-3", 1],
+                [null, "=SUM(B1:B2)"]
+              ],
+              "contentHash": "hash-reference-task-2-3",
+              "metadata": {},
+              "uid": "uid-reference-task-2-3",
+              "type": "SPREADSHEET"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-2-3",
+              "role": "template",
+              "pageId": "page-task-2-3",
+              "documentId": "document-template-task-2-3",
+              "content": [
+                ["template synthetic content for task-2-3", 1],
+                [null, "=SUM(B1:B2)"]
+              ],
+              "contentHash": "hash-template-task-2-3",
+              "metadata": {},
+              "uid": "uid-template-task-2-3",
+              "type": "SPREADSHEET"
+            }
+          ]
+        }
       }
     },
     "submissions": [
@@ -1031,6 +1864,85 @@
               "metadata": {},
               "uid": "uid-assignment-0-2-100000000000000000000-task-2-1",
               "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 0,
+                "reasoning": "Synthetic completeness rationale for student index 0."
+              },
+              "accuracy": {
+                "score": 0,
+                "reasoning": "Synthetic accuracy rationale for student index 0."
+              },
+              "spag": {
+                "score": "N",
+                "reasoning": "Synthetic SPaG rationale for student index 0."
+              }
+            },
+            "feedback": {
+              "cellReference": {
+                "type": "cellReference",
+                "createdAt": "2024-01-02T11:01:00.000Z"
+              }
+            }
+          },
+          "task-2-2": {
+            "id": "ssi-assignment-0-2-100000000000000000000-task-2-2",
+            "taskId": "task-2-2",
+            "artifact": {
+              "taskId": "task-2-2",
+              "role": "submission",
+              "pageId": "page-task-2-2",
+              "documentId": "artifact-document-assignment-0-2-100000000000000000000-task-2-2",
+              "content": [
+                [
+                  "Synthetic submission content for assignment-0-2-100000000000000000000-task-2-2",
+                  1
+                ],
+                [
+                  null,
+                  "Synthetic submission content for assignment-0-2-100000000000000000000-task-2-2 (B2)"
+                ]
+              ],
+              "contentHash": "hash-assignment-0-2-100000000000000000000-task-2-2",
+              "metadata": {},
+              "uid": "uid-assignment-0-2-100000000000000000000-task-2-2",
+              "type": "SPREADSHEET"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 0,
+                "reasoning": "Synthetic completeness rationale for student index 0."
+              },
+              "accuracy": {
+                "score": 0,
+                "reasoning": "Synthetic accuracy rationale for student index 0."
+              },
+              "spag": {
+                "score": "N",
+                "reasoning": "Synthetic SPaG rationale for student index 0."
+              }
+            },
+            "feedback": {
+              "cellReference": {
+                "type": "cellReference",
+                "createdAt": "2024-01-02T11:01:00.000Z"
+              }
+            }
+          },
+          "task-2-3": {
+            "id": "ssi-assignment-0-2-100000000000000000000-task-2-3",
+            "taskId": "task-2-3",
+            "artifact": {
+              "taskId": "task-2-3",
+              "role": "submission",
+              "pageId": "page-task-2-3",
+              "documentId": "artifact-document-assignment-0-2-100000000000000000000-task-2-3",
+              "content": "Synthetic submission content for assignment-0-2-100000000000000000000-task-2-3",
+              "contentHash": "hash-assignment-0-2-100000000000000000000-task-2-3",
+              "metadata": {},
+              "uid": "uid-assignment-0-2-100000000000000000000-task-2-3",
+              "type": "TEXT"
             },
             "assessments": {
               "completeness": {
@@ -1127,6 +2039,90 @@
               "metadata": {},
               "uid": "uid-assignment-0-2-100000000000000000001-task-2-1",
               "type": "SPREADSHEET"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-2-2": {
+            "id": "ssi-assignment-0-2-100000000000000000001-task-2-2",
+            "taskId": "task-2-2",
+            "artifact": {
+              "taskId": "task-2-2",
+              "role": "submission",
+              "pageId": "page-task-2-2",
+              "documentId": "artifact-document-assignment-0-2-100000000000000000001-task-2-2",
+              "content": "Synthetic submission content for assignment-0-2-100000000000000000001-task-2-2",
+              "contentHash": "hash-assignment-0-2-100000000000000000001-task-2-2",
+              "metadata": {},
+              "uid": "uid-assignment-0-2-100000000000000000001-task-2-2",
+              "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-2-3": {
+            "id": "ssi-assignment-0-2-100000000000000000001-task-2-3",
+            "taskId": "task-2-3",
+            "artifact": {
+              "taskId": "task-2-3",
+              "role": "submission",
+              "pageId": "page-task-2-3",
+              "documentId": "artifact-document-assignment-0-2-100000000000000000001-task-2-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAE4AAAABCAIAAAD/xg/zAAAAX0lEQVR4nJ2N0QmAMBBD3yi3gGB1FCdQqVqkFmz9cHshUOi3EEIuJDkmeOGCAgd4iQArGGR4YIEoMwsBkiqmWKp1X4XBJv+Wnpvirkxswh304kHsdP6D00KpH89mdoQP0O0YfeapRkQAAAAASUVORK5CYII=",
+              "contentHash": "hash-assignment-0-2-100000000000000000001-task-2-3",
+              "metadata": {},
+              "uid": "uid-assignment-0-2-100000000000000000001-task-2-3",
+              "type": "IMAGE"
             },
             "assessments": {
               "completeness": {
@@ -1256,6 +2252,86 @@
               }
             ]
           }
+        },
+        "task-2-2": {
+          "id": "task-2-2",
+          "taskTitle": "Synthetic Task 3.3",
+          "pageId": "page-task-2-2",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 2,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-2-2",
+                "role": "reference",
+                "pageId": "page-task-2-2",
+                "documentId": "document-reference-task-2-2",
+                "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAABCAIAAAAjP3vEAAAARklEQVR4nDWMQQqAMBDE8pT9QC/+SKSiCBbaXvy9kLKXMGSX0KHCKdd+4XAEDPg0Ey7lhNuHkC2vNUdYa9ZCs9t5oMCW/AHBCQ6+thQmnQAAAABJRU5ErkJggg==",
+                "contentHash": "hash-reference-task-2-2",
+                "metadata": {},
+                "uid": "uid-reference-task-2-2",
+                "type": "IMAGE"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-2-2",
+                "role": "template",
+                "pageId": "page-task-2-2",
+                "documentId": "document-template-task-2-2",
+                "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACcAAAABCAIAAADSNCBJAAAARklEQVR4nDXMywmAMBQF0VNKGnBjRxIiil9MNnYvPMnmMszA1Sgc3OxM/CZReTnDLCEbKzlq5uq1dEjM4Z/gFoeVjYGx7weY4w5rHPwNKAAAAABJRU5ErkJggg==",
+                "contentHash": "hash-template-task-2-2",
+                "metadata": {},
+                "uid": "uid-template-task-2-2",
+                "type": "IMAGE"
+              }
+            ]
+          }
+        },
+        "task-2-3": {
+          "id": "task-2-3",
+          "taskTitle": "Synthetic Task 3.4",
+          "pageId": "page-task-2-3",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 3,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-2-3",
+                "role": "reference",
+                "pageId": "page-task-2-3",
+                "documentId": "document-reference-task-2-3",
+                "content": [
+                  ["reference synthetic content for task-2-3", 1],
+                  [null, "=SUM(B1:B2)"]
+                ],
+                "contentHash": "hash-reference-task-2-3",
+                "metadata": {},
+                "uid": "uid-reference-task-2-3",
+                "type": "SPREADSHEET"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-2-3",
+                "role": "template",
+                "pageId": "page-task-2-3",
+                "documentId": "document-template-task-2-3",
+                "content": [
+                  ["template synthetic content for task-2-3", 1],
+                  [null, "=SUM(B1:B2)"]
+                ],
+                "contentHash": "hash-template-task-2-3",
+                "metadata": {},
+                "uid": "uid-template-task-2-3",
+                "type": "SPREADSHEET"
+              }
+            ]
+          }
         }
       },
       "createdAt": "2024-01-02T09:20:00.000Z",
@@ -1350,6 +2426,80 @@
               "metadata": {},
               "uid": "uid-template-task-1-1",
               "type": "SPREADSHEET"
+            }
+          ]
+        }
+      },
+      "task-1-2": {
+        "id": "task-1-2",
+        "taskTitle": "Synthetic Task 2.3",
+        "pageId": "page-task-1-2",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 2,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-1-2",
+              "role": "reference",
+              "pageId": "page-task-1-2",
+              "documentId": "document-reference-task-1-2",
+              "content": "reference synthetic content for task-1-2",
+              "contentHash": "hash-reference-task-1-2",
+              "metadata": {},
+              "uid": "uid-reference-task-1-2",
+              "type": "TEXT"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-1-2",
+              "role": "template",
+              "pageId": "page-task-1-2",
+              "documentId": "document-template-task-1-2",
+              "content": "template synthetic content for task-1-2",
+              "contentHash": "hash-template-task-1-2",
+              "metadata": {},
+              "uid": "uid-template-task-1-2",
+              "type": "TEXT"
+            }
+          ]
+        }
+      },
+      "task-1-3": {
+        "id": "task-1-3",
+        "taskTitle": "Synthetic Task 2.4",
+        "pageId": "page-task-1-3",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 3,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-1-3",
+              "role": "reference",
+              "pageId": "page-task-1-3",
+              "documentId": "document-reference-task-1-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAABCAIAAAAjP3vEAAAAR0lEQVR4nDWMQQqAMBDE8pT9QA/ii6RUFMFC24u/F1J6CUN2CQ0KnHLuF7IjoMOnGXApB9w+hKzrWtYIa9VaaA47DyTY5A4/wQMOvgsCmS8AAAAASUVORK5CYII=",
+              "contentHash": "hash-reference-task-1-3",
+              "metadata": {},
+              "uid": "uid-reference-task-1-3",
+              "type": "IMAGE"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-1-3",
+              "role": "template",
+              "pageId": "page-task-1-3",
+              "documentId": "document-template-task-1-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACcAAAABCAIAAADSNCBJAAAAR0lEQVR4nDXMywmAMBQF0VNKGnAhViQhovjFZGP3whM3l2EGrkZh52Jj5DOJysMRZg7ZWMhRM+dfyw+JKfwd3OKwstLRxw68mN0Oa1LvTw0AAAAASUVORK5CYII=",
+              "contentHash": "hash-template-task-1-3",
+              "metadata": {},
+              "uid": "uid-template-task-1-3",
+              "type": "IMAGE"
             }
           ]
         }
@@ -1451,6 +2601,80 @@
               }
             ]
           }
+        },
+        "task-1-2": {
+          "id": "task-1-2",
+          "taskTitle": "Synthetic Task 2.3",
+          "pageId": "page-task-1-2",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 2,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-1-2",
+                "role": "reference",
+                "pageId": "page-task-1-2",
+                "documentId": "document-reference-task-1-2",
+                "content": "reference synthetic content for task-1-2",
+                "contentHash": "hash-reference-task-1-2",
+                "metadata": {},
+                "uid": "uid-reference-task-1-2",
+                "type": "TEXT"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-1-2",
+                "role": "template",
+                "pageId": "page-task-1-2",
+                "documentId": "document-template-task-1-2",
+                "content": "template synthetic content for task-1-2",
+                "contentHash": "hash-template-task-1-2",
+                "metadata": {},
+                "uid": "uid-template-task-1-2",
+                "type": "TEXT"
+              }
+            ]
+          }
+        },
+        "task-1-3": {
+          "id": "task-1-3",
+          "taskTitle": "Synthetic Task 2.4",
+          "pageId": "page-task-1-3",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 3,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-1-3",
+                "role": "reference",
+                "pageId": "page-task-1-3",
+                "documentId": "document-reference-task-1-3",
+                "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAABCAIAAAAjP3vEAAAAR0lEQVR4nDWMQQqAMBDE8pT9QA/ii6RUFMFC24u/F1J6CUN2CQ0KnHLuF7IjoMOnGXApB9w+hKzrWtYIa9VaaA47DyTY5A4/wQMOvgsCmS8AAAAASUVORK5CYII=",
+                "contentHash": "hash-reference-task-1-3",
+                "metadata": {},
+                "uid": "uid-reference-task-1-3",
+                "type": "IMAGE"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-1-3",
+                "role": "template",
+                "pageId": "page-task-1-3",
+                "documentId": "document-template-task-1-3",
+                "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACcAAAABCAIAAADSNCBJAAAAR0lEQVR4nDXMywmAMBQF0VNKGnAhViQhovjFZGP3whM3l2EGrkZh52Jj5DOJysMRZg7ZWMhRM+dfyw+JKfwd3OKwstLRxw68mN0Oa1LvTw0AAAAASUVORK5CYII=",
+                "contentHash": "hash-template-task-1-3",
+                "metadata": {},
+                "uid": "uid-template-task-1-3",
+                "type": "IMAGE"
+              }
+            ]
+          }
         }
       },
       "createdAt": "2024-01-02T09:10:00.000Z",
@@ -1548,6 +2772,86 @@
             }
           ]
         }
+      },
+      "task-2-2": {
+        "id": "task-2-2",
+        "taskTitle": "Synthetic Task 3.3",
+        "pageId": "page-task-2-2",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 2,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-2-2",
+              "role": "reference",
+              "pageId": "page-task-2-2",
+              "documentId": "document-reference-task-2-2",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAABCAIAAAAjP3vEAAAARklEQVR4nDWMQQqAMBDE8pT9QC/+SKSiCBbaXvy9kLKXMGSX0KHCKdd+4XAEDPg0Ey7lhNuHkC2vNUdYa9ZCs9t5oMCW/AHBCQ6+thQmnQAAAABJRU5ErkJggg==",
+              "contentHash": "hash-reference-task-2-2",
+              "metadata": {},
+              "uid": "uid-reference-task-2-2",
+              "type": "IMAGE"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-2-2",
+              "role": "template",
+              "pageId": "page-task-2-2",
+              "documentId": "document-template-task-2-2",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACcAAAABCAIAAADSNCBJAAAARklEQVR4nDXMywmAMBQF0VNKGnBjRxIiil9MNnYvPMnmMszA1Sgc3OxM/CZReTnDLCEbKzlq5uq1dEjM4Z/gFoeVjYGx7weY4w5rHPwNKAAAAABJRU5ErkJggg==",
+              "contentHash": "hash-template-task-2-2",
+              "metadata": {},
+              "uid": "uid-template-task-2-2",
+              "type": "IMAGE"
+            }
+          ]
+        }
+      },
+      "task-2-3": {
+        "id": "task-2-3",
+        "taskTitle": "Synthetic Task 3.4",
+        "pageId": "page-task-2-3",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 3,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-2-3",
+              "role": "reference",
+              "pageId": "page-task-2-3",
+              "documentId": "document-reference-task-2-3",
+              "content": [
+                ["reference synthetic content for task-2-3", 1],
+                [null, "=SUM(B1:B2)"]
+              ],
+              "contentHash": "hash-reference-task-2-3",
+              "metadata": {},
+              "uid": "uid-reference-task-2-3",
+              "type": "SPREADSHEET"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-2-3",
+              "role": "template",
+              "pageId": "page-task-2-3",
+              "documentId": "document-template-task-2-3",
+              "content": [
+                ["template synthetic content for task-2-3", 1],
+                [null, "=SUM(B1:B2)"]
+              ],
+              "contentHash": "hash-template-task-2-3",
+              "metadata": {},
+              "uid": "uid-template-task-2-3",
+              "type": "SPREADSHEET"
+            }
+          ]
+        }
       }
     },
     "submissions": [
@@ -1605,6 +2909,85 @@
               "metadata": {},
               "uid": "uid-assignment-1-1-100000000010000000000-task-2-1",
               "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 0,
+                "reasoning": "Synthetic completeness rationale for student index 0."
+              },
+              "accuracy": {
+                "score": 0,
+                "reasoning": "Synthetic accuracy rationale for student index 0."
+              },
+              "spag": {
+                "score": "N",
+                "reasoning": "Synthetic SPaG rationale for student index 0."
+              }
+            },
+            "feedback": {
+              "cellReference": {
+                "type": "cellReference",
+                "createdAt": "2024-01-03T10:01:00.000Z"
+              }
+            }
+          },
+          "task-2-2": {
+            "id": "ssi-assignment-1-1-100000000010000000000-task-2-2",
+            "taskId": "task-2-2",
+            "artifact": {
+              "taskId": "task-2-2",
+              "role": "submission",
+              "pageId": "page-task-2-2",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000000-task-2-2",
+              "content": [
+                [
+                  "Synthetic submission content for assignment-1-1-100000000010000000000-task-2-2",
+                  1
+                ],
+                [
+                  null,
+                  "Synthetic submission content for assignment-1-1-100000000010000000000-task-2-2 (B2)"
+                ]
+              ],
+              "contentHash": "hash-assignment-1-1-100000000010000000000-task-2-2",
+              "metadata": {},
+              "uid": "uid-assignment-1-1-100000000010000000000-task-2-2",
+              "type": "SPREADSHEET"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 0,
+                "reasoning": "Synthetic completeness rationale for student index 0."
+              },
+              "accuracy": {
+                "score": 0,
+                "reasoning": "Synthetic accuracy rationale for student index 0."
+              },
+              "spag": {
+                "score": "N",
+                "reasoning": "Synthetic SPaG rationale for student index 0."
+              }
+            },
+            "feedback": {
+              "cellReference": {
+                "type": "cellReference",
+                "createdAt": "2024-01-03T10:01:00.000Z"
+              }
+            }
+          },
+          "task-2-3": {
+            "id": "ssi-assignment-1-1-100000000010000000000-task-2-3",
+            "taskId": "task-2-3",
+            "artifact": {
+              "taskId": "task-2-3",
+              "role": "submission",
+              "pageId": "page-task-2-3",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000000-task-2-3",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000000-task-2-3",
+              "contentHash": "hash-assignment-1-1-100000000010000000000-task-2-3",
+              "metadata": {},
+              "uid": "uid-assignment-1-1-100000000010000000000-task-2-3",
+              "type": "TEXT"
             },
             "assessments": {
               "completeness": {
@@ -1729,6 +3112,90 @@
               }
             },
             "feedback": {}
+          },
+          "task-2-2": {
+            "id": "ssi-assignment-1-1-100000000010000000001-task-2-2",
+            "taskId": "task-2-2",
+            "artifact": {
+              "taskId": "task-2-2",
+              "role": "submission",
+              "pageId": "page-task-2-2",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000001-task-2-2",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000001-task-2-2",
+              "contentHash": "hash-assignment-1-1-100000000010000000001-task-2-2",
+              "metadata": {},
+              "uid": "uid-assignment-1-1-100000000010000000001-task-2-2",
+              "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-2-3": {
+            "id": "ssi-assignment-1-1-100000000010000000001-task-2-3",
+            "taskId": "task-2-3",
+            "artifact": {
+              "taskId": "task-2-3",
+              "role": "submission",
+              "pageId": "page-task-2-3",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000001-task-2-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAE4AAAABCAIAAAD/xg/zAAAAYUlEQVR4nIWN3QmAMBCDv1G6QMGfUZxApWqRWrD64PZCpFAfRAghl0vu6OCCDQ5YwEl4GMFAghMGCDKT4CGqYhSLue6yMDDJ36X7ojgrE4qwhfrN1Td+t1Y3n4+rxkbcwg3RLxh++bqAGAAAAABJRU5ErkJggg==",
+              "contentHash": "hash-assignment-1-1-100000000010000000001-task-2-3",
+              "metadata": {},
+              "uid": "uid-assignment-1-1-100000000010000000001-task-2-3",
+              "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              }
+            },
+            "feedback": {}
           }
         },
         "createdAt": "2024-01-03T10:07:00.000Z",
@@ -1794,6 +3261,90 @@
               "contentHash": null,
               "metadata": {},
               "uid": "uid-assignment-1-1-100000000010000000002-task-2-1",
+              "type": "base"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-2-2": {
+            "id": "ssi-assignment-1-1-100000000010000000002-task-2-2",
+            "taskId": "task-2-2",
+            "artifact": {
+              "taskId": "task-2-2",
+              "role": "submission",
+              "pageId": null,
+              "documentId": null,
+              "content": null,
+              "contentHash": null,
+              "metadata": {},
+              "uid": "uid-assignment-1-1-100000000010000000002-task-2-2",
+              "type": "base"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-2-3": {
+            "id": "ssi-assignment-1-1-100000000010000000002-task-2-3",
+            "taskId": "task-2-3",
+            "artifact": {
+              "taskId": "task-2-3",
+              "role": "submission",
+              "pageId": null,
+              "documentId": null,
+              "content": null,
+              "contentHash": null,
+              "metadata": {},
+              "uid": "uid-assignment-1-1-100000000010000000002-task-2-3",
               "type": "base"
             },
             "assessments": {
@@ -1893,6 +3444,75 @@
               }
             },
             "feedback": {}
+          },
+          "task-2-2": {
+            "id": "ssi-assignment-1-1-100000000010000000003-task-2-2",
+            "taskId": "task-2-2",
+            "artifact": {
+              "taskId": "task-2-2",
+              "role": "submission",
+              "pageId": "page-task-2-2",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000003-task-2-2",
+              "content": [
+                [
+                  "Synthetic submission content for assignment-1-1-100000000010000000003-task-2-2",
+                  1
+                ],
+                [
+                  null,
+                  "Synthetic submission content for assignment-1-1-100000000010000000003-task-2-2 (B2)"
+                ]
+              ],
+              "contentHash": "hash-assignment-1-1-100000000010000000003-task-2-2",
+              "metadata": {},
+              "uid": "uid-assignment-1-1-100000000010000000003-task-2-2",
+              "type": "SPREADSHEET"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 3,
+                "reasoning": "Synthetic completeness rationale for student index 3."
+              },
+              "accuracy": {
+                "score": 3,
+                "reasoning": "Synthetic accuracy rationale for student index 3."
+              },
+              "spag": {
+                "score": 3,
+                "reasoning": "Synthetic SPaG rationale for student index 3."
+              }
+            },
+            "feedback": {}
+          },
+          "task-2-3": {
+            "id": "ssi-assignment-1-1-100000000010000000003-task-2-3",
+            "taskId": "task-2-3",
+            "artifact": {
+              "taskId": "task-2-3",
+              "role": "submission",
+              "pageId": "page-task-2-3",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000003-task-2-3",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000003-task-2-3",
+              "contentHash": "hash-assignment-1-1-100000000010000000003-task-2-3",
+              "metadata": {},
+              "uid": "uid-assignment-1-1-100000000010000000003-task-2-3",
+              "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 3,
+                "reasoning": "Synthetic completeness rationale for student index 3."
+              },
+              "accuracy": {
+                "score": 3,
+                "reasoning": "Synthetic accuracy rationale for student index 3."
+              },
+              "spag": {
+                "score": 3,
+                "reasoning": "Synthetic SPaG rationale for student index 3."
+              }
+            },
+            "feedback": {}
           }
         },
         "createdAt": "2024-01-03T10:21:00.000Z",
@@ -1972,6 +3592,66 @@
               }
             },
             "feedback": {}
+          },
+          "task-2-2": {
+            "id": "ssi-assignment-1-1-100000000010000000004-task-2-2",
+            "taskId": "task-2-2",
+            "artifact": {
+              "taskId": "task-2-2",
+              "role": "submission",
+              "pageId": "page-task-2-2",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000004-task-2-2",
+              "content": "Synthetic submission content for assignment-1-1-100000000010000000004-task-2-2",
+              "contentHash": "hash-assignment-1-1-100000000010000000004-task-2-2",
+              "metadata": {},
+              "uid": "uid-assignment-1-1-100000000010000000004-task-2-2",
+              "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 4,
+                "reasoning": "Synthetic completeness rationale for student index 4."
+              },
+              "accuracy": {
+                "score": 4,
+                "reasoning": "Synthetic accuracy rationale for student index 4."
+              },
+              "spag": {
+                "score": 4,
+                "reasoning": "Synthetic SPaG rationale for student index 4."
+              }
+            },
+            "feedback": {}
+          },
+          "task-2-3": {
+            "id": "ssi-assignment-1-1-100000000010000000004-task-2-3",
+            "taskId": "task-2-3",
+            "artifact": {
+              "taskId": "task-2-3",
+              "role": "submission",
+              "pageId": "page-task-2-3",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000004-task-2-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAE4AAAABCAIAAAD/xg/zAAAAYUlEQVR4nH2N3QmAMBCDv1G6gODfJk6gUrVILdj64PZCoFAfFELI5ZI7BrjhgAQbWAkHMxiIcMEEXmYUHARVjGIh120WBhb5p/RYFFdlfBGuoHlz/Y3/ba8LKX/cNbbiDh7RiRiBYkxVhAAAAABJRU5ErkJggg==",
+              "contentHash": "hash-assignment-1-1-100000000010000000004-task-2-3",
+              "metadata": {},
+              "uid": "uid-assignment-1-1-100000000010000000004-task-2-3",
+              "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 4,
+                "reasoning": "Synthetic completeness rationale for student index 4."
+              },
+              "accuracy": {
+                "score": 4,
+                "reasoning": "Synthetic accuracy rationale for student index 4."
+              },
+              "spag": {
+                "score": 4,
+                "reasoning": "Synthetic SPaG rationale for student index 4."
+              }
+            },
+            "feedback": {}
           }
         },
         "createdAt": "2024-01-03T10:28:00.000Z",
@@ -2035,6 +3715,75 @@
               "metadata": {},
               "uid": "uid-assignment-1-1-100000000010000000005-task-2-1",
               "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 5,
+                "reasoning": "Synthetic completeness rationale for student index 5."
+              },
+              "accuracy": {
+                "score": 5,
+                "reasoning": "Synthetic accuracy rationale for student index 5."
+              },
+              "spag": {
+                "score": 5,
+                "reasoning": "Synthetic SPaG rationale for student index 5."
+              }
+            },
+            "feedback": {}
+          },
+          "task-2-2": {
+            "id": "ssi-assignment-1-1-100000000010000000005-task-2-2",
+            "taskId": "task-2-2",
+            "artifact": {
+              "taskId": "task-2-2",
+              "role": "submission",
+              "pageId": "page-task-2-2",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000005-task-2-2",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAE4AAAABCAIAAAD/xg/zAAAAYUlEQVR4nH2N3QmAMBCDv1G6gKCCkziBSv1BasHWB7cXAgf1QSGEXC65o4cbDsiwgpfYYAIHCS4YIchMwgZRFadYtLo34WCWf0oPRXFRJhThCpo319/433a6kO3jrrE1fgDRpBiByL6JRwAAAABJRU5ErkJggg==",
+              "contentHash": "hash-assignment-1-1-100000000010000000005-task-2-2",
+              "metadata": {},
+              "uid": "uid-assignment-1-1-100000000010000000005-task-2-2",
+              "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 5,
+                "reasoning": "Synthetic completeness rationale for student index 5."
+              },
+              "accuracy": {
+                "score": 5,
+                "reasoning": "Synthetic accuracy rationale for student index 5."
+              },
+              "spag": {
+                "score": 5,
+                "reasoning": "Synthetic SPaG rationale for student index 5."
+              }
+            },
+            "feedback": {}
+          },
+          "task-2-3": {
+            "id": "ssi-assignment-1-1-100000000010000000005-task-2-3",
+            "taskId": "task-2-3",
+            "artifact": {
+              "taskId": "task-2-3",
+              "role": "submission",
+              "pageId": "page-task-2-3",
+              "documentId": "artifact-document-assignment-1-1-100000000010000000005-task-2-3",
+              "content": [
+                [
+                  "Synthetic submission content for assignment-1-1-100000000010000000005-task-2-3",
+                  1
+                ],
+                [
+                  null,
+                  "Synthetic submission content for assignment-1-1-100000000010000000005-task-2-3 (B2)"
+                ]
+              ],
+              "contentHash": "hash-assignment-1-1-100000000010000000005-task-2-3",
+              "metadata": {},
+              "uid": "uid-assignment-1-1-100000000010000000005-task-2-3",
+              "type": "SPREADSHEET"
             },
             "assessments": {
               "completeness": {
@@ -2152,6 +3901,86 @@
               }
             ]
           }
+        },
+        "task-2-2": {
+          "id": "task-2-2",
+          "taskTitle": "Synthetic Task 3.3",
+          "pageId": "page-task-2-2",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 2,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-2-2",
+                "role": "reference",
+                "pageId": "page-task-2-2",
+                "documentId": "document-reference-task-2-2",
+                "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAABCAIAAAAjP3vEAAAARklEQVR4nDWMQQqAMBDE8pT9QC/+SKSiCBbaXvy9kLKXMGSX0KHCKdd+4XAEDPg0Ey7lhNuHkC2vNUdYa9ZCs9t5oMCW/AHBCQ6+thQmnQAAAABJRU5ErkJggg==",
+                "contentHash": "hash-reference-task-2-2",
+                "metadata": {},
+                "uid": "uid-reference-task-2-2",
+                "type": "IMAGE"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-2-2",
+                "role": "template",
+                "pageId": "page-task-2-2",
+                "documentId": "document-template-task-2-2",
+                "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACcAAAABCAIAAADSNCBJAAAARklEQVR4nDXMywmAMBQF0VNKGnBjRxIiil9MNnYvPMnmMszA1Sgc3OxM/CZReTnDLCEbKzlq5uq1dEjM4Z/gFoeVjYGx7weY4w5rHPwNKAAAAABJRU5ErkJggg==",
+                "contentHash": "hash-template-task-2-2",
+                "metadata": {},
+                "uid": "uid-template-task-2-2",
+                "type": "IMAGE"
+              }
+            ]
+          }
+        },
+        "task-2-3": {
+          "id": "task-2-3",
+          "taskTitle": "Synthetic Task 3.4",
+          "pageId": "page-task-2-3",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 3,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-2-3",
+                "role": "reference",
+                "pageId": "page-task-2-3",
+                "documentId": "document-reference-task-2-3",
+                "content": [
+                  ["reference synthetic content for task-2-3", 1],
+                  [null, "=SUM(B1:B2)"]
+                ],
+                "contentHash": "hash-reference-task-2-3",
+                "metadata": {},
+                "uid": "uid-reference-task-2-3",
+                "type": "SPREADSHEET"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-2-3",
+                "role": "template",
+                "pageId": "page-task-2-3",
+                "documentId": "document-template-task-2-3",
+                "content": [
+                  ["template synthetic content for task-2-3", 1],
+                  [null, "=SUM(B1:B2)"]
+                ],
+                "contentHash": "hash-template-task-2-3",
+                "metadata": {},
+                "uid": "uid-template-task-2-3",
+                "type": "SPREADSHEET"
+              }
+            ]
+          }
         }
       },
       "createdAt": "2024-01-02T09:20:00.000Z",
@@ -2243,6 +4072,86 @@
             }
           ]
         }
+      },
+      "task-0-2": {
+        "id": "task-0-2",
+        "taskTitle": "Synthetic Task 1.3",
+        "pageId": "page-task-0-2",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 2,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-0-2",
+              "role": "reference",
+              "pageId": "page-task-0-2",
+              "documentId": "document-reference-task-0-2",
+              "content": [
+                ["reference synthetic content for task-0-2", 1],
+                [null, "=SUM(B1:B2)"]
+              ],
+              "contentHash": "hash-reference-task-0-2",
+              "metadata": {},
+              "uid": "uid-reference-task-0-2",
+              "type": "SPREADSHEET"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-0-2",
+              "role": "template",
+              "pageId": "page-task-0-2",
+              "documentId": "document-template-task-0-2",
+              "content": [
+                ["template synthetic content for task-0-2", 1],
+                [null, "=SUM(B1:B2)"]
+              ],
+              "contentHash": "hash-template-task-0-2",
+              "metadata": {},
+              "uid": "uid-template-task-0-2",
+              "type": "SPREADSHEET"
+            }
+          ]
+        }
+      },
+      "task-0-3": {
+        "id": "task-0-3",
+        "taskTitle": "Synthetic Task 1.4",
+        "pageId": "page-task-0-3",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 3,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-0-3",
+              "role": "reference",
+              "pageId": "page-task-0-3",
+              "documentId": "document-reference-task-0-3",
+              "content": "reference synthetic content for task-0-3",
+              "contentHash": "hash-reference-task-0-3",
+              "metadata": {},
+              "uid": "uid-reference-task-0-3",
+              "type": "TEXT"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-0-3",
+              "role": "template",
+              "pageId": "page-task-0-3",
+              "documentId": "document-template-task-0-3",
+              "content": "template synthetic content for task-0-3",
+              "contentHash": "hash-template-task-0-3",
+              "metadata": {},
+              "uid": "uid-template-task-0-3",
+              "type": "TEXT"
+            }
+          ]
+        }
       }
     },
     "submissions": [
@@ -2300,6 +4209,85 @@
               "metadata": {},
               "uid": "uid-assignment-1-2-100000000010000000000-task-0-1",
               "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 0,
+                "reasoning": "Synthetic completeness rationale for student index 0."
+              },
+              "accuracy": {
+                "score": 0,
+                "reasoning": "Synthetic accuracy rationale for student index 0."
+              },
+              "spag": {
+                "score": "N",
+                "reasoning": "Synthetic SPaG rationale for student index 0."
+              }
+            },
+            "feedback": {
+              "cellReference": {
+                "type": "cellReference",
+                "createdAt": "2024-01-03T11:01:00.000Z"
+              }
+            }
+          },
+          "task-0-2": {
+            "id": "ssi-assignment-1-2-100000000010000000000-task-0-2",
+            "taskId": "task-0-2",
+            "artifact": {
+              "taskId": "task-0-2",
+              "role": "submission",
+              "pageId": "page-task-0-2",
+              "documentId": "artifact-document-assignment-1-2-100000000010000000000-task-0-2",
+              "content": [
+                [
+                  "Synthetic submission content for assignment-1-2-100000000010000000000-task-0-2",
+                  1
+                ],
+                [
+                  null,
+                  "Synthetic submission content for assignment-1-2-100000000010000000000-task-0-2 (B2)"
+                ]
+              ],
+              "contentHash": "hash-assignment-1-2-100000000010000000000-task-0-2",
+              "metadata": {},
+              "uid": "uid-assignment-1-2-100000000010000000000-task-0-2",
+              "type": "SPREADSHEET"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 0,
+                "reasoning": "Synthetic completeness rationale for student index 0."
+              },
+              "accuracy": {
+                "score": 0,
+                "reasoning": "Synthetic accuracy rationale for student index 0."
+              },
+              "spag": {
+                "score": "N",
+                "reasoning": "Synthetic SPaG rationale for student index 0."
+              }
+            },
+            "feedback": {
+              "cellReference": {
+                "type": "cellReference",
+                "createdAt": "2024-01-03T11:01:00.000Z"
+              }
+            }
+          },
+          "task-0-3": {
+            "id": "ssi-assignment-1-2-100000000010000000000-task-0-3",
+            "taskId": "task-0-3",
+            "artifact": {
+              "taskId": "task-0-3",
+              "role": "submission",
+              "pageId": "page-task-0-3",
+              "documentId": "artifact-document-assignment-1-2-100000000010000000000-task-0-3",
+              "content": "Synthetic submission content for assignment-1-2-100000000010000000000-task-0-3",
+              "contentHash": "hash-assignment-1-2-100000000010000000000-task-0-3",
+              "metadata": {},
+              "uid": "uid-assignment-1-2-100000000010000000000-task-0-3",
+              "type": "TEXT"
             },
             "assessments": {
               "completeness": {
@@ -2424,6 +4412,90 @@
               }
             },
             "feedback": {}
+          },
+          "task-0-2": {
+            "id": "ssi-assignment-1-2-100000000010000000001-task-0-2",
+            "taskId": "task-0-2",
+            "artifact": {
+              "taskId": "task-0-2",
+              "role": "submission",
+              "pageId": "page-task-0-2",
+              "documentId": "artifact-document-assignment-1-2-100000000010000000001-task-0-2",
+              "content": "Synthetic submission content for assignment-1-2-100000000010000000001-task-0-2",
+              "contentHash": "hash-assignment-1-2-100000000010000000001-task-0-2",
+              "metadata": {},
+              "uid": "uid-assignment-1-2-100000000010000000001-task-0-2",
+              "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-0-3": {
+            "id": "ssi-assignment-1-2-100000000010000000001-task-0-3",
+            "taskId": "task-0-3",
+            "artifact": {
+              "taskId": "task-0-3",
+              "role": "submission",
+              "pageId": "page-task-0-3",
+              "documentId": "artifact-document-assignment-1-2-100000000010000000001-task-0-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAE4AAAABCAIAAAD/xg/zAAAAYklEQVR4nIWN0QmAMBBD3yhdoFB1FCdQqVqkFqx+uL0QKfRHhBByueSOHm7Y4YQVvESACQxkuGCEKDMLAZIqRrFU6r4IA7P8Q3qoiosysQpbaMRt0e4bv1urm+/HTaMTd/AA0X0YfbAxzmEAAAAASUVORK5CYII=",
+              "contentHash": "hash-assignment-1-2-100000000010000000001-task-0-3",
+              "metadata": {},
+              "uid": "uid-assignment-1-2-100000000010000000001-task-0-3",
+              "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              }
+            },
+            "feedback": {}
           }
         },
         "createdAt": "2024-01-03T11:07:00.000Z",
@@ -2516,6 +4588,86 @@
                 "metadata": {},
                 "uid": "uid-template-task-0-1",
                 "type": "IMAGE"
+              }
+            ]
+          }
+        },
+        "task-0-2": {
+          "id": "task-0-2",
+          "taskTitle": "Synthetic Task 1.3",
+          "pageId": "page-task-0-2",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 2,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-0-2",
+                "role": "reference",
+                "pageId": "page-task-0-2",
+                "documentId": "document-reference-task-0-2",
+                "content": [
+                  ["reference synthetic content for task-0-2", 1],
+                  [null, "=SUM(B1:B2)"]
+                ],
+                "contentHash": "hash-reference-task-0-2",
+                "metadata": {},
+                "uid": "uid-reference-task-0-2",
+                "type": "SPREADSHEET"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-0-2",
+                "role": "template",
+                "pageId": "page-task-0-2",
+                "documentId": "document-template-task-0-2",
+                "content": [
+                  ["template synthetic content for task-0-2", 1],
+                  [null, "=SUM(B1:B2)"]
+                ],
+                "contentHash": "hash-template-task-0-2",
+                "metadata": {},
+                "uid": "uid-template-task-0-2",
+                "type": "SPREADSHEET"
+              }
+            ]
+          }
+        },
+        "task-0-3": {
+          "id": "task-0-3",
+          "taskTitle": "Synthetic Task 1.4",
+          "pageId": "page-task-0-3",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 3,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-0-3",
+                "role": "reference",
+                "pageId": "page-task-0-3",
+                "documentId": "document-reference-task-0-3",
+                "content": "reference synthetic content for task-0-3",
+                "contentHash": "hash-reference-task-0-3",
+                "metadata": {},
+                "uid": "uid-reference-task-0-3",
+                "type": "TEXT"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-0-3",
+                "role": "template",
+                "pageId": "page-task-0-3",
+                "documentId": "document-template-task-0-3",
+                "content": "template synthetic content for task-0-3",
+                "contentHash": "hash-template-task-0-3",
+                "metadata": {},
+                "uid": "uid-template-task-0-3",
+                "type": "TEXT"
               }
             ]
           }
@@ -2613,6 +4765,86 @@
               "metadata": {},
               "uid": "uid-template-task-2-1",
               "type": "TEXT"
+            }
+          ]
+        }
+      },
+      "task-2-2": {
+        "id": "task-2-2",
+        "taskTitle": "Synthetic Task 3.3",
+        "pageId": "page-task-2-2",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 2,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-2-2",
+              "role": "reference",
+              "pageId": "page-task-2-2",
+              "documentId": "document-reference-task-2-2",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAABCAIAAAAjP3vEAAAARklEQVR4nDWMQQqAMBDE8pT9QC/+SKSiCBbaXvy9kLKXMGSX0KHCKdd+4XAEDPg0Ey7lhNuHkC2vNUdYa9ZCs9t5oMCW/AHBCQ6+thQmnQAAAABJRU5ErkJggg==",
+              "contentHash": "hash-reference-task-2-2",
+              "metadata": {},
+              "uid": "uid-reference-task-2-2",
+              "type": "IMAGE"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-2-2",
+              "role": "template",
+              "pageId": "page-task-2-2",
+              "documentId": "document-template-task-2-2",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACcAAAABCAIAAADSNCBJAAAARklEQVR4nDXMywmAMBQF0VNKGnBjRxIiil9MNnYvPMnmMszA1Sgc3OxM/CZReTnDLCEbKzlq5uq1dEjM4Z/gFoeVjYGx7weY4w5rHPwNKAAAAABJRU5ErkJggg==",
+              "contentHash": "hash-template-task-2-2",
+              "metadata": {},
+              "uid": "uid-template-task-2-2",
+              "type": "IMAGE"
+            }
+          ]
+        }
+      },
+      "task-2-3": {
+        "id": "task-2-3",
+        "taskTitle": "Synthetic Task 3.4",
+        "pageId": "page-task-2-3",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 3,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-2-3",
+              "role": "reference",
+              "pageId": "page-task-2-3",
+              "documentId": "document-reference-task-2-3",
+              "content": [
+                ["reference synthetic content for task-2-3", 1],
+                [null, "=SUM(B1:B2)"]
+              ],
+              "contentHash": "hash-reference-task-2-3",
+              "metadata": {},
+              "uid": "uid-reference-task-2-3",
+              "type": "SPREADSHEET"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-2-3",
+              "role": "template",
+              "pageId": "page-task-2-3",
+              "documentId": "document-template-task-2-3",
+              "content": [
+                ["template synthetic content for task-2-3", 1],
+                [null, "=SUM(B1:B2)"]
+              ],
+              "contentHash": "hash-template-task-2-3",
+              "metadata": {},
+              "uid": "uid-template-task-2-3",
+              "type": "SPREADSHEET"
             }
           ]
         }
@@ -2714,6 +4946,86 @@
               }
             ]
           }
+        },
+        "task-2-2": {
+          "id": "task-2-2",
+          "taskTitle": "Synthetic Task 3.3",
+          "pageId": "page-task-2-2",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 2,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-2-2",
+                "role": "reference",
+                "pageId": "page-task-2-2",
+                "documentId": "document-reference-task-2-2",
+                "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAABCAIAAAAjP3vEAAAARklEQVR4nDWMQQqAMBDE8pT9QC/+SKSiCBbaXvy9kLKXMGSX0KHCKdd+4XAEDPg0Ey7lhNuHkC2vNUdYa9ZCs9t5oMCW/AHBCQ6+thQmnQAAAABJRU5ErkJggg==",
+                "contentHash": "hash-reference-task-2-2",
+                "metadata": {},
+                "uid": "uid-reference-task-2-2",
+                "type": "IMAGE"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-2-2",
+                "role": "template",
+                "pageId": "page-task-2-2",
+                "documentId": "document-template-task-2-2",
+                "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACcAAAABCAIAAADSNCBJAAAARklEQVR4nDXMywmAMBQF0VNKGnBjRxIiil9MNnYvPMnmMszA1Sgc3OxM/CZReTnDLCEbKzlq5uq1dEjM4Z/gFoeVjYGx7weY4w5rHPwNKAAAAABJRU5ErkJggg==",
+                "contentHash": "hash-template-task-2-2",
+                "metadata": {},
+                "uid": "uid-template-task-2-2",
+                "type": "IMAGE"
+              }
+            ]
+          }
+        },
+        "task-2-3": {
+          "id": "task-2-3",
+          "taskTitle": "Synthetic Task 3.4",
+          "pageId": "page-task-2-3",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 3,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-2-3",
+                "role": "reference",
+                "pageId": "page-task-2-3",
+                "documentId": "document-reference-task-2-3",
+                "content": [
+                  ["reference synthetic content for task-2-3", 1],
+                  [null, "=SUM(B1:B2)"]
+                ],
+                "contentHash": "hash-reference-task-2-3",
+                "metadata": {},
+                "uid": "uid-reference-task-2-3",
+                "type": "SPREADSHEET"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-2-3",
+                "role": "template",
+                "pageId": "page-task-2-3",
+                "documentId": "document-template-task-2-3",
+                "content": [
+                  ["template synthetic content for task-2-3", 1],
+                  [null, "=SUM(B1:B2)"]
+                ],
+                "contentHash": "hash-template-task-2-3",
+                "metadata": {},
+                "uid": "uid-template-task-2-3",
+                "type": "SPREADSHEET"
+              }
+            ]
+          }
         }
       },
       "createdAt": "2024-01-02T09:20:00.000Z",
@@ -2805,6 +5117,86 @@
             }
           ]
         }
+      },
+      "task-0-2": {
+        "id": "task-0-2",
+        "taskTitle": "Synthetic Task 1.3",
+        "pageId": "page-task-0-2",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 2,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-0-2",
+              "role": "reference",
+              "pageId": "page-task-0-2",
+              "documentId": "document-reference-task-0-2",
+              "content": [
+                ["reference synthetic content for task-0-2", 1],
+                [null, "=SUM(B1:B2)"]
+              ],
+              "contentHash": "hash-reference-task-0-2",
+              "metadata": {},
+              "uid": "uid-reference-task-0-2",
+              "type": "SPREADSHEET"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-0-2",
+              "role": "template",
+              "pageId": "page-task-0-2",
+              "documentId": "document-template-task-0-2",
+              "content": [
+                ["template synthetic content for task-0-2", 1],
+                [null, "=SUM(B1:B2)"]
+              ],
+              "contentHash": "hash-template-task-0-2",
+              "metadata": {},
+              "uid": "uid-template-task-0-2",
+              "type": "SPREADSHEET"
+            }
+          ]
+        }
+      },
+      "task-0-3": {
+        "id": "task-0-3",
+        "taskTitle": "Synthetic Task 1.4",
+        "pageId": "page-task-0-3",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 3,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-0-3",
+              "role": "reference",
+              "pageId": "page-task-0-3",
+              "documentId": "document-reference-task-0-3",
+              "content": "reference synthetic content for task-0-3",
+              "contentHash": "hash-reference-task-0-3",
+              "metadata": {},
+              "uid": "uid-reference-task-0-3",
+              "type": "TEXT"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-0-3",
+              "role": "template",
+              "pageId": "page-task-0-3",
+              "documentId": "document-template-task-0-3",
+              "content": "template synthetic content for task-0-3",
+              "contentHash": "hash-template-task-0-3",
+              "metadata": {},
+              "uid": "uid-template-task-0-3",
+              "type": "TEXT"
+            }
+          ]
+        }
       }
     },
     "submissions": [
@@ -2862,6 +5254,85 @@
               "metadata": {},
               "uid": "uid-assignment-2-1-100000000020000000000-task-0-1",
               "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 0,
+                "reasoning": "Synthetic completeness rationale for student index 0."
+              },
+              "accuracy": {
+                "score": 0,
+                "reasoning": "Synthetic accuracy rationale for student index 0."
+              },
+              "spag": {
+                "score": "N",
+                "reasoning": "Synthetic SPaG rationale for student index 0."
+              }
+            },
+            "feedback": {
+              "cellReference": {
+                "type": "cellReference",
+                "createdAt": "2024-01-04T10:01:00.000Z"
+              }
+            }
+          },
+          "task-0-2": {
+            "id": "ssi-assignment-2-1-100000000020000000000-task-0-2",
+            "taskId": "task-0-2",
+            "artifact": {
+              "taskId": "task-0-2",
+              "role": "submission",
+              "pageId": "page-task-0-2",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000000-task-0-2",
+              "content": [
+                [
+                  "Synthetic submission content for assignment-2-1-100000000020000000000-task-0-2",
+                  1
+                ],
+                [
+                  null,
+                  "Synthetic submission content for assignment-2-1-100000000020000000000-task-0-2 (B2)"
+                ]
+              ],
+              "contentHash": "hash-assignment-2-1-100000000020000000000-task-0-2",
+              "metadata": {},
+              "uid": "uid-assignment-2-1-100000000020000000000-task-0-2",
+              "type": "SPREADSHEET"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 0,
+                "reasoning": "Synthetic completeness rationale for student index 0."
+              },
+              "accuracy": {
+                "score": 0,
+                "reasoning": "Synthetic accuracy rationale for student index 0."
+              },
+              "spag": {
+                "score": "N",
+                "reasoning": "Synthetic SPaG rationale for student index 0."
+              }
+            },
+            "feedback": {
+              "cellReference": {
+                "type": "cellReference",
+                "createdAt": "2024-01-04T10:01:00.000Z"
+              }
+            }
+          },
+          "task-0-3": {
+            "id": "ssi-assignment-2-1-100000000020000000000-task-0-3",
+            "taskId": "task-0-3",
+            "artifact": {
+              "taskId": "task-0-3",
+              "role": "submission",
+              "pageId": "page-task-0-3",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000000-task-0-3",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000000-task-0-3",
+              "contentHash": "hash-assignment-2-1-100000000020000000000-task-0-3",
+              "metadata": {},
+              "uid": "uid-assignment-2-1-100000000020000000000-task-0-3",
+              "type": "TEXT"
             },
             "assessments": {
               "completeness": {
@@ -2986,6 +5457,90 @@
               }
             },
             "feedback": {}
+          },
+          "task-0-2": {
+            "id": "ssi-assignment-2-1-100000000020000000001-task-0-2",
+            "taskId": "task-0-2",
+            "artifact": {
+              "taskId": "task-0-2",
+              "role": "submission",
+              "pageId": "page-task-0-2",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000001-task-0-2",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000001-task-0-2",
+              "contentHash": "hash-assignment-2-1-100000000020000000001-task-0-2",
+              "metadata": {},
+              "uid": "uid-assignment-2-1-100000000020000000001-task-0-2",
+              "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-0-3": {
+            "id": "ssi-assignment-2-1-100000000020000000001-task-0-3",
+            "taskId": "task-0-3",
+            "artifact": {
+              "taskId": "task-0-3",
+              "role": "submission",
+              "pageId": "page-task-0-3",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000001-task-0-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAE4AAAABCAIAAAD/xg/zAAAAY0lEQVR4nH2N3QmAMBCDv1G6gFDrKE6gUn+QWrD1we2FSKEvCiHkcskdPdxwQIYVvMQGExhIcMEIQWYSNoiqGMViqfsiDMzyT+mhKi7KhCrcgBO3he033O/2vZDLx12jFXfwANG/GH7Zj3F8AAAAAElFTkSuQmCC",
+              "contentHash": "hash-assignment-2-1-100000000020000000001-task-0-3",
+              "metadata": {},
+              "uid": "uid-assignment-2-1-100000000020000000001-task-0-3",
+              "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              }
+            },
+            "feedback": {}
           }
         },
         "createdAt": "2024-01-04T10:07:00.000Z",
@@ -3051,6 +5606,90 @@
               "contentHash": null,
               "metadata": {},
               "uid": "uid-assignment-2-1-100000000020000000002-task-0-1",
+              "type": "base"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-0-2": {
+            "id": "ssi-assignment-2-1-100000000020000000002-task-0-2",
+            "taskId": "task-0-2",
+            "artifact": {
+              "taskId": "task-0-2",
+              "role": "submission",
+              "pageId": null,
+              "documentId": null,
+              "content": null,
+              "contentHash": null,
+              "metadata": {},
+              "uid": "uid-assignment-2-1-100000000020000000002-task-0-2",
+              "type": "base"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The submitted document could not be accessed.",
+                "error": {
+                  "stage": "acquisition",
+                  "code": "SOURCE_UNREADABLE"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-0-3": {
+            "id": "ssi-assignment-2-1-100000000020000000002-task-0-3",
+            "taskId": "task-0-3",
+            "artifact": {
+              "taskId": "task-0-3",
+              "role": "submission",
+              "pageId": null,
+              "documentId": null,
+              "content": null,
+              "contentHash": null,
+              "metadata": {},
+              "uid": "uid-assignment-2-1-100000000020000000002-task-0-3",
               "type": "base"
             },
             "assessments": {
@@ -3150,6 +5789,75 @@
               }
             },
             "feedback": {}
+          },
+          "task-0-2": {
+            "id": "ssi-assignment-2-1-100000000020000000003-task-0-2",
+            "taskId": "task-0-2",
+            "artifact": {
+              "taskId": "task-0-2",
+              "role": "submission",
+              "pageId": "page-task-0-2",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000003-task-0-2",
+              "content": [
+                [
+                  "Synthetic submission content for assignment-2-1-100000000020000000003-task-0-2",
+                  1
+                ],
+                [
+                  null,
+                  "Synthetic submission content for assignment-2-1-100000000020000000003-task-0-2 (B2)"
+                ]
+              ],
+              "contentHash": "hash-assignment-2-1-100000000020000000003-task-0-2",
+              "metadata": {},
+              "uid": "uid-assignment-2-1-100000000020000000003-task-0-2",
+              "type": "SPREADSHEET"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 3,
+                "reasoning": "Synthetic completeness rationale for student index 3."
+              },
+              "accuracy": {
+                "score": 3,
+                "reasoning": "Synthetic accuracy rationale for student index 3."
+              },
+              "spag": {
+                "score": 3,
+                "reasoning": "Synthetic SPaG rationale for student index 3."
+              }
+            },
+            "feedback": {}
+          },
+          "task-0-3": {
+            "id": "ssi-assignment-2-1-100000000020000000003-task-0-3",
+            "taskId": "task-0-3",
+            "artifact": {
+              "taskId": "task-0-3",
+              "role": "submission",
+              "pageId": "page-task-0-3",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000003-task-0-3",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000003-task-0-3",
+              "contentHash": "hash-assignment-2-1-100000000020000000003-task-0-3",
+              "metadata": {},
+              "uid": "uid-assignment-2-1-100000000020000000003-task-0-3",
+              "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 3,
+                "reasoning": "Synthetic completeness rationale for student index 3."
+              },
+              "accuracy": {
+                "score": 3,
+                "reasoning": "Synthetic accuracy rationale for student index 3."
+              },
+              "spag": {
+                "score": 3,
+                "reasoning": "Synthetic SPaG rationale for student index 3."
+              }
+            },
+            "feedback": {}
           }
         },
         "createdAt": "2024-01-04T10:21:00.000Z",
@@ -3229,6 +5937,66 @@
               }
             },
             "feedback": {}
+          },
+          "task-0-2": {
+            "id": "ssi-assignment-2-1-100000000020000000004-task-0-2",
+            "taskId": "task-0-2",
+            "artifact": {
+              "taskId": "task-0-2",
+              "role": "submission",
+              "pageId": "page-task-0-2",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000004-task-0-2",
+              "content": "Synthetic submission content for assignment-2-1-100000000020000000004-task-0-2",
+              "contentHash": "hash-assignment-2-1-100000000020000000004-task-0-2",
+              "metadata": {},
+              "uid": "uid-assignment-2-1-100000000020000000004-task-0-2",
+              "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 4,
+                "reasoning": "Synthetic completeness rationale for student index 4."
+              },
+              "accuracy": {
+                "score": 4,
+                "reasoning": "Synthetic accuracy rationale for student index 4."
+              },
+              "spag": {
+                "score": 4,
+                "reasoning": "Synthetic SPaG rationale for student index 4."
+              }
+            },
+            "feedback": {}
+          },
+          "task-0-3": {
+            "id": "ssi-assignment-2-1-100000000020000000004-task-0-3",
+            "taskId": "task-0-3",
+            "artifact": {
+              "taskId": "task-0-3",
+              "role": "submission",
+              "pageId": "page-task-0-3",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000004-task-0-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAE4AAAABCAIAAAD/xg/zAAAAY0lEQVR4nH2N0QmAMBBD3yhdQKjVTZxApWqRWrD1w+2FQMEfhRByueSOAW44oMAGXiLADAYyXDBBlJmFAEkVo1iqdV+FgUX+KT2+iqsy8RVuwInbyvYb7nfb60KpH3eNVtzBA9IZGIFeq6G/AAAAAElFTkSuQmCC",
+              "contentHash": "hash-assignment-2-1-100000000020000000004-task-0-3",
+              "metadata": {},
+              "uid": "uid-assignment-2-1-100000000020000000004-task-0-3",
+              "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 4,
+                "reasoning": "Synthetic completeness rationale for student index 4."
+              },
+              "accuracy": {
+                "score": 4,
+                "reasoning": "Synthetic accuracy rationale for student index 4."
+              },
+              "spag": {
+                "score": 4,
+                "reasoning": "Synthetic SPaG rationale for student index 4."
+              }
+            },
+            "feedback": {}
           }
         },
         "createdAt": "2024-01-04T10:28:00.000Z",
@@ -3292,6 +6060,75 @@
               "metadata": {},
               "uid": "uid-assignment-2-1-100000000020000000005-task-0-1",
               "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 5,
+                "reasoning": "Synthetic completeness rationale for student index 5."
+              },
+              "accuracy": {
+                "score": 5,
+                "reasoning": "Synthetic accuracy rationale for student index 5."
+              },
+              "spag": {
+                "score": 5,
+                "reasoning": "Synthetic SPaG rationale for student index 5."
+              }
+            },
+            "feedback": {}
+          },
+          "task-0-2": {
+            "id": "ssi-assignment-2-1-100000000020000000005-task-0-2",
+            "taskId": "task-0-2",
+            "artifact": {
+              "taskId": "task-0-2",
+              "role": "submission",
+              "pageId": "page-task-0-2",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000005-task-0-2",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAE4AAAABCAIAAAD/xg/zAAAAYklEQVR4nH2N0QmAMBBD3yhdQKiCkziBStUitWDrh9sLgQN/FMKRyyUXBrjhgAobBJEIMzgocMEESWIRImRFnGzZ4sGIg0X6KT6+gqs86WVuoNNsbfpvdL/XXh+qNe5avVU80jQYgdaJo10AAAAASUVORK5CYII=",
+              "contentHash": "hash-assignment-2-1-100000000020000000005-task-0-2",
+              "metadata": {},
+              "uid": "uid-assignment-2-1-100000000020000000005-task-0-2",
+              "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 5,
+                "reasoning": "Synthetic completeness rationale for student index 5."
+              },
+              "accuracy": {
+                "score": 5,
+                "reasoning": "Synthetic accuracy rationale for student index 5."
+              },
+              "spag": {
+                "score": 5,
+                "reasoning": "Synthetic SPaG rationale for student index 5."
+              }
+            },
+            "feedback": {}
+          },
+          "task-0-3": {
+            "id": "ssi-assignment-2-1-100000000020000000005-task-0-3",
+            "taskId": "task-0-3",
+            "artifact": {
+              "taskId": "task-0-3",
+              "role": "submission",
+              "pageId": "page-task-0-3",
+              "documentId": "artifact-document-assignment-2-1-100000000020000000005-task-0-3",
+              "content": [
+                [
+                  "Synthetic submission content for assignment-2-1-100000000020000000005-task-0-3",
+                  1
+                ],
+                [
+                  null,
+                  "Synthetic submission content for assignment-2-1-100000000020000000005-task-0-3 (B2)"
+                ]
+              ],
+              "contentHash": "hash-assignment-2-1-100000000020000000005-task-0-3",
+              "metadata": {},
+              "uid": "uid-assignment-2-1-100000000020000000005-task-0-3",
+              "type": "SPREADSHEET"
             },
             "assessments": {
               "completeness": {
@@ -3403,6 +6240,86 @@
               }
             ]
           }
+        },
+        "task-0-2": {
+          "id": "task-0-2",
+          "taskTitle": "Synthetic Task 1.3",
+          "pageId": "page-task-0-2",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 2,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-0-2",
+                "role": "reference",
+                "pageId": "page-task-0-2",
+                "documentId": "document-reference-task-0-2",
+                "content": [
+                  ["reference synthetic content for task-0-2", 1],
+                  [null, "=SUM(B1:B2)"]
+                ],
+                "contentHash": "hash-reference-task-0-2",
+                "metadata": {},
+                "uid": "uid-reference-task-0-2",
+                "type": "SPREADSHEET"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-0-2",
+                "role": "template",
+                "pageId": "page-task-0-2",
+                "documentId": "document-template-task-0-2",
+                "content": [
+                  ["template synthetic content for task-0-2", 1],
+                  [null, "=SUM(B1:B2)"]
+                ],
+                "contentHash": "hash-template-task-0-2",
+                "metadata": {},
+                "uid": "uid-template-task-0-2",
+                "type": "SPREADSHEET"
+              }
+            ]
+          }
+        },
+        "task-0-3": {
+          "id": "task-0-3",
+          "taskTitle": "Synthetic Task 1.4",
+          "pageId": "page-task-0-3",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 3,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-0-3",
+                "role": "reference",
+                "pageId": "page-task-0-3",
+                "documentId": "document-reference-task-0-3",
+                "content": "reference synthetic content for task-0-3",
+                "contentHash": "hash-reference-task-0-3",
+                "metadata": {},
+                "uid": "uid-reference-task-0-3",
+                "type": "TEXT"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-0-3",
+                "role": "template",
+                "pageId": "page-task-0-3",
+                "documentId": "document-template-task-0-3",
+                "content": "template synthetic content for task-0-3",
+                "contentHash": "hash-template-task-0-3",
+                "metadata": {},
+                "uid": "uid-template-task-0-3",
+                "type": "TEXT"
+              }
+            ]
+          }
         }
       },
       "createdAt": "2024-01-02T09:00:00.000Z",
@@ -3500,6 +6417,80 @@
             }
           ]
         }
+      },
+      "task-1-2": {
+        "id": "task-1-2",
+        "taskTitle": "Synthetic Task 2.3",
+        "pageId": "page-task-1-2",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 2,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-1-2",
+              "role": "reference",
+              "pageId": "page-task-1-2",
+              "documentId": "document-reference-task-1-2",
+              "content": "reference synthetic content for task-1-2",
+              "contentHash": "hash-reference-task-1-2",
+              "metadata": {},
+              "uid": "uid-reference-task-1-2",
+              "type": "TEXT"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-1-2",
+              "role": "template",
+              "pageId": "page-task-1-2",
+              "documentId": "document-template-task-1-2",
+              "content": "template synthetic content for task-1-2",
+              "contentHash": "hash-template-task-1-2",
+              "metadata": {},
+              "uid": "uid-template-task-1-2",
+              "type": "TEXT"
+            }
+          ]
+        }
+      },
+      "task-1-3": {
+        "id": "task-1-3",
+        "taskTitle": "Synthetic Task 2.4",
+        "pageId": "page-task-1-3",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": 1,
+        "index": 3,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "task-1-3",
+              "role": "reference",
+              "pageId": "page-task-1-3",
+              "documentId": "document-reference-task-1-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAABCAIAAAAjP3vEAAAAR0lEQVR4nDWMQQqAMBDE8pT9QA/ii6RUFMFC24u/F1J6CUN2CQ0KnHLuF7IjoMOnGXApB9w+hKzrWtYIa9VaaA47DyTY5A4/wQMOvgsCmS8AAAAASUVORK5CYII=",
+              "contentHash": "hash-reference-task-1-3",
+              "metadata": {},
+              "uid": "uid-reference-task-1-3",
+              "type": "IMAGE"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "task-1-3",
+              "role": "template",
+              "pageId": "page-task-1-3",
+              "documentId": "document-template-task-1-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACcAAAABCAIAAADSNCBJAAAAR0lEQVR4nDXMywmAMBQF0VNKGnAhViQhovjFZGP3whM3l2EGrkZh52Jj5DOJysMRZg7ZWMhRM+dfyw+JKfwd3OKwstLRxw68mN0Oa1LvTw0AAAAASUVORK5CYII=",
+              "contentHash": "hash-template-task-1-3",
+              "metadata": {},
+              "uid": "uid-template-task-1-3",
+              "type": "IMAGE"
+            }
+          ]
+        }
       }
     },
     "submissions": [
@@ -3557,6 +6548,85 @@
               "metadata": {},
               "uid": "uid-assignment-2-2-100000000020000000000-task-1-1",
               "type": "IMAGE"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 0,
+                "reasoning": "Synthetic completeness rationale for student index 0."
+              },
+              "accuracy": {
+                "score": 0,
+                "reasoning": "Synthetic accuracy rationale for student index 0."
+              },
+              "spag": {
+                "score": "N",
+                "reasoning": "Synthetic SPaG rationale for student index 0."
+              }
+            },
+            "feedback": {
+              "cellReference": {
+                "type": "cellReference",
+                "createdAt": "2024-01-04T11:01:00.000Z"
+              }
+            }
+          },
+          "task-1-2": {
+            "id": "ssi-assignment-2-2-100000000020000000000-task-1-2",
+            "taskId": "task-1-2",
+            "artifact": {
+              "taskId": "task-1-2",
+              "role": "submission",
+              "pageId": "page-task-1-2",
+              "documentId": "artifact-document-assignment-2-2-100000000020000000000-task-1-2",
+              "content": [
+                [
+                  "Synthetic submission content for assignment-2-2-100000000020000000000-task-1-2",
+                  1
+                ],
+                [
+                  null,
+                  "Synthetic submission content for assignment-2-2-100000000020000000000-task-1-2 (B2)"
+                ]
+              ],
+              "contentHash": "hash-assignment-2-2-100000000020000000000-task-1-2",
+              "metadata": {},
+              "uid": "uid-assignment-2-2-100000000020000000000-task-1-2",
+              "type": "SPREADSHEET"
+            },
+            "assessments": {
+              "completeness": {
+                "score": 0,
+                "reasoning": "Synthetic completeness rationale for student index 0."
+              },
+              "accuracy": {
+                "score": 0,
+                "reasoning": "Synthetic accuracy rationale for student index 0."
+              },
+              "spag": {
+                "score": "N",
+                "reasoning": "Synthetic SPaG rationale for student index 0."
+              }
+            },
+            "feedback": {
+              "cellReference": {
+                "type": "cellReference",
+                "createdAt": "2024-01-04T11:01:00.000Z"
+              }
+            }
+          },
+          "task-1-3": {
+            "id": "ssi-assignment-2-2-100000000020000000000-task-1-3",
+            "taskId": "task-1-3",
+            "artifact": {
+              "taskId": "task-1-3",
+              "role": "submission",
+              "pageId": "page-task-1-3",
+              "documentId": "artifact-document-assignment-2-2-100000000020000000000-task-1-3",
+              "content": "Synthetic submission content for assignment-2-2-100000000020000000000-task-1-3",
+              "contentHash": "hash-assignment-2-2-100000000020000000000-task-1-3",
+              "metadata": {},
+              "uid": "uid-assignment-2-2-100000000020000000000-task-1-3",
+              "type": "TEXT"
             },
             "assessments": {
               "completeness": {
@@ -3653,6 +6723,90 @@
               "metadata": {},
               "uid": "uid-assignment-2-2-100000000020000000001-task-1-1",
               "type": "SPREADSHEET"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-1-2": {
+            "id": "ssi-assignment-2-2-100000000020000000001-task-1-2",
+            "taskId": "task-1-2",
+            "artifact": {
+              "taskId": "task-1-2",
+              "role": "submission",
+              "pageId": "page-task-1-2",
+              "documentId": "artifact-document-assignment-2-2-100000000020000000001-task-1-2",
+              "content": "Synthetic submission content for assignment-2-2-100000000020000000001-task-1-2",
+              "contentHash": "hash-assignment-2-2-100000000020000000001-task-1-2",
+              "metadata": {},
+              "uid": "uid-assignment-2-2-100000000020000000001-task-1-2",
+              "type": "TEXT"
+            },
+            "assessments": {
+              "completeness": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "accuracy": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              },
+              "spag": {
+                "score": "E",
+                "reasoning": "The extracted work could not be assessed.",
+                "error": {
+                  "stage": "assessment",
+                  "code": "ASSESSMENT_FAILED"
+                }
+              }
+            },
+            "feedback": {}
+          },
+          "task-1-3": {
+            "id": "ssi-assignment-2-2-100000000020000000001-task-1-3",
+            "taskId": "task-1-3",
+            "artifact": {
+              "taskId": "task-1-3",
+              "role": "submission",
+              "pageId": "page-task-1-3",
+              "documentId": "artifact-document-assignment-2-2-100000000020000000001-task-1-3",
+              "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAE4AAAABCAIAAAD/xg/zAAAAZElEQVR4nH3N2wnCQBQE0FPKNhAwsRQrUIkaQgyY+GH3wsDC/igMl2HuPJz48GTnwRgycaWw8ebCEnELJtZESmxrjY+VFG7RX+HnJniPZ2nMHUNzew6/Mfz99mnY6+JcCzuOfAHSKBiAgx+KdwAAAABJRU5ErkJggg==",
+              "contentHash": "hash-assignment-2-2-100000000020000000001-task-1-3",
+              "metadata": {},
+              "uid": "uid-assignment-2-2-100000000020000000001-task-1-3",
+              "type": "IMAGE"
             },
             "assessments": {
               "completeness": {
@@ -3779,6 +6933,80 @@
                 "metadata": {},
                 "uid": "uid-template-task-1-1",
                 "type": "SPREADSHEET"
+              }
+            ]
+          }
+        },
+        "task-1-2": {
+          "id": "task-1-2",
+          "taskTitle": "Synthetic Task 2.3",
+          "pageId": "page-task-1-2",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 2,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-1-2",
+                "role": "reference",
+                "pageId": "page-task-1-2",
+                "documentId": "document-reference-task-1-2",
+                "content": "reference synthetic content for task-1-2",
+                "contentHash": "hash-reference-task-1-2",
+                "metadata": {},
+                "uid": "uid-reference-task-1-2",
+                "type": "TEXT"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-1-2",
+                "role": "template",
+                "pageId": "page-task-1-2",
+                "documentId": "document-template-task-1-2",
+                "content": "template synthetic content for task-1-2",
+                "contentHash": "hash-template-task-1-2",
+                "metadata": {},
+                "uid": "uid-template-task-1-2",
+                "type": "TEXT"
+              }
+            ]
+          }
+        },
+        "task-1-3": {
+          "id": "task-1-3",
+          "taskTitle": "Synthetic Task 2.4",
+          "pageId": "page-task-1-3",
+          "taskNotes": null,
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 3,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "task-1-3",
+                "role": "reference",
+                "pageId": "page-task-1-3",
+                "documentId": "document-reference-task-1-3",
+                "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAABCAIAAAAjP3vEAAAAR0lEQVR4nDWMQQqAMBDE8pT9QA/ii6RUFMFC24u/F1J6CUN2CQ0KnHLuF7IjoMOnGXApB9w+hKzrWtYIa9VaaA47DyTY5A4/wQMOvgsCmS8AAAAASUVORK5CYII=",
+                "contentHash": "hash-reference-task-1-3",
+                "metadata": {},
+                "uid": "uid-reference-task-1-3",
+                "type": "IMAGE"
+              }
+            ],
+            "template": [
+              {
+                "taskId": "task-1-3",
+                "role": "template",
+                "pageId": "page-task-1-3",
+                "documentId": "document-template-task-1-3",
+                "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACcAAAABCAIAAADSNCBJAAAAR0lEQVR4nDXMywmAMBQF0VNKGnAhViQhovjFZGP3whM3l2EGrkZh52Jj5DOJysMRZg7ZWMhRM+dfyw+JKfwd3OKwstLRxw68mN0Oa1LvTw0AAAAASUVORK5CYII=",
+                "contentHash": "hash-template-task-1-3",
+                "metadata": {},
+                "uid": "uid-template-task-1-3",
+                "type": "IMAGE"
               }
             ]
           }

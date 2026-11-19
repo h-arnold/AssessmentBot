@@ -332,6 +332,7 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] Are there appropriate e2e playwright tests for any user-visible interaction or browser integration change?
 - [ ] Do the tests meet all requirements outlined in the testing documenation for the relevant module(s)?
 - [ ] Do new or changed tests use an appropriate canonical synthetic fixture when the fixture system provides one? A local realistic fixture is permitted only when no canonical profile or view covers the scenario **and** the owning feature work records a generator-extension plan naming which profile, view, or generator stage to add and where. Invalid/boundary fixtures remain local, and touched existing tests migrate opportunistically only. See `docs/developer/testing/synthetic-test-data.md`.
+- [ ] Do new or touched tests use synthetic corpus fixture data rather than hard-coded fixtures, and derive expectations from the corpus rather than pinning corpus-derived literals, unless a documented exception applies? See the rule in `docs/developer/testing/synthetic-test-data.md`.
 
 ## 7. Reporting Format
 

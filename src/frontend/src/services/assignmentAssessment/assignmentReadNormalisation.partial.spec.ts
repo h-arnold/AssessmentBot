@@ -161,6 +161,7 @@ function assertProvidedEntryOnly(): void {
   const [retained, absent] = Object.keys(submission.items);
   if (!retained || !absent) throw new Error('Expected canonical items');
   delete submission.items[absent];
+  const expectedTaskKeys = Object.keys(submission.items);
   const providedTaskIds = new Map(
     assignment.submissions.map((entry) => [entry.studentId, Object.keys(entry.items)])
   );
@@ -178,17 +179,24 @@ function assertProvidedEntryOnly(): void {
   for (const entry of normalised.submissions) {
     expect(Object.keys(entry.items)).toEqual(providedTaskIds.get(entry.studentId));
   }
-  expect(Object.keys(result)).toEqual([retained]);
+  expect(Object.keys(result)).toEqual(expectedTaskKeys);
+  expect(Object.keys(result)).not.toContain(absent);
   expect(result[retained].assessments).toEqual(redacted.assessments);
-  assertRawRedaction(output, submission.studentId, retained);
+  assertRawRedaction(output, submission.studentId, retained, expectedTaskKeys);
   expect(transport).not.toHaveBeenCalled();
 }
 /** Checks raw output fields.
  * @param {unknown} output - The normaliser's unparsed result.
  * @param {string} studentId - The provided student's identity.
  * @param {string} taskId - The retained task key.
+ * @param {string[]} expectedTaskKeys - Exact task keys provided for this student.
  */
-function assertRawRedaction(output: unknown, studentId: string, taskId: string): void {
+function assertRawRedaction(
+  output: unknown,
+  studentId: string,
+  taskId: string,
+  expectedTaskKeys: string[]
+): void {
   const raw = output as {
     assignments: Array<{
       submissions: Array<{ studentId: string; items: Record<string, unknown> }>;
@@ -203,7 +211,7 @@ function assertRawRedaction(output: unknown, studentId: string, taskId: string):
   if (!rawItem?.artifact) throw new Error('Expected retained raw item artefact');
   expect(rawItem.artifact.content == null).toBe(true);
   expect(rawItem.artifact.contentHash == null).toBe(true);
-  expect(Object.keys(rawSubmission.items)).toEqual([taskId]);
+  expect(Object.keys(rawSubmission.items)).toEqual(expectedTaskKeys);
 }
 describe('normaliseClassRead partial payload', () => {
   it('preserves score-only numeric/fractional/N results and materialised E without mutating input', () => {

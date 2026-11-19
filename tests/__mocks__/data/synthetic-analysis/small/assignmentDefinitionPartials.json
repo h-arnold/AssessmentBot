@@ -22,6 +22,16 @@
         "taskId": "task-0-1",
         "taskWeighting": 1,
         "taskTitle": "Synthetic Task 1.2"
+      },
+      {
+        "taskId": "task-0-2",
+        "taskWeighting": 1,
+        "taskTitle": "Synthetic Task 1.3"
+      },
+      {
+        "taskId": "task-0-3",
+        "taskWeighting": 1,
+        "taskTitle": "Synthetic Task 1.4"
       }
     ],
     "createdAt": "2024-01-02T09:00:00.000Z",
@@ -50,6 +60,16 @@
         "taskId": "task-1-1",
         "taskWeighting": 1,
         "taskTitle": "Synthetic Task 2.2"
+      },
+      {
+        "taskId": "task-1-2",
+        "taskWeighting": 1,
+        "taskTitle": "Synthetic Task 2.3"
+      },
+      {
+        "taskId": "task-1-3",
+        "taskWeighting": 1,
+        "taskTitle": "Synthetic Task 2.4"
       }
     ],
     "createdAt": "2024-01-02T09:10:00.000Z",
@@ -78,6 +98,16 @@
         "taskId": "task-2-1",
         "taskWeighting": 1,
         "taskTitle": "Synthetic Task 3.2"
+      },
+      {
+        "taskId": "task-2-2",
+        "taskWeighting": 1,
+        "taskTitle": "Synthetic Task 3.3"
+      },
+      {
+        "taskId": "task-2-3",
+        "taskWeighting": 1,
+        "taskTitle": "Synthetic Task 3.4"
       }
     ],
     "createdAt": "2024-01-02T09:20:00.000Z",

@@ -395,11 +395,12 @@ describe('synthetic analysis completion-band invariant', () => {
     assignments: Array<{ assignmentId: string; submissions: unknown[] }>;
   };
 
+  // Each 25% share expects one of the four class assignments in that band.
   const UNIT_BANDS = [
-    { sharePercent: 1, minCompletedPercent: 20, maxCompletedPercent: 49 },
-    { sharePercent: 1, minCompletedPercent: 50, maxCompletedPercent: 79 },
-    { sharePercent: 1, minCompletedPercent: 80, maxCompletedPercent: 95 },
-    { sharePercent: 1, minCompletedPercent: 96, maxCompletedPercent: 100 },
+    { sharePercent: 25, minCompletedPercent: 20, maxCompletedPercent: 49 },
+    { sharePercent: 25, minCompletedPercent: 50, maxCompletedPercent: 79 },
+    { sharePercent: 25, minCompletedPercent: 80, maxCompletedPercent: 95 },
+    { sharePercent: 25, minCompletedPercent: 96, maxCompletedPercent: 100 },
   ];
 
   /**
