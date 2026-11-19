@@ -282,8 +282,14 @@ describe('AssignmentsPage', () => {
   it('scopes retry/refetch to assignmentDefinitionPartials dataset only and disallows unscoped calls', async () => {
     const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
     const refetchQueriesSpy = vi.spyOn(queryClient, 'refetchQueries');
+    const refreshButton = screen.getByRole('button', { name: /retry|refresh assignments data/i });
 
-    fireEvent.click(screen.getByRole('button', { name: /retry|refresh assignments data/i }));
+    // The initial query fetch also drives the button's loading state; wait for
+    // it to settle so the retry click is not suppressed.
+    await waitFor(() => {
+      expect(refreshButton).not.toHaveClass('ant-btn-loading');
+    });
+    fireEvent.click(refreshButton);
 
     await waitFor(() => {
       expect(refetchQueriesSpy).toHaveBeenCalled();
@@ -316,7 +322,11 @@ describe('AssignmentsPage', () => {
         screen.getByText(/assignment definitions could not be trusted or loaded/i)
       ).toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('button', { name: /retry|refresh assignments data/i }));
+      const retryButton = screen.getByRole('button', { name: /retry|refresh assignments data/i });
+      await waitFor(() => {
+        expect(retryButton).not.toHaveClass('ant-btn-loading');
+      });
+      fireEvent.click(retryButton);
 
       expect(refetchAfterStaleInvalidateMock).toHaveBeenCalledTimes(1);
 
