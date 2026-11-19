@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Card, Flex, Modal, Skeleton, Space, Typography } from 'antd';
+import { RefreshCw } from 'lucide-react';
 import { useState } from 'react';
+import { LucideIcon } from '@/components/icons/LucideIcon';
 import { useStartupWarmupState } from '../auth/startupWarmupState';
 import {
   shouldBlockPageSurface,
@@ -90,7 +92,7 @@ function isAssignmentsSurfaceBusyState(
 /**
  * Renders the status and action card for assignments management.
  *
- * @param {Readonly<{ shouldRenderBlockingState: boolean; deleteOutcome: DeleteOutcome | null; shouldRenderActionLoadingState: boolean; onRefreshAssignmentsData: () => void; onCreateAssignment: () => void; hasTrustworthyData: boolean; }>} properties Card properties.
+ * @param {Readonly<{ shouldRenderBlockingState: boolean; deleteOutcome: DeleteOutcome | null; shouldRenderActionLoadingState: boolean; isRefreshing: boolean; onRefreshAssignmentsData: () => void; onCreateAssignment: () => void; hasTrustworthyData: boolean; }>} properties Card properties.
  * @returns {JSX.Element} Card content.
  */
 function AssignmentsStatusAndActionsCard(
@@ -98,6 +100,7 @@ function AssignmentsStatusAndActionsCard(
     shouldRenderBlockingState: boolean;
     deleteOutcome: DeleteOutcome | null;
     shouldRenderActionLoadingState: boolean;
+    isRefreshing: boolean;
     onRefreshAssignmentsData: () => void;
     onCreateAssignment: () => void;
     hasTrustworthyData: boolean;
@@ -129,7 +132,12 @@ function AssignmentsStatusAndActionsCard(
         ) : (
           <Flex gap={APP_GAP_SM} justify="space-between" wrap>
             <Space wrap>
-              <Button onClick={properties.onRefreshAssignmentsData}>
+              <Button
+                loading={
+                  properties.isRefreshing ? { icon: <LucideIcon icon={RefreshCw} spin /> } : false
+                }
+                onClick={properties.onRefreshAssignmentsData}
+              >
                 Refresh assignments data
               </Button>
               <Button
@@ -329,6 +337,7 @@ export function AssignmentsManagementSurface() {
         <AssignmentsStatusAndActionsCard
           deleteOutcome={deleteOutcome}
           hasTrustworthyData={hasTrustworthyAssignmentsDataset && hasTrustworthyReferenceData}
+          isRefreshing={assignmentsQuery.isFetching}
           onCreateAssignment={handleCreateAssignment}
           onRefreshAssignmentsData={handleRetryAssignmentsData}
           shouldRenderActionLoadingState={assignmentsSurfaceState.shouldRenderActionLoadingState}

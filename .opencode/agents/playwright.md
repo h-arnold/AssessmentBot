@@ -224,6 +224,14 @@ await dialog.getByRole('combobox').click();
 await selectVisibleOption(page, 'Algebra Homework');
 ```
 
+For keyboard-driven selects, the search value is a controlled React value. Do **not** use
+`page.keyboard.type()` — one key event per character can lose characters to an intervening
+re-render. Open the popup with a keydown (for example `ArrowDown`), then set the whole label
+with `page.keyboard.insertText()` in a single input event. Before `Enter`, assert the exact-text
+filtered option has count 1 and is visible; after `Enter`, assert the selection landed on it.
+Do not rely on a transient `ant-select-item-option-active` snapshot. Use the keyboard path where
+the control has no pointer target.
+
 ### 5.5 Modal Mask Clicks
 
 antd v6 uses `.ant-modal-wrap` for mask click handling. Do **not** click `.ant-modal-mask`:
@@ -349,16 +357,17 @@ await expect(page.getByText(/deleted\./i)).toBeVisible(); // Then message
 
 ### 6.6 Anti-Patterns Reference
 
-| Anti-Pattern                             | Correct Approach                                                  |
-| ---------------------------------------- | ----------------------------------------------------------------- |
-| `page.waitForTimeout(N)`                 | Web-first assertions with auto-wait                               |
-| Arbitrary CSS/XPath interaction locators | Accessible locators; scoped structural/owned regions for geometry |
-| Manual `isVisible()` assertions          | `expect(...).toBeVisible()`                                       |
-| Blind queue doubling/grouping            | Verify request lifecycle, identity and order                      |
-| `selectOption` on antd Select            | `selectVisibleOption(page, label)`                                |
-| `.ant-modal-mask` click                  | `.ant-modal-wrap` click with position                             |
-| `toBeVisible` on Typography.Text         | `toHaveCount(1)` or structural locators                           |
-| Mocks after `page.goto`                  | `installRuntimeMock` before `page.goto`                           |
+| Anti-Pattern                                    | Correct Approach                                                  |
+| ----------------------------------------------- | ----------------------------------------------------------------- |
+| `page.waitForTimeout(N)`                        | Web-first assertions with auto-wait                               |
+| Arbitrary CSS/XPath interaction locators        | Accessible locators; scoped structural/owned regions for geometry |
+| Manual `isVisible()` assertions                 | `expect(...).toBeVisible()`                                       |
+| Blind queue doubling/grouping                   | Verify request lifecycle, identity and order                      |
+| `selectOption` on antd Select                   | `selectVisibleOption(page, label)`                                |
+| `keyboard.type()` into a controlled antd Select | Keydown to open popup, then `keyboard.insertText(label)`          |
+| `.ant-modal-mask` click                         | `.ant-modal-wrap` click with position                             |
+| `toBeVisible` on Typography.Text                | `toHaveCount(1)` or structural locators                           |
+| Mocks after `page.goto`                         | `installRuntimeMock` before `page.goto`                           |
 
 ### 6.7 Coverage and Measurement Preflight
 

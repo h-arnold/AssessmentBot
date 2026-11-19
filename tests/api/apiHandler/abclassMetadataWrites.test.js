@@ -124,6 +124,33 @@ describe('ABClass metadata dispatcher success writes', () => {
     expect(deleted.data).not.toHaveProperty('metadata');
   });
 
+  it('returns the unchanged delete envelope when drop reports an absent full collection and no partial row exists', () => {
+    context = setupRealAbclassDispatcher(vi, canonical, {
+      classId: selectedClass.classId,
+      partialRows: [],
+      dropCollectionResult: false,
+    });
+
+    const response = dispatch(context.api, {
+      method: 'deleteABClass',
+      params: { classId: context.classId },
+    });
+
+    expect(response.ok).toBe(true);
+    expect(Object.keys(response.data).sort()).toEqual(
+      ['classId', 'hasDeletedClassPartial', 'hasDeletedFullClass'].sort()
+    );
+    expect(response.data).toEqual({
+      classId: context.classId,
+      hasDeletedFullClass: false,
+      hasDeletedClassPartial: false,
+    });
+    expect(context.dropCollection).toHaveBeenCalledWith(context.classId);
+    expect(context.partial.deleteOne).not.toHaveBeenCalled();
+    expect(context.partial.save).not.toHaveBeenCalled();
+    expect(JSON.parse(JSON.stringify(response))).toEqual(response);
+  });
+
   it.each(['upsertABClass', 'updateABClass'])(
     '%s preserves caller order for equal timestamps and reusable definition keys',
     (method) => {

@@ -307,21 +307,34 @@ await expect(dialog.getByRole('button', { name: 'Start Assessment' })).toBeEnabl
 
 ### Keyboard Input Requires an Enabled, Focused Select
 
-Before typing into an antd Select, assert that the target control is enabled and focused:
+Before setting the search value of an antd Select, assert that the target control is enabled
+and focused, then set the label atomically:
 
 ```typescript
 await expect(control).toBeEnabled();
 await control.focus();
 await expect(control).toBeFocused();
-await page.keyboard.type(optionLabel);
+await page.keyboard.press('ArrowDown'); // insertText sends no keydown; open the popup first
+await page.keyboard.insertText(optionLabel);
 ```
 
 `Locator.focus()` is a no-op on a disabled control, so keystrokes go to whichever input
 was focused previously. The observed failure was assignment search text landing in the
 Class combobox while the assignment control was still disabled awaiting the class query.
-Do not paper over this with sleeps, extra retries or weaker assertions. When the option
-list filters to a single match, assert that the option item has
-`ant-select-item-option-active` before pressing `Enter`.
+Do not paper over this with sleeps, extra retries or weaker assertions.
+
+antd Select's search value is a controlled React value. `page.keyboard.type()` sends one key
+event per character; under load a re-render can restore the value between keystrokes and swallow
+a character (a trace showed "Deinition" for "Definition"). The query then matches no option and
+the test times out in a way that looks like a missing active option. `page.keyboard.insertText()`
+sends a single input event, so the whole label is set in one step and cannot be truncated. It
+sends no keydown, so open the popup first with a keydown such as `ArrowDown`. Keep the path
+keyboard-only for viewports where the control has no pointer target.
+
+Prefer a stable, web-first precondition over a transient `ant-select-item-option-active`
+snapshot: assert that the option filtered by exact text has count 1 and is visible. After
+`Enter`, assert a post-condition proving the selection landed on that option — for a
+single-select, the chosen label appears; for a multiple-select, the row is marked selected.
 
 ### Select Popup Readiness Before Option Clicks
 
@@ -525,19 +538,20 @@ deterministic responses. This keeps tests fast and eliminates flakiness from ext
 
 ### Summary of Anti-Patterns
 
-| Anti-Pattern                                                | Why It's Bad                                                                                                                             | Correct Approach                                                                |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `page.waitForTimeout(N)`                                    | Always waits full duration, causes flakiness                                                                                             | Use web-first assertions                                                        |
-| CSS/XPath selectors                                         | Break on DOM/class changes                                                                                                               | Use `getByRole`, `getByLabel`                                                   |
-| Manual `isVisible()` assertions                             | No auto-wait, fails immediately                                                                                                          | Use `expect(...).toBeVisible()`                                                 |
-| Single-entry StrictMode queues                              | Second effect call gets "Unexpected index"                                                                                               | Double every queue entry                                                        |
-| `selectOption` on antd Select                               | antd uses custom dropdown, not `<select>`                                                                                                | Use `selectVisibleOption(page, ...)`                                            |
-| Clicking an antd Select option during entrance motion       | The body-portalled popup can realign between pointerdown and pointerup, so the click misses the option                                   | Call `waitForSelectPopupReady(option)` first at the affected seams              |
-| `.ant-modal-mask` click                                     | Ant Design uses `.ant-modal-wrap` for mask                                                                                               | Click `.ant-modal-wrap` edge                                                    |
-| `toBeVisible` on Typography.Text                            | Playwright may resolve as hidden                                                                                                         | Use `toHaveCount(1)` or structural                                              |
-| Mocks installed AFTER `page.goto`                           | Component renders with stale defaults                                                                                                    | Install mocks before `page.goto`                                                |
-| `{ kind: 'success' }` without `data: null` for void methods | Backend `_success` sends `data: null`; `JSON.stringify` strips `undefined`, and `ApiSuccessResponseSchema` requires `data` to be present | Always use `{ kind: 'success', data: null }` for void/delete responses          |
-| Object response entry carrying a required `null` field      | The runtime mock serialises the envelope itself, so `null` properties survive                                                            | Queue the entry normally; do not hand a raw envelope object to `successHandler` |
+| Anti-Pattern                                                 | Why It's Bad                                                                                                                             | Correct Approach                                                                |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `page.waitForTimeout(N)`                                     | Always waits full duration, causes flakiness                                                                                             | Use web-first assertions                                                        |
+| CSS/XPath selectors                                          | Break on DOM/class changes                                                                                                               | Use `getByRole`, `getByLabel`                                                   |
+| Manual `isVisible()` assertions                              | No auto-wait, fails immediately                                                                                                          | Use `expect(...).toBeVisible()`                                                 |
+| Single-entry StrictMode queues                               | Second effect call gets "Unexpected index"                                                                                               | Double every queue entry                                                        |
+| `selectOption` on antd Select                                | antd uses custom dropdown, not `<select>`                                                                                                | Use `selectVisibleOption(page, ...)`                                            |
+| `keyboard.type()` into a controlled antd Select search value | One key event per character; a re-render under load can swallow a character, so no option matches                                        | Open the popup with a keydown, then `keyboard.insertText(label)`                |
+| Clicking an antd Select option during entrance motion        | The body-portalled popup can realign between pointerdown and pointerup, so the click misses the option                                   | Call `waitForSelectPopupReady(option)` first at the affected seams              |
+| `.ant-modal-mask` click                                      | Ant Design uses `.ant-modal-wrap` for mask                                                                                               | Click `.ant-modal-wrap` edge                                                    |
+| `toBeVisible` on Typography.Text                             | Playwright may resolve as hidden                                                                                                         | Use `toHaveCount(1)` or structural                                              |
+| Mocks installed AFTER `page.goto`                            | Component renders with stale defaults                                                                                                    | Install mocks before `page.goto`                                                |
+| `{ kind: 'success' }` without `data: null` for void methods  | Backend `_success` sends `data: null`; `JSON.stringify` strips `undefined`, and `ApiSuccessResponseSchema` requires `data` to be present | Always use `{ kind: 'success', data: null }` for void/delete responses          |
+| Object response entry carrying a required `null` field       | The runtime mock serialises the envelope itself, so `null` properties survive                                                            | Queue the entry normally; do not hand a raw envelope object to `successHandler` |
 
 ---
 

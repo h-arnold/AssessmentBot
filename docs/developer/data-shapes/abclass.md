@@ -530,11 +530,11 @@ Removes both the main class document and the partial registry entry.
 
 **Response:**
 
-| Field                    | Type      | Required | Notes                                                                                                                                               |
-| ------------------------ | --------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `classId`                | `string`  | yes      |                                                                                                                                                     |
-| `hasDeletedFullClass`    | `boolean` | yes      | `true` after any non-throwing `dropCollection(classId)`, including the vendor's `false` return for an absent collection (see the flag quirk below). |
-| `hasDeletedClassPartial` | `boolean` | yes      | `true` only when a registry row existed and was removed; `false` when it was already absent.                                                        |
+| Field                    | Type      | Required | Notes                                                                                                                                                           |
+| ------------------------ | --------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `classId`                | `string`  | yes      |                                                                                                                                                                 |
+| `hasDeletedFullClass`    | `boolean` | yes      | Mirrors the `dropCollection(classId)` return value: `true` only when this call removed the collection; `false` when it was absent, including a repeated delete. |
+| `hasDeletedClassPartial` | `boolean` | yes      | `true` only when a registry row existed and was removed; `false` when it was already absent.                                                                    |
 
 Key contract notes:
 
@@ -543,12 +543,11 @@ Key contract notes:
 - Repeated deletes are idempotent and always succeed. Deleting stores that do not exist never
   produces a class-not-found error; there is no absent-record failure path.
 - A missing registry row yields `hasDeletedClassPartial: false`.
-- **Full-flag quirk (current behaviour):** `deleteABClass` sets
-  `hasDeletedFullClass: true` after any non-throwing `dropCollection(classId)` call. The flag is
-  only left `false` on the recognised missing-collection exception (`code === 'COLLECTION_NOT_FOUND'`),
-  but the vendor's ordinary absent-collection path returns `false` rather than throwing. Every
-  non-throwing delete therefore reports `hasDeletedFullClass: true`, including a nominal repeated
-  delete of an already-absent collection, so the flag does not prove a collection was removed.
+- `hasDeletedFullClass` mirrors the `dropCollection(classId)` return value, so it indicates
+  whether this call actually removed the full collection. A missing collection — including on a
+  repeated idempotent delete — yields `false` via the vendor's non-throwing absent path, and the
+  recognised `COLLECTION_NOT_FOUND` exception also yields `false`. Idempotent deletes still succeed;
+  unrelated persistence failures still throw.
 - The response is a plain `{ classId, hasDeletedFullClass, hasDeletedClassPartial }` object.
 
 ---
