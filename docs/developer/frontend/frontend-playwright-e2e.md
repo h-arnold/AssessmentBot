@@ -2,9 +2,10 @@
 
 ## Overview
 
-This document covers Playwright browser end-to-end testing for the AssessmentBot frontend.
-It is the canonical reference for E2E test patterns, the runtime mock infrastructure, and
-antd v6 interaction patterns in a real browser.
+This document covers Playwright browser end-to-end testing for the Assessment Bot frontend.
+It is the reference for E2E test patterns, the runtime mock infrastructure, and
+Ant Design interaction patterns in a real browser. The installed Ant Design version is pinned
+in `src/frontend/package.json`.
 
 For unit/component testing with Vitest, see `frontend-testing.md`.
 
@@ -85,22 +86,18 @@ cache hit instead of issuing another request.
 
 A journey that controls the opened assignment's full read must therefore place that
 payload in the slot matching its prefetch position, not first in the queue. The
-assessment-error journeys do this through `CLASS_PAGE_PREFETCH_ASSIGNMENT_IDS` and
-`warmUpQueue` in `e2e-tests/helpers/assessment-error-preview-journeys.ts`. A
+assessment-error journeys do this through `CLASS_PAGE_PREFETCH_ASSIGNMENT_IDS` and a
+`warmUpQueue` copy local to `assessment-error-previews.spec.ts`; the shared helper is in
+`e2e-tests/helpers/legacy-assignment-results-journeys.ts`. A
 `deferredSuccess` in that slot holds the preview pending; a `failureEnvelope` there
 makes it settle failed. The canonical `medium` class references
 `assignment-2-5`, which has no full record in `assignmentsByKey`, so slot 1 serves
 another valid canonical record whose content no journey asserts.
 
-## Behaviour Split: Vitest vs Playwright
+## Behaviour split: Vitest vs Playwright
 
-**Mandatory rule:** every new or changed **user-visible interaction** must have Playwright coverage.
-
-When both are possible, default to Vitest first for fast feedback, then add Playwright coverage
-for the highest-value user journeys.
-
-For the full behaviour split, decision matrix and examples, see
-[Behaviour split: Vitest vs Playwright (authoritative)](frontend-testing.md#behaviour-split-vitest-vs-playwright-authoritative).
+For the mandatory Playwright coverage rule, the behaviour split, the decision matrix and examples, see
+[Behaviour split: Vitest vs Playwright](frontend-testing.md#behaviour-split-vitest-vs-playwright-authoritative).
 
 ---
 
@@ -176,7 +173,7 @@ metrics remain fixture evidence, not an analysis oracle. The existing
 `task-heatmap-summary.spec.ts` journeys rely on it, and the first journey asserts
 that `updateABClass` is never called.
 
-The equal-version probes prove the no-write path only. Changed-write, warning and
+Metadata refresh skips equal-version sources. Changed-write, warning and
 theme/geometry journeys use the same runtime queues, in
 `post-analysis-metadata.persistence.spec.ts` and
 `post-analysis-metadata.feedback.spec.ts`, built on
@@ -336,13 +333,15 @@ That scroll realigns the portalled popup between pointerdown and pointerup, so t
 on a different option or outside the option entirely, and no selection fires.
 
 Call `waitForSelectPopupReady(option)` immediately before the ordinary option click at a
-ready-sensitive seam. Three call sites do:
+ready-sensitive seam, for example:
 
 - `src/frontend/e2e-tests/select-with-add-new-workflow.spec.ts` (`openComboboxAndClickAddNew`)
 - `src/frontend/e2e-tests/helpers/stale-recovery-page-end-to-end-helpers.ts`
   (`selectCanonicalAssignmentAndStart`)
 - `src/frontend/e2e-tests/classes-crud-bulk-progress.spec.ts`
   (`startBulkCreateWithDeferredUpserts`, before both the Cohort and Year group option clicks)
+- `src/frontend/e2e-tests/classes-crud-bulk-core.spec.ts` (before the Cohort and Year group
+  option clicks in the bulk-create journey)
 
 The helper is E2E-only and lives at
 `src/frontend/e2e-tests/helpers/select-popup-readiness.ts`. It exports
@@ -367,7 +366,7 @@ into the shared `selectVisibleOption` helper, which unrelated specs depend on.
 
 ### Modal Mask (Backdrop) Clicks
 
-antd v6 uses `.ant-modal-wrap` for mask click handling. Click near the edge of the wrap
+Ant Design handles mask clicks on `.ant-modal-wrap`. Click near the edge of the wrap
 element:
 
 ```typescript
@@ -376,7 +375,8 @@ await page.locator('.ant-modal-wrap').click({ position: { x: 10, y: 10 } });
 await expect(page.getByRole('dialog')).toHaveCount(0);
 ```
 
-Do **not** click `.ant-modal-mask` directly — it will not trigger the close handler in antd v6.
+Do **not** click `.ant-modal-mask` directly — it does not trigger the close handler in the
+installed Ant Design version.
 
 ### Typography.Text Visibility
 
@@ -398,7 +398,7 @@ await expect(dialog.locator('.ant-typography-secondary').getByText('Algebra Home
 
 ### Select Placeholder Text
 
-antd v6 attaches `role="combobox"` to a void `<input type="search">` element. Void elements
+Ant Design attaches `role="combobox"` to a void `<input type="search">` element. Void elements
 have no `textContent`, so `expect(select).toHaveTextContent('placeholder')` always fails.
 Use `getByText` or a class-based locator instead:
 
@@ -533,7 +533,7 @@ deterministic responses. This keeps tests fast and eliminates flakiness from ext
 | Single-entry StrictMode queues                              | Second effect call gets "Unexpected index"                                                                                               | Double every queue entry                                                        |
 | `selectOption` on antd Select                               | antd uses custom dropdown, not `<select>`                                                                                                | Use `selectVisibleOption(page, ...)`                                            |
 | Clicking an antd Select option during entrance motion       | The body-portalled popup can realign between pointerdown and pointerup, so the click misses the option                                   | Call `waitForSelectPopupReady(option)` first at the affected seams              |
-| `.ant-modal-mask` click                                     | antd v6 uses `.ant-modal-wrap` for mask                                                                                                  | Click `.ant-modal-wrap` edge                                                    |
+| `.ant-modal-mask` click                                     | Ant Design uses `.ant-modal-wrap` for mask                                                                                               | Click `.ant-modal-wrap` edge                                                    |
 | `toBeVisible` on Typography.Text                            | Playwright may resolve as hidden                                                                                                         | Use `toHaveCount(1)` or structural                                              |
 | Mocks installed AFTER `page.goto`                           | Component renders with stale defaults                                                                                                    | Install mocks before `page.goto`                                                |
 | `{ kind: 'success' }` without `data: null` for void methods | Backend `_success` sends `data: null`; `JSON.stringify` strips `undefined`, and `ApiSuccessResponseSchema` requires `data` to be present | Always use `{ kind: 'success', data: null }` for void/delete responses          |
@@ -606,10 +606,10 @@ unauthorised, backend error, delayed loading) to quickly verify usability during
 - Classes E2E helpers: `src/frontend/e2e-tests/helpers/classes-page-end-to-end-helpers.ts`
 - Select popup readiness helper: `src/frontend/e2e-tests/helpers/select-popup-readiness.ts` — exports `waitForSelectPopupReady(option)`, called before each ready-sensitive option click listed in [Select Popup Readiness Before Option Clicks](#select-popup-readiness-before-option-clicks).
 - Sticky-table locators: `src/frontend/e2e-tests/helpers/sticky-table-locators.ts` — structural bases for the three sticky student tables: `stickyTableWrapper(scope)`, `stickyTableHeaderHolder(scope)`, `stickyTableBody(scope)`, `stickyTableScrollBar(scope)` and `stickyScrollBarThumb(scope)`, plus the exported selector constants for passing into `evaluate` snapshots, which cannot close over imports. Each takes a `StickyTableScope` (`Page | Locator`) containing exactly one sticky table: the `Page` on either heatmap surface, the owning `.ant-card` for Student Averages on the Class page overview. Use them instead of resolving a sticky table by accessible name; see [Sticky Table Split Render](#sticky-table-split-render).
-- Sticky-table geometry helpers: `src/frontend/e2e-tests/helpers/sticky-table-scroll-geometry.ts` — the measurement and scroll primitives extracted from `sticky-table-scroll.spec.ts` (geometry snapshots, name-column probes, pinning, panning and end-of-range steps) so the spec stays under the 550-line limit; the spec's journeys remain the single consumer.
-- Sticky-table coverage: `src/frontend/e2e-tests/sticky-table-scroll.spec.ts` — six journeys over the three student-table surfaces (three narrow at 390px, three wide at 1920px) and the first consumer of `stickyTableScrollBar`. The narrow journeys pin the bar and header, pan (programmatically or by dragging the thumb), prove the fixed name columns hold their viewport position, sort while pinned on the Class page overview, and assert the bar unmounts once the scroll region's bottom edge reaches the viewport bottom. The Class page journeys collapse the shell navigation before resizing: the expanded sider otherwise squeezes the cards at 390px. The wide journeys assert no bar, no region overflow and no document overflow.
-  - Document-overflow encoding: at 390px the Class page chrome already overflows the document independently of the tables, so the two Class-page journeys fall back to the table's contribution invariant — document `scrollWidth` is identical with the table's card hidden and shown. The strict `scrollWidth <= clientWidth` assertion applies to the Heatmaps page and to all three wide journeys.
-- Heatmaps selection-bar controls: `src/frontend/e2e-tests/helpers/shell-controls.ts` — exports `CLASS_CONTROL_INDEX = 0`, `TOPICS_CONTROL_INDEX = 1` and `ASSIGNMENTS_CONTROL_INDEX = 2`, the indices of the Class, Topics and Assignments comboboxes in the Heatmaps selection bar's fixed control order. Shared by the four specs that pan or select assignments: `heatmaps.spec.ts`, `heatmaps-layout.spec.ts`, `assessment-error-merged-previews.spec.ts` and `sticky-table-scroll.spec.ts` (which imports all three).
+- Sticky-table geometry helpers: `src/frontend/e2e-tests/helpers/sticky-table-scroll-geometry.ts` — the measurement and scroll primitives extracted from `sticky-table-scroll.spec.ts` (geometry snapshots, name-column probes, pinning, panning and end-of-range steps); the spec's journeys remain the single consumer. Apply the [large-file decomposition rule](frontend-architecture.md#4-large-file-decomposition) when a touched spec needs splitting.
+- Sticky-table coverage: `src/frontend/e2e-tests/sticky-table-scroll.spec.ts` covers the student-table surfaces at narrow and wide viewports and is the first consumer of `stickyTableScrollBar`. The narrow journeys pin the bar and header, pan (programmatically or by dragging the thumb), prove the fixed name columns hold their viewport position, sort while pinned on the Class page overview, and assert the bar unmounts once the scroll region's bottom edge reaches the viewport bottom. The Class page journeys collapse the shell navigation before resizing: the expanded sider otherwise squeezes the cards at 390px. The wide journeys assert no bar, no region overflow and no document overflow.
+  - Document-overflow encoding: at 390px the Class page chrome already overflows the document independently of the tables, so the Class-page journeys fall back to the table's contribution invariant — document `scrollWidth` is identical with the table's card hidden and shown. The strict `scrollWidth <= clientWidth` assertion applies to the Heatmaps page and the wide journeys.
+- Heatmaps selection-bar controls: `src/frontend/e2e-tests/helpers/shell-controls.ts` — exports `CLASS_CONTROL_INDEX = 0`, `TOPICS_CONTROL_INDEX = 1` and `ASSIGNMENTS_CONTROL_INDEX = 2`, the indices of the Class, Topics and Assignments comboboxes in the Heatmaps selection bar's fixed control order. Shared by the specs that pan or select assignments: `heatmaps.spec.ts`, `heatmaps-layout.spec.ts`, `assessment-error-merged-previews.spec.ts` and `sticky-table-scroll.spec.ts`.
 - `google.script.run` harness: `src/frontend/src/test/googleScriptRunHarness.ts`
   - For Playwright init scripts, inline `googleScriptRunApiHandlerFactorySource` inside `page.addInitScript(...)`
 - Classes page test helpers (shared fixtures): `src/frontend/src/test/classes/classesPageTestHelpers.ts`
@@ -617,9 +617,9 @@ unauthorised, backend error, delayed loading) to quickly verify usability during
   - Use `createClassesOrderScenario(classPartials)` for ordering tests
 - Class metadata browser fixtures: `src/frontend/e2e-tests/helpers/class-metadata-fixtures.ts` serves detached clones of committed canonical `small` metadata snapshots. `task-heatmap-class-fixtures.ts` owns the split class-snapshot/score builders, and `classes-crud-mock-runtime.ts` owns the split Classes CRUD transport-mock installation.
 - Post-analysis metadata scenarios: `src/frontend/e2e-tests/helpers/post-analysis-metadata-scenarios.ts` builds the canonical changed-write and newer-version journeys used by `post-analysis-metadata.persistence.spec.ts` and `post-analysis-metadata.feedback.spec.ts`. Extend this helper rather than duplicating its canonical `small` class-2 setup in new specs.
-- Assessment-error preview journeys: `assessment-error-preview-fixtures.ts` selects the canonical `medium` `class-2` roster, assignment instances and definition partials, validates each full record through its transport schema, and owns the controlled variants (`withMissingCriterion`, `withLegacyAssignment`, `withLegacyClassAssignment`, `withStoredReassessmentError`, `withClassPartialAssessmentError`). The legacy variants clone canonical JSON and change only the read marker, so real scores, reasoning, artefacts and feedback are retained. `assessment-error-preview-journeys.ts` owns the runtime scenario, navigation, locators and copy re-exports. `assessment-error-previews.spec.ts` covers the embedded surface, `assessment-error-merged-previews.spec.ts` the standalone merged surface, and `legacy-assignment-results.spec.ts` the legacy read journeys: eleven journeys, nine serving a legacy full read and two marker-1 probes (a corrupt record and a stored error). `legacy-assignment-results-journeys.ts` owns the legacy scenario plumbing (response queues, overrides, navigation helpers) and `legacy-reassessment-tag-layout.ts` the tag locators, geometry, ordering and readability assertions. Extend these helpers for further error-preview journeys instead of adding a parallel scenario builder.
+- Assessment-error preview journeys: `assessment-error-preview-fixtures.ts` selects the canonical `medium` `class-2` roster, assignment instances and definition partials, validates each full record through its transport schema, and owns the controlled variants (`withMissingCriterion`, `withLegacyAssignment`, `withLegacyClassAssignment`, `withStoredReassessmentError`, `withClassPartialAssessmentError`). The legacy variants clone canonical JSON and change only the read marker, so real scores, reasoning, artefacts and feedback are retained. `assessment-error-preview-journeys.ts` owns the runtime scenario, navigation, locators and copy re-exports. `assessment-error-previews.spec.ts` covers the embedded surface, `assessment-error-merged-previews.spec.ts` the standalone merged surface, and `legacy-assignment-results.spec.ts` the legacy read journeys and marker-1 probes. `legacy-assignment-results-journeys.ts` owns the legacy scenario plumbing (response queues, overrides, navigation helpers) and `legacy-reassessment-tag-layout.ts` the tag locators, geometry, ordering and readability assertions. Extend these helpers for further error-preview journeys instead of adding a parallel scenario builder.
 
-**Do not import `src/test/**` from production source.\*\* The frontend ESLint config enforces this boundary.
+For the `src/test/**` import boundary, see [Shared test helpers](frontend-testing.md#shared-test-helpers).
 
 ### Mandatory `apiHandler` Mock Rule
 

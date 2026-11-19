@@ -13,8 +13,6 @@ Use this guide alongside:
 
 ## 1. Goals and boundaries
 
-We are setting standards early so logs remain useful as features grow.
-
 ### Goals
 
 1. Give developers enough context to diagnose failures quickly.
@@ -132,12 +130,10 @@ A failed source region inside a task preview is an item-level, non-dismissible i
 - An assessment-only failure with usable content renders the response normally; do not add a duplicate generic `Alert` above it.
 - These are user-safe strings. Structured stage/code stays in diagnostics, never in the rendered copy.
 
-**Documented deviation — Heatmaps blocking state:** the standalone Heatmaps builder surface (`HeatmapBuilderSurface.tsx`) intentionally renders an Ant Design `Result` (rather than the default `Alert`) for its blocking state. This is a documented deviation recorded in the `@remarks` at `HeatmapBuilderSurface.tsx:14`; it satisfies the documented-deviation escape clause in `docs/developer/frontend/frontend-loading-and-width-standards.md` (§2.2) and is not a violation of this policy. Future reviewers should treat it as an accepted exception rather than a missing `Alert`.
+**Documented deviation — Heatmaps blocking state:** the standalone Heatmaps builder surface (`HeatmapBuilderSurface.tsx`) intentionally renders an Ant Design `Result` (rather than the default `Alert`) for its blocking state. This deviation is recorded in the component's top-of-file `@remarks` in `HeatmapBuilderSurface.tsx`; it satisfies the documented-deviation escape clause in `docs/developer/frontend/frontend-loading-and-width-standards.md` (§2.2) and is not a violation of this policy. Future reviewers should treat it as an accepted exception rather than a missing `Alert`.
 
 ### Post-analysis metadata failures
 
-Browser coverage for save-failure and confirmed-save/refresh-failure feedback is
-implemented in `post-analysis-metadata.feedback.spec.ts`.
 `hooks/postAnalysisFeedback.ts` uses the existing
 `App.useApp().notification` host, not static feedback or a second host. That host is
 required: production code has no silent no-host fallback, so a missing or incomplete
@@ -154,8 +150,7 @@ a response-parse failure can reject after the write has completed.
 
 Both are warnings with `duration: 0`, `closable: true` and `role: 'status'`.
 They do not move focus, block usable analysis, expose technical Errors or offer
-retry actions. No success/skip notice is emitted. Existing query trust/fail-closed
-rules remain unchanged. Keys include owner/task/class/source; dismissal memory
+retry actions. No success/skip notice is emitted. Keys include owner/task/class/source; dismissal memory
 survives same-source reattachment, while a new source permits new feedback.
 
 Feedback ownership tracks the committed selected class, not analysis readiness. A
@@ -163,8 +158,7 @@ confirmed-save warning still appears after both required query refreshes settle 
 the surface became blocking and passed a `null` context in the meantime; that readiness
 change neither destroys the notice nor detaches the pending attempt. Leaving the class
 or unmounting still removes only that owner's notices and suppresses late feedback,
-without claiming to abort active writes. Stock host placement, sizing, spacing and
-motion remain unchanged.
+without claiming to abort active writes.
 
 `services/dataAnalysis/postAnalysis/postAnalysisDiagnostics.ts` routes task failures
 through `toError`/`logFrontendError`, using context `runPostAnalysisTasks` and bounded
@@ -176,9 +170,7 @@ callback or feedback host) are logged through `logFrontendError` with context
 `usePostAnalysisTasks.complete` and the class ID; individual task failures stay
 reported as outcomes. Task-owned diagnostic metadata never includes raw class metadata,
 submissions, rosters or analysis payloads. Both refresh failures are observed and
-distinct Error instances logged without an extra summary diagnostic. Existing shared
-transport parameter/debug and bounded response-preview sanitisation remain unchanged;
-this is not a logger/redaction redesign.
+distinct Error instances logged without an extra summary diagnostic.
 
 ## 5. Mapping rules (developer detail vs user-safe copy)
 
@@ -210,16 +202,9 @@ Current file split:
 3. `src/frontend/src/errors/blockingLoadError.ts` for blocking-load trust-boundary error helpers.
 4. `src/frontend/src/errors/normaliseUnknownError.ts` for unknown-error normalisation.
 
-Error code constants (RATE_LIMITED, INVALID_REQUEST, etc.) live inside `map-error-to-ui.ts` rather than a separate `error-codes.ts` file. No separate `app-error.ts` base error type exists; the existing concrete types in the module tree above cover current needs.
+Error code constants (RATE_LIMITED, INVALID_REQUEST, etc.) live inside `map-error-to-ui.ts` rather than a separate `error-codes.ts` file.
 
 Keep transport concerns (`ApiTransportError`) near the API boundary service, but map them to UI-safe contracts in the frontend error modules before rendering.
-
-Idiomatic React + TypeScript guidance:
-
-- prefer typed error objects/discriminated unions over raw strings
-- keep user-facing copy outside thrown error constructors where practical
-- keep mapping pure and easily unit-testable
-- avoid class-heavy hierarchies unless there is a clear behavioural need
 
 ## 7. Builder mode implications for frontend logging
 
@@ -236,17 +221,7 @@ Treat builder mode as an operational control, not as permission to blur boundari
 
 In short: build mode changes diagnostic depth, not the user contract.
 
-## 8. React patterns for resilient error handling
-
-Use idiomatic React patterns to keep error paths predictable:
-
-1. Keep side effects in hooks, not in presentation components.
-2. Model state explicitly (`loading`, `success`, `error`) with typed data.
-3. Add an app-level error boundary for render/lifecycle crashes.
-4. Keep asynchronous service failures in hook/service logic.
-5. Avoid catch-and-ignore patterns; either rethrow or map explicitly.
-
-## 9. Testing expectations
+## 8. Testing expectations
 
 Testing remains aligned with `docs/developer/frontend/frontend-testing.md`:
 
@@ -255,5 +230,6 @@ Testing remains aligned with `docs/developer/frontend/frontend-testing.md`:
 - component test inline error states and fallback rendering
 - unit test stack-trace inclusion rules (included in development, suppressed by default in production)
 - e2e smoke tests for representative failures (backend envelope error, transport failure, rate limit retry path)
+- e2e coverage for post-analysis metadata warnings: `src/frontend/e2e-tests/post-analysis-metadata.feedback.spec.ts`
 
 Coverage expectations still apply.

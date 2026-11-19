@@ -1,30 +1,30 @@
-# 📝 Using Assessment Bot
+# Using Assessment Bot
 
-- [📝 Using Assessment Bot](#using-assessment-bot)
-  - [📋 What You Need](#what-you-need)
-  - [🏷️ Tagging](#tagging)
+- [Using Assessment Bot](#using-assessment-bot)
+  - [What You Need](#what-you-need)
+  - [Tagging](#tagging)
     - [Google Slides Tagging](#google-slides-tagging)
-      - [🔖 How to Tag a Task for Assessment](#how-to-tag-a-task-for-assessment)
-        - [📝 Text or Table Tasks](#text-or-table-tasks)
-        - [🖼️ Image Tasks](#image-tasks)
+      - [How to Tag a Task for Assessment](#how-to-tag-a-task-for-assessment)
+        - [Text or Table Tasks](#text-or-table-tasks)
+        - [Image Tasks](#image-tasks)
     - [Google Sheets Tagging](#google-sheets-tagging)
-  - [📤 Distributing Tasks to Your Students](#distributing-tasks-to-your-students)
-  - [🔍 Assessing Student Work](#assessing-student-work)
-    - [✅ Prerequisites](#prerequisites)
-    - [🆔 Getting the Slide IDs](#getting-the-slide-ids)
-    - [⚙️ The Assessment Process](#the-assessment-process)
+  - [Distributing Tasks to Your Students](#distributing-tasks-to-your-students)
+  - [Assessing Student Work](#assessing-student-work)
+    - [Prerequisites](#prerequisites)
+    - [Getting the document URLs](#getting-the-document-urls)
+    - [The Assessment Process](#the-assessment-process)
 
-## 📋 What You Need
+## What You Need
 
 Using Assessment Bot is straightforward. To assess a piece of work, you need three things:
 
 1. **The Slide Template**: The blank template you distribute to your students on Google Classroom.
-2. **The Reference Slides**: The completed version of the blank template that the Slides Assessment Bot will compare the students' work against. It should represent what you would score a `5` for completeness, accuracy, and SPaG (spelling, punctuation, and grammar).
+2. **The Reference Slides**: The completed version of the blank template that Assessment Bot will compare the students' work against. It should represent what you would score a `5` for completeness, accuracy, and SPaG (spelling, punctuation, and grammar).
 3. **The Students' Work**: This should be the same as the blank template but completed by your students and attached to a Google Classroom assignment.
 
 ---
 
-## 🏷️ Tagging
+## Tagging
 
 ### Google Slides Tagging
 
@@ -37,13 +37,13 @@ For Assessment Bot to identify which parts of the document to assess, the releva
 | `~`  | Images      | Marks an image on a slide for assessment as an image task. |
 | `\|` | Images      | Alternative image tag (behaves the same as `~`).           |
 
-> 💡 **Tip:** Assessing whole slide images is slower and potentially less accurate than text or table-based assessments. If your task is text or table-based only, ensure you tag it accordingly.
+> **Tip:** Assessing whole slide images is slower and potentially less accurate than text or table-based assessments. If your task is text or table-based only, ensure you tag it accordingly.
 
-#### 🔖 How to Tag a Task for Assessment
+#### How to Tag a Task for Assessment
 
-> 💡 **Tip:** Create the _Slide Template_ first and tag that. Then, make a copy and add your answers to create the _Reference Slides_. This ensures tagging consistency.
+> **Tip:** Create the _Slide Template_ first and tag that. Then, make a copy and add your answers to create the _Reference Slides_. This ensures tagging consistency.
 
-##### 📝 Text or Table Tasks
+##### Text or Table Tasks
 
 1. Open or create the template.
 2. Select the textbox or table you want to assess.
@@ -53,7 +53,7 @@ For Assessment Bot to identify which parts of the document to assess, the releva
    - `# Task 1 - Fill in the gaps`
    - `# Task 2 - Meaning of life`
 
-##### 🖼️ Image Tasks
+##### Image Tasks
 
 1. Open or create the template.
 2. Select the image you want to assess.
@@ -77,15 +77,15 @@ It determines this by comparing the formulae in the _Reference Sheet_ with the f
 
 ---
 
-## 📤 Distributing Tasks to Your Students
+## Distributing Tasks to Your Students
 
 Attach the _Slide Template_ to your Google Classroom assignment as normal.
 
 ---
 
-## 🔍 Assessing Student Work
+## Assessing Student Work
 
-### ✅ Prerequisites
+### Prerequisites
 
 If you have followed the process above, you should have:
 
@@ -97,26 +97,24 @@ If you have followed the process above, you should have:
 
 If you are missing any of these components, go back and complete them first.
 
-### 🆔 Getting the Slide IDs
+### Getting the document URLs
 
-You need the _Reference Slides_ and _Slide Template_ IDs to assess the work. To get these:
+You need the full sharing URLs for the _Reference Slides_ and _Slide Template_ to assess the work. To get them:
 
 1. Open each document.
-2. Select the part of the URL after `/d/` and before `/edit`.
-   - For example: `https://docs.google.com/presentation/d/THIS_BIT_IS_THE_SLIDE_ID/edit#slide=id.g2addc53a3a4_0_188`
-3. Copy that part of the string.
+2. Copy its full URL from the address bar. It starts with `https://docs.google.com/`.
+3. Use the full URL when the wizard asks for it. A bare document ID is not accepted.
 
-> 💡 **Tip:** You only need to do this once for assignments with the same name. Encourage everyone in the department to name assignments consistently.
-> ⚠️ **Note:** While this process is finicky, implementing a GUI method would require access to the `PickerAPI`, which is blocked for most educational accounts.
+> **Tip:** You only need to do this once for assignments with the same name. Encourage everyone in the department to name assignments consistently.
 
-### ⚙️ The Assessment Process
+### The Assessment Process
 
 1. Open the Assessment Bot web app.
 2. Navigate to the **Classes** page and find the class you want to assess.
 3. Click the **Assess Task** button on the class card.
 4. Select the Google Classroom assignment you want to assess from the dropdown.
 5. If no matching assignment definition exists, you will be prompted to either:
-   - **Create a new definition** — this opens the definition wizard where you enter the _Reference Slides_ and _Slide Template_ IDs [which you obtained earlier](#getting-the-slide-ids).
+   - **Create a new definition** — this opens the definition wizard where you enter the _Reference Slides_ and _Slide Template_ URLs [which you obtained earlier](#getting-the-document-urls).
    - **Link to an existing definition** — choose a previously created definition from the list.
 6. Click **Start Assessment**.
 7. Wait patiently. The assessment can take 2 to 10 minutes depending on the document's size and complexity. Image tasks take significantly longer than text or table tasks.
@@ -126,4 +124,4 @@ You need the _Reference Slides_ and _Slide Template_ IDs to assess the work. To 
 
 ## Related guides
 
-- [Assignment Persistence and Rehydration](./rehydration.md) – Persisting assessment runs and rehydrating assignments with the split persistence model.
+Assessment results are saved with the class's assessment records and appear on the **Assignments** page once a run completes. If you need the underlying persistence and rehydration model, see the [backend rehydration reference](../developer/backend/rehydration.md).

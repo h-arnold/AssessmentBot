@@ -1,6 +1,6 @@
 # Frontend Spacing and Padding Standards
 
-This is the canonical standards document for spacing and padding decisions in `src/frontend`. All frontend agents **must** read this document before adding, modifying, or reviewing any UI element that affects layout spacing.
+This is the canonical standards document for spacing and padding decisions in `src/frontend`.
 
 Use it alongside:
 
@@ -10,13 +10,9 @@ Use it alongside:
 - `docs/developer/frontend/frontend-logging-and-error-handling.md`
 - `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
 
-## 1. Ant Design Spacing System
+## 1. Spacing scale
 
-Ant Design's spacing philosophy is defined in the [Proximity design principle](https://ant.design/docs/spec/proximity). The system is based on an **8px grid** with the formula:
-
-```
-y = 8 + 8 × n   (where n ≥ 0, y = spacing value, 8 = basic spacing unit)
-```
+Frontend spacing follows an **8px grid**. The token module is `src/frontend/src/theme/spacing.ts` and the CSS custom properties are defined in `src/frontend/src/index.css`. The 4px half-unit is permitted only for tight inner-element spacing (see §1.2).
 
 ### 1.1 Three Standard Spacing Formats
 
@@ -102,7 +98,7 @@ This does **not** add additional padding — it constrains width only. Pages sha
 }
 ```
 
-This value is correct and should not be changed.
+Use `margin-bottom: 1.5rem` for `.app-breadcrumb`.
 
 ## 4. Component-Level Spacing Rules
 
@@ -167,7 +163,7 @@ When a `Card` contains multiple child sections, prefer Ant Design's built-in `Ca
 
 ### 4.6 Inline-Dialog Container
 
-The `InlineDialog` container uses `padding: 24` with `marginTop: 16` — both values align to the 8px grid and are correct. Do not change these values.
+The `InlineDialog` container uses `padding: 24` (`--app-spacing-lg`) with `marginTop: 16` (`--app-spacing-md`).
 
 ### 4.7 Canonical Gap Constants
 
@@ -228,7 +224,7 @@ If you introduce a new 4px-level spacing, document the rationale in the componen
 
 ### 5.3 Inline Margin on Alert Components
 
-Alerts inside modals or cards that need visual separation from child content below should use `marginBottom: 16` (aligned to `var(--app-spacing-md)`). The value of 16 is the standard across the codebase and is correct.
+Alerts inside modals or cards that need visual separation from child content below should use `marginBottom: 16` (`var(--app-spacing-md)`).
 
 ## 6. Known permitted exceptions
 

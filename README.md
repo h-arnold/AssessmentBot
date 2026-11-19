@@ -1,16 +1,16 @@
 # Assessment Bot
 
-**A tool designed by a Digital Technology and Computer Science teacher (and head of department) to simplify tracking and assessing the work of hundreds of students.**
+**A tool designed by a Digital Technology and Computer Science teacher to simplify tracking and assessing the work of hundreds of students.**
 
 **[Read the Documentation Here](./docs/README.md)**
 
-Applying the **Pareto Principle** in spirit, this tool automates 80% of the effort—checking and scoring student work—so teachers can focus on the most impactful 20%: acting on insights to improve learning.
+Assessment Bot automates routine checking and scoring, so teachers can spend more time acting on the insights to improve learning.
 
 This tool pulls Google Slides from Google Classroom assignments and evaluates them on **Completeness**, **Accuracy**, and **SPaG** (Spelling, Punctuation, and Grammar), scoring each out of 5.
 
 - [Assessment Bot](#assessment-bot)
-  - [🎯 Key Features](#-key-features)
-  - [📸 The New React Frontend](#-the-new-react-frontend)
+  - [Key Features](#key-features)
+  - [The Browser App](#the-browser-app)
     - [Create a new assessment](#create-a-new-assessment)
     - [Classes overview](#classes-overview)
     - [Run a new assessment](#run-a-new-assessment)
@@ -18,18 +18,17 @@ This tool pulls Google Slides from Google Classroom assignments and evaluates th
     - [Task Heatmap](#task-heatmap)
     - [Cell-level evidence](#cell-level-evidence)
     - [Heatmaps builder](#heatmaps-builder)
-  - [🛠️ How It Works](#️-how-it-works)
-  - [🔒 Privacy and Security](#-privacy-and-security)
-  - [❓ What Can It Assess?](#-what-can-it-assess)
-  - [🤔 Is It Perfect?](#-is-it-perfect)
-  - [💸 Cost?](#-cost)
-  - [⚙️ Setup](#️-setup)
-  - [🤝 Contributing](#-contributing)
-  - [🚀 Why Use This Tool?](#-why-use-this-tool)
+  - [How It Works](#how-it-works)
+  - [Privacy and Security](#privacy-and-security)
+  - [What Can It Assess?](#what-can-it-assess)
+  - [Is It Perfect?](#is-it-perfect)
+  - [Setup](#setup)
+  - [Contributing](#contributing)
+  - [Why Use This Tool?](#why-use-this-tool)
 
 ---
 
-## 🎯 Key Features
+## Key Features
 
 - **Automated Assessment**: Quickly evaluates student submissions against a reference and template.
 - **Customisable Marking**: Identify key elements for assessment using Alt Text markers:
@@ -40,13 +39,13 @@ This tool pulls Google Slides from Google Classroom assignments and evaluates th
   - Student scores (Completeness, Accuracy, SPaG)
   - Cell-level evidence: click any cell to see the AI reasoning and the student's original response
   - Performance averages across assignments
-- **Future-Proof**: A department-wide Quality Assurance view is in development.
+- **Quality assurance**: A department-wide Quality Assurance view is in development.
 
 ---
 
-## 📸 The New React Frontend
+## The Browser App
 
-v1 ships with a brand new browser-based admin UI that replaces the old Google Sheets admin surface. Every screen below is a real view from the React app, captured via Playwright.
+The browser app is where you administer assessments and view results. The screens below show each step.
 
 ### Create a new assessment
 
@@ -121,7 +120,7 @@ Build a cross-assignment heatmap by picking a class, a topic, and the assignment
 
 ---
 
-## 🛠️ How It Works
+## How It Works
 
 1. **Preparation**:
    - Create a **perfect reference** with all tasks completed correctly.
@@ -134,34 +133,33 @@ Build a cross-assignment heatmap by picking a class, a topic, and the assignment
    - Score based on Completeness, Accuracy, and SPaG
    - Validate spreadsheet formulae and provide visual feedback
 4. **Reporting**:  
-   Results are compiled into a beautifully formatted spreadsheet heatmap (because SLT loves spreadsheets—admit it, so do you). The sheet includes:
+   Results are compiled into a colour-coded heatmap in the web app. The results include:
    - Individual scores
    - Work previews
    - Class-wide averages
 
 ---
 
-## 🔒 Privacy and Security
+## Privacy and Security
 
-Your students’ privacy is a top priority. Here's how their data is protected:
+The tool is designed to limit how long student data is kept. These are the controls in place:
 
 - **Controlled data sharing**: The tool retrieves data from Google Workspace and sends only
   the assessment payload to the configured LLM service. The educational institution controls
-  that service. Mistral's Zero Data Retention (ZDR) option is easy to obtain and supports the
-  institution's data-handling policy.
-- **Mitigations against accidental PII exposure**:
-  - **Ephemeral image storage**: The AssessmentBot LLM Service is stateless when deployed to a serverless platform, ensuring uploaded images exist only temporarily during processing.
-  - **Provider data retention**: The LLM service uses Mistral's `mistral-small-latest` model.
-    Mistral offers a very good price/performance ratio and makes Zero Data Retention (ZDR)
-    easy to obtain for sensitive student work.
-- **FOSS Transparency**: The entire tool, including the AssessmentBot-LLM-Service, is **free and open-source software (FOSS)**. If you don’t trust my word, you can inspect the source code yourself!
-- **HWB Ready**: The tool works seamlessly with HWB accounts! 🏴‍☠️
+  that service. For the service's provider and retention details, see the
+  [Assessment Bot LLM Service repository](https://github.com/h-arnold/AssessmentBot-LLM-Service).
+- **Mitigations against accidental PII exposure**: Uploaded images are held only while an
+  assessment is being processed. The [service repository](https://github.com/h-arnold/AssessmentBot-LLM-Service)
+  documents how the service handles data and which model it uses.
+- **FOSS Transparency**: The entire tool, including the Assessment Bot LLM Service, is
+  **free and open-source software (FOSS)**. You can inspect the source in the
+  [service repository](https://github.com/h-arnold/AssessmentBot-LLM-Service).
 
 By design, this tool minimises any long-term storage of student data and maintains a secure, private workflow.
 
 ---
 
-## ❓ What Can It Assess?
+## What Can It Assess?
 
 The tool works with:
 
@@ -180,24 +178,18 @@ It’s been tested successfully on:
 
 ---
 
-## 🤔 Is It Perfect?
+## Is It Perfect?
 
 Not quite. While **LLMs aren’t infallible**, the tool is reliable enough to provide a snapshot of:
 
 - Who’s on track
 - Who needs extra support
 
-It’s still up to you to address misconceptions, motivate students, and do all those good old-fashioned teachery things.
+It’s still up to you to address misconceptions and motivate students.
 
 ---
 
-## 💸 Cost?
-
-**Mistral Small has a very good price/performance ratio.**
-
----
-
-## ⚙️ Setup
+## Setup
 
 The initial set up should take no more than an hour, including deploying the backend and creating all the Assessment Records.
 
@@ -205,31 +197,9 @@ Check out the [docs](./docs/README.md) for more details.
 
 ---
 
-## 🛠️ Development
-
-The project has three active modules, each with its own runtime:
-
-| Module   | Path               | Runtime                |
-| -------- | ------------------ | ---------------------- |
-| Backend  | `src/backend/`     | Google Apps Script V8  |
-| Frontend | `src/frontend/`    | Browser (Vite + React) |
-| Builder  | `scripts/builder/` | Node.js                |
-
-Useful commands:
-
-- `npm run build:dev`
-- `npm run build:frontend`
-- `npm run lint:frontend`
-- `npm run test:frontend`
-- `npm run test:frontend:e2e`
-- `npm run lint:backend`
-- `npm run test:backend`
+## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full developer guide.
-
----
-
-## 🤝 Contributing
 
 Contributions are very welcome!  
 If you have ideas, improvements, or bug fixes, feel free to open a **Pull Request (PR)**.
@@ -242,10 +212,10 @@ Some areas we’d particularly appreciate help with:
 
 ---
 
-## 🚀 Why Use This Tool?
+## Why Use This Tool?
 
 - Save time while managing hundreds of students.
 - Get actionable insights at a glance.
 - Use it for everything from basic content checks to QA-ready reporting.
 
-Feedback and contributions are welcome—this project is a work in progress!
+Feedback and contributions are welcome.

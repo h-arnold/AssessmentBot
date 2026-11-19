@@ -25,21 +25,10 @@ create the excess, or because the file is inconvenient to split. Decompose it us
    one coherent concern (e.g. persistence, validation, response mapping, reference data).
    Name them after their concern (e.g. `ABClassPersistence.js`, `ABClassValidation.js`).
 
-Canonical example — `AssignmentDefinition` controller:
-
-```
-y_controllers/AssignmentDefinition/
-├── index.js                                    # Facade — AssignmentDefinitionController class
-├── AssignmentDefinitionPersistence.js          # Database read/write
-├── AssignmentDefinitionRecoveryRules.js        # Recovery and reparse decisions
-├── AssignmentDefinitionReferenceData.js        # Reference data resolution
-├── AssignmentDefinitionResponseMapper.js        # Response shape mapping
-├── AssignmentDefinitionTaskEquivalence.js      # Task-equivalence comparison for reparse
-├── AssignmentDefinitionTaskParser.js           # Task document parsing
-├── AssignmentDefinitionTaskWeighting.js        # Task weighting logic
-├── AssignmentDefinitionUpsertOrchestrator.js   # Upsert orchestration
-└── AssignmentDefinitionValidation.js           # Domain validation
-```
+The pattern is in use in `src/backend/y_controllers/AssignmentDefinition/`: a facade `index.js`
+exports `AssignmentDefinitionController`, and sub-class files such as
+`AssignmentDefinitionPersistence.js` and `AssignmentDefinitionValidation.js` are named after their
+concern.
 
 Rules:
 
@@ -69,14 +58,8 @@ The domain prefix is the leading lowercase segment of the filename, up to but no
 first capital letter (for example, `abclass` in `abclassMutations.js`, `abclassRead.js`, and
 `abclassValidation.js`).
 
-Example — currently grouped `z_Api` files for a domain:
-
-```
-z_Api/abclass/
-├── abclassMutations.js        # ABClass create/update/delete transport handlers
-├── abclassRead.js             # ABClass read transport handlers
-└── abclassValidation.js       # Transport-boundary validation
-```
+For example, the `abclass` domain files for mutations, reads and validation live in
+`src/backend/z_Api/abclass/`.
 
 Domain grouping need not swallow every file sharing a prefix: the assignment-definition
 validators live in `assignmentDefinition/`, while `assignmentDefinitionTransport.js`

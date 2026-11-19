@@ -48,21 +48,14 @@ before domain validation. See [api-layer.md § Response envelope](api-layer.md#r
 
 ## Detailed Flow Documentation
 
-### Phase 1: Assessment Initiation
+### Assessment initiation
 
-#### Step 1.1: Start Assessment Run
+#### Start assessment run
 
 **API method**: `startAssessmentRun`
 
 - **Transport**: `src/backend/z_Api/assignmentAssessment.js`, via `startAssessmentRun_()` → `ALLOWLISTED_METHOD_HANDLERS` → `AssignmentController.startAssessmentRun()`
-- **Request payload**:
-  ```javascript
-  {
-    definitionKey: string,   // stable key of the existing AssignmentDefinition
-    assignmentId: string,    // Google Classroom coursework ID
-    courseId: string         // Google Classroom course ID (matches an ABClass)
-  }
-  ```
+- **Request payload**: `definitionKey`, `assignmentId` and `courseId`; see [api-layer.md § Registered transport endpoints, `startAssessmentRun`](api-layer.md#registered-transport-endpoints). This workflow loads the definition by key and resolves the class by course ID to run the assessment.
 - **Process**:
   1. Validates all three required string fields at the transport boundary
   2. Fetches the full definition via `AssignmentDefinitionController.getDefinitionByKey`
@@ -77,11 +70,11 @@ before domain validation. See [api-layer.md § Response envelope](api-layer.md#r
 
 ---
 
-### Phase 2: Trigger Setup and Context Storage
+### Trigger setup and context storage
 
 Definitions are created and updated by a separate flow: the frontend upserts via `upsertAssignmentDefinition` (see [api-layer.md](api-layer.md) and [Contract: AssignmentDefinition](../data-shapes/assignment-definition.md)). The assessment run assumes an existing definition and validates only its freshness.
 
-#### Step 2.1: Create Time-Based Trigger
+#### Create time-based trigger
 
 **Method**: `AssignmentController.startProcessing(assignmentId, definitionKey, courseId)`
 
@@ -103,9 +96,9 @@ Definitions are created and updated by a separate flow: the frontend upserts via
 
 ---
 
-### Phase 3: Trigger Execution
+### Trigger execution
 
-#### Step 3.1: Trigger Fires
+#### Trigger fires
 
 **Global Function**: `triggerHandler(event)`
 
@@ -117,7 +110,7 @@ Definitions are created and updated by a separate flow: the frontend upserts via
   4. Dispatches through `TRIGGER_METHOD_HANDLERS` (`src/backend/Triggers/triggerMethodHandlers.js`) — currently a single `processSelectedAssignment` entry.
   5. Owns all cleanup (context clear + trigger deletion) in a finally block, whether the handler completes or throws.
 
-#### Step 3.2: Process Selected Assignment (Orchestrator)
+#### Process selected assignment (orchestrator)
 
 **Method**: `AssignmentController.processSelectedAssignment({ assignmentId, definitionKey, courseId })`
 
@@ -127,14 +120,14 @@ Definitions are created and updated by a separate flow: the frontend upserts via
   1. Validates params; starts progress tracking ("Assessment run starting.").
   2. Loads the full definition via `AssignmentDefinitionController.getDefinitionByKey(definitionKey, { form: 'full' })`; throws if missing.
   3. Loads the ABClass via `ABClassController.loadClass(courseId)` — refreshes the Classroom roster and persists it only when it changed; throws `ClassNotFoundError` when no stored class exists.
-  4. Creates the assignment instance (Step 3.3).
+  4. Creates the assignment instance (see [Create assignment instance](#create-assignment-instance)).
   5. Extracts students from the class; `includeImages` is true for SLIDES.
-  6. Runs the pipeline (Phase 4).
-  7. Persists the run via `ABClassController.persistAssignmentRun()` (Phase 5).
+  6. Runs the pipeline (see [Assignment processing pipeline](#assignment-processing-pipeline)).
+  7. Persists the run via `ABClassController.persistAssignmentRun()` (see [Data persistence](#data-persistence)).
   8. Completion feedback: counts distinct failed items via `_countFailedSubmissionItems()`. If any, reports "N tasks failed." then "Assessment run completed with errors." with a warning toast; otherwise reports success. Persistence failure propagates and is never reported as completion.
 - **Error Handling**: errors propagate to `triggerHandler`, which logs them via `ProgressTracker.logAndThrowError` and still cleans up the trigger.
 
-#### Step 3.3: Create Assignment Instance
+#### Create assignment instance
 
 **Method**: `AssignmentController.createAssignmentInstance()`
 
@@ -185,9 +178,9 @@ Document metadata is accessed through the embedded `assignmentDefinition` object
 
 ---
 
-### Phase 4: Assignment Processing Pipeline
+### Assignment processing pipeline
 
-#### Step 4.1: Run Assignment Pipeline
+#### Run assignment pipeline
 
 **Method**: `AssignmentController.runAssignmentPipeline()`
 
@@ -197,7 +190,7 @@ Document metadata is accessed through the embedded `assignmentDefinition` object
 
 **Pipeline Stages**:
 
-##### Stage 1: Add Students
+##### Add students
 
 - **Progress**: "Adding students from class record."
 - **Process**: Iterates through students array and calls `assignment.addStudent(student)` for each
@@ -224,14 +217,14 @@ Document metadata is accessed through the embedded `assignmentDefinition` object
   );
   ```
 
-##### Stage 2: Check Definition Freshness
+##### Check definition freshness
 
 - **Purpose**: revalidate that the stored definition still matches the source documents at trigger time.
 - **Process**: `AssignmentController._validateDefinitionFreshness()` reads the reference and template modified times via `DriveManager.getFileModifiedTime()` and compares them with `DateUtils.isNewer()`. If either document changed, it throws `DefinitionStaleError` (caught at the trigger boundary and surfaced via `ProgressTracker.logAndThrowError`).
 - The pipeline then reports `Tasks are up to date; skipping parse.` before fetching submissions.
-- **Not a re-parse**: the run never re-parses the definition inline. `SlidesAssignment.populateTasks()` exists but is not on the run path; definitions are (re)parsed when upserted — see [Contract: AssignmentDefinition](../data-shapes/assignment-definition.md).
+- The run reads the stored definition without re-parsing it. Definitions are parsed or refreshed on upsert — see [Contract: AssignmentDefinition](../data-shapes/assignment-definition.md).
 
-##### Stage 3: Fetch Submitted Documents
+##### Fetch submitted documents
 
 - **Progress**: "Fetching submitted documents from students."
 - **Process**: Calls `assignment.fetchSubmittedDocuments()`
@@ -248,7 +241,7 @@ Document metadata is accessed through the embedded `assignmentDefinition` object
 
 - **Location**: `src/backend/AssignmentProcessor/Assignment/04_AssignmentSubmissions.js`
 - **Process**:
-  1. Calls `Classroom.Courses.CourseWork.StudentSubmissions.list(courseId, assignmentId)`, following every `nextPageToken` page before concluding that a student has no attachment. A later-page list failure is logged and rethrown unchanged, so the run stops instead of manufacturing no-submission.
+  1. Calls `Classroom.Courses.CourseWork.StudentSubmissions.list(courseId, assignmentId)`, following every `nextPageToken` page before concluding that a student has no attachment. A later-page list failure is logged and rethrown with its original identity, stopping the run before any no-submission conclusion.
   2. Iterates through the accumulated submissions
   3. For each submission:
      - Extracts userId (student ID)
@@ -265,9 +258,9 @@ Document metadata is accessed through the embedded `assignmentDefinition` object
   3.  Validates the MIME type; a mismatched supported-Drive attachment records `UNSUPPORTED_DOCUMENT`
   4.  On a valid type, finds the matching StudentSubmission, sets its `documentId` (the last supported attachment wins) and marks the student as supported
   5.  Updates the submission timestamp via `touchUpdated()`
-- **Result**: Each admitted StudentSubmission has a `documentId`. A student whose supported-admission candidates all fail receives acquisition `E` items for every known task, using the first recorded failure. A student with no supported source and no recorded acquisition failure keeps `documentId: null` and an empty item map (genuine no-submission); absent attachments and ignored non-Drive/missing-ID candidates are the only routes to that state. Ignored candidates alongside failed Drive candidates do not erase the recorded failure.
+- **Result**: Each admitted StudentSubmission has a `documentId`. A student whose supported-admission candidates all fail receives acquisition `E` items for every known task, using the first recorded failure. A student with no supported source and no recorded acquisition failure has `documentId: null` and an empty item map (genuine no-submission); this state arises only when attachments are absent or non-Drive/missing-ID candidates are ignored. A recorded failure remains even when ignored candidates are present.
 
-##### Stage 4: Extract Student Work
+##### Extract student work
 
 - **Progress**: "Extracting student work from documents."
 - **Process**: Calls `assignment.processAllSubmissions()`
@@ -321,7 +314,7 @@ Document metadata is accessed through the embedded `assignmentDefinition` object
 
 After this stage, a submission is either genuinely no-submission (`documentId: null`, empty item map), a set of terminal acquisition/extraction `E` items, or in-flight items awaiting assessment (with matched Slides IMAGEs still pending).
 
-##### Stage 5: Process Images - SLIDES ONLY
+##### Process images (Slides only)
 
 - **Condition**: Only runs if `includeImages` is true (Slides assignments)
 - **Progress**: "Processing Images."
@@ -348,7 +341,7 @@ After this stage, a submission is either genuinely no-submission (`documentId: n
   - `fetchImagesAsBlobs(entries)`: Downloads images in document round-robin order through the shared sender, using the configured Slides-fetch batch size, accepted `[200]` and no stop statuses. Empty input returns an empty array before reading the batch-size configuration, so empty input does not acquire configuration or trigger its failures. Final 200 blobs are read before the next batch; final non-200/network outcomes are routed by scope (student task `E` or a run-blocking throw), and blob-read faults propagate unchanged.
   - `writeBackBlobs(assignment, blobs)`: Applies fetched blobs by UID, requiring the model writer before classifying returned data and reading native bytes once. Unusable returned content converts by scope; changed non-null content clears stale assessments/feedback, unchanged content preserves them; thrown faults escape by original identity.
 
-##### Stage 6: Assess Responses
+##### Assess responses
 
 - **Progress**: "Assessing student responses."
 - **Process**: Calls `assignment.assessResponses()`
@@ -368,7 +361,7 @@ After this stage, a submission is either genuinely no-submission (`documentId: n
 
 - Uses `SheetsAssessor` for formula-based assessment instead of LLM
 
-#### Step 4.2: LLM Assessment Process (for Slides/Text/Images)
+#### LLM assessment process (Slides, text and images)
 
 **Class**: `LLMRequestManager` (extends `BaseRequestManager`)
 
@@ -456,7 +449,7 @@ After this stage, a submission is either genuinely no-submission (`documentId: n
 
 Assessments are `Assessment` instances (`src/backend/Models/Assessment.js`); see [Component Shape: Assessment](../data-shapes/assessment.md) for the `E` error model and the partial-reasoning rule.
 
-#### Step 4.3: Sheets Assessment Process (for Spreadsheets)
+#### Sheets assessment process (spreadsheets)
 
 **Method**: `SheetsAssignment.assessResponses()` (overridden)
 
@@ -464,7 +457,7 @@ Assessments are `Assessment` instances (`src/backend/Models/Assessment.js`); see
 - **Process**:
   1. Creates `SheetsAssessor` instance with tasks and submissions
   2. Calls `assessor.assessResponses()`
-  3. Does NOT use LLM - formula-based assessment only
+  3. Uses `SheetsAssessor` for formula-based assessment only
 
 **Class**: `SheetsAssessor`
 
@@ -504,20 +497,20 @@ Assessments are `Assessment` instances (`src/backend/Models/Assessment.js`); see
   }
   ```
 
-`formulaComparisonResults` is transient. The assessor writes only the three assessments and the `cellReference` feedback to the submission item; it writes no `assessments.formulaComparison` entry. See [Component Shape: BaseTaskArtifact § Concrete artifact types](../data-shapes/base-task-artifact.md#concrete-artifact-types).
+`formulaComparisonResults` is transient. The assessor writes the three assessments and the `cellReference` feedback to the submission item. See [Component Shape: BaseTaskArtifact § Concrete artifact types](../data-shapes/base-task-artifact.md#concrete-artifact-types).
 
 ---
 
-### Phase 5: Data Persistence
+### Data persistence
 
-#### Step 5.1: Update Timestamp
+#### Update timestamp
 
 **Method**: `Assignment.touchUpdated()`
 
 - **Location**: `src/backend/AssignmentProcessor/Assignment/03_AssignmentTimestamps.js`
 - **Purpose**: Sets updatedAt to current timestamp
 
-#### Step 5.2: Persist Assignment Run
+#### Persist assignment run
 
 **Method**: `ABClassController.persistAssignmentRun(abClass, assignment)`
 
@@ -530,25 +523,25 @@ Assessments are `Assessment` instances (`src/backend/Models/Assessment.js`); see
   2. Stamps the result-format marker
      - Sets `assignment.assessmentContractVersion = 1` only after the completed-run gate passes and before serialisation.
   3. Prepares four payloads before the first collection mutation
-     - Full assignment via `Assignment.toJSON()`; embedded partial via `Assignment.toPartialJSON()`, then constructed back through `Assignment.fromJSON(partialPayload, 'partial')` as the actual partial representation that will live in the class (a representation conversion, not a validation-only round-trip)
+     - Full assignment via `Assignment.toJSON()`; embedded partial via `Assignment.toPartialJSON()`, then constructed back through `Assignment.fromJSON(partialPayload, 'partial')` as the actual partial representation stored in the class
      - Prospective updated full-class and class-partials documents via `ABClassPersistence._prepareFullClass()`/`_prepareClassPartial()` with the partial temporarily spliced into `abClass.assignments`
-     - These are plain serializer outputs plus a detached metadata copy, not deep-detached clones of the model
+     - These are plain serialiser outputs plus a detached metadata copy
   4. Writes the full assignment to its dedicated collection
      - Collection key: `assign_full_{courseId}_{assignmentId}`
      - Contains complete data with all artifacts, content and the marker
   5. Writes the prepared full-class and class-partials payloads
      - Full class: per-class collection named by `classId` (see [Contract: ABClass](../data-shapes/abclass.md)); partials registry: `abclass_partials`
-     - Both writes consume the exact prepared payloads; nothing re-serialises after the full commit
-  - The write order is deliberately non-transactional (full assignment → class → partials). A storage failure throws after logging the failed phase and whether the full assignment write committed; it never reports a completed run and nothing repairs the state.
+     - Both writes consume the exact prepared payloads
+  - The write order is non-transactional (full assignment → class → partials). A storage failure throws after logging the failed phase and whether the full assignment write committed.
 
 Persisted shapes: [Contract: Assignment](../data-shapes/assignment.md) (full record and partial variant) and [Component Shape: Assessment](../data-shapes/assessment.md) (result marker).
 
-#### Step 5.3: Progress Completion
+#### Progress completion
 
 **Method**: `ProgressTracker.complete()` — `src/backend/Utils/ProgressTracker.js`
 
 - Progress is a singleton writing a JSON record (`step`, `message`, `completed`, `error`, `timestamp`) to User Properties under the `ProgressTracker` key.
-- `complete()` sets `completed: true`; it does not clear a previously recorded `error`.
+- `complete()` sets `completed: true` and leaves any recorded `error` in place.
 
 ---
 
@@ -569,11 +562,11 @@ Partial summaries strip `reasoning` from numeric and `'N'` results; an `'E'` res
 See [backend-logging-and-error-handling.md](backend-logging-and-error-handling.md) for policy. In short:
 
 - User-facing progress and errors go through `ProgressTracker`; developer diagnostics go through `ABLogger`.
-- Critical top-level failures may use both channels, each with its own purpose-specific detail — never the same payload twice, and never `console.*`.
+- Critical top-level failures may use both channels with distinct, purpose-specific detail; logging goes through `ABLogger`, not `console.*`.
 
 ## Caching
 
-- **LLM assessments** — keyed by a versioned hash of `v1`, the task type and the reference/template/student content hashes, computed at request generation and retained through writeback. Stored via generic `CacheManager.get()`/`put()` with `CacheManager.CACHE_EXPIRY_SECONDS`; only validated numeric results are cached, and hits are re-validated before use. Old key spaces are misses; there is no purge or migration.
+- **LLM assessments** — keyed by a versioned hash of `v1`, the task type and the reference/template/student content hashes, computed at request generation and retained through writeback. Stored via generic `CacheManager.get()`/`put()` with `CacheManager.CACHE_EXPIRY_SECONDS`; only validated numeric results are cached, and hits are re-validated before use. Old key spaces register as cache misses.
 - **Assignment definitions** — compared by Drive file modification time; re-parsed only when the reference or template changed. API upserts write the full store first, then the registry; a registry failure triggers rollback of the full-store write, and a rollback failure surfaces as a repair-required hard failure.
 
 Details: [Component Shape: Assessment](../data-shapes/assessment.md) and [Contract: AssignmentDefinition](../data-shapes/assignment-definition.md).
@@ -598,7 +591,6 @@ To add a new document type (e.g., Google Docs):
    - `fetchSubmittedDocuments()`: Get student submissions
    - `processAllSubmissions()`: Extract student responses, applying outcomes through `Assignment._applyExtractedArtifacts` with `onUnknownTask` and `isPendingArtifact` handlers
    - `assessResponses()`: Route to the appropriate assessor (optional override)
-   - `populateTasks()` exists on the base class but is not on the run path
 4. Add MIME type constant for the new document type
 5. Update `Assignment.create()` factory method to handle new type
 6. Create corresponding parser in `DocumentParsers/` if needed
@@ -608,11 +600,10 @@ To add a new document type (e.g., Google Docs):
 To add a new assessment category (beyond completeness, accuracy, spag):
 
 1. Add the criterion to `Assessment.CRITERIA` in `src/backend/Models/Assessment.js`. Every
-   backend validator, restoration path and terminal-error primitive derives from it, so
-   no other backend list needs editing.
+   backend validator, restoration path and terminal-error primitive derives from it.
 2. Update the LLM backend API to return the new category
 3. Update any analysis or reporting views to display the new category
-4. No changes needed to the stored data models (assessments are stored as flexible objects)
+4. Assessments are stored as flexible objects, so the stored data models accept the new category
 
 ### Extending the Pipeline
 

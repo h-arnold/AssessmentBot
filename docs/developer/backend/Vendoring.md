@@ -2,7 +2,7 @@
 
 ## Why we vendor
 
-AssessmentBot avoids runtime third-party CDN dependencies. The deployed script ships committed
+Assessment Bot avoids runtime third-party CDN dependencies. The deployed script ships committed
 assets rather than fetching live code at runtime. This improves:
 
 - **Security**: the reviewed code is the code that runs.

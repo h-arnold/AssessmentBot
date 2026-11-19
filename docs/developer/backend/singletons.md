@@ -1,44 +1,44 @@
-# 🏗️ Singleton Pattern Guide
+# Singleton Pattern Guide
 
-This document explains the lazy singleton pattern used throughout the AssessmentBot codebase and provides guidelines for developers working with or extending singleton classes.
+This document explains the lazy singleton pattern used throughout the Assessment Bot codebase and provides guidelines for developers working with or extending singleton classes.
 
-- [🏗️ Singleton Pattern Guide](#singleton-pattern-guide)
-  - [📖 Overview](#overview)
-  - [✅ Correct Pattern (Do This)](#correct-pattern-do-this)
+- [Singleton Pattern Guide](#singleton-pattern-guide)
+  - [Overview](#overview)
+  - [Correct Pattern](#correct-pattern)
     - [Basic Singleton Structure](#basic-singleton-structure)
     - [Using Singletons](#using-singletons)
-    - [Heavy Initialization Pattern](#heavy-initialization-pattern)
-  - [❌ Anti-Patterns (Don't Do This)](#anti-patterns-dont-do-this)
+    - [Heavy Initialisation Pattern](#heavy-initialisation-pattern)
+  - [Anti-Patterns](#anti-patterns)
     - [Direct Constructor Calls](#direct-constructor-calls)
     - [Eager Heavy Work](#eager-heavy-work)
     - [Global Variable Instantiation](#global-variable-instantiation)
-  - [🧪 Testing Conventions](#testing-conventions)
+  - [Testing Conventions](#testing-conventions)
     - [Test Setup](#test-setup)
     - [Testing Laziness](#testing-laziness)
     - [Testing Idempotency](#testing-idempotency)
-  - [🔄 Migration Guide](#migration-guide)
+  - [Migration Guide](#migration-guide)
     - [Converting a Regular Class to Singleton](#converting-a-regular-class-to-singleton)
     - [Updating Code that Uses Singletons](#updating-code-that-uses-singletons)
-  - [🏛️ Architecture Principles](#architecture-principles)
-  - [💡 Best Practices](#best-practices)
-  - [🐛 Common Pitfalls](#common-pitfalls)
+  - [Architecture Principles](#architecture-principles)
+  - [Best Practices](#best-practices)
+  - [Common Pitfalls](#common-pitfalls)
 
 ---
 
-## 📖 Overview
+## Overview
 
-The AssessmentBot uses a **lazy singleton pattern** to ensure:
+Assessment Bot uses a **lazy singleton pattern** to ensure:
 
 - **No eager side-effects at file load** - Heavy operations (Drive/Properties/Classroom access) only happen when needed
-- **Deterministic initialization** - Singletons initialize exactly once, when first used
+- **Deterministic initialisation** - Singletons initialise exactly once, when first used
 - **Test-friendly design** - Easy to reset state between tests
-- **Performance optimization** - Avoid unnecessary work during script startup
+- **Performance optimisation** - Avoid unnecessary work during script startup
 
-All singleton classes extend `BaseSingleton` and follow consistent patterns for instantiation and initialization.
+All singleton classes extend `BaseSingleton` and follow consistent patterns for instantiation and initialisation.
 
 ---
 
-## ✅ Correct Pattern (Do This)
+## Correct Pattern
 
 ### Basic Singleton Structure
 
@@ -52,14 +52,14 @@ class ExampleManager extends BaseSingleton {
     super();
 
     // Prevent direct instantiation. ESLint is helpful, but runtime enforcement
-    // makes the pattern robust.
+    // rejects direct construction when a caller bypasses the lint rule.
     if (!isSingletonCreator) {
       throw new Error(
         'ExampleManager is a singleton. Use ExampleManager.getInstance() to get the instance.'
       );
     }
 
-    // Light initialization only - no heavy work!
+    // Light initialisation only - no heavy work!
     this.cache = null;
     this._initialized = false;
   }
@@ -72,7 +72,7 @@ class ExampleManager extends BaseSingleton {
   }
 
   /**
-   * Heavy initialization boundary - safe to call multiple times.
+   * Heavy initialisation boundary - safe to call multiple times.
    */
   ensureInitialized() {
     if (this._initialized) return;
@@ -86,7 +86,7 @@ class ExampleManager extends BaseSingleton {
   }
 
   /**
-   * Public method that needs heavy initialization
+   * Public method that needs heavy initialisation
    */
   getImportantData() {
     this.ensureInitialized(); // Ensure heavy work is done
@@ -105,17 +105,17 @@ class ExampleManager extends BaseSingleton {
 ### Using Singletons
 
 ```javascript
-// ✅ Correct - use getInstance()
+// Use getInstance()
 const manager = ExampleManager.getInstance();
 const data = manager.getImportantData();
 
-// ✅ Correct - multiple calls return same instance
+// Multiple calls return the same instance
 const manager1 = ExampleManager.getInstance();
 const manager2 = ExampleManager.getInstance();
 console.log(manager1 === manager2); // true
 ```
 
-### Heavy Initialization Pattern
+### Heavy Initialisation Pattern
 
 ```javascript
 class ConfigurationManager extends BaseSingleton {
@@ -142,15 +142,15 @@ class ConfigurationManager extends BaseSingleton {
 
 ---
 
-## ❌ Anti-Patterns (Don't Do This)
+## Anti-Patterns
 
 ### Direct Constructor Calls
 
 ```javascript
-// ❌ Wrong - direct constructor call
+// Wrong - direct constructor call
 const config = new ConfigurationManager();
 
-// ❌ Wrong - multiple instances created
+// Wrong - multiple instances created
 const config1 = new ConfigurationManager();
 const config2 = new ConfigurationManager();
 console.log(config1 === config2); // false - different instances!
@@ -159,12 +159,12 @@ console.log(config1 === config2); // false - different instances!
 ### Eager Heavy Work
 
 ```javascript
-// ❌ Wrong - heavy work in constructor
+// Wrong - heavy work in constructor
 class BadManager extends BaseSingleton {
   constructor() {
     super();
 
-    // This violates lazy initialization!
+    // This violates lazy initialisation!
     this.driveFiles = DriveApp.getFiles(); // Heavy Drive access
     this.properties = PropertiesService.getScriptProperties(); // Heavy property access
     this.classrooms = ClassroomApp.Courses.list(); // Heavy API call
@@ -175,7 +175,7 @@ class BadManager extends BaseSingleton {
 ### Global Variable Instantiation
 
 ```javascript
-// ❌ Wrong - eager global instantiation (old pattern)
+// Wrong - eager global instantiation (old pattern)
 const configurationManager = new ConfigurationManager();
 const abLogger = new ABLogger();
 
@@ -185,7 +185,7 @@ const abLogger = new ABLogger();
 
 ---
 
-## 🧪 Testing Conventions
+## Testing Conventions
 
 ### Test Setup
 
@@ -252,7 +252,7 @@ test('ensureInitialized() only performs heavy work once', () => {
 
 ---
 
-## 🔄 Migration Guide
+## Migration Guide
 
 ### Converting a Regular Class to Singleton
 
@@ -270,7 +270,7 @@ test('ensureInitialized() only performs heavy work once', () => {
      if (!isSingletonCreator && MyClass._instance) {
        return MyClass._instance;
      }
-     // Light initialization only
+     // Light initialisation only
      this._initialized = false;
      if (!MyClass._instance) {
        MyClass._instance = this;
@@ -326,9 +326,9 @@ const apiKey = config.getApiKey();
 
 ---
 
-## 🏛️ Architecture Principles
+## Architecture Principles
 
-1. **Separation of Construction vs. Initialization**:
+1. **Separation of Construction vs. Initialisation**:
    - Constructor: Light object setup
    - `ensureInitialized()`: Heavy resource loading
 
@@ -342,33 +342,33 @@ const apiKey = config.getApiKey();
 
 4. **Test-Friendly Design**:
    - `resetForTests()` allows clean state between tests
-   - Easy to mock and verify lazy behavior
+   - Easy to mock and verify lazy behaviour
 
 ---
 
-## 💡 Best Practices
+## Best Practices
 
 1. **Always use `getInstance()`** - Never call constructors directly
 2. **Guard heavy methods** - Call `ensureInitialized()` in methods that need resources
-3. **Minimize constructor work** - Keep constructors lightweight
+3. **Minimise constructor work** - Keep constructors lightweight
 4. **Add JSDoc banners** - Include "Use Class.getInstance(); do not call constructor directly"
 5. **Use trace logging** - Gate heavy init logs behind `globalThis.__TRACE_SINGLETON__`
-6. **Test lazy behavior** - Verify no heavy work happens until needed
+6. **Test lazy behaviour** - Verify no heavy work happens until needed
 7. **Reset in tests** - Always call `resetForTests()` in test cleanup
 
 ---
 
-## 🐛 Common Pitfalls
+## Common Pitfalls
 
 1. **Forgetting to call `ensureInitialized()`**:
 
    ```javascript
-   // ❌ Wrong - might use uninitialized resources
+   // Wrong - might use uninitialised resources
    getApiKey() {
-     return this.scriptProperties.getProperty('API_KEY'); // Error if not initialized!
+     return this.scriptProperties.getProperty('API_KEY'); // Error if not initialised!
    }
 
-   // ✅ Correct
+   // Correct
    getApiKey() {
      this.ensureInitialized();
      return this.scriptProperties.getProperty('API_KEY');
@@ -387,13 +387,13 @@ const apiKey = config.getApiKey();
 5. **Direct constructor usage**:
    - ESLint rules help catch this, but always review PRs carefully
 
-💡 **Tip**: When in doubt, check existing singleton implementations like `ConfigurationManager`, `ProgressTracker`, or `ABLogger` for reference patterns.
+**Tip**: When in doubt, check existing singleton implementations like `ConfigurationManager`, `ProgressTracker`, or `ABLogger` for reference patterns.
 
-⚠️ **Remember**: The goal is to have **zero heavy work** happening during file load or object construction. All expensive operations should be deferred until they're actually needed!
+**Remember**: Keep **zero heavy work** during file load or object construction. Defer expensive operations until they are needed.
 
 ---
 
-## 📋 Auth and cache singletons
+## Auth and cache singletons
 
 ### AuthService
 
@@ -409,4 +409,4 @@ const apiKey = config.getApiKey();
 ### CacheManager generic methods
 
 - Owning path: `src/backend/RequestHandlers/CacheManager.js`
-- Exposes generic `get(key)` and `put(key, value, ttlSeconds)` methods. Generic methods handle JSON serialisation/deserialisation internally; `put()` requires an explicit TTL (no default — the AuthService passes its 6-hour TTL at the call site). Existing assessment-specific methods stay unchanged; existing `console.error` calls convert to `ABLogger`.
+- Exposes generic `get(key)` and `put(key, value, ttlSeconds)` methods. Generic methods handle JSON serialisation/deserialisation internally; `put()` requires an explicit TTL (no default — the AuthService passes its 6-hour TTL at the call site). Logging uses `ABLogger`.

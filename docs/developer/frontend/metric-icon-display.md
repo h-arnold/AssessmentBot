@@ -70,17 +70,7 @@ In both cases, the `icon` and `label` come from `METRIC_DISPLAY_META`, a map tha
 
 The icon renders inside a column header that also includes an Ant Design `Table.Column` `filterDropdown` and a column sorter. The `width: 100%` on the icon's wrapper span keeps the icon centred inside the `align: 'center'` column layout.
 
-## 6. Test coverage
-
-The component's test suite (`MetricIconLabel.spec.tsx`) verifies:
-
-- SVG rendering with correct `aria-label`
-- Tooltip display on hover
-- Wrapper span layout styles (`display: inline-flex`)
-- Theme-derived colour (non-empty, not hardcoded black)
-- SVG `width="20"`, `height="20"`, and `stroke-width="1.5"` attributes
-
-## 7. Related docs
+## 6. Related docs
 
 - Metric score decimal-place convention: `docs/developer/frontend/metric-display-precision.md`
 - Spacing and padding rules: `docs/developer/frontend/frontend-spacing-and-padding-standards.md`

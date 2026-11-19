@@ -6,11 +6,8 @@ the UI: anything exposed to `google.script.run` can be invoked directly from the
 console, or by any script that has the web app URL — with no reference to the React
 frontend at all. Layer 3 shrinks that surface to a small, auditable set of entrypoints and
 keeps the transport boundary hygienic so that probing the surface reveals nothing about
-the implementation behind it.
-
-Layers 1 and 2 gate _who_ may call the app (platform deployment mode, then the
-`AuthService` group gate). This layer assumes an authorised caller is already present and
-asks a different question: _what_ can be called, and _what_ leaks when it fails.
+the implementation behind it. It assumes an authorised caller and asks what can be called
+and what leaks when it fails.
 
 ## The GAS function-exposure model
 
@@ -39,27 +36,6 @@ backend function must have a trailing underscore**. The only public entrypoints 
 No other top-level `function` declaration may exist in the backend without a trailing
 underscore.
 
-This convention was established by a security audit (commit `e35f318`, "Section 7" of the
-auth-service plan), which removed every accidental public function then present:
-
-- **Six dead wrapper functions deleted** across three legacy source files that were then
-  removed: `src/backend/AssignmentProcessor/globals.js` (four wrappers, including
-  `startProcessing` and `triggerProcessSelectedAssignment`),
-  `src/backend/y_controllers/globals.js` (one), and `src/backend/Utils/logError.js` (one).
-  These were old global transport helpers that predated the `z_Api` layer and were no
-  longer called by any active code path.
-- **Twenty internal functions renamed** with trailing underscores. By category:
-  - request-store lifecycle helpers in `src/backend/z_Api/requestStore.js` —
-    `loadStore_`, `saveStore_`, `createStartedRecord_`, `markSuccess_`, `markError_`,
-    `pruneStaleEntries_`, `compactStore_`;
-  - configuration validators in `src/backend/ConfigurationManager/03_validators.js`
-    (`validateLogLevel_`, `validateApiKey_`) and
-    `src/backend/ConfigurationManager/98_ConfigurationManagerClass.js`
-    (`safeParseConfigObject_`);
-  - error-shaped-value detection `isErrorLike_` in `src/backend/Utils/ABLogger.js`;
-  - reference-data key generation `generateStableKey_` in
-    `src/backend/y_controllers/ReferenceDataController.js`.
-
 The API allowlist methods need no special treatment because they are already private: they
 are registered in `ALLOWLISTED_METHOD_HANDLERS` (`src/backend/z_Api/z_apiHandler.js`) as
 keys of a frozen `const` object whose values are anonymous closures, or closures that
@@ -82,12 +58,10 @@ a static source scan that fails the build if it regresses.
   flagged while a top-level `accidentallyExposedHelper` is.
 - **Vendored code is excluded by construction.** The glob root is `src/backend`, and the
   helper additionally skips any path containing a `node_modules` or `vendor` segment, so
-  vendored assets are never scanned. The vendored `JsonDbApp` code in
-  `scripts/builder/vendor/jsondbapp/src/**` does contain top-level non-underscore function
-  declarations (for example `loadDatabase` and `createAndInitialiseDatabase` in
-  `04_core/99_PublicAPI.js`) and is therefore exposed to `google.script.run` in the
-  deployed bundle; this is an accepted risk — see
-  [accepted-risks.md](./accepted-risks.md).
+  vendored assets are never scanned. The build wraps the vendored `JsonDbApp` source in an
+  IIFE that leaves only the `JsonDbApp` namespace global; its functions are not callable
+  through `google.script.run` (see [accepted-risks.md](./accepted-risks.md) risk 1 and
+  [builder-script.md](../builder/builder-script.md) Stage 7).
 
 Because the test runs in the normal test suite, adding a new public function to the
 backend without an explicit justification breaks the build immediately, rather than
@@ -130,13 +104,12 @@ possible about the backend:
   `INTERNAL_ERROR` with the generic message "Internal API error." for anything else. Raw
   exception details, stack traces and internal error payloads are never sent to callers; the
   full thrown value is preserved in GAS execution logs via one boundary `ABLogger.error(...)`
-  call (see `backend-logging-and-error-handling.md` §6).
-- **Secrets never echo in config errors.** The configuration write handler aggregates
-  per-field failures as `"${name}: REDACTED"` (the `safeSet` helper in
-  `src/backend/z_Api/apiConfig.js`) and returns
-  `{ success: false, error: "Failed to save some configuration values: …" }`. A failed
-  `apiKey` or `backendUrl` save therefore surfaces as `apiKey: REDACTED`, never as the
-  offending value. See [backend-config.md](../data-shapes/backend-config.md).
+  call (see [apiHandler boundary standards](../backend/backend-logging-and-error-handling.md#apihandler-boundary-standards)).
+- **Secrets never echo in config errors.** The configuration write handler returns
+  `{ success: false, error: "Failed to save some configuration values: …" }`, aggregating
+  failures as `` `${field}: ${error.message ?? 'REDACTED'}` `` per field. Validator messages are
+  generic and never echo the submitted value; `REDACTED` is the fallback when an error has no
+  message. See [backend-config.md](../data-shapes/backend-config.md).
 - **API keys are masked at the transport boundary.** `getBackendConfig_` emits
   `apiKey: maskApiKey_(rawApiKey)` and `hasApiKey: !!rawApiKey` from
   `src/backend/z_Api/apiConfig.js`. The raw key never crosses the transport boundary, and the
@@ -156,7 +129,7 @@ possible about the backend:
   for the stored-read conversion.
 - **Logging hygiene.** `ABLogger` is the mandatory logging primitive for backend code,
   and the policy forbids logging secrets, credentials, tokens or API keys
-  (`backend-logging-and-error-handling.md` §8). The masking and redaction above keep
+  ([sensitive data and payload hygiene](../backend/backend-logging-and-error-handling.md#sensitive-data-and-payload-hygiene)). The masking and redaction above keep
   secrets out of **error envelopes and transport payloads**. One caveat applies to logs:
   the dispatcher debug log stringifies incoming request params, which for
   `setBackendConfig` can include a newly-entered API key. That call goes through
@@ -170,8 +143,8 @@ possible about the backend:
 - [Security approach overview](./README.md) — layering model and threat model
 - [Layer 2 — application authentication](./application-authentication.md) — the auth gate
   and trigger authorisation (including `TRIGGER_METHOD_HANDLERS`)
-- [Accepted risks and trade-offs](./accepted-risks.md) — including the vendored
-  `JsonDbApp` exposure
+- [Accepted risks and trade-offs](./accepted-risks.md) — including the IIFE isolation of
+  the vendored `JsonDbApp` code
 - [Backend API layer](../backend/api-layer.md) — transport handlers, allowlist pattern and
   validation ownership
 - [Backend logging and error handling](../backend/backend-logging-and-error-handling.md) —

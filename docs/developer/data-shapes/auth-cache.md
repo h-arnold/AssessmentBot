@@ -30,9 +30,9 @@ Sibling contracts:
 Each entry is a JSON-serialised string stored under a composite key. The key embeds both
 the configured group email and the caller email:
 
-| Key                         | Value (JSON string)                              | TTL                     |
-| --------------------------- | ------------------------------------------------ | ----------------------- |
-| `auth:<groupEmail>:<email>` | `{ "allowed": true, "role": "admin" \| "user" }` | 21600 seconds (6 hours) |
+| Key                         | Value (JSON string)                              | TTL                                 |
+| --------------------------- | ------------------------------------------------ | ----------------------------------- |
+| `auth:<groupEmail>:<email>` | `{ "allowed": true, "role": "admin" \| "user" }` | `CacheManager.CACHE_EXPIRY_SECONDS` |
 
 ### Key persistence notes
 
@@ -42,24 +42,23 @@ the configured group email and the caller email:
 - **A bypassed check (`bypassCache: true`) still writes the refreshed allowed result** — the
   bypass skips only the cache read; the success-path cache write is unconditional.
 - **Trigger and management reads always bypass the cache.** `triggerHandler()` calls
-  `checkAccess({ bypassCache: true, neverClaim: true })`; the defunct `requireConfigured`
-  option was dropped in favour of the explicit never-claim flag.
-  `getAuthenticationSettings` / `setAuthenticationSettings` also pass `bypassCache: true`,
-  so the dispatcher's `ADMIN_REQUIRED_METHOD_NAMES` admission phase resolves access fresh.
+  `checkAccess({ bypassCache: true, neverClaim: true })`. For the settings methods, the
+  dispatcher derives `bypassCache: true` from `ADMIN_REQUIRED_METHOD_NAMES` in its admission
+  phase, resolving access fresh.
 - The key includes the configured group email, so changing the group invalidates all cached
   entries by construction (no explicit cache invalidation on config change is required).
   Flipping `authMode` changes the active provider; `scriptProperties` mode does not read this
   cache at all.
-- Entries naturally expire after the 21600-second (6-hour) TTL; `AuthService` passes
-  `CacheManager.CACHE_EXPIRY_SECONDS` (= 21600) explicitly at the call site
-  (`CacheManager.put(key, value, ttlSeconds)` has no default TTL).
+- Entries expire after the TTL passed by `GoogleGroupsAuthService._resolveAccess()` as
+  `CacheManager.CACHE_EXPIRY_SECONDS` (= 21600 seconds). `CacheManager.put(key, value, ttlSeconds)`
+  has no default TTL, so the producer passes the constant explicitly.
 - `CacheManager` handles JSON serialisation/deserialisation internally; `get()` returns
   `null` on cache miss or parse error (graceful degradation).
 - `CacheManager` is a **plain instantiable class** obtained via `new CacheManager()`
   (established pattern — see `src/backend/RequestHandlers/LLMRequestManager.js`), **not** a
   singleton.
-- Revocation latency is bounded by the 6-hour TTL — a previously allowed user whose
-  membership is revoked remains authorised until their cached entry expires.
+- Revocation latency is bounded by `CacheManager.CACHE_EXPIRY_SECONDS` — a previously allowed
+  user whose membership is revoked remains authorised until their cached entry expires.
 
 ---
 

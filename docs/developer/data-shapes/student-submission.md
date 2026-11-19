@@ -234,7 +234,7 @@ This shape embeds [Contract: BaseTaskArtifact](base-task-artifact.md) and
    See [Contract: BaseTaskArtifact § Known discrepancies](base-task-artifact.md#validation).
    This is a deliberate, scoped asymmetry.
 
-7. **The source code comment on `StudentSubmission.studentName` still reads "Temporary addition for V0.7.2 - will be removed later", but the field is contractual.**
+7. **The source code comment on `StudentSubmission.studentName` describes it as a temporary addition, but the field is contractual.**
    Both read schemas validate `studentName: string | null` and legacy read preparation
    depends on it. The comment is stale relative to the contract.
    **Risk:** the comment invites removal of a field the transport
@@ -249,9 +249,8 @@ This shape embeds [Contract: BaseTaskArtifact](base-task-artifact.md) and
 The student-stage producers establish acquisition before classification and materialise
 terminal task failures at the known identity boundary. Successfully extracted items are
 not completed results: they stay in flight with an empty assessment map until the later
-assessment stage. This slice adds no collection, transport field, persisted scan state or
-Assessment-code change; it wires the existing catalogue into the existing
-`StudentSubmissionItem.setError()` primitive.
+assessment stage. Acquisition and extraction failures are recorded through
+`StudentSubmissionItem.setError()`.
 
 | Situation                                                                     | Scope                    | Recorded result                                                   | Source artefact                                                                                         | Notes                                                                                                                                                                                                                                    |
 | ----------------------------------------------------------------------------- | ------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -322,10 +321,6 @@ Rules:
   ID/coordinates). Handled paths never log `studentName`, source content or raw
   payloads, and never replace the original error with a synthetic one. Downstream model
   and progress duplicates are suppressed.
-- Proof boundary: these outcomes are established by hermetic producer, model and
-  caller/store-restoration tests with native services mocked and an explicit test-only
-  marker where needed. They do not prove API transport, live GAS behaviour, image
-  hydration or completion stamping.
 
 ### Image hydration outcomes
 
@@ -391,11 +386,6 @@ Rules:
   `taskId` and `scope` (plus `attempts`/`responseCode` for transport failures). Source
   URLs, payloads, student names and raw error text are never logged; propagated faults
   emit no manager warning.
-- Proof boundary: hermetic native HTTP/blob stubs, real models, memory collections and
-  logger observers prove the manager/model/caller boundary only. They do not prove live
-  GAS/network behaviour, deployed logging fidelity, durable persistence or
-  completion-marker/prepared-write guarantees. The connected controller/store regression
-  stubs extraction and assessment and is not production persistence evidence.
 
 ### Source artefact content and hash semantics
 
@@ -470,10 +460,8 @@ Rules:
 
 ### Completed submission coverage
 
-> **Status: read coverage is active on both representations; acquisition/extraction
-> producers materialise terminal failure items for known tasks; completed-persistence
-> coverage rejection is enforced at the write boundary.** `AssignmentCurrentRestoration`
-> materialises a missing known task as an all-three `CORRUPT_RECORD` `E`, isolates
+> `AssignmentCurrentRestoration` materialises a missing known task as an all-three
+> `CORRUPT_RECORD` `E`, isolates
 > corrupt known items and incomplete/extra-key criteria while preserving healthy
 > siblings, keeps a null-parent empty item map as an empty submission, and isolates
 > contradictory null-parent items. For legacy records, the same current-format validation runs
@@ -509,8 +497,7 @@ Coverage resolution rules:
   normaliser defensively produce a `CORRUPT_RECORD` `E` using that same payload's
   definition. This mandatory fallback is a post-backend-validation corruption defence,
   not the normal full coverage owner. Backend-materialised `E` entries are never
-  overwritten by coverage inference. No new task-list transport field or full fetch
-  is needed.
+  overwritten by coverage inference.
 - A known dictionary task key paired with a mismatched item `taskId` becomes a
   `CORRUPT_RECORD` `E` for that known key. A stored item referencing no task in the
   embedded definition has no safe target and fails the owned assignment dataset; do not
@@ -541,10 +528,8 @@ Coverage resolution rules:
   invariants.
 - The no-submission omission contributes no observed item and leaves existing
   denominator semantics unchanged; it is not an `error` or `excluded` observation.
-- A version-1 canonical completed fixture never contains an empty assessment map.
-  Missing-criterion and empty-map cases remain local corruption probes, not realistic
-  success data. See
-  [Synthetic Test Data § Generated content: artefacts, contract marker and outcomes](../testing/synthetic-test-data.md#generated-content-artefacts-contract-marker-and-outcomes).
+- A version-1 completed record never has an empty assessment map; an empty map is corruption,
+  not success data.
 
 ### Full and partial item isolation with trustworthy identities
 
@@ -610,19 +595,6 @@ Owners:
 | Backend raw domain validation  | `src/backend/Models/Assessment.js`, `src/backend/Models/StudentSubmission/index.js` (facade), `src/backend/Models/StudentSubmission/00_StudentSubmissionItem.js` (item model), `src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js` (restore/coverage facade and legacy read-preparation entry), `src/backend/AssignmentProcessor/Assignment/02_AssignmentCurrentRestoration.js` (marker-1 restoration and shared item validation), `src/backend/AssignmentProcessor/Assignment/02_AssignmentLegacyRead.js` (legacy read preparation) | `Assessment` validates its result/cause; the `StudentSubmission` facade and item model validate their own full/partial records; `AssignmentRehydration` owns one-pass full/partial graph traversal and exposes `prepareLegacyReadSubmissions()`; `AssignmentCurrentRestoration` owns marker-1 root/task pre-validation, raw item validation, coverage, null-parent isolation and full/partial restoration; `AssignmentLegacyRead` prepares an independent legacy read result through that same validation, not a second validator. Controllers select the representation explicitly.                                                                                        |
 | Transport-boundary exclusion   | `src/backend/z_Api/*` handlers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | API handlers do not introduce a second domain-validator hierarchy.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
-Backend module separations preserve the existing public owners and the existing File
-Index:
-
-- `src/backend/Models/StudentSubmission.js` has become `Models/StudentSubmission/index.js`
-  (public facade) plus `Models/StudentSubmission/00_StudentSubmissionItem.js` (item
-  model), each at most 320 lines; the existing public constructors remain the entry
-  points.
-- `src/backend/AssignmentProcessor/Assignment/02_AssignmentRehydration.js` keeps its
-  restore/coverage facade at most 320 lines; the separate legacy read-preparation owner
-  lives in same-domain `02_AssignmentLegacyRead.js` behind the
-  `AssignmentRehydration.prepareLegacyReadSubmissions()` entry. It is not a
-  second validator.
-
 ### Marker-1 item restoration rules
 
 `AssignmentCurrentRestoration._rehydrateCurrentSubmission()` restores a marker-1
@@ -639,8 +611,7 @@ submission and its complete set of task items. Item-level rules:
 | Timestamps              | Valid stored submission `createdAt` / `updatedAt` values are retained independently. Otherwise `createdAt` falls back to the assignment `createdAt`; `updatedAt` falls back to the assignment `updatedAt` when non-null, otherwise the assignment `createdAt`. An invalid assignment timestamp throws. The wall clock is never used.                                                                                                                                                                                                      |
 
 `TABLE` artefact bodies remain supported as stored `string \| null` for document-bearing
-items, consistent with the existing artefact contract; marker-1 restoration neither
-generates TABLE fixtures nor introduces new TABLE feature work.
+items, consistent with the existing artefact contract.
 
 ---
 
@@ -649,7 +620,7 @@ generates TABLE fixtures nor introduces new TABLE feature work.
 The acquisition, extraction, image-hydration and coverage rules above are the current contract.
 Preview error states and the attempt-baseline analysis mode are frontend analysis concerns,
 described in
-[Frontend Data Analysis Response](frontend-data-analysis-response.md#attempt-baseline-contract-changes).
+[Frontend Data Analysis Response § Attempt-baseline analysis mode](frontend-data-analysis-response.md#attempt-baseline-analysis-mode).
 
 The legacy read preparation described in
 [Contract: Assessment § Legacy read preparation](assessment.md#legacy-read-preparation) applies

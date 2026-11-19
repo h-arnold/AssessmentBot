@@ -24,7 +24,7 @@ Sibling contracts:
 
 ### Store shape
 
-The store is a JSON-serialised object stored under `USER_REQUEST_STORE_KEY` (value: `'AB_USER_REQUEST_STORE'`)
+The store is a JSON-serialised object stored under `USER_REQUEST_STORE_KEY`
 in GAS User Properties. Each key is a `requestId` string (V4 UUID), each value is a record:
 
 | Field          | Type     | Required | Notes                                                                                           |
@@ -84,14 +84,16 @@ stalenessThresholdMs`. Completed entries (`'success'` / `'error'`) are never rem
 
 Defined in `src/backend/z_Api/apiConstants.js`:
 
-| Constant                      | Value                     | Notes                                                                   |
-| ----------------------------- | ------------------------- | ----------------------------------------------------------------------- |
-| `USER_REQUEST_STORE_KEY`      | `'AB_USER_REQUEST_STORE'` | PropertiesService key for the store                                     |
-| `MAX_TRACKED_REQUESTS`        | `30`                      | Maximum entries before `compactStore_()` evicts oldest                  |
-| `ACTIVE_LIMIT`                | `25`                      | Maximum concurrent `'started'` entries before new requests are rejected |
-| `STALE_REQUEST_AGE_MS`        | `900000` (15 min)         | `ACTIVE_REQUEST_STALE_MINUTES` (15) × 60 × 1000                         |
-| `LOCK_TIMEOUT_MS`             | `1000`                    | Lock acquisition timeout in milliseconds                                |
-| `LOCK_WAIT_WARN_THRESHOLD_MS` | `300`                     | Lock wait duration above which a warning is logged                      |
+`src/backend/z_Api/apiConstants.js` is the source of truth for the values.
+
+| Constant                      | Notes                                                                   |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| `USER_REQUEST_STORE_KEY`      | PropertiesService key for the store                                     |
+| `MAX_TRACKED_REQUESTS`        | Maximum entries before `compactStore_()` evicts oldest                  |
+| `ACTIVE_LIMIT`                | Maximum concurrent `'started'` entries before new requests are rejected |
+| `STALE_REQUEST_AGE_MS`        | Derived from `ACTIVE_REQUEST_STALE_MINUTES`                             |
+| `LOCK_TIMEOUT_MS`             | Lock acquisition timeout in milliseconds                                |
+| `LOCK_WAIT_WARN_THRESHOLD_MS` | Lock wait duration above which a warning is logged                      |
 
 ### Key persistence notes
 
@@ -105,17 +107,16 @@ Defined in `src/backend/z_Api/apiConstants.js`:
   not grow unbounded.
 - There is no frontend Zod schema — this is an internal backend-only store with no transport
   endpoints.
-- The store key uses `'AB_USER_REQUEST_STORE'` (prefixed with `AB_`) to avoid collisions
-  with other GAS scripts sharing the user's property store.
-- `ACTIVE_LIMIT` (25) is slightly lower than `MAX_TRACKED_REQUESTS` (30), ensuring there is
-  headroom for completed entries alongside active ones without triggering compaction on
-  every request.
+- The store key is prefixed with `AB_` to avoid collisions with other GAS scripts sharing
+  the user's property store.
+- `ACTIVE_LIMIT` is lower than `MAX_TRACKED_REQUESTS`, leaving headroom for completed entries
+  alongside active ones without triggering compaction on every request.
 
 ### Admission-phase usage in `ApiDispatcher`
 
 ```
 _runAdmissionPhase(requestId, method):
-  1. Acquire user lock (LockService.getUserLock().tryLock(1000ms))
+  1. Acquire user lock (LockService.getUserLock().tryLock(LOCK_TIMEOUT_MS))
   2. store = loadStore_()
   3. pruneStaleEntries_(store, STALE_REQUEST_AGE_MS, lockAcquiredAt)
   4. saveStore_(store)                              // persist pruned state immediately
@@ -129,15 +130,13 @@ _runAdmissionPhase(requestId, method):
 
 ```
 _runCompletionPhase(requestId, method, handlerFailed, handlerError):
-  1. Acquire user lock (LockService.getUserLock().tryLock(1000ms))
+  1. Acquire user lock (LockService.getUserLock().tryLock(LOCK_TIMEOUT_MS))
   2. store = loadStore_()
   3. if handlerFailed → markError_(store, requestId, String(handlerError))
      else → markSuccess_(store, requestId)
   4. saveStore_(compactStore_(store))
   5. Release lock
 ```
-
----
 
 ---
 
@@ -180,7 +179,7 @@ None — RequestStore is a single flat key-value dictionary with no embedded sub
   never lost from tracking.
 - `pruneStaleEntries_()` only removes `'started'` entries older than the staleness threshold.
   Completed entries are never pruned — they are only removed by `compactStore_()`.
-- The admission phase enforces an `ACTIVE_LIMIT` (25) on concurrent `'started'` entries.
+- The admission phase enforces `ACTIVE_LIMIT` (defined in `src/backend/z_Api/apiConstants.js`) on concurrent `'started'` entries.
   If the limit is reached, new requests receive a `RATE_LIMITED` failure envelope and are
   never dispatched to their handler.
 - When `markError_()` is called, `errorMessage` is set to `String(handlerError)`, converting
@@ -192,23 +191,12 @@ None — RequestStore is a single flat key-value dictionary with no embedded sub
 
 ### Known discrepancies
 
-1. **No frontend visibility of the store.** The RequestStore is purely internal to the
-   backend. There is no frontend Zod schema, no API endpoint to query the store, and no
-   mechanism to surface store contents in the UI. This is intentional — the store is a
-   backend-internal rate-limiting and diagnostic mechanism.
-
-2. **`markSuccess_()` and `markError_()` do not verify the record exists before mutating.**
+1. **`markSuccess_()` and `markError_()` do not verify the record exists before mutating.**
    Both functions access `store[requestId]` without checking for the record's presence. If
    a `requestId` is not in the store (e.g. because the store was concurrently replaced or
-   pruned), the mutation will throw a `TypeError` (`Cannot set properties of undefined`)
-   when attempting to set `store[requestId].status`. This is a latent fragility — a
-   missing-record guard would provide a more informative failure and keep the `TypeError`
-   out of the error envelope.
-
-3. **`loadStore_()` returns `{}` for non-object types but does not surface this via error
-   envelope.** Malformed or unexpected store data is silently reset. Warnings are logged
-   via `ABLogger`, but no alerting or structured error is propagated. This is intentional
-   for a self-healing internal store.
+   pruned), the mutation throws a `TypeError` (`Cannot set properties of undefined`) when
+   setting `store[requestId].status`. Classification: **Fragile** — a missing-record guard
+   would give a more informative failure and keep the `TypeError` out of the error envelope.
 
 ---
 
@@ -225,16 +213,10 @@ Implementation:       src/backend/z_Api/requestStore.js
   └── pruneStaleEntries_(...)     — remove stale 'started' entries
 
 Constants:            src/backend/z_Api/apiConstants.js
-  ├── USER_REQUEST_STORE_KEY        — 'AB_USER_REQUEST_STORE'
-  ├── MAX_TRACKED_REQUESTS          — 30
-  ├── ACTIVE_LIMIT                  — 25
-  ├── STALE_REQUEST_AGE_MS          — 900000 (15 min)
-  ├── LOCK_TIMEOUT_MS               — 1000
-  └── LOCK_WAIT_WARN_THRESHOLD_MS   — 300
 
 Runtime constants:    src/backend/00_RuntimeConstants.js
-  ├── SECONDS_PER_MINUTE            — 60
-  └── MS_PER_SECOND                 — 1000
+  ├── SECONDS_PER_MINUTE
+  └── MS_PER_SECOND
 
 Consumer:             src/backend/z_Api/z_apiHandler.js
   ├── ApiDispatcher._runAdmissionPhase()   — load → prune → check limit → start → save

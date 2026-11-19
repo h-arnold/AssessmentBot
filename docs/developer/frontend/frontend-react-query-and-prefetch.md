@@ -9,20 +9,20 @@ Use it alongside:
 - `docs/developer/frontend/frontend-testing.md`
 - `docs/developer/frontend/frontend-loading-and-width-standards.md` for initial-load, refresh, degraded-data, and mutation-presentation rules
 
-## 1. Baseline contract
+## Baseline contract
 
 The frontend uses React Query as the shared server-state layer for cache, freshness, and in-flight request deduplication.
 
 Current baseline:
 
 - package: `@tanstack/react-query`
-- pinned version: `5.104.1`
+- pinned version: see `src/frontend/package.json`
 - cache scope: in-memory only for the current session
 - persistence: intentionally disabled
 
 Do not add a parallel cache layer for shared backend reads.
 
-## 2. Query-key convention
+## Query-key convention
 
 Define shared query keys through `src/frontend/src/query/queryKeys.ts` factory helpers.
 Do not scatter ad-hoc array literals through feature code.
@@ -33,7 +33,7 @@ Current shared keys:
 - `backendConfig`
 - `classPartials`
 - `abClass`
-- `assignment` — scoped by `courseId, assignmentId`; consumed by the ClassPage prefetch and future per-assignment query hooks
+- `assignment` — scoped by `courseId, assignmentId`; consumed by the ClassPage assignment prefetch
 - `assignmentDefinitionPartials`
 - `assignmentDefinitionByKey`
 - `assignmentTopics`
@@ -46,9 +46,9 @@ Keep future invalidation and warm-up work aligned to these helpers.
 
 The `assignmentDefinitionByKey` factory creates scoped query keys for full-definition reads by `definitionKey`, used by the assignment-definition wizard modal for update-mode entry.
 
-The `abClass` factory creates scoped query keys for individual class detail reads by `classId`. It is NOT part of the startup warm-up set; use `invalidateQueries({ queryKey: queryKeys.abClass(classId) })` for invalidation. See the `getABClassQueryOptions` shared query definition in `sharedQueries.ts`.
+The `abClass` factory creates scoped query keys for individual class detail reads by `classId`. It is not part of the startup warm-up set; use `invalidateQueries({ queryKey: queryKeys.abClass(classId) })` for invalidation. See the `getABClassQueryOptions` shared query definition in `sharedQueries.ts`.
 
-## 3. Shared query definitions
+## Shared query definitions
 
 Shared query definitions belong in dedicated React Query helper modules and must:
 
@@ -70,7 +70,7 @@ backendConfig → `backend-config.md`, etc.).
 
 When orchestration must await a shared read outside an observer (startup warm-up, page-entry warm-up, or a one-off effect), call `queryClient.query(options)`. `query` resolves with the query function's data and rejects on failure, so the caller must handle or log the rejection; do not assume it absorbs failures silently. The deprecated `fetchQuery` and `prefetchQuery` methods must not be used for new code.
 
-## 4. Startup warm-up policy
+## Startup warm-up policy
 
 Startup warm-up uses the shared lookup datasets needed across the growing interface.
 
@@ -97,7 +97,7 @@ admitted dashboard.
 `googleClassrooms` remains a view-entry prefetch for the Classes tab rather than a startup-prefetched dataset.
 `backendConfig` remains an on-demand shared query owned by the Backend settings panel rather than a startup-prefetched dataset.
 
-## 5. Prefetch decision framework for future features
+## Prefetch decision framework for future features
 
 Future frontend work must choose one policy per feature and record that decision with the feature work:
 
@@ -113,14 +113,16 @@ Do not add startup prefetch only to exercise React Query.
 - **ClassPage assignment prefetch**: `useClassPageData` calls the feature-local `features/classPage/useClassPageAssignmentPrefetch.ts` hook, which owns the effect, ref guard and three-assignment limit. The effect dispatches only when `surfaceState.status === 'ready'` and `classFull` is present; the adapter's trust validation has already rejected a null or unparseable assignment `updatedAt` before the surface can become ready, so the hook does not repeat that check. It sorts with `compareAssignmentUpdatedAtDesc` (updatedAt descending, assignmentId ascending tie-break), takes the top 3, and calls `queryClient.query(getAssignmentQueryOptions(classFull.classId, assignmentId))` for each. Each call is fire-and-forget: a rejection retains the `logFrontendError('useClassPageAssignmentPrefetch', error, { courseId, assignmentId })` context and never affects the page surface. The per-instance guard prevents redispatch on same-class refetch and StrictMode effect replay; dispatch for a different ready class replaces the guard, allowing dispatch again on return. Keyed queries also deduplicate in-flight requests.
 - **Settings Google Classrooms prefetch**: `SettingsPageGoogleClassroomsPrefetch` runs when the Settings page mounts to warm `googleClassrooms` ahead of the Classes tab's view-entry read. It awaits `queryClient.query(getGoogleClassroomsQueryOptions())`. A rejection logs once through the component's warning logger when the component is still mounted, then returns before cache inspection. On fulfilment it inspects `queryClient.getQueryState(queryKeys.googleClassrooms())` and warns if the cached state is `error`. If the component unmounts before the query settles, it neither inspects nor logs.
 
-## 6. Freshness and invalidation expectations
+## Freshness and invalidation expectations
 
-Active screens should keep stale data visible while a background refresh runs.
-The current query-client defaults support that by avoiding eager refetch on focus or reconnect and only refetching on mount when data is stale.
+Background-refresh rules are owned by
+[Frontend Loading and Width Standards](frontend-loading-and-width-standards.md#4-background-refresh-rules).
+The query-client defaults avoid eager refetch on focus or reconnect and refetch on mount
+only when data is stale.
 
-Deferred presentation does not move fetch timing. Where a surface defers its expensive derivation from the user's selection (see [Section 4.1](frontend-loading-and-width-standards.md#41-deferred-derivation-behind-urgent-controls)), its per-assignment queries still key off the urgent selection, so fetches start on the interaction and deduplicate while the derivation waits.
+Deferred presentation does not move fetch timing. Where a surface defers its expensive derivation from the user's selection (see [Deferred derivation behind urgent controls](frontend-loading-and-width-standards.md#41-deferred-derivation-behind-urgent-controls)), its per-assignment queries still key off the urgent selection, so fetches start on the interaction and deduplicate while the derivation waits.
 
-Current invalidation and required-refresh rules:
+Current invalidation rules:
 
 - cohort mutations should target the shared `cohorts` query key and refresh active consumers
 - year-group mutations should target the shared `yearGroups` query key and refresh active consumers
@@ -129,8 +131,8 @@ Current invalidation and required-refresh rules:
 - `classPartials` refresh remains feature-driven after successful class mutations
 - assignment-definition delete and manual refresh flows should target the shared `assignmentDefinitionPartials` query key only
 - assignment-definition create (stage-one), final save, and document-change re-parse flows should invalidate both `assignmentDefinitionPartials` and the scoped `assignmentDefinitionByKey` query for the affected definition so the Assignments table and open modal remain trustworthy
-- if a required post-mutation refresh fails for a surface that cannot trust its previously cached data, fail closed for that owned surface until a newer successful payload arrives instead of quietly leaving stale data visible
-- if a required post-mutation refresh fails for the Classes table workflow, do not keep stale table data visible; surface user guidance that a page refresh is required to see changes
+
+Refresh failures follow the [fail-closed degraded-data rules](frontend-loading-and-width-standards.md#5-fail-closed-degraded-data-rules), which apply to owned surfaces including the Classes table.
 
 Do not add speculative invalidation wiring beyond the feature contracts that exist.
 
@@ -152,7 +154,7 @@ surface does not suppress that warning while the other required refresh is still
 pending. Existing query trust rules remain authoritative. Effect replay and metadata-only
 cache updates reuse the completed attempt instead of invalidating again.
 
-## 7. Mutation and Invalidation Patterns
+## Mutation and invalidation patterns
 
 ### Preferred Pattern: Let Invalidation Trigger Background Refetch
 
@@ -190,7 +192,7 @@ const cached = queryClient.getQueryData(queryKeys.assignmentDefinitionByKey(loca
 // In create mode, this will always be undefined
 ```
 
-**Context:** In `AssignmentDefinitionWizardModal.tsx`, the `useQuery` for `getAssignmentDefinitionQueryOptions(definitionKey ?? '')` has `enabled: open && !isCreateMode && definitionKey !== null`. In create mode, this query never runs and never populates the cache.
+**Context:** The `useQuery` in `features/assignmentWizard/useAssignmentDefinitionWizard.ts` spreads `getAssignmentDefinitionQueryOptions(definitionKey ?? '')` and sets `enabled: open && !isCreateMode && definitionKey !== null && startupWarmupState.isDatasetReady('assignmentDefinitionPartials')`. In create mode, this query never runs and never populates the cache.
 
 **Correct Approach:** In create mode, always use the parsed baseline reference instead of checking query cache:
 
@@ -207,7 +209,7 @@ if (!isCreateMode && localDefinitionKey) {
 return parsedCreateBaselineReference.current;
 ```
 
-## 8. Data Contract Patterns
+## Data contract patterns
 
 ### Preferred Pattern: yearGroupKey/yearGroupLabel Pair
 
@@ -228,7 +230,7 @@ interface AssignmentDefinitionPartial {
 - Display labels can be resolved from cached reference-data datasets
 - Persisted records store keys, not display values that may change
 
-## 9. Sensitive data and cache persistence
+## Sensitive data and cache persistence
 
 Frontend cache persistence is intentionally disabled.
 Cached data remains in memory only for the current session because the app handles sensitive student-related data and should not persist shared query payloads in browser storage by default.
