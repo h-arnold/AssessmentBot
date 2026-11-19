@@ -54,14 +54,14 @@ against the current specification first.
   - Location: `toTransportPartialRow_` in `src/backend/z_Api/assignmentDefinitionTransport.js`
   - Note: Transport-boundary helper that accepts a model instance or plain object, calls `definition.toPartialJSON()`, defensively strips `yearGroup`, and normalises Date fields.
 
-- LLM seed partition helper (`Not implemented` — planned for issue #309)
-  - Owning layer/path: `src/backend/RequestHandlers/`, dedicated sibling module (for example `LLMSeedPhase.js`).
-  - Behaviour: derives the ephemeral `{ seeds, remainder }` split of generated LLM requests after the existing input guards; seeds are the first eligible request per `TaskDefinition.getId()` in generation order; both arrays preserve order; fails loudly on duplicate UID, missing `uidIndex` route entry and missing `taskDefinition` (messages name the offending UID). Called once from `LLMRequestManager.processStudentResponses()`; no persistence or transport surface.
-  - Status: `Not implemented` — reconcile when the two-phase dispatch lands.
-- LLM shared batch-outcome consumer (`Not implemented` — planned for issue #309)
-  - Owning layer/path: `src/backend/RequestHandlers/` — final placement (same sibling module or retained in `LLMRequestManager.js`) decided by the action plan from the recorded LOC constraint (post-change `LLMRequestManager.js` must be ≤ 500 lines).
-  - Behaviour: single consumer for seed-phase and remainder-phase batch outcomes; keeps accepted-first sort, assigned/cached writeback, error mapping, stop-status detection, shared `runStopped`, progress update and exactly-once UID routing. Implemented once and shared; no duplicate consumer per phase.
-  - Status: `Not implemented` — reconcile when the two-phase dispatch lands.
+- LLM seed partition helper (implemented — issue #309)
+  - Owning layer/path: `LLMSeedPhase.partitionRequests(requests, uidIndex)` in `src/backend/RequestHandlers/LLMSeedPhase.js`; exposed as a method on the GAS global `LLMSeedPhase` and wired as a Node test global in `tests/setupGlobals.js`.
+  - Behaviour: splits generated requests into `{ seeds, remainder }`; the first eligible request per `TaskDefinition.getId()` in generation order is its seed, all later requests for that task go to `remainder`, and both arrays preserve generation order. Throws naming the offending UID when a UID has no `uidIndex` route entry or that entry has no `taskDefinition`. Runs after the caller's input guards; duplicate UIDs are rejected by `LLMRequestManager.processStudentResponses()` before partitioning, not by this helper. Seeds form one parallel round bounded by task count and bypass the configured batch-size throttle. No persistence or transport surface; no payload content logged. Called once from `processStudentResponses()`.
+  - Status: Implemented (issue #309) — see `LLMSeedPhase.partitionRequests()`.
+- LLM shared batch-outcome consumer (implemented — issue #309)
+  - Owning layer/path: `LLMSeedPhase.createBatchConsumer(manager, state)` in the same sibling module `src/backend/RequestHandlers/LLMSeedPhase.js` (final placement; not retained in `LLMRequestManager.js`, which stays within the 500-line ceiling).
+  - Behaviour: returns the single `onBatchComplete` consumer shared by the seed and remainder phases. It latches `manager.runStopped` on a stop status, sorts accepted outcomes before failures, consumes every UID exactly once (throwing on an unknown or duplicate outcome UID), updates progress and delegates writeback and error mapping to `manager._processSingleResponse()`, returning `!manager.runStopped`. Implemented once and shared; no duplicate per-phase consumer. No persistence or transport surface.
+  - Status: Implemented (issue #309) — see `LLMSeedPhase.createBatchConsumer()`.
 
 ## ABClass metadata helpers
 

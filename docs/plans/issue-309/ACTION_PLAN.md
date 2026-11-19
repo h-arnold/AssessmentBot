@@ -8,7 +8,7 @@
 - **Baseline gate (passed with documented debt):** session ID `feat-issue-309-cache-seeding`; report `.ts-regression-checker/reports/session-feat-issue-309-cache-seeding/baseline/baseline.txt`; overall FAILING with 7/8 checks passing; **0 regressions, 0 new failures**. The sole failing check is `backend-lint-check` with 4 pre-existing `max-lines` warnings (each an unrelated 501-line test file last touched by `4a0a3418`): `tests/backend-api/assignmentDefinitionPartials.unit.test.js`, `tests/dbManager/dbManager.test.js`, `tests/googleClassroom/classroomApiClient.test.js`, `tests/utils/batchUpdateUtility.test.js`. These are **accepted technical debt** for this plan: out of scope, untouched by the plan, and must not be "fixed" opportunistically. All other checks (frontend/builder lint, backend/frontend/builder coverage, E2E, typecheck) pass. Every section regression gate must show these same 4 warnings and no new failures.
 - **Gate command (user direction, 2026-11-18):** the regression checker is the authoritative gate and runs **only once at the end of each section**; `npm run run-all-checks` is not used as a gate because it is slow and stops on the accepted baseline lint debt. Between phases use focused/section-scoped tests and lints only. (The §1 acceptance-criterion wording "run-all-checks passes" is read through this direction: the equivalent section evidence is targeted green tests/lints plus a clean section regression-gate comparison.)
 - **§2+§3 combined delivery (user decision, 2026-11-18):** the plan requires §§2 and 3 to land as one green unit (§2 leaves deliberately expected-red suites that §3 migrates). Keep separate RED/GREEN loops and separate plan-section records, but run **one authoritative regression gate and one combined commit after §3**. §2 records its expected-red inventory in Implementation notes and has no standalone clean gate. Do not push an interim commit that claims feature completion before §3 lands.
-- **Progress:** §§1–4 complete. §1 corpus regeneration committed `89fb460f`; §§2–3 (two-phase seed dispatch + test-suite migrations) as one green unit committed `34b44c36`; all pushed. §4 verification/hardening proved the full battery green and fixed two §1-introduced coverage regressions (synthetic regeneration timeouts + a new streaming-fallback coverage test); full `test:coverage` exit 0 all five scopes, section regression gate clean (0 regressions / 0 new failures, 7/8 checks — only the 4 accepted baseline warnings). Next: §5 documentation, helper reconciliation and handoff. The §1/§2–3 commit-SHA bookkeeping lines are carried uncommitted into the §4 commit per the §1 pattern.
+- **Progress:** All 5 sections complete. §1 corpus regeneration committed `89fb460f`; §§2–3 (two-phase seed dispatch + test-suite migrations) as one green unit committed `34b44c36`; §4 verification/hardening (two §1 coverage regressions fixed) committed `246d6169`; all pushed. §5 docs reconciliation reviewed PASS (both `api-layer.md` helper entries now `Implemented (issue #309)`), all required checks passed, section regression gate clean (0 regressions / 0 new failures, 7/8 checks — only the 4 accepted baseline warnings). Remaining orchestrator steps: commit §5 + push, session compaction, post-implementation de-sloppification and final docs pass, then final handoff. Earlier section commit-SHA bookkeeping lines are carried forward into the §5 commit per the §1 pattern.
 
 ## Read-First Context
 
@@ -231,6 +231,7 @@ Additional per-phase and per-section reads are listed in each section.
   - **Final full coverage chain (2026-11-19):** `npm run test:coverage` → **exit 0** end-to-end; all five scopes green — backend 91.18/86.00/90.07/91.77, frontend 95.84/92.03/95.80/96.52, builder 93.87/86.98/97.13/93.88, synthetic 95.51/89.93/98.97/95.78, plugins 98.36/100/100/98.03 (all ≥85%). Evidence `.opencode/scratchpad/s4-final-test-coverage.txt`. `lint:check`/`run-all-checks` failure mode unchanged (4 accepted baseline warnings at lint fail-fast); skipped scopes `typecheck:all` and `build:production` already re-run green by the verification battery, and the reviewer re-ran synthetic `tsc` green after the fixes — no need to repeat them for test-only changes.
   - **Docs sync skipped (recorded reason):** §4 changed only test-infrastructure timeout constants and added one coverage-restoration test; no documented behaviour, public API/JSDoc, data shape, command, config or workflow changed. Documentation remains accurate from §2/§3 sync; §5 owns final cross-section reconciliation.
   - **§4 section regression gate (2026-11-19):** `npm run regression-checker -- feat-issue-309-cache-seeding` → 7/8 checks pass; overall FAILING solely from `backend-lint-check`'s 4 pre-existing accepted baseline `max-lines` warnings in the four unrelated 501-line files; **0 regressions, 0 new failures, 0 fixes** — identical to baseline, so the gate passes for progression. Report: `.ts-regression-checker/reports/session-feat-issue-309-cache-seeding/runs/2026-11-19T06-01-35.365Z/comparison.txt`. Full output `.opencode/scratchpad/s4-regression-gate.txt`.
+  - **Commit and push (§4):** branch `feat/issue-309-cache-seeding`; commit `246d6169287b9851e3ff638a50270a2e6546eaae` — `test(issue-309): harden synthetic coverage after corpus regeneration` (body: timeout headroom, streaming-fallback coverage test, no production/config/threshold change). All pre-commit hooks passed (Prettier unchanged, staged ESLint clean, `typecheck:all` green); 5 files, 179 insertions / 68 deletions. `git push` succeeded (`34b44c36..246d6169  feat/issue-309-cache-seeding -> feat/issue-309-cache-seeding`); working tree clean. This record plus the §1/§2–3 SHA records are carried uncommitted into the §5 commit per the §1 pattern.
 - **Deviations from plan:** none yet.
 - **Follow-up implications for later sections:** § 5 completes documentation and the handoff statement.
 
@@ -238,54 +239,33 @@ Additional per-phase and per-section reads are listed in each section.
 
 ## Section 5 — Documentation, helper reconciliation and rollout notes
 
-### Objective
+### Outcome (compacted)
 
-- Bring canonical docs into line with the implemented behaviour and reconcile planned helper entries.
+- Brought canonical docs in line with the delivered two-phase behaviour and reconciled both planned helper entries. The Docs review passed with zero findings: both `api-layer.md` § Shared helpers entries now read `Implemented (issue #309)`, and every other mandatory-read doc was verified consistent and left unchanged. No data-shape doc, new API method or endpoint, or new page was added. All required checks passed and the deferred-findings ledger was reviewed and mirrored. Seeding is always on for new runs, so no rollout, migration, config or reset note is needed; in-flight runs finish with the old ordering.
 
-### Constraints
+### Retained for the final handoff
 
-- Update only documents relevant to touched areas; same-change documentation obligation applies.
-- `docs/developer/testing/synthetic-test-data.md` needs two kinds of change: the regenerated profile/band/year-group/stress data, and the planning-time edits already in the worktree (artefact formulas, per-student variation, per-count TEXT guarantee, regeneration-as-intended-response paragraph, rescale-preferred extension path). Ownership is set once: § 1's doc update carries and commits them; § 5 only verifies their presence and consistency with the regenerated data. Do not re-apply or duplicate them here.
-- `.opencode/agents/planner.md` carries the separately user-authorised instruction edits; commit them with the planning artefacts, not as part of the feature's doc update.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-- `@docs/plans/issue-309/SPEC.md`, `@docs/developer/backend/AssessmentFlow.md`, `@docs/developer/backend/api-layer.md`
-- `@docs/developer/security/data-handling.md`, `@docs/developer/testing/synthetic-test-data.md`
-- `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (style reference only; no frontend change)
-
-### Shared helper plan
-
-- Reconcile the two `Not implemented` entries in `docs/developer/backend/api-layer.md` § Shared helpers against the delivered partition helper and outcome consumer: update status/details for implemented entries; keep `Not implemented` for any still pending, with a reason in `Implementation notes`.
-
-### Acceptance criteria
-
-- `AssessmentFlow.md` describes the two-phase dispatch, seed semantics and added round-trip latency.
-- `data-handling.md` is reviewed for a stale single-`fetchAll` batching description and updated if needed.
-- `synthetic-test-data.md` reflects the regenerated corpus and includes the planning-time policy/fact edits; `vitest.config.js` comment and stress timeout are consistent with the docs.
-- `api-layer.md` helper entries are reconciled; no data-shape doc changed; issue #309 is referenced in the commit/PR.
-- No rollout, migration, config or reset note is needed: behaviour is always on for new runs; in-flight runs finish with the old ordering.
-
-### Required checks
-
-1. Verify docs mention the actual persistence/transport boundaries (unchanged) without inventing new ones.
-2. Verify no new API method or endpoint is documented (none exists).
-3. Confirm every section's `Implementation notes / deviations / follow-up` field is filled or explicitly marked `None`.
-4. Reconcile planned shared-helper entries as described above.
-
-### Section checks
-
-- Docs sync outcome recorded; mandatory-read evidence gate passed if delegated; deferred-findings ledger reviewed and mirrored into `.opencode/scratchpad/detached-head-85b1199d-deferred-findings.md` before plan deletion.
-
-### Optional `@remarks` JSDoc review
-
-- Confirm all planned `@remarks` are present; otherwise record `None`.
+- **Reconciled helper entries (`docs/developer/backend/api-layer.md` § Shared helpers):** both issue #309 entries moved from `Not implemented` to `Implemented (issue #309)` against the delivered code — seed partition helper → `LLMSeedPhase.partitionRequests(requests, uidIndex)` and shared batch-outcome consumer → `LLMSeedPhase.createBatchConsumer(manager, state)`, both in `src/backend/RequestHandlers/LLMSeedPhase.js` (wired as a GAS global at `tests/setupGlobals.js:294`; `LLMRequestManager.js` stays at 497 lines). Duplicate-UID rejection is attributed to the caller `processStudentResponses()` before partitioning, not to the helper.
+- **Docs verified consistent, left unchanged:** `AssessmentFlow.md` (two-phase dispatch already documented at lines 419–427), `data-handling.md` (`fetchAll` per-batch wording still accurate), `synthetic-test-data.md` and `vitest.config.js` (regenerated 4/6/10/15 task counts, 120,000 ms stress timeout, 8 GB `--expose-gc`, streaming fallback; §1's planning-time edits not re-applied or duplicated), and `frontend-shared-helpers-and-abstraction-standards.md` (style reference only). No data-shape doc changed; no new API method, endpoint or envelope field; no new page; Code Reviewer doc list already covers the touched docs.
+- **`@remarks` (all confirmed, none added in §5):** §2's two in `LLMSeedPhase.js` (partition helper — why partition follows the guards, why seeds ignore the throttle) and `LLMRequestManager.js` (orchestration entry — shared `runStopped`, deliberate progress-message capture); §1's optional band-validator `@remarks` is `None` (share-to-count derivation self-evident from code).
+- **No rollout note:** seeding is always on with no feature flag (SPEC decision 8); in-flight runs finish with the old ordering. No migration, config or reset note.
+- **Accepted debt:** the 4 pre-existing `max-lines` warnings in unrelated 501-line test files remain accepted technical debt — reproduce them at gates with 0 regressions / 0 new failures; do not fix opportunistically.
+- **Deferred findings:** the ledger at `## Deferred and Out-of-Scope Findings` is complete and mirrored in `.opencode/scratchpad/feat-issue-309-cache-seeding-deferred-findings.md` (branch-slug adaptation of the plan's stale `detached-head-85b1199d-…` path). The plan is retained as the authoritative record, not deleted. The final handoff must reproduce every deferred row and the log path; all rows carry a disposition (`noted`/`approved`/`disregarded`), none is `asked`, and no Critical finding awaits a decision. The full table is preserved later in this plan.
+- **Commit reference:** GitHub issue #309 must be referenced in the commit/PR.
+- **Plan-level steps remaining (orchestrator-owned, outside this section):** §5 section regression gate, then commit + push, then session compaction, then the final output. The gate and commit records belong in the Implementation notes below.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** none yet.
-- **Deviations from plan:** none yet.
-- **Follow-up implications for later sections:** handoff to the user with the deferrals listed below.
+- **Implementation notes:**
+  - **Docs sync / helper reconciliation (2026-11-19, Docs agent, reviewed PASS with zero findings — `review-s5-docs-issue-309.md`):** `docs/developer/backend/api-layer.md` § Shared helpers — both stale `Not implemented — planned for issue #309` entries reconciled to `Implemented (issue #309)` against the delivered code: (1) seed partition helper → `LLMSeedPhase.partitionRequests(requests, uidIndex)` in `src/backend/RequestHandlers/LLMSeedPhase.js` (GAS global + `tests/setupGlobals.js:294`); (2) shared batch-outcome consumer → `LLMSeedPhase.createBatchConsumer(manager, state)` in the same sibling module (final placement; not retained in `LLMRequestManager.js`, 497 lines). Behaviour text corrected to attribute duplicate-UID rejection to the caller `processStudentResponses()` (before partitioning), not the helper. 8 lines → 8, net 0. Prettier clean; no stale marker remains except the generic planning guidance at `api-layer.md:27`.
+  - **Other §5 mandatory-read docs verified consistent, left unchanged (with reason):** `AssessmentFlow.md` (lines 419–427 already describe two-phase dispatch, seed semantics, shared consumer, shared `runStopped`, terminalisation and added round-trip latency); `data-handling.md` (line 104 "via `UrlFetchApp.fetchAll()` per batch" still accurate — each phase is dispatched via `fetchAll` batches; no boundary invented); `synthetic-test-data.md` (already reflects regenerated 4/6/10/15 task counts, 120,000 ms stress timeout, 8 GB `--expose-gc`, streaming fallback and §1's planning-time edits — not re-applied or duplicated); `vitest.config.js` (stress comment numbers and `testTimeout: 120_000` match the docs); `frontend-shared-helpers-and-abstraction-standards.md` (style reference only, no frontend change). No data-shape doc needs a change (seed partition is ephemeral; boundaries unchanged); no new API method/endpoint/envelope field documented (`LLMSeedPhase` helpers are internal, not `apiHandler` entries). No new documentation page created; Code Reviewer doc list already covers `api-layer.md`/`AssessmentFlow.md`.
+  - **Required checks (all passed):** (1) docs describe the actual, unchanged persistence/transport boundaries and invent none; (2) no new API method or endpoint documented; (3) every section's `Implementation notes / deviations / follow-up` field is filled or explicitly `None` (§1–§4 filled; §5 this record); (4) planned shared-helper entries reconciled as above.
+  - **@remarks review:** no new `@remarks` needed in §5 (docs-only). Planned `@remarks` already confirmed present in §4 notes (§2's two; §1 band-validator `None`).
+  - **Deferred ledger reviewed and mirrored:** `## Deferred and Out-of-Scope Findings` is complete and mirrored in `.opencode/scratchpad/feat-issue-309-cache-seeding-deferred-findings.md` (branch-slug adaptation of the plan's stale `detached-head-85b1199d-…` path). Plan is retained as the authoritative record (not deleted), so no further re-mirror is required. All deferred rows carry a disposition (`noted`/`approved`/`disregarded`); none is left `asked`; no Critical finding awaits a user decision. Full ledger reproduced in the final handoff.
+  - **No rollout / migration / config / reset note needed:** behaviour is always on for new runs; in-flight runs finish with the old ordering (SPEC decision 8, no feature flag).
+  - **§5 section regression gate (2026-11-19):** `npm run regression-checker -- feat-issue-309-cache-seeding` → 7/8 checks pass; overall FAILING solely from `backend-lint-check`'s 4 pre-existing accepted baseline `max-lines` warnings in the four unrelated 501-line files; **0 regressions, 0 new failures, 0 fixes** — identical to baseline, so the gate passes for progression. Report: `.ts-regression-checker/reports/session-feat-issue-309-cache-seeding/runs/2026-11-19T06-24-14.168Z/comparison.txt`. Full output `.opencode/scratchpad/s5-regression-gate.txt`.
+- **Deviations from plan:** none.
+- **Follow-up implications for later sections:** final section — handoff to the user with the deferrals listed in the Deferred and Out-of-Scope Findings section (reproduced in full in the final handoff).
 
 ---
 
