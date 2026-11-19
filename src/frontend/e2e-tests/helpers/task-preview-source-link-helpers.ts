@@ -223,6 +223,13 @@ export type ControlActivation = 'pointer' | 'keyboard';
  * @param {string} optionLabel - The visible option label to choose.
  * @param {ControlActivation} activation - How the select is driven.
  * @returns {Promise<void>} Resolves once the option is selected.
+ * @remarks
+ * The keyboard path sets the controlled search value in one input event instead
+ * of typing it one key at a time. Per-character typing can lose a character
+ * when antd re-renders between keystrokes, which filters every option out and
+ * made this helper flaky under CI load. A web-first option assertion proves the
+ * full label matched before Enter, and a selection assertion proves the commit
+ * landed on that exact option.
  */
 async function selectBuilderOption(
   page: Page,
@@ -238,21 +245,47 @@ async function selectBuilderOption(
     return;
   }
 
-  // Selecting a class starts an asynchronous assignment query; do not type into
-  // the previously focused input while the assignments select is still disabled.
+  // Selecting a class starts an asynchronous assignment query; do not fill the
+  // previously focused input while the assignments select is still disabled.
   await expect(control).toBeEnabled();
   await control.focus();
   await expect(control).toBeFocused();
-  await page.keyboard.type(optionLabel);
-  // antd auto-highlights the single match while filtering, so the active state on
-  // the option *item* is the honest precondition for committing it with Enter.
-  await expect(
-    page
-      .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
-      .locator('.ant-select-item', { has: page.getByText(optionLabel, { exact: true }) })
-      .first()
-  ).toHaveClass(/ant-select-item-option-active/);
+
+  // The query is a controlled React value. `keyboard.type` sends one key event
+  // per character, and under load an intervening re-render can restore the input
+  // from state and swallow a character, leaving a query that matches no option.
+  // Open the popup with a key (`insertText` sends no keydown), then set the whole
+  // label in one input event so it cannot be truncated. Both steps are
+  // keyboard-only — the journey a teacher has where the control has no pointer
+  // target (see ControlActivation).
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.insertText(optionLabel);
+
+  const option = page
+    .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
+    .locator('.ant-select-item', { has: page.getByText(optionLabel, { exact: true }) });
+  // The full label must have filtered the list to exactly this option: a stable,
+  // web-first precondition that the intended row is the one antd will commit,
+  // instead of a transient active-class snapshot.
+  await expect(option).toHaveCount(1);
+  await expect(option.first()).toBeVisible();
+
   await page.keyboard.press('Enter');
+
+  // Prove the commit took effect on this option, so a keypress that selected
+  // nothing (or the wrong row) fails. A single-select closes its popup and shows
+  // the chosen label; a multiple-select keeps the popup open and marks the row.
+  const selectWrapper = control.locator(
+    'xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " ant-select ")][1]'
+  );
+  const isMultiple = await selectWrapper.evaluate((element) =>
+    element.classList.contains('ant-select-multiple')
+  );
+  if (isMultiple) {
+    await expect(option.first()).toHaveClass(/ant-select-item-option-selected/);
+  } else {
+    await expect(selectWrapper.locator('.ant-select-content')).toContainText(optionLabel);
+  }
 }
 
 /** Options for the standalone merged Heatmaps journey. */
