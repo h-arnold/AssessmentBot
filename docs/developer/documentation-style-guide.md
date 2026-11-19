@@ -28,8 +28,19 @@ Documenting planned, unimplemented or partially implemented features is allowed 
 necessary. State them as current status, keep them accurate, and reconcile them when the
 implementation lands.
 
-Before keeping a sentence, ask: would an experienced engineer who has read the code,
-config, JSDoc and test names still act wrongly without it? If not, delete it.
+## Don't duplicate the code or JSDoc
+
+A doc must tell the reader something the code does not already tell them clearly. Before
+keeping a sentence, ask: would an experienced engineer who has read the code, config, JSDoc
+and test names still act wrongly without it? If not, delete it.
+
+Treat JSDoc as the owner of a symbol's contract:
+
+- Do not restate its parameters, return values, options or usage examples. Link to the
+  symbol instead.
+- Document what JSDoc cannot carry: why a rule exists, how components fit together, and the
+  constraints a reader must respect.
+- If JSDoc is missing or wrong, correct the JSDoc rather than compensating for it in prose.
 
 ## What never belongs
 
@@ -42,8 +53,7 @@ config, JSDoc and test names still act wrongly without it? If not, delete it.
 - **Volatile facts** — versions, test counts, coverage percentages, file and line counts,
   machine-specific paths and commit hashes. Cite the config file or command that reports
   the value instead.
-- **Restated APIs** — parameter lists, option tables and examples that JSDoc already
-  documents in the owning helper, hook or module. Link to the symbol.
+- **Restated APIs** — see Don't duplicate the code or JSDoc.
 - **Generic tutorials** for TypeScript, React, GAS, Vitest, Ant Design or editors.
 - **Inventories** that the filesystem, scripts or test names already express.
 - **Planning vocabulary** — `Section 4`, `Phase 2`, `Option B`, `Increment 4`, issue
@@ -55,8 +65,7 @@ config, JSDoc and test names still act wrongly without it? If not, delete it.
 
 - Aim for a net-neutral or net-negative diff. If you add a section, remove, merge or
   relocate stale content from the same document.
-- Prefer a new focused doc plus a link over growing a doc whose scope already feels
-  stretched. Judge that by subject, not line count.
+- Prefer splitting an overstretched doc over growing it; see Choose where a doc lives.
 - Do not pad a doc to match the perceived depth of its neighbours. Length is a consequence
   of the material.
 - When touching a doc for a substantive update, prune nearby duplication and dense prose.
@@ -98,6 +107,29 @@ config, JSDoc and test names still act wrongly without it? If not, delete it.
 - Add a short verification step when the reader must confirm success.
 - Use a table of contents only when a document is long enough to need navigation.
 
+## Structure a document
+
+A reader often arrives from search or a link and reads only a screen before acting. Make
+that first screen enough to act correctly, and make the rest quick to scan.
+
+- Open with one or two sentences that state what the doc covers and the main rule or
+  decision it gives. Put this before background, examples and caveats, and keep volatile
+  facts out of it so the opening stays true.
+- Order sections from the general rule to the specifics, and the common path before edge
+  cases and exceptions. Give the rule before its qualifications.
+- Give each section one subject. Merge sections that answer the same question; separate a
+  section that answers two.
+- Write headings that name the subject or the conclusion ("Validation runs in the API
+  handler"), not generic labels such as "Details" or "Notes". Headings act as the scannable
+  outline and as link anchors, so each must make sense on its own.
+- Keep the steps of a procedure together and in order. Do not scatter one step's rule,
+  warning and example across different sections.
+- Place a diagram, table or code example directly after the sentence it explains, not in a
+  section at the end.
+- Make each section understandable on its own, since readers may land on it directly from
+  a link. Link to the owning doc for the full rule rather than restating it (see Ownership
+  and navigation).
+
 ## Verify references
 
 - Check every source, config and spec path against the working tree before citing it.
@@ -115,6 +147,33 @@ config, JSDoc and test names still act wrongly without it? If not, delete it.
 - If a rule appears in both a doc and an agent instruction file, keep one authoritative
   statement and make the other a pointer. Check that they agree.
 - Keep working artefacts out of the published site with `exclude_docs`.
+
+## Choose where a doc lives
+
+Place a new doc by its audience and subject, matching the folders already in use:
+
+| Folder                        | Audience and content                                                                                                             |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/setup/`, `docs/howTos/` | Teachers setting up or using Assessment Bot; one teacher goal per page and one action or decision per step.                      |
+| `docs/developer/<component>/` | Developer policy and architecture, grouped by component: `backend`, `frontend`, `builder`, `security`, `testing`, `data-shapes`. |
+| `docs/architecture/`          | Architecture decision records only.                                                                                              |
+| `docs/pedagogy/`              | Teaching principles and the scoring model.                                                                                       |
+| `docs/releaseNotes/`          | Versioned release notes; excluded from periodic audits.                                                                          |
+| `docs/developer/` (root)      | Cross-cutting standards and templates that belong to no single component.                                                        |
+
+Before creating a doc, check whether an owning doc already covers the subject (see
+Ownership and navigation). Extend that doc rather than start a rival.
+
+Split a doc when it covers subjects with different audiences or owners, when readers need
+to link to one part without the rest, or when a section has become a subject of its own.
+Judge by subject, not line count. When you split:
+
+- Keep the original as a short index that names each child doc and links to it.
+- Give each child one subject and a name that persists (see Naming).
+- Add or update the nav entries in `mkdocs.yml` and the listing in `docs/README.md`.
+
+When a folder grows past a screenful of files, add an `INDEX.md` that lists and links its
+docs, as `docs/developer/data-shapes/INDEX.md` does.
 
 ## Architecture decision records
 

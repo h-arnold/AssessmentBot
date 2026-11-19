@@ -53,9 +53,14 @@ nav:
       - Configuration Options: setup/configOptions.md
       - Setting Up Assessment Records: setup/settingUpAssessmentRecords.md
   - How-Tos:
-      - How-To Overview: howTos/README.md
+      - How-To Overview: howTos/index.md
+      - Prepare and Distribute Tasks: howTos/prepare-tasks/index.md
+      - Run an Assessment: howTos/run-an-assessment/index.md
+      - View Results: howTos/view-results/index.md
+      - Manage Assignment Definitions: howTos/manage-assignment-definitions/index.md
   - Developer:
       - Documentation Style Guide: developer/documentation-style-guide.md
+      - Teacher Documentation Workflow: developer/teacher-documentation-workflow.md
       - Backend:
           - API Layer: developer/backend/api-layer.md
           - Assessment Flow: developer/backend/AssessmentFlow.md

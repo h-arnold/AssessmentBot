@@ -13,6 +13,12 @@ permissions:
   - action: edit
     resource: 'src/frontend/e2e-tests/**'
     effect: allow
+  - action: edit
+    resource: 'docs/howTos/**/images/*.png'
+    effect: allow
+  - action: edit
+    resource: 'docs/**/*.md'
+    effect: deny
   - action: read
     resource: '*'
     effect: allow

@@ -51,7 +51,7 @@ To quickly test Assessment Bot using the frontend application:
    - Click **Set year group** to assign or change the year group key.
    - Use **Manage cohorts** or **Manage year groups** from the toolbar to create and edit reference data.
 
-5. Navigate to the **Assignments** page in the sidebar, then [begin assessing](../howTos/README.md).
+5. Navigate to the **Assignments** page in the sidebar, then [begin assessing](../howTos/run-an-assessment/index.md).
 
 ---
 

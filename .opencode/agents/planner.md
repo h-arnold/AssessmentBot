@@ -202,6 +202,7 @@ After the spec and any required layout spec are complete:
 - Order sections so enabling contracts and infrastructure land before dependent orchestration or UI work.
 - Avoid giant mixed sections that span too many modules unless that coupling is unavoidable.
 - Include regression/contract hardening and documentation/rollout sections.
+- When the change alters a teacher-facing journey or introduces a concept too involved for a tooltip, include the optional teacher tutorials and explainers section from the template and schedule it last, after the code has settled.
 - Include a per-section shared-helper planning block when helper reuse/extension/new extraction is expected.
 - For planned shared helpers, reference the relevant canonical docs where planned-only helper entries were recorded as `Not implemented`.
 - **Include a per-section data-shape planning block** when the section changes any schema, persistence model, API contract, or transport shape. Reference the relevant data-shape doc(s) in `docs/developer/data-shapes/` where planned-only entries were recorded as `Not implemented`. The implementation agent should update those entries to remove the `Not implemented` marker as they implement them.

@@ -185,6 +185,7 @@ planning-artefact names in filenames, titles, headings or body content.
 │   │
 │   ├── developer/
 │   │   ├── documentation-style-guide.md               # Canonical: writing rules, ADR scope, review exclusions
+│   │   ├── teacher-documentation-workflow.md          # When a change needs a teacher tutorial or explainer, and how to produce one
 │   │   ├── ACTION_PLAN_TEMPLATE.md                    # Template for TDD-first delivery plans
 │   │   ├── LAYOUT_SPEC_TEMPLATE.md                    # Template for frontend layout specifications
 │   │   ├── regression-cli-spec.md                     # Regression checker CLI specification
@@ -254,7 +255,11 @@ planning-artefact names in filenames, titles, headings or body content.
 │   │       └── data-handling.md                         # Layer 4: no durable client storage, server-side persistence, logging hygiene
 │   │
 │   ├── howTos/
-│   │   └── README.md                                  # Step-by-step usage instructions (tagging, distributing, assessing)
+│   │   ├── index.md                                   # Usage guide index
+│   │   ├── prepare-tasks/index.md                     # Tagging and distributing templates
+│   │   ├── run-an-assessment/index.md                 # Assignment wizard and marking run
+│   │   ├── view-results/index.md                      # Averages, heatmaps and task previews
+│   │   └── manage-assignment-definitions/index.md     # Assignments page management
 │   │
 │   ├── pedagogy/
 │   │   ├── README.md                                  # Pedagogical principles supporting AssessmentBot

@@ -245,11 +245,56 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 
 ---
 
+## Optional — Teacher tutorials and explainers
+
+Include this section only when the change alters a teacher-facing journey or introduces a
+concept too involved for a tooltip.
+
+### Objective
+
+- Add or update the owning teacher tutorial or explainer after the implementation has
+  settled. Do not capture screenshots while the UI is still moving.
+
+### Constraints
+
+- Schedule this as the final work in the round, after regression and documentation work.
+- Extend an existing owning doc rather than create a rival. For scoring, weighting and
+  averages the owner is `docs/pedagogy/data-analysis-scoring.md`.
+- Follow `docs/developer/teacher-documentation-workflow.md` for the trigger, doc action,
+  screenshot briefing, image placement and link rules.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Docs agent mandatory docs:
+
+- @docs/developer/teacher-documentation-workflow.md
+- @docs/developer/documentation-style-guide.md
+- @docs/howTos/index.md
+- @docs/howTos/JOURNEY/index.md (replace JOURNEY with the owning tutorial's folder)
+
+Playwright agent mandatory docs:
+
+- @docs/developer/teacher-documentation-workflow.md
+- @docs/developer/frontend/frontend-playwright-e2e.md
+
+### Acceptance criteria
+
+- Tutorial or explainer text matches the settled behaviour.
+- Screenshots show the final UI and sit beside the tutorial.
+- The how-to index, `docs/README.md`, `mkdocs.yml` and any UI link resolve.
+
+### Implementation notes / deviations / follow-up
+
+- ...
+
+---
+
 ## Suggested implementation order
 
 1. Section 1 (initial setup, data contract, etc.)
 2. Section 2 (persistence or core logic)
 3. ...
+4. Optional teacher tutorials and explainers, once the code has settled (if included).
 
 _(Adjust order as appropriate for the feature.)_
 

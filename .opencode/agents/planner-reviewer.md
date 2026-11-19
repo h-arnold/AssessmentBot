@@ -111,6 +111,7 @@ Check that the plan:
 - orders sections so dependencies land before dependent work
 - keeps risky or cross-cutting work explicit rather than hiding it inside a broad section
 - includes regression and documentation follow-through
+- includes the optional teacher tutorials and explainers section when the change alters a teacher-facing journey or introduces a concept too involved for a tooltip, and schedules it last, after the code has settled
 - includes shared-helper planning where relevant (reuse/extend/new/keep-local decisions, ownership, and relevant doc targets)
 - requires planned helper entries in relevant canonical docs to be marked `Not implemented` before implementation starts
 - includes data-shape doc planning for sections that change schemas, persistence, API contracts, or transport shapes, with corresponding `Not implemented` entries in `docs/developer/data-shapes/`

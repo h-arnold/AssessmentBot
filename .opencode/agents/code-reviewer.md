@@ -114,6 +114,7 @@ Consult these resources before and during review. Local docs contain project-spe
 - [CONTRIBUTING.md](../../CONTRIBUTING.md)
 - [Documentation Style Guide](../../docs/developer/documentation-style-guide.md) — writing rules for canonical docs, ADRs and review exclusions
 - [Synthetic Test Data](../../docs/developer/testing/synthetic-test-data.md) — canonical architecture, canonical-fixture policy and the test-only legacy scenario derivation for the deterministic synthetic analysis corpus
+- [Teacher Documentation Workflow](../../docs/developer/teacher-documentation-workflow.md) — when a teacher-facing change needs a tutorial or explainer, and how to produce one
 - [Known Flaky Tests](../../docs/developer/known-flaky-tests.md) — catalogue of known flaky tests and root causes
 
 **Data shapes (all modules — persistence, transport, validation)**:

@@ -4,7 +4,6 @@ build/
 coverage/
 .clasp.json
 /.github/
-docs/images/
 src/AdminSheet/
 src/AssessmentRecordTemplate/
 **/*.min.js
