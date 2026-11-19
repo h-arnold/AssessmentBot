@@ -47,7 +47,11 @@ function createCollection(vi, rows) {
   return collection;
 }
 
-function setupRealAbclassDispatcher(vi, canonical, { classId, partialRows }) {
+function setupRealAbclassDispatcher(
+  vi,
+  canonical,
+  { classId, partialRows, dropCollectionResult = true }
+) {
   const seams = setupApiHandlerTestContext(vi, { installLogger: true, installLock: true });
   const globals = saveGlobals([
     'ABClassController',
@@ -65,6 +69,7 @@ function setupRealAbclassDispatcher(vi, canonical, { classId, partialRows }) {
   const full = createCollection(vi, [{ ...structuredClone(source), _id: 'full-row' }]);
   const partial = createCollection(vi, partialRows);
   const assignmentCollections = new Map();
+  const dropCollection = vi.fn(() => dropCollectionResult);
   const manager = {
     getCollection: vi.fn((name) => {
       if (name === 'abclass_partials') return partial;
@@ -75,7 +80,7 @@ function setupRealAbclassDispatcher(vi, canonical, { classId, partialRows }) {
       }
       return full;
     }),
-    getDb: vi.fn(() => ({ dropCollection: vi.fn(() => true) })),
+    getDb: vi.fn(() => ({ dropCollection })),
   };
   globalThis.DbManager = { getInstance: () => manager };
   globalThis.ClassroomApiClient = {
@@ -97,6 +102,7 @@ function setupRealAbclassDispatcher(vi, canonical, { classId, partialRows }) {
     partial,
     assignmentCollections,
     manager,
+    dropCollection,
     classroom: globalThis.ClassroomApiClient,
     globals,
     seams,
