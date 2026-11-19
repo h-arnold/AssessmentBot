@@ -1,9 +1,5 @@
-const LARGE_FULL_SUBMISSION_BANDS = Object.freeze([
-  { startIndex: 0, endIndex: 3, basePercent: 20, stepPercent: 4, stepCount: 5 },
-  { startIndex: 3, endIndex: 8, basePercent: 50, stepPercent: 6, stepCount: 5 },
-  { startIndex: 8, endIndex: 43, basePercent: 80, stepPercent: 3, stepCount: 5 },
-  { startIndex: 43, endIndex: 50, basePercent: 96, stepPercent: 4, stepCount: 2 },
-]);
+import { LARGE_FULL_SUBMISSION_BANDS } from './profileDefinitions.js';
+
 const PERCENT_SCALE = 100;
 const COMPACT_SMALL_SUBMISSION_COUNT = 2;
 const COMPACT_MEDIUM_SPARSE_SUBMISSION_COUNT = 3;

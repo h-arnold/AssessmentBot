@@ -46,11 +46,6 @@ import { validateSyntheticAnalysisGraph } from './validateSyntheticAnalysisGraph
 
 const JSON_INDENT_SPACES = 2;
 const LINE_BREAK = '\n';
-const KEY_VALUE_SEPARATOR = ': ';
-const ARRAY_OPEN = '[';
-const ARRAY_CLOSE = ']';
-const OBJECT_OPEN = '{';
-const OBJECT_CLOSE = '}';
 const INVALID_STRING_LENGTH_MESSAGE = 'Invalid string length';
 const WRITE_BUFFER_BYTES = 65536;
 const STAGING_PREFIX = '.synthetic-staging-';
@@ -111,13 +106,7 @@ function formatInlineValue(value) {
   if (Array.isArray(value)) {
     return `[${value.map(formatInlineValue).join(', ')}]`;
   }
-  const entries = Object.entries(value);
-  if (entries.length === 0) {
-    return '{}';
-  }
-  return `{ ${entries
-    .map(([key, item]) => `${JSON.stringify(key)}${KEY_VALUE_SEPARATOR}${formatInlineValue(item)}`)
-    .join(', ')} }`;
+  return '{}';
 }
 
 /**
@@ -150,18 +139,24 @@ function fitsOnOneLine(value, column, printWidth, isLast) {
  */
 function createBufferedWriter(descriptor) {
   let buffer = '';
+  const writeBuffer = () => {
+    const bytes = Buffer.from(buffer);
+    let written = 0;
+    while (written < bytes.length) {
+      written += writeSync(descriptor, bytes, written, bytes.length - written);
+    }
+    buffer = '';
+  };
   return {
     write: (text) => {
       buffer += text;
       if (buffer.length >= WRITE_BUFFER_BYTES) {
-        writeSync(descriptor, buffer);
-        buffer = '';
+        writeBuffer();
       }
     },
     flush: () => {
       if (buffer.length > 0) {
-        writeSync(descriptor, buffer);
-        buffer = '';
+        writeBuffer();
       }
     },
   };
@@ -175,7 +170,7 @@ function createBufferedWriter(descriptor) {
  * @param {number} indent Indentation of the container's own line.
  * @param {number} printWidth Configured Prettier print width.
  * @param {{write: (text: string) => void}} writer Buffered writer to append into.
- * @returns {void} Returns once every entry has been appended.
+ * @returns {void}
  */
 function appendContainerEntries(value, isArray, indent, printWidth, writer) {
   const entries = isArray ? value.map((item, index) => [index, item]) : Object.entries(value);
@@ -185,8 +180,8 @@ function appendContainerEntries(value, isArray, indent, printWidth, writer) {
     let valueColumn = indent + JSON_INDENT_SPACES;
     if (!isArray) {
       const keyToken = JSON.stringify(key);
-      writer.write(`${keyToken}${KEY_VALUE_SEPARATOR}`);
-      valueColumn += keyToken.length + KEY_VALUE_SEPARATOR.length;
+      writer.write(`${keyToken}: `);
+      valueColumn += keyToken.length + ': '.length;
     }
     appendValue(
       item,
@@ -212,7 +207,7 @@ function appendContainerEntries(value, isArray, indent, printWidth, writer) {
  * @param {number} printWidth Configured Prettier print width.
  * @param {{write: (text: string) => void}} writer Buffered writer to append into.
  * @param {boolean} isLast Whether the value is the last entry of its parent.
- * @returns {void} Returns once the value has been appended.
+ * @returns {void}
  */
 function appendValue(value, indent, column, printWidth, writer, isLast) {
   const isArray = Array.isArray(value);
@@ -225,11 +220,11 @@ function appendValue(value, indent, column, printWidth, writer, isLast) {
     return;
   }
 
-  writer.write(isArray ? ARRAY_OPEN : OBJECT_OPEN);
+  writer.write(isArray ? '[' : '{');
   writer.write(LINE_BREAK);
   appendContainerEntries(value, isArray, indent, printWidth, writer);
   writer.write(' '.repeat(indent));
-  writer.write(isArray ? ARRAY_CLOSE : OBJECT_CLOSE);
+  writer.write(isArray ? ']' : '}');
 }
 
 /**
@@ -241,7 +236,7 @@ function appendValue(value, indent, column, printWidth, writer, isLast) {
  * @param {unknown} view The view to serialise incrementally.
  * @param {object|null} configuration Prettier configuration resolved from the canonical path.
  * @param {string} destinationPath Staging file to write the view into.
- * @returns {void} Returns once the file has been written and closed.
+ * @returns {void}
  */
 function streamViewToFile(view, configuration, destinationPath) {
   const isArrayView = Array.isArray(view);
@@ -249,10 +244,10 @@ function streamViewToFile(view, configuration, destinationPath) {
   const writer = createBufferedWriter(descriptor);
 
   try {
-    writer.write(isArrayView ? ARRAY_OPEN : OBJECT_OPEN);
+    writer.write(isArrayView ? '[' : '{');
     writer.write(LINE_BREAK);
     appendContainerEntries(view, isArrayView, 0, configuration.printWidth, writer);
-    writer.write(isArrayView ? ARRAY_CLOSE : OBJECT_CLOSE);
+    writer.write(isArrayView ? ']' : '}');
     writer.write(LINE_BREAK);
     writer.flush();
   } finally {
@@ -264,13 +259,12 @@ function streamViewToFile(view, configuration, destinationPath) {
  * Serialises one view to its persisted on-disk representation.
  *
  * @param {unknown} view The view to serialise.
- * @param {string} filePath Canonical committed fixture path used to resolve the repository Prettier configuration.
+ * @param {string} filePath Canonical committed fixture path passed as Prettier's filepath option.
  * @param {string} destinationPath Staging file used only when the view cannot fit in a single string.
+ * @param {object|null} configuration Prettier configuration resolved once from the first view's committed path.
  * @returns {Promise<string|null>} Prettier-formatted JSON, or null when the view was streamed straight to its staging file.
  */
-async function serialiseView(view, filePath, destinationPath) {
-  const configuration = await prettier.resolveConfig(filePath);
-
+async function serialiseView(view, filePath, destinationPath, configuration) {
   try {
     const source = `${JSON.stringify(view, null, JSON_INDENT_SPACES)}${LINE_BREAK}`;
     return await prettier.format(source, { ...configuration, filepath: filePath });
@@ -306,6 +300,13 @@ async function buildProfileViewContents(graph, stagingDirectory) {
     ['assignmentsByKey', graph.transport.assignmentsByKey],
   ]);
 
+  // Every view shares one committed fixture directory, so a single resolution
+  // of the Prettier config preserves the byte representation of all six views.
+  const firstFileName = PROFILE_VIEW_FILE_NAMES.values().next().value;
+  const configuration = await prettier.resolveConfig(
+    join(COMMITTED_FIXTURE_DIRECTORY, graph.manifest.profile, firstFileName)
+  );
+
   // Serialisations are independent, so they run concurrently. Each resolves to
   // its own file name and content pair (or null when it streamed itself to
   // disk), and the outcome walk throws on the first in-order failure, so
@@ -313,10 +314,9 @@ async function buildProfileViewContents(graph, stagingDirectory) {
   const serialisations = Array.from(PROFILE_VIEW_FILE_NAMES, ([viewName, fileName]) => {
     const filePath = join(COMMITTED_FIXTURE_DIRECTORY, graph.manifest.profile, fileName);
     const destinationPath = join(stagingDirectory, fileName);
-    return serialiseView(views.get(viewName), filePath, destinationPath).then((content) => [
-      fileName,
-      content,
-    ]);
+    return serialiseView(views.get(viewName), filePath, destinationPath, configuration).then(
+      (content) => [fileName, content]
+    );
   });
   const outcomes = await Promise.allSettled(serialisations);
 
