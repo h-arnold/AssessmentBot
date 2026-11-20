@@ -1,6 +1,25 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MetricResultSchema } from '../dataAnalysis.zod';
-import { ABClassMetadataSchema } from '@/services/abClass/abClassMetadata.zod';
+import {
+  AveragingAnalyserInputSchema,
+  MetricResultSchema,
+  type MetricResult,
+} from '../dataAnalysis.zod';
+import { DataAnalysisService } from '../dataAnalysisService';
+import {
+  ClassSummarySchema,
+  type ClassSummary,
+  type MetricScores,
+  type MetricStanding,
+  type MetricStandings,
+} from '../classSummary.zod';
+import type { AssignmentPartial } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import {
+  ABClassMetadataSchema,
+  type AverageScore,
+  type AverageScores,
+  type RecentAssignment,
+  type StudentStanding,
+} from '@/services/abClass/abClassMetadata.zod';
 import {
   createMetadataRefreshFixture,
   NEW_SOURCE_TIME,
@@ -9,13 +28,15 @@ import {
   SUMMARY_TIME,
 } from '@/test/abClass/metadataRefreshFixtures';
 import { mergeClassMetadata, projectAverageScores } from './metadataProjection';
-import type { RecentAssignment } from '@/services/abClass/abClassMetadata.zod';
 
 const PRECISE_SCORE = 1.2345678912345;
 const HISTORY_LIMIT = 3;
 const SECOND_INDEX = 2;
 const LAST_INDEX = -1;
 const TWO_RECENT_ENTRIES = 2;
+const ONE_WEIGHT = 1;
+const NO_WEIGHT = 0;
+const ONE_DATA_POINT = 1;
 
 /** Builds a schema-validated metric boundary probe.
  * @param {string} state - Metric state.
@@ -32,6 +53,83 @@ function metric(state: string, value: unknown, totalWeight: number, applicableDa
     applicableDataPoints,
     totalDataPoints: 1,
   });
+}
+
+/** Converts a projected metadata score back into its analyser-native metric.
+ * @param {AverageScore} score - Projected metadata score.
+ * @returns {MetricResult} Validated analyser-native metric.
+ */
+function metricForScore(score: AverageScore): MetricResult {
+  if (typeof score === 'number') return metric('computed', score, ONE_WEIGHT, ONE_DATA_POINT);
+  if (score === 'N') return metric('notAttempted', 'N', ONE_WEIGHT, NO_WEIGHT);
+  if (score === 'E') return metric('error', 'E', NO_WEIGHT, NO_WEIGHT);
+  return metric('excluded', null, NO_WEIGHT, NO_WEIGHT);
+}
+
+/** Wraps projected scores in the strict in-memory MetricScores shape.
+ * @param {AverageScores} scores - Projected metadata score set.
+ * @returns {MetricScores} The analyser-native score set.
+ */
+function asMetricScores(scores: AverageScores): MetricScores {
+  return {
+    completeness: metricForScore(scores.completeness),
+    accuracy: metricForScore(scores.accuracy),
+    spag: metricForScore(scores.spag),
+    overall: metricForScore(scores.overall),
+  };
+}
+
+/** Builds a schema-valid ClassSummary carrying the supplied projected scores.
+ * @param {AssignmentPartial} target - Assignment supplying the target identity.
+ * @param {AverageScores} classScores - Scores placed in the all-task basis.
+ * @param {AverageScores} assignmentScores - Scores placed on the target.
+ * @returns {ClassSummary} The validated summary with empty standings.
+ */
+function summaryForScores(
+  target: AssignmentPartial,
+  classScores: AverageScores,
+  assignmentScores: AverageScores
+): ClassSummary {
+  return ClassSummarySchema.parse({
+    classId: target.assignmentId,
+    allTasks: { classAverages: asMetricScores(classScores), standings: { top: [], bottom: [] } },
+    baseline: { available: false, classAverages: null, standings: null },
+    target: {
+      assignmentId: target.assignmentId,
+      assignmentDefinitionKey: target.assignmentDefinitionKey,
+      updatedAt: target.updatedAt,
+      averages: asMetricScores(assignmentScores),
+    },
+    recentAssignments: [],
+  });
+}
+
+/** Maps one list of analyser-native standings to persisted score sets.
+ * @param {readonly MetricStanding[]} entries - Ranked standing entries.
+ * @returns {StudentStanding[]} Mapped standing entries.
+ */
+function projectStandingList(entries: readonly MetricStanding[]): StudentStanding[] {
+  return entries.map((entry) => {
+    return {
+      studentId: entry.studentId,
+      studentName: entry.studentName,
+      scores: projectAverageScores(entry.scores),
+      recentAssignmentScores: entry.recentAssignmentScores.map((scores) =>
+        projectAverageScores(scores)
+      ),
+    };
+  });
+}
+
+/** Maps both standing lists of one basis to the persisted score union.
+ * @param {MetricStandings} standings - Analyser-native standings basis.
+ * @returns {{ top: StudentStanding[]; bottom: StudentStanding[] }} Mapped standings.
+ */
+function projectStandings(standings: MetricStandings) {
+  return {
+    top: projectStandingList(standings.top),
+    bottom: projectStandingList(standings.bottom),
+  };
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -67,7 +165,11 @@ describe('mergeClassMetadata stable rolling history', () => {
     ).toBe(false);
     const scores = recentEntry(classFull, 0).averages;
 
-    const result = mergeClassMetadata(previous, scores, target, scores, SUMMARY_TIME);
+    const result = mergeClassMetadata(
+      previous,
+      summaryForScores(target, scores, scores),
+      SUMMARY_TIME
+    );
 
     expect(result.recentAssignments).toEqual([
       {
@@ -90,7 +192,7 @@ describe('mergeClassMetadata stable rolling history', () => {
     const clock = vi.spyOn(Date, 'now').mockImplementation(() => {
       throw new Error('Pure merge read clock');
     });
-    const result = mergeClassMetadata(null, scores, target, scores, SUMMARY_TIME);
+    const result = mergeClassMetadata(null, summaryForScores(target, scores, scores), SUMMARY_TIME);
     expect(result).toEqual({
       classAverages: { ...scores, updatedAt: SUMMARY_TIME },
       recentAssignments: [
@@ -102,7 +204,7 @@ describe('mergeClassMetadata stable rolling history', () => {
         },
       ],
       baselineAverages: null,
-      allTaskStandings: null,
+      allTaskStandings: { top: [], bottom: [] },
       baselineStandings: null,
     });
     expect(ABClassMetadataSchema.parse(result)).toEqual(result);
@@ -112,14 +214,16 @@ describe('mergeClassMetadata stable rolling history', () => {
   it('appends one to two to three, then evicts only the oldest of four instances', () => {
     const { classFull } = createMetadataRefreshFixture('medium');
     const scores = recentEntry(classFull, 0).averages;
-    let metadata = mergeClassMetadata(null, scores, classFull.assignments[0], scores, SUMMARY_TIME);
+    let metadata = mergeClassMetadata(
+      null,
+      summaryForScores(classFull.assignments[0], scores, scores),
+      SUMMARY_TIME
+    );
     for (const index of [1, SECOND_INDEX, HISTORY_LIMIT]) {
       const before = structuredClone(metadata);
       metadata = mergeClassMetadata(
         metadata,
-        scores,
-        classFull.assignments[index],
-        scores,
+        summaryForScores(classFull.assignments[index], scores, scores),
         SUMMARY_TIME
       );
       expect(
@@ -162,7 +266,11 @@ describe('mergeClassMetadata stable rolling history', () => {
       spag: 'excluded',
       overall: 2.3456789,
     } as const;
-    const result = mergeClassMetadata(previous, replacement, target, replacement, SUMMARY_TIME);
+    const result = mergeClassMetadata(
+      previous,
+      summaryForScores(target, replacement, replacement),
+      SUMMARY_TIME
+    );
     expect(result.recentAssignments.map((entry: RecentAssignment) => entry.assignmentId)).toEqual(
       entries.map((entry) => entry.assignmentId)
     );
@@ -190,14 +298,45 @@ describe('mergeClassMetadata stable rolling history', () => {
     const target = { ...classFull.assignments[0], updatedAt: SUMMARY_TIME };
     const result = mergeClassMetadata(
       previous,
-      entries[0].averages,
-      target,
-      entries[0].averages,
+      summaryForScores(target, entries[0].averages, entries[0].averages),
       SUMMARY_TIME
     );
     expect(result.recentAssignments.map((entry: RecentAssignment) => entry.assignmentId)).toEqual([
       ...entries.map((entry) => entry.assignmentId),
       target.assignmentId,
     ]);
+  });
+
+  it('projects a validated ClassSummary into the five-field snapshot while retaining history', () => {
+    const { classFull, assignmentDefinitionPartials } =
+      createMetadataRefreshFixture('large-representative');
+    const previous = classFull.metadata;
+    if (previous === null) throw new Error('Expected canonical stored history');
+    const input = AveragingAnalyserInputSchema.parse({
+      filter: { classIds: [classFull.classId], analysisMode: 'absolute' },
+      classes: [classFull],
+      assignmentDefinitionPartials,
+    });
+    const recent = [...classFull.assignments].toReversed().slice(0, HISTORY_LIMIT);
+    const summary = new DataAnalysisService().analyseClassSummary(input, {
+      target: recent[0],
+      recentAssignments: recent,
+    });
+    if (!summary.baseline.available || summary.baseline.classAverages === null)
+      throw new Error('Expected baseline-eligible canonical class');
+
+    const result = mergeClassMetadata(previous, summary, SUMMARY_TIME);
+
+    expect(result.classAverages).toEqual({
+      ...projectAverageScores(summary.allTasks.classAverages),
+      updatedAt: SUMMARY_TIME,
+    });
+    expect(result.allTaskStandings).toEqual(projectStandings(summary.allTasks.standings));
+    expect(result.baselineAverages).toEqual({
+      ...projectAverageScores(summary.baseline.classAverages),
+      updatedAt: SUMMARY_TIME,
+    });
+    expect(result.baselineStandings).toEqual(projectStandings(summary.baseline.standings!));
+    expect(ABClassMetadataSchema.parse(result)).toEqual(result);
   });
 });

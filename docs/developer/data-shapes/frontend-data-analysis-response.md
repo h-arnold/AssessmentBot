@@ -268,12 +268,12 @@ type RefreshOutcome =
 the cheap complete-class timestamp gate before enqueueing.
 `refreshABClassMetadataInQueue(input, now: () => string): Promise<RefreshOutcome>` owns
 the full `CLASSES_BULK_MUTATION_JOB_NAME` (`classesBulkMutation`) reservation: fresh validated
-read → target/freshness recheck → all-assignment live-definition coverage → full-class and
-isolated-target analysis → detached rolling merge → validated whole update → real
-partial-response parse. The lane constant is exported once from `abClassMutationService.ts` and
-imported by `abClassMetadataService.ts`, so both queued mutation wrappers and the reserved-slot
-writer share one lane symbol; no import cycle exists. The queue, transport, projection and
-persistence owners are imported directly, without a facade or second queue.
+read → target/freshness recheck → all-assignment live-definition coverage → one
+`analyseClassSummary(input, { target, recentAssignments })` call → summary-to-metadata merge →
+validated whole update → real partial-response parse. The lane constant is exported once from
+`abClassMutationService.ts` and imported by `abClassMetadataService.ts`, so both queued mutation
+wrappers and the reserved-slot writer share one lane symbol; no import cycle exists. The queue,
+transport, projection and persistence owners are imported directly, without a facade or second queue.
 
 No-op decisions skip calculation, writes, the clock and network access; the cheap gate stays
 local. Every candidate partial timestamp must be canonical UTC; selection is timestamp
@@ -286,12 +286,19 @@ reasons are compile-time pinned in `postAnalysis.zod.ts`: `SKIPPED_REASONS` is d
 result enum reused by both task-result and outcome schemas. Reason drift therefore fails
 compilation instead of turning a legitimate no-op into a lifecycle parse failure.
 
-The successful display result is never the persistence oracle. Both calculations use the
-unchanged synchronous service with `{ classIds: [classId], analysisMode: 'absolute' }` as
-filter and the constructor's standard 0.4/0.4/0.2 criterion weights. The second class copy contains only the
-target assignment instance, preventing definition-scoped task keys from merging another
-instance into its summary. Both project all four weighted `perClass` metrics, including
-`overall`, through `projectAverageScores()`:
+The successful display result is never the persistence oracle. The writer adds no
+calculation: it builds the unchanged `AveragingAnalyserInput` from the fresh class read with
+`{ classIds: [classId], analysisMode: 'absolute' }` as filter, then supplies the freshness
+decision's target and the newest three fresh-class assignments (newest-first) as options to a
+single `analyseClassSummary()` call. The `ClassSummaryAnalyser` owns all calculation, including
+baseline selection and isolated per-assignment scores.
+
+`mergeClassMetadata(previous: ABClassMetadata, summary: ClassSummary, summaryUpdatedAt: string)`
+maps all five metadata fields from the summary: `classAverages` and `baselineAverages` from the
+summary's class averages plus the summary clock, `allTaskStandings` (always non-null) and
+`baselineStandings` (null when baseline is unavailable) from the corresponding standings, and
+`recentAssignments` from the rolling history. Analyser-native `MetricResult` values are converted
+through `projectAverageScores()`:
 
 | `MetricResult.state` | Metadata `AverageScore`   | Notes                                                                                         |
 | -------------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
@@ -299,6 +306,11 @@ instance into its summary. Both project all four weighted `perClass` metrics, in
 | `notAttempted`       | `'N'`                     | Never substitute zero.                                                                        |
 | `error`              | `'E'`                     | Distinct from N and excluded.                                                                 |
 | `excluded`           | `'excluded'`              | Explicit mapping from the analyser's `value: null`; metadata metric null is invalid.          |
+
+Each standing's `recentAssignmentScores` is trimmed to the persisted rolling history length,
+newest-first, so a fresh single-entry write cannot emit a three-score array rejected by the
+persisted schema. The rolling history is taken from the previous snapshot plus the summary target
+and is never seeded from the summary's three assignments.
 
 The exact source timestamp, summary clock, stable immutable rolling-three merge and
 `{ classId, metadata }` update are owned by
@@ -1266,19 +1278,18 @@ caption follow.
       This override stays preview-local: class-query data, analysed scores/averages and the public
       `MetricResult` output are unaffected, and no repair is persisted.
 
-## Planned class summary contract (Not implemented)
+## Class summary contract
 
-The in-memory contract changes below are recorded from `SPEC.md`, which remains the source
-contract. Each entry carries its own status: the typed error, analyser, baseline-key reuse and
-schema entries are delivered, while writer consumption remains **Not implemented** and belongs to
-the metadata writer. See also
+The in-memory contract below is recorded from `SPEC.md`, which remains the source contract.
+All entries are delivered: the typed error, analyser, baseline-key reuse, strict schema and
+writer consumption. See also
 [abclass.md § Planned changes](abclass.md#planned-changes-baseline-averages-and-student-standings-not-implemented).
 
 - **Typed `AttemptBaselineUnavailableError`**: `deriveAttemptBaseline` throws `AttemptBaselineUnavailableError` extending `Error` for exactly the three documented failure conditions (roster below three students, fewer than two attempt candidates, empty pool intersection), keeping the existing messages; plain invariant errors remain plain `Error`. `ClassSummaryAnalyser` catches only this type around the full-class baseline analysis and emits `available: false` with null baseline averages and standings; every other error propagates without message matching.
 - **`ClassSummaryAnalyser` single-owner guarantee**: a dedicated analyser registered in `DataAnalysisService` in its own `classSummaryAnalyser` field owns all new calculation. It composes `AveragingAnalyser` and reuses its exported `rollupMetric`, `computeOverallComposite` and `convertToBaselineExcluded` helpers; all new calculation stays in the service. `analyse(input, 'averaging')` and `analyseAssignmentSummary()` keep their existing contracts.
 - **Whole-class baseline keys for isolated scores**: baseline selection is derived once from the full-class baseline analysis. Isolated per-assignment analyses filter task metrics against those whole-class baseline keys through `rollupMetric` and `computeOverallComposite`, and students with no baseline metrics follow the `convertToBaselineExcluded` path.
 - **`ClassSummarySchema` strict validation**: a strict in-memory schema owned by `classSummary.zod.ts` validates the analyser-native `MetricResult` values, `target`, `recentAssignments`, aligned score arrays and the `available` flag, with a refinement asserting that a `studentId` appears in at most one of `top` and `bottom` per basis. It is not a wire or persistence shape.
-- **Writer consumption — `Not implemented`**: the writer calls `analyseClassSummary()` once and `mergeClassMetadata()` accepts the resulting `ClassSummary` as its score source, mapping analyser-native values through `projectAverageScores()` while retaining the rolling three-entry history, target replacement, newest-first ordering and freshness gate.
+- **Writer consumption**: the writer calls `analyseClassSummary(input, { target, recentAssignments })` once from the fresh class read and `mergeClassMetadata(previous: ABClassMetadata, summary: ClassSummary, summaryUpdatedAt: string)` maps all five fields from the summary through `projectAverageScores()` (see [Metadata refresh execution contracts](#metadata-refresh-execution-contracts)). Rolling history, target replacement, newest-first ordering and the freshness gate are unchanged; each standing's `recentAssignmentScores` is trimmed to the persisted history length, newest-first, without seeding history from the summary's assignments.
 
 `ClassSummary` carries `updatedAt: string | null` on its `target` and `recentAssignments`
 identities: the analyser copies these verbatim from `AssignmentPartial.updatedAt`, which is

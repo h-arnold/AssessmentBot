@@ -2,10 +2,12 @@ import { runApiQueuedTask } from '../api/apiQueue';
 import { callApi, parseApiResponse } from '../apiService';
 import type { AssignmentDefinitionPartial } from '../assignmentDefinition/assignmentDefinitionPartials.zod';
 import { DataAnalysisService } from '../dataAnalysis/dataAnalysisService';
+import type { AveragingAnalyserInput } from '../dataAnalysis/dataAnalysis.zod';
 import {
+  compareAssignmentNewestFirst,
   getMetadataRefreshDecision,
   mergeClassMetadata,
-  projectAverageScores,
+  RECENT_ASSIGNMENT_LIMIT,
   type MetadataRefreshSkipped,
 } from '../dataAnalysis/postAnalysis/metadataProjection';
 import { getABClass } from '../googleClassrooms/classDetail/classDetailService';
@@ -32,6 +34,10 @@ export interface MetadataRefreshInput {
  * validated read bypasses the query cache and replaces any cached target decision.
  * Network calls inside the slot use callApi, never a nested same-lane enqueue.
  * Failures propagate unchanged; transport alone owns retries. No upsert or rollback.
+ * The writer supplies the target and newest assignments to the single summary call:
+ * all calculation, including baseline selection, belongs to the analysis service.
+ * Rolling history stays with the projection and is never rebuilt from live
+ * definitions. No query, invalidation or feedback hook is added here.
  */
 export function refreshABClassMetadataInQueue(
   input: MetadataRefreshInput,
@@ -46,24 +52,19 @@ export function refreshABClassMetadataInQueue(
     requireDefinitionCoverage(classFull, input.assignmentDefinitionPartials);
 
     const service = new DataAnalysisService();
-    const analyse = (scope: ClassFull) => {
-      const result = service.analyse({
-        classes: [scope],
-        assignmentDefinitionPartials: input.assignmentDefinitionPartials,
-        filter: { classIds: [classFull.classId], analysisMode: 'absolute' },
-      })[0];
-      if (!result) throw new Error(`Missing averaging result for class ${classFull.classId}`);
-      return projectAverageScores(result.perClass);
+    const analysisInput: AveragingAnalyserInput = {
+      classes: [classFull],
+      assignmentDefinitionPartials: input.assignmentDefinitionPartials,
+      filter: { classIds: [classFull.classId], analysisMode: 'absolute' },
     };
-    const classScores = analyse(classFull);
-    const assignmentScores = analyse({ ...classFull, assignments: [decision.target] });
-    const metadata = mergeClassMetadata(
-      classFull.metadata,
-      classScores,
-      decision.target,
-      assignmentScores,
-      now()
-    );
+    const recentAssignments = classFull.assignments
+      .toSorted(compareAssignmentNewestFirst)
+      .slice(0, RECENT_ASSIGNMENT_LIMIT);
+    const summary = service.analyseClassSummary(analysisInput, {
+      target: decision.target,
+      recentAssignments,
+    });
+    const metadata = mergeClassMetadata(classFull.metadata, summary, now());
     const request = UpdateABClassRequestSchema.parse({ classId: input.classId, metadata });
     const method = 'updateABClass';
     const data = await callApi(method, request);

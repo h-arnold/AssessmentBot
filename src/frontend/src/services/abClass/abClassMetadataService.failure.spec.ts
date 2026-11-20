@@ -13,8 +13,6 @@ import {
 } from '@/test/abClass/metadataRefreshFixtures';
 import { installMetadataRefreshTransport } from '@/test/abClass/metadataRefreshTransport';
 
-const FULL_AND_TARGET_ANALYSES = 2;
-
 afterEach(() => {
   vi.resetAllMocks();
   vi.restoreAllMocks();
@@ -38,18 +36,20 @@ describe('ABClass metadata failure propagation', () => {
       })[0];
       const backend = installMetadataRefreshTransport(context.classFull);
       const before = backend.readStored();
-      const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyse');
+      const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyseClassSummary');
       const now = vi.fn(() => SUMMARY_TIME);
 
       const attempt = refreshABClassMetadata(context, now);
       await expect(attempt).rejects.toThrow(
         `buildPerStudentRows: null studentName for studentId '${unnamed.studentId}'`
       );
-      expect(calculate).toHaveBeenCalledTimes(FULL_AND_TARGET_ANALYSES);
-      expect(calculate.mock.results[0].type).toBe('return');
-      expect(calculate.mock.results[1].type).toBe('throw');
-      await expect(attempt).rejects.toBe(calculate.mock.results[1].value);
-      expect(calculate.mock.calls[1][0].classes[0].assignments).toEqual([target]);
+      expect(calculate).toHaveBeenCalledTimes(1);
+      expect(calculate.mock.results[0].type).toBe('throw');
+      await expect(attempt).rejects.toBe(calculate.mock.results[0].value);
+      expect(calculate.mock.calls[0][0].classes[0].assignments).toEqual(
+        context.classFull.assignments
+      );
+      expect(calculate.mock.calls[0][1].target.assignmentId).toBe(target.assignmentId);
       expect(backend.events).toEqual(['getABClass']);
       expect(backend.readStored()).toEqual(before);
       expect(now).not.toHaveBeenCalled();
@@ -62,11 +62,13 @@ describe('ABClass metadata failure propagation', () => {
     context.classFull.metadata = null;
     const backend = installMetadataRefreshTransport(null);
     const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyse');
+    const analyseSummary = vi.spyOn(DataAnalysisService.prototype, 'analyseClassSummary');
     const now = vi.fn(() => SUMMARY_TIME);
 
     await expect(refreshABClassMetadata(context, now)).rejects.toThrow();
     expect(backend.events).toEqual(['getABClass']);
     expect(calculate).not.toHaveBeenCalled();
+    expect(analyseSummary).not.toHaveBeenCalled();
     expect(now).not.toHaveBeenCalled();
   });
 
@@ -101,7 +103,7 @@ describe('ABClass metadata failure propagation', () => {
     context.classFull.metadata = null;
     const backend = installMetadataRefreshTransport(context.classFull);
     const failure = new Error('Calculation invariant failed');
-    vi.spyOn(DataAnalysisService.prototype, 'analyse').mockImplementation(() => {
+    vi.spyOn(DataAnalysisService.prototype, 'analyseClassSummary').mockImplementation(() => {
       throw failure;
     });
     const now = vi.fn(() => SUMMARY_TIME);

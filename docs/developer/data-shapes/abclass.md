@@ -1333,7 +1333,7 @@ The backend entries and the frontend parity entry are implemented and described 
   stays aligned with the backend validator.
 - **Snapshot source — `Not implemented`**: the values are supplied by the frontend
   `ClassSummary` analyser (see
-  [Frontend Data Analysis Response — planned class summary](../data-shapes/frontend-data-analysis-response.md#planned-class-summary-contract-not-implemented));
+  [Frontend Data Analysis Response — class summary contract](../data-shapes/frontend-data-analysis-response.md#class-summary-contract));
   the backend continues to validate and store without calculating or refreshing them.
 
 ---

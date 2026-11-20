@@ -5,14 +5,18 @@ import {
   type AverageScore,
   type AverageScores,
   type RecentAssignment,
+  type StudentStanding,
+  type StudentStandings,
 } from '@/services/abClass/abClassMetadata.zod';
 import type {
   AssignmentPartial,
   ClassFull,
 } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type { ClassSummary, MetricStanding, MetricStandings } from '../classSummary.zod';
 import type { MetricResult, PerClassResult } from '../dataAnalysis.zod';
 
-const RECENT_ASSIGNMENT_LIMIT = 3;
+/** Maximum number of persisted recent-assignment history entries. */
+export const RECENT_ASSIGNMENT_LIMIT = 3;
 const NOT_FOUND_INDEX = -1;
 
 /** Timestamp-only no-op outcome with a task-owned skip reason. */
@@ -124,36 +128,83 @@ function projectMetric(metric: MetricResult): AverageScore {
 }
 
 /**
+ * Projects one analyser-native standings basis into persisted score sets.
+ * @param {MetricStandings} standings - The basis's ranked top and bottom lists.
+ * @param {number} scoreCount - Persisted history length to align each entry with.
+ * @returns {StudentStandings} Persisted standings with aligned score arrays.
+ * @remarks Each entry's per-assignment scores are trimmed to the persisted
+ * `recentAssignments` length, keeping the newest-first prefix. Rolling history is
+ * owned by the projection and is never rebuilt from live assignment definitions,
+ * so a fresh single-entry write cannot emit a three-score array rejected by the
+ * persisted schema.
+ */
+function projectStandings(standings: MetricStandings, scoreCount: number): StudentStandings {
+  const projectList = (entries: readonly MetricStanding[]): StudentStanding[] => {
+    return entries.map((entry) => {
+      return {
+        studentId: entry.studentId,
+        studentName: entry.studentName,
+        scores: projectAverageScores(entry.scores),
+        recentAssignmentScores: entry.recentAssignmentScores
+          .slice(0, scoreCount)
+          .map((scores) => projectAverageScores(scores)),
+      };
+    });
+  };
+  return { top: projectList(standings.top), bottom: projectList(standings.bottom) };
+}
+
+/**
  * Builds a detached, validated replacement with stable rolling instance history.
  * @param {ABClassMetadata} previous - Existing validated metadata or null.
- * @param {AverageScores} classScores - Complete class weighted aggregates.
- * @param {AssignmentPartial} target - One authoritative assignment instance.
- * @param {AverageScores} assignmentScores - Instance-isolated weighted aggregates.
+ * @param {ClassSummary} summary - Single validated summary acting as the score source.
  * @param {string} summaryUpdatedAt - Supplied canonical write-preparation time.
  * @returns {NonNullable<ABClassMetadata>} Complete replacement snapshot.
  * @remarks Source updatedAt is copied exactly, not inferred as assessment
  * completion. Equal-time history retains its supplied positions, not ID order.
+ * Rolling history is taken from the previous snapshot plus the summary target;
+ * it is never recomputed from live assignment definitions. Every standing's
+ * `recentAssignmentScores` is trimmed to the persisted history length (newest
+ * first) so summary score alignment and the persisted history stay in step.
  */
 export function mergeClassMetadata(
   previous: ABClassMetadata,
-  classScores: AverageScores,
-  target: AssignmentPartial,
-  assignmentScores: AverageScores,
+  summary: ClassSummary,
   summaryUpdatedAt: string
 ): NonNullable<ABClassMetadata> {
   const replacement = {
-    assignmentId: target.assignmentId,
-    assignmentDefinitionKey: target.assignmentDefinitionKey,
-    averages: assignmentScores,
-    updatedAt: CanonicalMetadataTimestampSchema.parse(target.updatedAt),
+    assignmentId: summary.target.assignmentId,
+    assignmentDefinitionKey: summary.target.assignmentDefinitionKey,
+    averages: projectAverageScores(summary.target.averages),
+    updatedAt: CanonicalMetadataTimestampSchema.parse(summary.target.updatedAt),
   };
   const recent = previous === null ? [] : [...previous.recentAssignments];
-  const position = recent.findIndex((entry) => entry.assignmentId === target.assignmentId);
+  const position = recent.findIndex((entry) => entry.assignmentId === replacement.assignmentId);
   if (position === NOT_FOUND_INDEX) recent.push(replacement);
   else recent[position] = replacement;
   recent.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const persistedRecent = recent.slice(0, RECENT_ASSIGNMENT_LIMIT);
+  const scoreCount = persistedRecent.length;
+  const baselineAverages =
+    summary.baseline.available && summary.baseline.classAverages !== null
+      ? {
+          ...projectAverageScores(summary.baseline.classAverages),
+          updatedAt: summaryUpdatedAt,
+        }
+      : null;
+  const baselineStandings =
+    summary.baseline.available && summary.baseline.standings !== null
+      ? projectStandings(summary.baseline.standings, scoreCount)
+      : null;
+
   return NonNullableABClassMetadataSchema.parse({
-    classAverages: { ...classScores, updatedAt: summaryUpdatedAt },
-    recentAssignments: recent.slice(0, RECENT_ASSIGNMENT_LIMIT),
+    classAverages: {
+      ...projectAverageScores(summary.allTasks.classAverages),
+      updatedAt: summaryUpdatedAt,
+    },
+    recentAssignments: persistedRecent,
+    baselineAverages,
+    allTaskStandings: projectStandings(summary.allTasks.standings, scoreCount),
+    baselineStandings,
   });
 }

@@ -28,6 +28,7 @@ describe('refreshABClassMetadataInQueue complete FIFO operation', () => {
     const gate = Promise.withResolvers<void>();
     const blocker = runApiQueuedTask('classesBulkMutation', () => gate.promise);
     const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyse');
+    const analyseSummary = vi.spyOn(DataAnalysisService.prototype, 'analyseClassSummary');
     const now = vi.fn(() => SUMMARY_TIME);
     const pending = refreshABClassMetadataInQueue(
       {
@@ -41,6 +42,7 @@ describe('refreshABClassMetadataInQueue complete FIFO operation', () => {
       expect(getQueueState('classesBulkMutation')).toEqual({ active: true, pending: 1 });
       expect(backend.dispatched).not.toHaveBeenCalled();
       expect(calculate).not.toHaveBeenCalled();
+      expect(analyseSummary).not.toHaveBeenCalled();
       expect(now).not.toHaveBeenCalled();
       gate.resolve();
       await blocker;
@@ -61,7 +63,7 @@ describe('refreshABClassMetadataInQueue complete FIFO operation', () => {
     different.updatedAt = NEW_SOURCE_TIME;
     expect(different.assignmentId).not.toBe(newestAssignment(context.classFull).assignmentId);
     const backend = installMetadataRefreshTransport(fresh);
-    const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyse');
+    const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyseClassSummary');
 
     await refreshABClassMetadata(context, () => SUMMARY_TIME);
 
@@ -69,8 +71,9 @@ describe('refreshABClassMetadataInQueue complete FIFO operation', () => {
       assignmentId: different.assignmentId,
       updatedAt: NEW_SOURCE_TIME,
     });
+    expect(calculate).toHaveBeenCalledTimes(1);
     expect(calculate.mock.calls[0][0].classes[0].assignments).toEqual(fresh.assignments);
-    expect(calculate.mock.calls[1][0].classes[0].assignments).toEqual([different]);
+    expect(calculate.mock.calls[0][1].target.assignmentId).toBe(different.assignmentId);
   });
 
   it.each(['noAssignments', 'unchanged', 'staleSource'] as const)(
@@ -91,6 +94,7 @@ describe('refreshABClassMetadataInQueue complete FIFO operation', () => {
       if (reason === 'noAssignments') fresh.assignments = [];
       const backend = installMetadataRefreshTransport(fresh);
       const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyse');
+      const analyseSummary = vi.spyOn(DataAnalysisService.prototype, 'analyseClassSummary');
       const now = vi.fn(() => SUMMARY_TIME);
 
       await expect(refreshABClassMetadata(context, now)).resolves.toEqual({
@@ -100,6 +104,7 @@ describe('refreshABClassMetadataInQueue complete FIFO operation', () => {
 
       expect(backend.events).toEqual(['getABClass']);
       expect(calculate).not.toHaveBeenCalled();
+      expect(analyseSummary).not.toHaveBeenCalled();
       expect(now).not.toHaveBeenCalled();
     }
   );
