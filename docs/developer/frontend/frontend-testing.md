@@ -162,7 +162,7 @@ not a nested queued wrapper that would deadlock.
 
 ### Metadata refresh task and writer tests
 
-The task/writer coverage is split across seven suites:
+The task/writer coverage is split across eight suites:
 
 - `services/dataAnalysis/postAnalysis/metadataProjection.freshness.spec.ts` and
   `metadataProjection.merge.spec.ts`: timestamp gate, exact score/marker mapping,
@@ -173,6 +173,9 @@ The task/writer coverage is split across seven suites:
   fresh-read ordering/recheck, full standard-weight scope, isolated target,
   request/response validation, interleaved owners, failure identity/lane release
   and independent raw-assessment numeric expectations.
+- `services/abClass/abClassMetadataService.summaryConsumption.spec.ts`: the writer
+  consumes one `ClassSummary`, with target and recent-assignment selection,
+  five-field request mapping, clear-on-null and whole replacement.
 
 Shared support is in `src/test/abClass/metadataRefreshFixtures.ts`,
 `metadataRefreshTransport.ts` and `metadataEvidenceOracle.ts`. Transport support

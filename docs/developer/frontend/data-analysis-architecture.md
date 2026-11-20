@@ -338,9 +338,12 @@ It bypasses query cache, reselects the target and repeats the gate. Missing
 classes fail rather than being recreated. All fresh assignments must resolve
 against the supplied live definition partials before calculation.
 
-The writer recalculates the complete fresh class with standard 40/40/20 weights
-and no display filters, then analyses exactly one target assignment in isolation.
-Instance isolation prevents shared definition keys from merging target evidence.
+The writer makes one `analyseClassSummary()` call with the unchanged analysis input
+and the target plus newest assignments supplied as options. The single-owner
+`ClassSummaryAnalyser` internally composes `AveragingAnalyser`, pins the all-tasks
+basis to absolute, derives one whole-class baseline and reuses its task keys for each
+isolated recent assignment, so instance-level evidence stays separated without a
+second writer call.
 It projects weighted overall directly without rounding, preserving numbers,
 `N`, `E` and `excluded`. Initial null metadata gets complete class averages and
 one recent entry; subsequent writes replace the same instance or append one,

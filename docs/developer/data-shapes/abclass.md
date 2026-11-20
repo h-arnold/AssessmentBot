@@ -1105,11 +1105,12 @@ Freshness and calculation:
    recreation/upsert.
 4. Before calculation require a live definition partial for **every** fresh class assignment,
    preventing the analyser's missing-definition filter from silently narrowing full scope.
-   Use an unchanged synchronous `new DataAnalysisService()` twice with only the class-ID
-   filter: once for the whole class, once for a copied class containing only the target
-   assignment instance. Standard constructor criterion weights are 0.4/0.4/0.2; no display,
-   date, topic, definition or custom-weight filters are supplied. Reused definition keys
-   never identify assignment instances.
+   Build the existing `AveragingAnalyserInput` from the fresh read with only the class-ID
+   filter, then make one synchronous `analyseClassSummary()` call, passing the target and
+   newest three fresh-class assignments as `{ target, recentAssignments }` options. Standard
+   constructor criterion weights are 0.4/0.4/0.2; no display, date, topic, definition or
+   custom-weight filters are supplied. Reused definition keys never identify assignment
+   instances.
 5. Project the existing weighted `perClass` metrics, including weighted `overall`: computed
    retains its number; notAttempted → `N`; error → `E`; excluded → literal `excluded`.
    No rounding, coercion, task-display averaging or averaging of assignment averages occurs.
