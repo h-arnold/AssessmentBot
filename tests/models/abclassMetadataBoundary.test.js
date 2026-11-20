@@ -177,6 +177,7 @@ describe('ABClassMetadata ownership boundary', () => {
     const paths = [
       'src/backend/Models/ABClass.js',
       'src/backend/Models/ABClassMetadata.js',
+      'src/backend/Models/ABClassMetadataStandings.js',
       'src/backend/Models/Assessment.js',
       'src/backend/Utils/Validate.js',
       'src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js',

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DataAnalysisService } from './dataAnalysisService';
+import { ClassSummarySchema } from './classSummary.zod';
 import {
   DataAnalysisResponseSchema,
   type AveragingAnalyserInput,
@@ -390,7 +391,7 @@ describe('DataAnalysisService', () => {
   });
 
   describe('analyseClassSummary registration', () => {
-    it('exposes a dedicated class summary entry point backed by its own analyser field', async () => {
+    it('exposes a dedicated class summary entry point backed by its own analyser field', () => {
       const service = new DataAnalysisService();
       const augmented = service as unknown as {
         classSummaryAnalyser: unknown;
@@ -409,13 +410,6 @@ describe('DataAnalysisService', () => {
       expect(augmented.registry.size).toBe(1);
       expect(augmented.registry.has('averaging')).toBe(true);
 
-      // Loaded indirectly and after the entry-point assertion so the unchanged
-      // analyse()/summary suites remain runnable before the new module exists
-      // (TDD red phase): Vite statically resolves literal dynamic imports.
-      const summarySchemaModulePath = './classSummary.zod';
-      const { ClassSummarySchema } = (await import(summarySchemaModulePath)) as {
-        ClassSummarySchema: { parse: (value: unknown) => unknown };
-      };
       const input = buildSingleStudentInput({
         completeness: { score: 4 },
         accuracy: { score: 4 },

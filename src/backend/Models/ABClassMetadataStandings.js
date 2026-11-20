@@ -18,12 +18,7 @@ const ABClassMetadataStandings = {
    * @returns {void}
    */
   validateBaselineAverages(value, context) {
-    const metrics = ABClassMetadata._metrics();
-    ABClassMetadata._checkRecord(value, context, [...metrics, 'updatedAt']);
-    const scores = {};
-    for (const metric of metrics) scores[metric] = value[metric];
-    ABClassMetadata.validateAverageScores(scores, context);
-    ABClassMetadata._validateTimestamp(value.updatedAt, `${context}.updatedAt`);
+    ABClassMetadata.validateClassAverages(value, context);
   },
 
   /**
@@ -114,9 +109,7 @@ const ABClassMetadataStandings = {
    * @private
    */
   _validateIdentifier(value, context) {
-    if (typeof value !== 'string' || value.length === 0 || value.trim() !== value) {
-      ABClassMetadata._fail('must be a non-empty, already-trimmed string', context);
-    }
+    ABClassMetadata._validateIdentifier(value, context);
   },
 
   /**

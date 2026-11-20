@@ -28,14 +28,6 @@ const MAX_STANDING_ENTRIES = 3;
 /** Direction used when ordering rankable students by their overall metric. */
 type RankDirection = 'desc' | 'asc';
 
-/** The four aggregate metrics carried by a score set. */
-interface MetricSet {
-  completeness: MetricResult;
-  accuracy: MetricResult;
-  spag: MetricResult;
-  overall: MetricResult;
-}
-
 /** Caller-supplied assignment instances; the analyser performs no freshness selection. */
 export interface AnalyseClassSummaryOptions {
   target: AssignmentPartial;
@@ -45,10 +37,10 @@ export interface AnalyseClassSummaryOptions {
 /**
  * Project an aggregate result onto the four analyser-native score fields.
  *
- * @param {MetricSet} metrics - Source aggregate metrics.
+ * @param {MetricScores} metrics - Source aggregate metrics.
  * @returns {MetricScores} The projected score set.
  */
-function projectScores(metrics: MetricSet): MetricScores {
+function projectScores(metrics: MetricScores): MetricScores {
   return {
     completeness: metrics.completeness,
     accuracy: metrics.accuracy,

@@ -18,7 +18,6 @@ import {
   type MetricStanding,
   type MetricStandings,
 } from '../dataAnalysis/classSummary.zod';
-import type { ClassFull } from '../googleClassrooms/classDetail/classDetailService.zod';
 import type { RecentAssignment, StudentStanding } from '@/services/abClass/abClassMetadata.zod';
 import {
   createMetadataRefreshFixture,
@@ -28,7 +27,10 @@ import {
 } from '@/test/abClass/metadataRefreshFixtures';
 import { installMetadataRefreshTransport } from '@/test/abClass/metadataRefreshTransport';
 import { refreshABClassMetadata } from '../dataAnalysis/postAnalysis/refreshABClassMetadata';
-import { projectAverageScores } from '../dataAnalysis/postAnalysis/metadataProjection';
+import {
+  compareAssignmentNewestFirst,
+  projectAverageScores,
+} from '../dataAnalysis/postAnalysis/metadataProjection';
 
 const THREE_RECENT = 3;
 const OLDER_HISTORY_INDEX = 1;
@@ -202,19 +204,6 @@ function controlledStandings(basis: string): MetricStandings {
   };
 }
 
-/** Orders a class's assignments newest first without mutating the source.
- * @param {ClassFull} cls - Complete canonical class.
- * @returns {ClassFull['assignments']} Newest-first detached ordering.
- */
-function newestFirst(cls: ClassFull): ClassFull['assignments'] {
-  return cls.assignments.toSorted((a, b) => {
-    return (
-      String(b.updatedAt).localeCompare(String(a.updatedAt)) ||
-      a.assignmentId.localeCompare(b.assignmentId)
-    );
-  });
-}
-
 /** Seeds two older canonical history entries so the newest assignment stays eligible.
  * @param {ReturnType<typeof createMetadataRefreshFixture>} fixture - Canonical source context.
  * @returns {RecentAssignment[]} The seeded, unchanged history entries.
@@ -243,7 +232,9 @@ function createControlledSummary(
   fixture: ReturnType<typeof createMetadataRefreshFixture>,
   hasBaseline: boolean
 ): ClassSummary {
-  const recent = newestFirst(fixture.classFull).slice(0, THREE_RECENT);
+  const recent = fixture.classFull.assignments
+    .toSorted(compareAssignmentNewestFirst)
+    .slice(0, THREE_RECENT);
   const target = recent[0];
   if (!target) throw new Error('Controlled summary requires a target assignment');
   return ClassSummarySchema.parse({
@@ -334,7 +325,9 @@ describe('ABClass metadata writer consumes one class summary', () => {
       },
       {
         target: newestAssignment(context.classFull),
-        recentAssignments: newestFirst(context.classFull).slice(0, THREE_RECENT),
+        recentAssignments: context.classFull.assignments
+          .toSorted(compareAssignmentNewestFirst)
+          .slice(0, THREE_RECENT),
       }
     );
     expect(backend.events).toEqual(['getABClass', 'updateABClass']);

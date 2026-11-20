@@ -55,6 +55,18 @@ class ABClassMetadata {
   }
 
   /**
+   * Requires a non-empty, already-trimmed string identifier.
+   * @param {*} value - Candidate identifier.
+   * @param {string} context - Error path.
+   * @private
+   */
+  static _validateIdentifier(value, context) {
+    if (typeof value !== 'string' || value.length === 0 || value.trim() !== value) {
+      ABClassMetadata._fail('must be a non-empty, already-trimmed string', context);
+    }
+  }
+
+  /**
    * Returns the four metadata metrics: the canonical criteria plus the weighted
    * overall score. Derived at call time because this file loads before
    * `Models/Assessment.js` in the concatenated script.
@@ -197,14 +209,7 @@ class ABClassMetadata {
     const keys = ['assignmentId', 'assignmentDefinitionKey', 'averages', 'updatedAt'];
     ABClassMetadata._checkRecord(value, context, keys);
     for (const key of ['assignmentId', 'assignmentDefinitionKey']) {
-      const identifier = value[key];
-      if (
-        typeof identifier !== 'string' ||
-        identifier.length === 0 ||
-        identifier.trim() !== identifier
-      ) {
-        ABClassMetadata._fail('must be a non-empty, already-trimmed string', `${context}.${key}`);
-      }
+      ABClassMetadata._validateIdentifier(value[key], `${context}.${key}`);
     }
     ABClassMetadata.validateAverageScores(value.averages, `${context}.averages`);
     ABClassMetadata._validateTimestamp(value.updatedAt, `${context}.updatedAt`);
@@ -311,23 +316,12 @@ class ABClassMetadata {
       return {
         assignmentId: entry.assignmentId,
         assignmentDefinitionKey: entry.assignmentDefinitionKey,
-        averages: {
-          completeness: entry.averages.completeness,
-          accuracy: entry.averages.accuracy,
-          spag: entry.averages.spag,
-          overall: entry.averages.overall,
-        },
+        averages: ABClassMetadataStandings.copyScoreSet(entry.averages),
         updatedAt: entry.updatedAt,
       };
     });
     const copy = {
-      classAverages: {
-        completeness: value.classAverages.completeness,
-        accuracy: value.classAverages.accuracy,
-        spag: value.classAverages.spag,
-        overall: value.classAverages.overall,
-        updatedAt: value.classAverages.updatedAt,
-      },
+      classAverages: ABClassMetadataStandings.copyBaselineAverages(value.classAverages),
       recentAssignments,
     };
     for (const field of NEW_METADATA_FIELDS) {

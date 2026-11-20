@@ -149,8 +149,7 @@ function validateClassAverages(averages, path) {
  * @param {string} path Diagnostic path.
  */
 function validateBaselineAverages(value, path) {
-  assertScores(value, path, true);
-  assertTimestamp(value.updatedAt, `${path}.updatedAt`);
+  validateClassAverages(value, path);
 }
 
 /** Validates a standings basis with exactly a top and a bottom list.
