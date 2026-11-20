@@ -28,6 +28,9 @@ describe('refreshABClassMetadata cheap task orchestration', () => {
       context.classFull.metadata = {
         classAverages: { ...entry.averages, updatedAt: SUMMARY_TIME },
         recentAssignments: [entry],
+        baselineAverages: null,
+        allTaskStandings: null,
+        baselineStandings: null,
       };
       if (reason === 'noAssignments') context.classFull.assignments = [];
       else if (reason === 'staleSource') entry.updatedAt = SUMMARY_TIME;
@@ -54,6 +57,9 @@ describe('refreshABClassMetadata cheap task orchestration', () => {
     context.classFull.metadata = {
       classAverages: { ...entry.averages, updatedAt: SUMMARY_TIME },
       recentAssignments: [entry],
+      baselineAverages: null,
+      allTaskStandings: null,
+      baselineStandings: null,
     };
     context.assignmentDefinitionPartials.forEach((definition) => {
       definition.assignmentWeighting = 0;

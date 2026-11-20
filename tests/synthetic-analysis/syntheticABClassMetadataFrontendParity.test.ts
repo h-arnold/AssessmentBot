@@ -70,7 +70,16 @@ describe('frontend ABClass metadata schema parity with backend domain validation
       ];
       for (const { metadata } of snapshots) {
         expect(() => ABClassMetadata.validateMetadata(metadata)).not.toThrow();
-        expect(ABClassMetadataSchema.parse(metadata)).toEqual(metadata);
+        expect(ABClassMetadataSchema.parse(metadata)).toEqual(
+          metadata === null
+            ? null
+            : {
+                ...(metadata as Record<string, unknown>),
+                baselineAverages: null,
+                allTaskStandings: null,
+                baselineStandings: null,
+              }
+        );
       }
     }
   );

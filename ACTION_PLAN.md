@@ -2,7 +2,7 @@
 
 ## Delivery status
 
-- Current section: Section 1 complete — backend metadata validator delivered; Section 2 (frontend metadata Zod schema) is next.
+- Current section: Section 2 complete — frontend metadata Zod schema delivered, reviewed clean, docs synced, section regression gate passed (0 regressions, 0 new failures); Section 3 (typed baseline error and ClassSummary analyser) is next. Section 1 complete — backend metadata validator delivered and committed.
 - Regression-checker session ID: `feat-enahncedABClassMetadata` (passed explicitly; this worktree is detached HEAD, so branch-based resolution is unavailable).
 - Baseline report: `.ts-regression-checker/reports/session-feat-enahncedABClassMetadata/baseline/baseline.txt` (created 2026-11-19T22:39:22Z; 6 of 8 checks passing, zero regressions, zero new failures).
 - Accepted baseline debt: (a) `backend-lint-check` fails on 4 pre-existing `max-lines` warnings in untouched test files (`assignmentDefinitionPartials.unit.test.js`, `dbManager.test.js`, `classroomApiClient.test.js`, `batchUpdateUtility.test.js`); (b) `frontend-e2e-check` recorded exit 143 after an environment-hung Playwright process was terminated during baseline capture — this plan adds no E2E tests (no user-visible change) and no E2E file is in the authorised change surface. These files and checks are outside every section's change surface; no section may repair them.
@@ -165,76 +165,60 @@ Passed: `npm run test:backend -- tests/models/abclassMetadataIntegration.test.js
 
 ## Section 2 — Frontend metadata Zod schema: legacy/current acceptance and emission
 
-### Objective
+### Outcome (compacted)
 
-Extend the single frontend metadata schema owner so legacy and current inputs are accepted and the current five-field shape is emitted with null placeholders, in parity with Section 1.
+The single frontend metadata schema owner (`src/frontend/src/services/abClass/abClassMetadata.zod.ts`) now accepts both the legacy two-field input and the current five-field input and emits the current five-field shape with plain enumerable `null` placeholders, in parity with Section 1. `ABClassMetadataSchema` (nullable, wire/mutation reads) and `NonNullableABClassMetadataSchema` (merge/write path) share one emission transform; no second schema owner was introduced. Red and Green reviews both passed and the section regression gate passed at completion (0 regressions, 0 new failures).
 
-### Constraints
+### Retained for later sections
 
-- `ClassFullSchema`, `ClassPartialSchema` and the mutation schemas keep referencing `ABClassMetadataSchema`; no second schema owner.
-- Strict record checks and canonical timestamp rules unchanged for existing fields.
-- `NonNullableABClassMetadataSchema` emits all five fields; each new field nullable but required in output.
-- Frontend file stays under 550 lines.
+**Single owner, file path and pattern.** `src/frontend/src/services/abClass/abClassMetadata.zod.ts` (337 lines) is the sole frontend metadata validation owner: `ClassFullSchema`, `ClassPartialSchema` and the mutation request schemas all reference `ABClassMetadataSchema`. Added schemas in that file are `BaselineAveragesSchema` (= `ClassAveragesSchema`), `StudentStandingSchema`, `StudentStandingsSchema` and the two public snapshot schemas. Existing strict-record checks (`isExactRecord`, `isBoundedDenseArray`, plain-prototype checks), canonical UTC timestamp rules and the four-state score union (finite 0–5 or exactly `'N'`/`'E'`/`'excluded'`) are unchanged.
 
-### Delegation mandatory reads (when sub-agents are used)
+**Both public schemas accept legacy/current and emit nulls.** `ABClassMetadataSchema` and `NonNullableABClassMetadataSchema` accept the legacy input (`{ classAverages, recentAssignments }`) and the current five-field input and both emit the current shape. Present `undefined`, unexpected own keys, sparse/malformed nested entries and non-canonical timestamps reject.
 
-Testing Specialist: `@src/frontend/src/services/abClass/abClassMetadata.zod.ts`, `@src/frontend/src/services/abClass/abClassMetadata.zod.spec.ts`, `@src/frontend/src/services/abClass/abClassMetadata.zod.strict.spec.ts`, `@src/frontend/src/test/abClass/abClassMetadataFixtures.ts`, `@docs/developer/frontend/frontend-testing.md`
+**Exact emitted five-field shape with plain enumerable nulls.** `emitCurrentFiveFieldShape()` returns a plain object literal:
 
-Implementation: `@src/frontend/src/services/abClass/abClassMetadata.zod.ts`, `@docs/developer/data-shapes/abclass.md`, `@docs/developer/frontend/frontend-architecture.md`
+```ts
+{
+  classAverages,      // existing: completeness, accuracy, spag, overall, updatedAt
+  recentAssignments,  // existing: dense 0–3, unique assignmentId, non-increasing updatedAt
+  baselineAverages,   // null when absent; else four scores + updatedAt
+  allTaskStandings,   // null when absent; else { top, bottom }
+  baselineStandings,  // null when absent; else { top, bottom }
+}
+```
 
-Code Reviewer: `@SPEC.md`, `@src/frontend/src/services/abClass/abClassMetadata.zod.ts`
+The three new fields are ordinary enumerable `null`s (object-literal properties, not `Object.defineProperty(..., enumerable: false)`), matching Section 1's backend emission (`ABClassMetadata.js:333–336`), so they survive `JSON.stringify`, object spread and `structuredClone`. A non-null standings basis has exactly `top` and `bottom`, each a dense array of 0–3 `StudentStanding` entries `{ studentId, studentName, scores, recentAssignmentScores }`; identifiers are non-empty trimmed strings, score sets are exact four-field records and no timestamp is stored inside a standing entry.
 
-### Shared helper plan
+**Cross-field rule to mirror.** `recentAssignmentScores.length === recentAssignments.length` (0–3) is enforced by the `validateStandingsScoreAlignment` refinement across both `allTaskStandings` and `baselineStandings` and both `top` and `bottom` lists. There is deliberately **no top/bottom disjointness rule**: duplicate students across the two lists are accepted to preserve parity with the Section 1 backend; disjoint selection is a producer rule for the Section 3 analyser and is asserted by `ClassSummarySchema` (SPEC.md:213).
 
-1. Helper: metadata schema owner
-   - Decision: `extend`
-   - Owning module/path: `src/frontend/src/services/abClass/abClassMetadata.zod.ts`
-   - Call-site rationale: all class read/write schemas reference this one owner; adding new schemas here avoids a parallel contract.
-   - Relevant canonical doc target: `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` § 9.28
-   - Planned doc status: `Not implemented` (recorded as part of the planned metadata enrichment) — reconcile in docs pass.
+**Approved surface expansion and complete test surface.** User approved (option 1) making emission contract-faithful with enumerable nulls. This expanded Section 2's authorised test surface to mechanically update every `parse(legacy) === legacy` deep-equality assertion/type literal to expect five enumerable fields with nulls. Direct Section 2 files: `src/frontend/src/services/abClass/abClassMetadata.zod.spec.ts`, `src/frontend/src/services/abClass/abClassMetadata.zod.strict.spec.ts` and the fixture `src/frontend/src/test/abClass/abClassMetadataFixtures.ts`. The complete list of Section 4/5 test files updated under the expansion (two-field→five-field expectations; Sections 4 and 5 need the same updates anyway) is:
 
-### Data-shape planning block
+- `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.merge.spec.ts`
+- `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts`
+- `src/frontend/src/services/abClass/abClassMetadataService.calculation.spec.ts`
+- `src/frontend/src/services/abClass/abClassMetadataService.queue.spec.ts`
+- `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.freshness.spec.ts`
+- `src/frontend/src/services/abClass/refreshABClassMetadata.spec.ts`
+- `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts`
+- `src/frontend/src/services/googleClassrooms/classReadServices.metadata.spec.ts` (gate-regression fix: normalised five-field reads compared to raw two-field committed fixtures)
 
-- Changes: frontend validation schema.
-- Planned-only entries: `@docs/developer/data-shapes/abclass.md` § Planned changes (Frontend parity bullet).
-- Remove `Not implemented` on delivery.
+**Doc-entry and deferred pointers.** Docs sync reconciled the `abclass.md` § Planned changes Frontend-parity bullet (and stale § Sub-entity Frontend Zod cells) and the `frontend-shared-helpers-and-abstraction-standards.md` §9.28 metadata-schema-owner entry to **delivered** — neither remains `Not implemented`. Still pending for later sections: the §9.28 `ClassSummaryAnalyser` (Section 3) and `mergeClassMetadata` (Section 4) entries, and the `abclass.md` Snapshot-source bullet (Sections 3–5). The out-of-scope backend-subset parity gap (backend accepts any subset of the three new fields while the frontend requires exactly two or five keys) is recorded in the `## Deferred and Out-of-Scope Findings` ledger; the `abclass.md` § Validation `abClassMetadata.zod.ts` documentation nitpick is logged for the final documentation pass.
 
-### Canonical-fixture note
-
-- Use `src/frontend/src/test/abClass/abClassMetadataFixtures.ts` with committed `small`/`medium`/`large-representative` class-partial views.
-- Invalid shape/score/identifier/ordering/timestamp probes remain local boundary fixtures.
-- No profile or corpus change.
-
-### Acceptance criteria
-
-- `ABClassMetadataSchema.parse(legacy)` produces the five-field current shape with three nulls.
-- `NonNullableABClassMetadataSchema.parse(current)` preserves all fields and rejects present `undefined`, unexpected keys and malformed nested entries.
-- `recentAssignmentScores.length === recentAssignments.length` (0–3) enforced.
-- `ClassFullSchema`/`ClassPartialSchema`/mutation schemas still accept the field and reject malformed metadata.
-- File ≤ 550 lines; frontend lint and touched suites green.
-
-### Required test cases (Red first)
-
-1. Legacy committed fixture parses and emits null placeholders.
-2. Current-shape fixture with populated fields round-trips.
-3. Present `undefined` for each new field rejects.
-4. Non-null standings with wrong list length, sparse list, missing identity, invalid score, or extra key reject.
-5. `top`/`bottom` are validated as dense 0–3 arrays; no uniqueness rule added.
-6. Regression: existing `abClassMetadata.zod*.spec.ts` suites pass unchanged except explicit new cases.
+**`@remarks` carried forward in code.** The schema JSDoc records why the nullable union accepts a legacy input but emits the current five-field shape with null placeholders (the nullable union stays for wire reads and mutation requests), why enumerable placeholders are needed for serialisation/cloning, and why top/bottom disjointness is not enforced by the schema (Section 3 producer rule).
 
 ### Section checks
 
-- `npm run test:frontend -- src/services/abClass/abClassMetadata.zod`
-- `npm run lint:frontend:check`.
-- Confirm no second metadata schema was introduced.
-
-### Optional `@remarks` JSDoc follow-through
-
-Record why the nullable union accepts a legacy input but emits the current shape, and why disjointness is not enforced by the schema.
+Passed: `npm run test:frontend -- src/services/abClass/abClassMetadata.zod` and `npm run lint:frontend:check`; confirmed no second metadata schema was introduced and the schema file is 337 lines (≤ 550). Section regression gate passed at completion: 7/8 checks, 0 regressions, 0 new failures, with the sole failing check being the accepted `backend-lint-check` baseline debt.
 
 ### Implementation notes / deviations / follow-up
 
 - Record any schema-shape adjustment and the planned-entry reconciliation.
+- **APPROVED SURFACE EXPANSION (user decision, option 1): enumerable null placeholders.** The Green Review found that emitting the three null placeholders via `Object.defineProperty(..., enumerable: false)` contradicts `SPEC.md:34/190/211` and this section's acceptance criterion, and diverges from the Section 1 backend's plain enumerable nulls (`ABClassMetadata.js:333–336`) — `JSON.stringify`, object spread and `structuredClone` dropped the placeholders. The user approved expanding Section 2's authorised change surface to make emission contract-faithful: remove the non-enumerable shim and update every affected `parse(legacy) === legacy` deep-equality assertion to expect five enumerable fields with nulls. This adds the following Section 4/5 test files to Section 2's test surface for minimal mechanical expectation/type-literal updates: `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.merge.spec.ts`, `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts`, `src/frontend/src/services/abClass/abClassMetadataService.calculation.spec.ts`, `src/frontend/src/services/abClass/abClassMetadataService.queue.spec.ts`, `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.freshness.spec.ts`, `src/frontend/src/services/abClass/refreshABClassMetadata.spec.ts`, and `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` (added after the first test-update run exposed three more normalised-vs-raw comparisons at lines 55, 77 and 188). All are two-field literals that must now expect five enumerable fields with nulls; Sections 4 and 5 require the same updates anyway. Recorded as an approved deviation, not a deferred finding.
+- Out-of-scope parity gap recorded in the deferred ledger below: the Section 1 backend accepts any subset of the three new fields while the frontend requires exactly two or five keys.
+- **Docs sync outcome:** updated `docs/developer/data-shapes/abclass.md` (Planned-changes preamble and Frontend-parity bullet reconciled to delivered; stale `—` (frontend parity pending) cells in the § Sub-entity Frontend Zod column replaced with the actual schema names) and `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (§9.28 metadata-schema-owner entry marked delivered). No pages created; no JSDoc or other source changes, so no extra code lint/type-check was needed. Out-of-scope documentation drift reported, not fixed: `abclass.md` § Validation's `abClassMetadata.zod.ts` bullet (line ~939) does not name `BaselineAveragesSchema`/`StudentStandingsSchema` or mention legacy-to-five-field emission — logged as a nitpick for the final documentation pass.
+- **FAILED section regression gate (first run, superseded):** `.opencode/scratchpad/s2-gate.log`; compare mode, session `feat-enahncedABClassMetadata`, 6/8 checks passing, 3 regressions and 3 new failures — all in `src/frontend/src/services/googleClassrooms/classReadServices.metadata.spec.ts` (test "retains every canonical metadata variant identically through both real response parsers" for small/medium/large-representative), where normalised five-field reads are compared to raw two-field committed fixtures. `backend-lint-check` still fails on the 4 accepted pre-existing `max-lines` warnings; `frontend-e2e-check` passed on this run. This gate did not pass; rework is in progress.
+
+- **PASSED section regression gate (section-completion, supersedes the first run):** `.ts-regression-checker/reports/session-feat-enahncedABClassMetadata/runs/2026-11-20T06-13-49.551Z/comparison.txt`; compare mode, session `feat-enahncedABClassMetadata`, 7/8 checks passing, **0 regressions, 0 new failures**. All new code is clean (frontend lint 0 errors, frontend coverage 330 files / 3231 tests, typecheck, builder checks, frontend E2E all pass). The single failing check is `backend-lint-check` with the 4 accepted pre-existing `max-lines` warnings in untouched test files, unchanged from the baseline debt recorded in Delivery status. Full log: `.opencode/scratchpad/s2-gate-final.log`.
 
 ---
 
@@ -566,12 +550,13 @@ Confirm the recorded non-obvious decisions are present; otherwise record `None`.
 
 ## Deferred and Out-of-Scope Findings
 
-| Finding                                               | Severity    | Scope rationale                                                                                                              | Evidence                                                              | Disposition | User decision                                                           |
-| ----------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------- |
-| UI display of the new metadata fields                 | Improvement | `SPEC.md` non-goal; no production component renders metadata scores                                                          | `SPEC.md` § Purpose / V1 scope; Kif exploration of frontend consumers | noted       |                                                                         |
-| Persisting baseline pool IDs or baseline task keys    | Improvement | `SPEC.md` non-goal; internal derivation only                                                                                 | `SPEC.md` § Purpose / V1 scope                                        | noted       |                                                                         |
-| Changing the metadata freshness trigger               | Improvement | Explicitly unchanged contract                                                                                                | `SPEC.md` § Agreed product decisions, § Prefetch policy               | noted       |                                                                         |
-| Analysis-input override for whole-class baseline keys | Improvement | Avoided: whole-class keys are applied by the summary analyser via shared rollup helpers, so no input schema change is needed | `SPEC.md` § Core derivation model; `dataAnalysis.zod.ts` unchanged    | disregarded |                                                                         |
-| Writing metadata in `postAnalysisFeedback.ts`         | Improvement | User confirmed the existing refresh task owns the write; the feedback hook stays warning-only                                | `SPEC.md` § Planning handoff notes; question-tool confirmation        | noted       | Confirmed by user: use the existing refresh task, not the feedback hook |
+| Finding                                                     | Severity    | Scope rationale                                                                                                                                                                                                                                                                            | Evidence                                                                                                                                                    | Disposition | User decision                                                           |
+| ----------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------- |
+| UI display of the new metadata fields                       | Improvement | `SPEC.md` non-goal; no production component renders metadata scores                                                                                                                                                                                                                        | `SPEC.md` § Purpose / V1 scope; Kif exploration of frontend consumers                                                                                       | noted       |                                                                         |
+| Persisting baseline pool IDs or baseline task keys          | Improvement | `SPEC.md` non-goal; internal derivation only                                                                                                                                                                                                                                               | `SPEC.md` § Purpose / V1 scope                                                                                                                              | noted       |                                                                         |
+| Changing the metadata freshness trigger                     | Improvement | Explicitly unchanged contract                                                                                                                                                                                                                                                              | `SPEC.md` § Agreed product decisions, § Prefetch policy                                                                                                     | noted       |                                                                         |
+| Analysis-input override for whole-class baseline keys       | Improvement | Avoided: whole-class keys are applied by the summary analyser via shared rollup helpers, so no input schema change is needed                                                                                                                                                               | `SPEC.md` § Core derivation model; `dataAnalysis.zod.ts` unchanged                                                                                          | disregarded |                                                                         |
+| Writing metadata in `postAnalysisFeedback.ts`               | Improvement | User confirmed the existing refresh task owns the write; the feedback hook stays warning-only                                                                                                                                                                                              | `SPEC.md` § Planning handoff notes; question-tool confirmation                                                                                              | noted       | Confirmed by user: use the existing refresh task, not the feedback hook |
+| Backend accepts any subset of the three new metadata fields | Material    | Backend acceptance was delivered and committed in Section 1; tightening it is outside Section 2's frontend-schema surface. `SPEC.md:191` says a current input has all five fields, so the backend is more lenient than the contract, but legacy-plus-subset is not produced by any caller. | `src/backend/Models/ABClassMetadata.js:222–227, 272–286` (`_checkRecord` treats new fields as optional); Green Review `review-section2-green.md` scope note | noted       |                                                                         |
 
 Nitpicks are logged in `.opencode/scratchpad/<branch-slug>-deferred-findings.md` (branch name with `/` replaced by `-`), with the two required tables: `Deferred and out-of-scope findings` and `Nitpicks`. Link that ignored working file here if nitpicks are logged during delivery; do not list individual nitpicks in this plan.

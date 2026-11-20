@@ -101,6 +101,9 @@ describe('mergeClassMetadata stable rolling history', () => {
           updatedAt: target.updatedAt,
         },
       ],
+      baselineAverages: null,
+      allTaskStandings: null,
+      baselineStandings: null,
     });
     expect(ABClassMetadataSchema.parse(result)).toEqual(result);
     expect(clock).not.toHaveBeenCalled();
@@ -143,6 +146,9 @@ describe('mergeClassMetadata stable rolling history', () => {
     const previous = {
       classAverages: { ...entries[0].averages, updatedAt: SUMMARY_TIME },
       recentAssignments: entries,
+      baselineAverages: null,
+      allTaskStandings: null,
+      baselineStandings: null,
     };
     const before = structuredClone(previous);
     const target = {
@@ -177,6 +183,9 @@ describe('mergeClassMetadata stable rolling history', () => {
     const previous = {
       classAverages: { ...entries[0].averages, updatedAt: SUMMARY_TIME },
       recentAssignments: entries,
+      baselineAverages: null,
+      allTaskStandings: null,
+      baselineStandings: null,
     };
     const target = { ...classFull.assignments[0], updatedAt: SUMMARY_TIME };
     const result = mergeClassMetadata(

@@ -218,14 +218,14 @@ Use topic-specific docs for runtime policy details:
 - Testing helper and harness policy: `docs/developer/frontend/frontend-testing.md`
 - Shell navigation and motion policy: `docs/developer/frontend/frontend-shell-navigation-and-motion.md`
 
-## 9. Planned helper entries (Not implemented)
+## 9. Planned helper entries
 
-### 9.28 Class summary and ABClass metadata enrichment (Not implemented)
+### 9.28 Class summary and ABClass metadata enrichment
 
-The following helper entries are planned in `ACTION_PLAN.md` and are **Not implemented**. They are
-recorded here as implementation targets; reconcile each entry in the docs pass once delivered.
-Apply the reuse-first rule above when reviewing them.
+The metadata schema owner has been delivered. The `ClassSummaryAnalyser` and `mergeClassMetadata`
+entries below remain **Not implemented** and are recorded here as implementation targets. Apply
+the reuse-first rule above when reviewing them.
 
-- Metadata schema owner (`extend`, **Not implemented**): `src/frontend/src/services/abClass/abClassMetadata.zod.ts` — the single frontend ABClass metadata schema owner referenced by `ClassFullSchema`, `ClassPartialSchema` and the mutation schemas. Extend it to accept legacy and current inputs and emit the five-field shape with null placeholders, keeping one schema owner.
+- Metadata schema owner (`extend`): `src/frontend/src/services/abClass/abClassMetadata.zod.ts` — the single frontend ABClass metadata schema owner referenced by `ClassFullSchema`, `ClassPartialSchema` and the mutation schemas, extended in place rather than duplicated in a second schema. Both `ABClassMetadataSchema` and `NonNullableABClassMetadataSchema` accept the legacy two-field and current five-field inputs and emit the five-field shape with three enumerable `null` placeholders, matching backend read normalisation. See the [ABClass metadata contract](../data-shapes/abclass.md#sub-entity-abclassmetadata).
 - `ClassSummaryAnalyser` (`new`, **Not implemented**): `src/frontend/src/services/dataAnalysis/classSummaryAnalyser.ts` with adjacent `classSummary.zod.ts` — single owner for summary calculation, registered in `DataAnalysisService` so the writer and future consumers call `analyseClassSummary()`. It composes `AveragingAnalyser` and reuses its exported helpers; all new calculation stays in the service.
 - `mergeClassMetadata` (`extend`, **Not implemented**): `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.ts` — single owner of rolling history. Extend it to accept a `ClassSummary` as its score source and map analyser-native values through `projectAverageScores()`, retaining the rolling-three, target replacement and newest-first rules.

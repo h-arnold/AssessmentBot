@@ -84,6 +84,9 @@ describe('refreshABClassMetadataInQueue complete FIFO operation', () => {
       fresh.metadata = {
         classAverages: { ...entry.averages, updatedAt: SUMMARY_TIME },
         recentAssignments: [entry],
+        baselineAverages: null,
+        allTaskStandings: null,
+        baselineStandings: null,
       };
       if (reason === 'noAssignments') fresh.assignments = [];
       const backend = installMetadataRefreshTransport(fresh);

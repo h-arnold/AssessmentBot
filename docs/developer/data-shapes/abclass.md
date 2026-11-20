@@ -686,9 +686,9 @@ backfill stored bytes.
 | `metadata.recentAssignments[].assignmentDefinitionKey` | `string`                 | Non-empty, already-trimmed; need **not** be unique within the list (definitions are reusable)                              | `z.string()` (plus raw-record pre-check)                                          |                                                                                                                                                                                                                                                                            |
 | `metadata.recentAssignments[].averages`                | `AverageScores`          | Required and complete; the four score fields exactly, with no nesting and no timestamp                                     | `AverageScoresSchema`                                                             | A nested partial object is invalid, not a patch.                                                                                                                                                                                                                           |
 | `metadata.recentAssignments[].updatedAt`               | `string`                 | Exact canonical UTC datetime; supplied as the corresponding Assignment's existing `updatedAt`, not independently generated | `CanonicalMetadataTimestampSchema`                                                | Not compared by the API against the stored Assignment timestamp.                                                                                                                                                                                                           |
-| `metadata.baselineAverages`                            | `BaselineAverages\|null` | Omitted on legacy input and emitted as `null`; when present, four scores plus a canonical `updatedAt`                      | `—` (frontend parity pending)                                                     | Validated by `ABClassMetadataStandings.validateBaselineAverages()`. A present `undefined` is invalid.                                                                                                                                                                      |
-| `metadata.allTaskStandings`                            | `StudentStandings\|null` | Omitted on legacy input and emitted as `null`; when present, exactly `top` and `bottom`, each a dense 0–3 list             | `—` (frontend parity pending)                                                     | Validated by `ABClassMetadataStandings.validateStandings()`. Each entry's `recentAssignmentScores` has one score set per `recentAssignments` entry.                                                                                                                        |
-| `metadata.baselineStandings`                           | `StudentStandings\|null` | As `allTaskStandings`                                                                                                      | `—` (frontend parity pending)                                                     | Same validator as `allTaskStandings`; the two bases are independent.                                                                                                                                                                                                       |
+| `metadata.baselineAverages`                            | `BaselineAverages\|null` | Omitted on legacy input and emitted as `null`; when present, four scores plus a canonical `updatedAt`                      | `BaselineAveragesSchema.nullable()`                                               | Validated by `ABClassMetadataStandings.validateBaselineAverages()`. A present `undefined` is invalid.                                                                                                                                                                      |
+| `metadata.allTaskStandings`                            | `StudentStandings\|null` | Omitted on legacy input and emitted as `null`; when present, exactly `top` and `bottom`, each a dense 0–3 list             | `StudentStandingsSchema.nullable()`                                               | Validated by `ABClassMetadataStandings.validateStandings()`. Each entry's `recentAssignmentScores` has one score set per `recentAssignments` entry.                                                                                                                        |
+| `metadata.baselineStandings`                           | `StudentStandings\|null` | As `allTaskStandings`                                                                                                      | `StudentStandingsSchema.nullable()`                                               | Same validator as `allTaskStandings`; the two bases are independent.                                                                                                                                                                                                       |
 
 `excluded` is stored as the literal string `'excluded'`. This is a compact supplied-snapshot
 value and is **not** the frontend `MetricResult` union (which represents exclusion as
@@ -1300,10 +1300,9 @@ readiness-null contexts. Test paths are listed in the [File Index](#file-index).
 
 ## Planned changes: baseline averages and student standings (Not implemented)
 
-The backend entries below are implemented and described in
-[§ Sub-entity: ABClassMetadata](#sub-entity-abclassmetadata). The frontend parity and snapshot-source
-entries remain `Not implemented`; they are recorded as the implementation target, and the marker
-is removed as each is delivered.
+The backend entries and the frontend parity entry are implemented and described in
+[§ Sub-entity: ABClassMetadata](#sub-entity-abclassmetadata). The snapshot-source entry remains
+`Not implemented`; the section marker is removed once it is delivered.
 
 - **Extended metadata shape**: a non-null `ABClassMetadata` carries three additional nullable
   fields: `baselineAverages` (four scores plus `updatedAt`), `allTaskStandings` and
@@ -1325,11 +1324,13 @@ is removed as each is delivered.
   `src/backend/Models/ABClassMetadataStandings.js`, keeping `ABClassMetadata.js` at or under the
   500-line backend lint gate. `ABClassMetadata` remains the single owner and facade, resolving the
   sibling module inside method bodies for GAS concatenation order.
-- **Frontend parity — `Not implemented`**: `ABClassMetadataSchema` and
-  `NonNullableABClassMetadataSchema` accept legacy and current inputs and emit the five-field
-  shape. `ClassFullSchema`, `ClassPartialSchema` and the mutation schemas keep referencing the
-  one schema owner; `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts`
-  must cover both shapes.
+- **Frontend parity**: `ABClassMetadataSchema` and `NonNullableABClassMetadataSchema` accept both
+  the legacy two-field and the current five-field input and emit the five-field shape with three
+  plain enumerable `null` placeholders, matching backend read normalisation. `ClassFullSchema`,
+  `ClassPartialSchema` and the mutation schemas keep referencing the one schema owner. Standing
+  lists are dense zero-to-three arrays, each entry's `recentAssignmentScores.length` matches
+  `recentAssignments.length`, and the schema adds no top/bottom disjointness rule, so acceptance
+  stays aligned with the backend validator.
 - **Snapshot source — `Not implemented`**: the values are supplied by the frontend
   `ClassSummary` analyser (see
   [Frontend Data Analysis Response — planned class summary](../data-shapes/frontend-data-analysis-response.md#planned-class-summary-contract-not-implemented));

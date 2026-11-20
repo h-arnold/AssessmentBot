@@ -24,6 +24,19 @@ const canonicalClasses = loadSyntheticAnalysisProfile(PROFILE, 'classesById') as
 const sourcePartial = canonicalPartials.find((row) => row.metadata !== null)!;
 const classId = String(sourcePartial.classId);
 const replacement = ABClassMetadataSchema.parse(sourcePartial.metadata);
+// Read projections normalise the committed legacy fixture into the five-field shape;
+// derive that expectation from the raw fixture itself, independently of the schema parse.
+const normalisedSourceMetadata = {
+  ...(sourcePartial.metadata as Record<string, unknown>),
+  baselineAverages: null,
+  allTaskStandings: null,
+  baselineStandings: null,
+};
+// Raw dispatch bytes omit null-valued properties, so they carry only the two stored fields.
+const rawReplacement = {
+  classAverages: replacement?.classAverages,
+  recentAssignments: replacement?.recentAssignments,
+};
 
 function installRunner(bridge: ReturnType<typeof createApiHandlerRoundTripBridge>): void {
   vi.stubGlobal('google', {
@@ -52,9 +65,9 @@ describe('ABClass metadata real dispatcher round trip', () => {
     const partials = await getABClassPartials();
     const partial = partials.find((row) => row.classId === classId);
 
-    expect(full?.metadata).toEqual(sourcePartial.metadata);
-    expect(partial?.metadata).toEqual(sourcePartial.metadata);
-    expect(ClassPartialSchema.parse(partial).metadata).toEqual(sourcePartial.metadata);
+    expect(full?.metadata).toEqual(normalisedSourceMetadata);
+    expect(partial?.metadata).toEqual(normalisedSourceMetadata);
+    expect(ClassPartialSchema.parse(partial).metadata).toEqual(normalisedSourceMetadata);
     expect(canonicalClasses[classId].metadata).toEqual(sourcePartial.metadata);
   });
 
@@ -74,9 +87,9 @@ describe('ABClass metadata real dispatcher round trip', () => {
       () => upsertABClass(upsertBase),
     ]) {
       await mutate();
-      expect((await getABClass({ classId }))?.metadata).toEqual(original);
+      expect((await getABClass({ classId }))?.metadata).toEqual(normalisedSourceMetadata);
       expect((await getABClassPartials()).find((row) => row.classId === classId)?.metadata).toEqual(
-        original
+        normalisedSourceMetadata
       );
     }
     for (const mutate of [
@@ -185,8 +198,8 @@ describe('ABClass metadata real dispatcher round trip', () => {
           data: { metadata: unknown };
         }
       ).data.metadata
-    ).toEqual(replacement);
-    expect(sourcePartial.metadata).toEqual(replacement);
+    ).toEqual(rawReplacement);
+    expect(sourcePartial.metadata).toEqual(rawReplacement);
     expect(console.debug).toBe(ownedSpy);
   });
 });

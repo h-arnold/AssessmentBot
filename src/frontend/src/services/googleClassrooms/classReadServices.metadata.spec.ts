@@ -27,6 +27,26 @@ const classesByProfile = deepFreeze({
   >,
 });
 
+/**
+ * Derives the five-field metadata value emitted by the response parsers from a raw
+ * committed snapshot: a legacy two-field snapshot gains three null placeholders and
+ * a null snapshot stays null.
+ * @param {unknown} rawMetadata - Raw metadata from a committed class-partial row.
+ * @returns {unknown} The normalised metadata expectation.
+ */
+function normalisedMetadataExpectation(rawMetadata: unknown): unknown {
+  if (rawMetadata === null) return null;
+  if (typeof rawMetadata !== 'object' || Array.isArray(rawMetadata)) {
+    throw new TypeError('Expected a null or object metadata snapshot');
+  }
+  return {
+    ...rawMetadata,
+    baselineAverages: null,
+    allTaskStandings: null,
+    baselineStandings: null,
+  };
+}
+
 const callApiMock = vi.mocked(callApi);
 
 afterEach(() => {
@@ -52,8 +72,9 @@ describe.each(METADATA_PROFILES)('class read services with the %s profile', (pro
       expect(callApiMock).toHaveBeenLastCalledWith('getABClass', { classId: partial.classId });
       expect(full).not.toBeNull();
       expect(Object.hasOwn(partial, 'metadata')).toBe(true);
-      expect(full).toHaveProperty('metadata', rows[index].metadata);
-      expect(partial.metadata).toEqual(rows[index].metadata);
+      const expectedMetadata = normalisedMetadataExpectation(rows[index].metadata);
+      expect(full).toHaveProperty('metadata', expectedMetadata);
+      expect(partial.metadata).toEqual(expectedMetadata);
       expect(full?.metadata).toEqual(partial.metadata);
       if (partial.metadata === null) {
         continue;
