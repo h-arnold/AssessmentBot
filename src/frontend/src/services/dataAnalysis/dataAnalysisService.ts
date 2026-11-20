@@ -3,6 +3,8 @@ import { AveragingAnalyserInputSchema, DataAnalysisResponseSchema } from './data
 import type { AveragingAnalyserInput, DataAnalysisResponse } from './dataAnalysis.zod';
 import { AssignmentSummaryAnalyser } from './analysers/assignmentSummaryAnalyser';
 import { AssignmentSummarySchema, type AssignmentSummary } from './assignmentSummary.zod';
+import { ClassSummaryAnalyser, type AnalyseClassSummaryOptions } from './classSummaryAnalyser';
+import { ClassSummarySchema, type ClassSummary } from './classSummary.zod';
 
 /**
  * Thin stateless orchestrator that validates input, dispatches to registered
@@ -23,6 +25,7 @@ export class DataAnalysisService {
   /** Internal registry of analyser key → analyser instance. */
   private readonly registry: Map<string, AveragingAnalyser>;
   private readonly summaryAnalyser: AssignmentSummaryAnalyser;
+  private readonly classSummaryAnalyser: ClassSummaryAnalyser;
 
   /**
    * Constructs a `DataAnalysisService` and initialises the analyser registry.
@@ -35,6 +38,23 @@ export class DataAnalysisService {
   constructor() {
     this.registry = new Map<string, AveragingAnalyser>([['averaging', new AveragingAnalyser()]]);
     this.summaryAnalyser = new AssignmentSummaryAnalyser();
+    this.classSummaryAnalyser = new ClassSummaryAnalyser();
+  }
+
+  /**
+   * Validate the input, build the enriched class summary, and validate its output.
+   *
+   * @param {AveragingAnalyserInput} input - Loaded class data and live definitions.
+   * @param {AnalyseClassSummaryOptions} options - Target and newest-first recent assignments.
+   * @returns {ClassSummary} Validated, UI-independent class summary.
+   * @throws {ZodError} When the input or the summary output fails Zod validation.
+   */
+  analyseClassSummary(
+    input: AveragingAnalyserInput,
+    options: AnalyseClassSummaryOptions
+  ): ClassSummary {
+    const validated = AveragingAnalyserInputSchema.parse(input);
+    return ClassSummarySchema.parse(this.classSummaryAnalyser.analyse(validated, options));
   }
 
   /**

@@ -2,7 +2,7 @@
 
 ## Delivery status
 
-- Current section: Section 2 complete — frontend metadata Zod schema delivered, reviewed clean, docs synced, section regression gate passed (0 regressions, 0 new failures); Section 3 (typed baseline error and ClassSummary analyser) is next. Section 1 complete — backend metadata validator delivered and committed.
+- Current section: Section 3 complete — typed baseline error and ClassSummary analyser/service registration delivered; RED and GREEN loops reviewed PASS; two sanctioned spec-file splits keep all authored files ≤474 lines (frontend 550 gate); docs synced; section regression gate passed (0 regressions, 0 new failures). Section 4 (writer integration) is next. Sections 1 and 2 complete — backend metadata validator and frontend metadata Zod schema delivered, reviewed clean, docs synced, section regression gates passed (0 regressions, 0 new failures).
 - Regression-checker session ID: `feat-enahncedABClassMetadata` (passed explicitly; this worktree is detached HEAD, so branch-based resolution is unavailable).
 - Baseline report: `.ts-regression-checker/reports/session-feat-enahncedABClassMetadata/baseline/baseline.txt` (created 2026-11-19T22:39:22Z; 6 of 8 checks passing, zero regressions, zero new failures).
 - Accepted baseline debt: (a) `backend-lint-check` fails on 4 pre-existing `max-lines` warnings in untouched test files (`assignmentDefinitionPartials.unit.test.js`, `dbManager.test.js`, `classroomApiClient.test.js`, `batchUpdateUtility.test.js`); (b) `frontend-e2e-check` recorded exit 143 after an environment-hung Playwright process was terminated during baseline capture — this plan adds no E2E tests (no user-visible change) and no E2E file is in the authorised change surface. These files and checks are outside every section's change surface; no section may repair them.
@@ -225,89 +225,84 @@ Passed: `npm run test:frontend -- src/services/abClass/abClassMetadata.zod` and 
 
 ## Section 3 — Typed baseline error and `ClassSummary` analyser/service registration
 
-### Objective
+### Outcome (compacted)
 
-Add `AttemptBaselineUnavailableError`, build the `ClassSummary` analyser and schema as the sole owner of the new calculation, and register it in `DataAnalysisService` without changing existing entry points.
+`AttemptBaselineUnavailableError` was added for the three documented baseline-unavailability conditions, and a single in-memory `ClassSummary` contract — strict Zod schema plus `ClassSummaryAnalyser` — became the sole owner of all new calculation, registered in `DataAnalysisService` through a distinct `classSummaryAnalyser` field. The analyser composes `AveragingAnalyser` and its exported rollup helpers; no averaging maths was duplicated, and no existing entry point or analysis input schema changed. Both RED and GREEN loops reviewed PASS and all section checks passed.
 
-### Constraints
+### Retained for later sections
 
-- All calculation reuses `AveragingAnalyser`, `rollupMetric`, `computeOverallComposite` and `convertToBaselineExcluded`; no new averaging maths.
-- `AnalysisFilterSchema`, `AveragingAnalyserInputSchema`, `DataAnalysisResponseSchema` unchanged.
-- `analyse(input, 'averaging')` and `analyseAssignmentSummary()` unchanged; `AssignmentSummaryAnalyser` keeps its own field.
-- The analyser receives `{ target, recentAssignments }`; no freshness selection or rolling history.
-- Catch only `AttemptBaselineUnavailableError`; all other errors propagate.
-- **File separation**: `attemptBaselineSelection.ts` is **279 lines** → ~295 with the typed error. `dataAnalysisService.ts` is **89 lines** → ~120. New `classSummaryAnalyser.ts` projected **~280–330 lines**, new `classSummary.zod.ts` **~150–190 lines**. All ≤ 550; do not inflate the service.
+**`ClassSummary` is in-memory only — not a wire or persistence shape.** `ClassSummarySchema` is owned by `src/frontend/src/services/dataAnalysis/classSummary.zod.ts`; it uses four-state analyser-native `MetricResult` values (`computed` / `notAttempted` / `excluded` / `error`), while conversion to the metadata score union is the writer's `projectAverageScores()` mapping (Section 4). The delivered shape is:
 
-### Delegation mandatory reads (when sub-agents are used)
+```ts
+type MetricScores = {
+  completeness: MetricResult;
+  accuracy: MetricResult;
+  spag: MetricResult;
+  overall: MetricResult;
+};
+type MetricStanding = {
+  studentId: string;
+  studentName: string;
+  scores: MetricScores;
+  recentAssignmentScores: MetricScores[]; // one per supplied recent assignment
+};
+type MetricStandings = { top: MetricStanding[]; bottom: MetricStanding[] };
+type ClassSummary = {
+  classId: string;
+  allTasks: { classAverages: MetricScores; standings: MetricStandings };
+  baseline: {
+    available: boolean;
+    classAverages: MetricScores | null;
+    standings: MetricStandings | null;
+  };
+  target: {
+    assignmentId: string;
+    assignmentDefinitionKey: string;
+    updatedAt: string | null;
+    averages: MetricScores;
+  };
+  recentAssignments: Array<{
+    assignmentId: string;
+    assignmentDefinitionKey: string;
+    updatedAt: string | null;
+  }>;
+};
+```
 
-Testing Specialist: `@src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.spec.ts`, `@src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.baselineMode.spec.ts`, `@src/frontend/src/services/dataAnalysis/dataAnalysis.mediumBaselineRoundTrip.spec.ts`, `@docs/developer/frontend/frontend-testing.md`
+`recentAssignments` is the newest three fresh-class assignment instances in newest-first order; `recentAssignmentScores[i]` aligns by index to `recentAssignments[i]`. The writer keeps its own persisted rolling list via `mergeClassMetadata()` and uses `summary.target.averages` for the target's class averages (Section 4). **`updatedAt` nuance:** the in-memory identity `updatedAt` is `string | null` because `AssignmentPartialSchema.updatedAt` is nullable on the read shape and `assignmentIdentity()` copies it verbatim; canonical timestamp validation stays with the writer's `CanonicalMetadataTimestampSchema` in Section 4. SPEC.md's `updatedAt: string` is a product-spec simplification; SPEC.md is read-only source of truth and was not edited.
 
-Implementation: `@src/frontend/src/services/dataAnalysis/dataAnalysisService.ts`, `@src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`, `@src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.rows.ts`, `@src/frontend/src/services/dataAnalysis/analysers/rollupMetric.ts`, `@src/frontend/src/services/dataAnalysis/analysers/averagingAnalyser.composite.ts`, `@docs/developer/frontend/data-analysis-architecture.md`, `@docs/developer/data-shapes/frontend-data-analysis-response.md`
+**`ClassSummarySchema` rules (`classSummary.zod.ts`, 172 lines, ≤ 550).** `z.strictObject` throughout rejects extra keys; `MetricScoresSchema` reuses shared `MetricResultSchema`; `AssignmentIdentitySchema` requires non-empty `assignmentId`/`assignmentDefinitionKey` and nullable `updatedAt`; `studentId`/`studentName` are non-empty strings; `top`/`bottom` are arrays capped at 3. A `superRefine` asserts two cross-field rules: `validateStandingsDisjointness` rejects a `studentId` appearing in both `top` and `bottom` of one basis (applied to `allTasks` and to a non-null `baseline`), and `validateScoreAlignment` requires `recentAssignmentScores.length === summary.recentAssignments.length` for both lists of both bases (baseline only when its standings are non-null). Each analyser declares its own output schema so `analyseClassSummary()` parses with this one. The persisted metadata validators deliberately allow duplicate students; disjointness is a producer rule asserted here.
 
-Code Reviewer: `@SPEC.md`, `@src/frontend/src/services/dataAnalysis/dataAnalysisService.ts`, `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+**`ClassSummaryAnalyser` contract (`src/frontend/src/services/dataAnalysis/classSummaryAnalyser.ts`, 381 lines, ≤ 550).** `analyse(input: AveragingAnalyserInput, options: AnalyseClassSummaryOptions): ClassSummary`, where `AnalyseClassSummaryOptions = { target: AssignmentPartial; recentAssignments: AssignmentPartial[] }` — both supplied by the writer from the fresh class read; the analyser performs no freshness selection or rolling history. Optional `CriterionWeightings` are defaulted to `DEFAULT_CRITERION_WEIGHTINGS` (40/40/20) in the constructor. It composes full-class absolute (`allTasks`), full-class baseline (`baseline`), one isolated absolute analysis per recent assignment, and an isolated absolute analysis for the target (`target.averages`). `allTasks.classAverages` and `baseline.classAverages` equal the corresponding `AveragingAnalyser.perClass` results; the summary adds no averaging maths of its own.
 
-### Shared helper plan
+- **All-tasks-absolute guarantee:** `allTasks` pins `analysisMode: 'absolute'` unconditionally, regardless of the caller's `filter.analysisMode` (SPEC.md decision 10), so it can never silently equal the baseline basis; documented on `analyse()`'s JSDoc and covered by a regression test in `classSummaryAnalyser.boundary.spec.ts`.
+- **Whole-class-baseline-key rule:** baseline task keys are read only from the full-class baseline result (`attemptBaseline.baselineTaskKeys`) and reused for every isolated assignment; no isolated analysis runs in baseline mode, so no second pool or baseline is derived.
+- Isolated baseline scores filter each student's per-task display metrics by `taskKey` against those baseline keys, then roll up each criterion with `rollupMetric()` and derive `overall` with `computeOverallComposite()` using constructor weights. `TaskDisplayMetric` is a structural subset of `MetricResult`, so no conversion layer is needed for `rollupMetric`. A student with no baseline metrics is rolled up over unfiltered evidence and each criterion passes through `convertToBaselineExcluded` before the composite is derived.
+- **Ranking restriction:** only rows with `overall.state === 'computed'` and a finite numeric value, and only students holding a row in _every_ supplied isolated result, can form a complete aligned standing entry. Top is descending, bottom ascending, ties by `studentId` ascending; take top three first, then bottom three from remaining students so the lists are disjoint and 0–3 dense. The every-isolated-assignment restriction is forced by the canonical medium fixture (newest three assignments have 5/12, 12/12, 3/12 submitters) and the schema's score-alignment refinement; recorded in `buildStandings` `@remarks`.
 
-1. Helper: `ClassSummaryAnalyser`
-   - Decision: `new`
-   - Owning module/path: `src/frontend/src/services/dataAnalysis/classSummaryAnalyser.ts` with adjacent `classSummary.zod.ts`
-   - Call-site rationale: single owner for summary calculation; writer and any future consumers call `analyseClassSummary()`.
-   - Relevant canonical doc target: `@docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` § 9.28 (entry recorded as `Not implemented`)
-   - Planned doc status: `Not implemented` — reconcile in docs pass.
-2. Helper: `AttemptBaselineUnavailableError`
-   - Decision: `new` (typed error, existing messages)
-   - Owning module/path: `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`
-   - Call-site rationale: lets the summary analyser distinguish the three documented unavailability cases from genuine faults without message matching.
-   - Relevant canonical doc target: `@docs/developer/data-shapes/frontend-data-analysis-response.md` § Planned class summary contract
-   - Planned doc status: `Not implemented`.
-3. Helpers reused: `AveragingAnalyser`, `rollupMetric`, `computeOverallComposite`, `convertToBaselineExcluded`, `projectAverageScores` (used by Section 4).
+**`AttemptBaselineUnavailableError` contract (`src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`, 300 lines, ≤ 550).** A typed `Error` subclass thrown by `deriveAttemptBaseline` only for the three documented conditions — roster below 3, fewer than 2 candidates, empty pool intersection — with unchanged messages; plain invariant errors remain plain `Error`. `ClassSummaryAnalyser.analyseBaseline()` catches only this type by `instanceof`, emitting `available: false` with null averages/standings while all-task fields are still produced; every other error propagates unchanged, with no message matching or broad catch.
 
-### Data-shape planning block
+**`DataAnalysisService` registration (`src/frontend/src/services/dataAnalysis/dataAnalysisService.ts`, 109 lines, ≤ 550).** `analyseClassSummary(input, options)` validates input with the existing schema and output with `ClassSummarySchema`. The analyser is held in a distinct `classSummaryAnalyser` field matching `summaryAnalyser`; the averaging registry is unchanged, and `analyse(input, 'averaging')` and `analyseAssignmentSummary()` are unchanged. `AnalysisFilterSchema`, `AveragingAnalyserInputSchema` and `DataAnalysisResponseSchema` are unchanged. Helpers reused: `AveragingAnalyser`, `rollupMetric`, `computeOverallComposite`, `convertToBaselineExcluded`; `projectAverageScores` is used by Section 4.
 
-- Changes: new in-memory `ClassSummary` schema and a typed error contract in the analysis domain.
-- Planned-only entries: `@docs/developer/data-shapes/frontend-data-analysis-response.md` § Planned class summary contract (all bullets `Not implemented`).
-- Remove `Not implemented` on delivery.
+**Files and line counts (all authored files ≤ 474, within the 550 gate).** Source: `classSummaryAnalyser.ts` 381, `classSummary.zod.ts` 172, `attemptBaselineSelection.ts` 300 (was 279), `dataAnalysisService.ts` 109 (was 89). Sanctioned RED-review spec splits: `attemptBaselineSelection.spec.ts` 470 (629 pre-split), `classSummaryAnalyser.spec.ts` 421 (585 pre-split), plus siblings `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.typedError.spec.ts` 264 and `src/frontend/src/services/dataAnalysis/classSummaryAnalyser.boundary.spec.ts` 474; `classSummary.zod.spec.ts` 179 and `dataAnalysisService.spec.ts` 447. Specs stay co-located with their subjects per `averagingAnalyser.*.spec.ts`; source modules stay at the `dataAnalysis/` root.
 
-### Canonical-fixture note
+**Canonical fixtures.** `medium` is the canonical baseline profile (`dataAnalysis.mediumBaselineRoundTrip.spec.ts` pins baseline claims); `small` and `large-representative` are secondary. Historical-source variants use existing `metadataRefreshFixtures.ts` helpers; no generator extension or corpus change. Ineligible-roster, empty-intersection and error-propagation probes stay as local boundary fixtures.
 
-- `medium` is the canonical profile for baseline tests (all classes baseline-eligible; `dataAnalysis.mediumBaselineRoundTrip.spec.ts` already pins baseline claims); `small` and `large-representative` provide secondary coverage.
-- Historical-source variants use existing `metadataRefreshFixtures.ts` helpers; no generator extension or corpus change.
-- Ineligible-roster and empty-intersection probes for the typed error stay local boundary fixtures (invalid/boundary data).
-
-### Acceptance criteria
-
-- `deriveAttemptBaseline` throws `AttemptBaselineUnavailableError` only for the three documented conditions, with unchanged messages and `instanceof Error`.
-- `ClassSummarySchema` validates the exact shape: analyser-native metrics, `target`, `recentAssignments`, disjoint standings, aligned score arrays, `available` flag.
-- `analyseClassSummary()` composes `AveragingAnalyser`: absolute/baseline full-class results, isolated absolute per supplied recent assignment, whole-class baseline restriction via `rollupMetric`/`computeOverallComposite`, `convertToBaselineExcluded` for students with no baseline metrics.
-- Baseline unavailability produces `available: false` with nulls; any other error propagates.
-- `analyse()` and `analyseAssignmentSummary()` regression suites pass unchanged.
-
-### Required test cases (Red first)
-
-1. Typed error class thrown for roster < 3, candidates < 2, empty intersection; plain invariant errors remain plain `Error`.
-2. `ClassSummarySchema` accepts a complete valid summary and rejects extra keys, wrong metric states, misaligned score arrays and standings where a `studentId` appears in both `top` and `bottom` of one basis. A refinement enforces disjointness; the analyser's disjoint selection is verified separately by test 3.4.
-3. Full-class absolute and baseline averages equal the corresponding `AveragingAnalyser.perClass` results.
-4. Ranking: numeric-only, descending top / ascending bottom, `studentId` tie-break, disjoint selection, 0–3 dense lists.
-5. Isolated baseline scores use the whole-class baseline keys; students with no baseline metrics follow the `convertToBaselineExcluded` path.
-6. `recentAssignmentScores[i]` aligns to `recentAssignments[i]`; shorter arrays only when fewer assignments are supplied.
-7. Unavailable baseline → `available: false`, null averages/standings, all-task fields still produced; injected arbitrary error propagates.
-8. Regression: `averagingAnalyser.baselineMode.spec.ts`, `dataAnalysis.mediumBaselineRoundTrip.spec.ts`, `attemptBaselineSelection.spec.ts` and assignment-summary suites pass.
+**Docs pointers and deviations.** The `frontend-shared-helpers-and-abstraction-standards.md` § 9.28 `ClassSummaryAnalyser` entry and the `frontend-data-analysis-response.md` § Planned class summary contract entries were planned `Not implemented` and are reconciled by the parallel Docs agent (which owns canonical docs); the `updatedAt: string | null` nuance above is likewise reconciled in `frontend-data-analysis-response.md`. Both review-round deviations and accepted scrutiny decisions are recorded verbatim below; that subsection remains authoritative.
 
 ### Section checks
 
-- `npm run test:frontend -- src/services/dataAnalysis/analysers/attemptBaselineSelection`
-- `npm run test:frontend -- src/services/dataAnalysis/dataAnalysis.mediumBaselineRoundTrip`
-- `npm run lint:frontend:check`.
-- Confirm no analysis input schema changed and no averaging logic added outside this analyser.
-- Confirm all new modules ≤ 550 lines.
-
-### Optional `@remarks` JSDoc follow-through
-
-Record why baseline keys are read only from the full-class result, why task display metrics need no conversion for `rollupMetric`, and why only the typed error is caught.
+Passed: RED and GREEN loops both reviewed PASS; section targeted suites 7 files / 56 tests, then 7 files / 57 tests after the regression test; `dataAnalysis.mediumBaselineRoundTrip` 9/9; full `npm run test:frontend` 334 files / 3255 tests; `npm run lint:frontend:check` 0 errors / 16 baseline warnings; `tsc -b` and `npm run typecheck:all` exit 0. No analysis input schema changed, no averaging logic added outside the analyser, and all authored modules are ≤ 474 lines.
 
 ### Implementation notes / deviations / follow-up
 
 - Confirm the analyser is held in its own `classSummaryAnalyser` field (matching `summaryAnalyser`) and that the averaging registry is unchanged; record any deviation.
+- **GREEN review — one Improvement fixed (allTasks mode pin):** the Green Review found `ClassSummaryAnalyser.analyse()` computed the `allTasks` basis with the caller's `filter.analysisMode` verbatim; SPEC.md decision 10 defines `allTasks` as the absolute basis unconditionally, so a baseline-mode input could silently make it equal the baseline basis. Fixed by pinning `analysisMode: 'absolute'` in that pass (matching `analyseBaseline`/`analyseIsolated`), documenting the guarantee on `analyse()`'s JSDoc, and adding a regression test in `classSummaryAnalyser.boundary.spec.ts` that feeds baseline-mode input and asserts `allTasks.classAverages` equals the absolute `perClass` result. Latent only (sole caller supplies absolute).
+- **GREEN review — two scrutiny decisions ACCEPTED (no change):** (1) `ClassSummarySchema.updatedAt` is `string | null` in the in-memory shape because `AssignmentPartialSchema.updatedAt` is nullable on the read shape and `assignmentIdentity()` copies verbatim; canonical timestamp validation stays with the writer's `CanonicalMetadataTimestampSchema` (Section 4). SPEC.md's `updatedAt: string` is a product-spec simplification — SPEC.md is read-only source of truth and not in any section's change surface, so it was not edited; the canonical data-shape doc (`frontend-data-analysis-response.md`) will reconcile this in docs sync. (2) Standings consider only students present in every supplied isolated recent assignment — forced by the canonical medium fixture (newest three assignments have 5/12, 12/12, 3/12 submitters) and the schema's score-alignment refinement; documented in `buildStandings` `@remarks`.
+- **Docs sync outcome:** updated `docs/developer/data-shapes/frontend-data-analysis-response.md` (Planned class summary contract preamble + four bullets reconciled to delivered; added an `updatedAt: string | null` in-memory note; writer-consumption bullet left `Not implemented` for Section 4) and `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` (§9.28 `ClassSummaryAnalyser` entry marked delivered; `mergeClassMetadata` left pending for Section 4). No pages created; JSDoc on new symbols verified accurate, no source changes — no extra code lint/type-check needed. Both docs Prettier-clean. Out-of-scope documentation observations reported, not fixed: new modules absent from the File Index (nitpick); `data-analysis-architecture.md` not yet describing the analyser (deferred to final Documentation-and-rollout); `DataAnalysisService` class-level JSDoc imprecise but pre-existing (nitpick).
+- **RED review — sanctioned test-file splits (in-scope, binding 550-line gate):** the Red Review found two authored spec files over the hard 550-line trigger: `attemptBaselineSelection.spec.ts` (629) and `classSummaryAnalyser.spec.ts` (585). The orchestrator expands Section 3's test surface to permit two sibling spec files so the split stays in-section: `src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.typedError.spec.ts` (typed-error block) and `src/frontend/src/services/dataAnalysis/classSummaryAnalyser.boundary.spec.ts` (local boundary fixtures, unavailability and error-propagation describes). Specs stay co-located with their subjects; this follows the existing `averagingAnalyser.*.spec.ts` sibling pattern and satisfies `docs/developer/frontend/frontend-architecture.md` §2/§4. The source-module paths remain the plan-prescribed `classSummaryAnalyser.ts` and `classSummary.zod.ts` at the `dataAnalysis/` root (no reorganisation).
+
+- **PASSED section regression gate (section-completion):** `.ts-regression-checker/reports/session-feat-enahncedABClassMetadata/runs/2026-11-20T08-41-34.019Z/comparison.txt`; compare mode, session `feat-enahncedABClassMetadata`, 7/8 checks passing, **0 regressions, 0 new failures**. All new code is clean (frontend lint 0 errors, frontend coverage pass, typecheck, builder checks, frontend E2E all pass). The single failing check is `backend-lint-check` with the 4 accepted pre-existing `max-lines` warnings in untouched test files, unchanged from baseline debt. Full log: `.opencode/scratchpad/s3-gate.log`.
 
 ---
 

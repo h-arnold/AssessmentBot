@@ -388,4 +388,60 @@ describe('DataAnalysisService', () => {
       expect(() => DataAnalysisResponseSchema.parse(responseWithAllStates)).not.toThrow();
     });
   });
+
+  describe('analyseClassSummary registration', () => {
+    it('exposes a dedicated class summary entry point backed by its own analyser field', async () => {
+      const service = new DataAnalysisService();
+      const augmented = service as unknown as {
+        classSummaryAnalyser: unknown;
+        summaryAnalyser: unknown;
+        registry: Map<string, unknown>;
+        analyseClassSummary: (
+          input: AveragingAnalyserInput,
+          options: { target: unknown; recentAssignments: unknown[] }
+        ) => unknown;
+      };
+
+      expect(typeof augmented.analyseClassSummary).toBe('function');
+      expect(augmented.classSummaryAnalyser).toBeDefined();
+      expect(augmented.classSummaryAnalyser).not.toBe(augmented.summaryAnalyser);
+      // The averaging registry stays untouched: only 'averaging' is registered.
+      expect(augmented.registry.size).toBe(1);
+      expect(augmented.registry.has('averaging')).toBe(true);
+
+      // Loaded indirectly and after the entry-point assertion so the unchanged
+      // analyse()/summary suites remain runnable before the new module exists
+      // (TDD red phase): Vite statically resolves literal dynamic imports.
+      const summarySchemaModulePath = './classSummary.zod';
+      const { ClassSummarySchema } = (await import(summarySchemaModulePath)) as {
+        ClassSummarySchema: { parse: (value: unknown) => unknown };
+      };
+      const input = buildSingleStudentInput({
+        completeness: { score: 4 },
+        accuracy: { score: 4 },
+      });
+      input.classes[0].assignments[0].updatedAt = '2026-01-01T00:00:00.000Z';
+      const target = input.classes[0].assignments[0];
+      const summary = augmented.analyseClassSummary(input, {
+        target,
+        recentAssignments: [target],
+      });
+
+      expect(() => ClassSummarySchema.parse(summary)).not.toThrow();
+    });
+
+    it('keeps analyse and analyseAssignmentSummary behaviour unchanged', () => {
+      const input = buildSingleStudentInput({ accuracy: { score: 4 } });
+      const service = new DataAnalysisService();
+
+      const results = service.analyse(input);
+      expect(results[0].perClass.accuracy.state).toBe('computed');
+
+      const summary = service.analyseAssignmentSummary(input, 'c_001', 'a_001');
+      expect(summary.classId).toBe('c_001');
+      expect(summary.assignmentId).toBe('a_001');
+      expect(summary.totalStudents).toBe(1);
+      expect(summary.tasks).toHaveLength(1);
+    });
+  });
 });

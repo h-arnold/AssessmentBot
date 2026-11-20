@@ -5,6 +5,27 @@ import {
 } from '../dataAnalysis.zod';
 
 /**
+ * The documented `deriveAttemptBaseline` unavailability signal.
+ *
+ * @remarks
+ * Reserved for exactly the three eligibility failures recorded in the attempt-baseline
+ * contract: a roster below three students, fewer than two attempt candidates, and an
+ * empty pool intersection. Other invariant violations stay plain `Error` values so a
+ * caller can catch this type alone without message matching.
+ */
+export class AttemptBaselineUnavailableError extends Error {
+  /**
+   * Construct the typed unavailability error with its unchanged message.
+   *
+   * @param {string} message - The descriptive failure message.
+   */
+  constructor(message: string) {
+    super(message);
+    this.name = 'AttemptBaselineUnavailableError';
+  }
+}
+
+/**
  * Ten-percent pool fraction (data-shape item 3).
  */
 const BASELINE_POOL_FRACTION = 0.1;
@@ -196,10 +217,10 @@ function intersectAttemptSets(
  * @param {AttemptBaselineDerivationInput} input - The class id, roster and
  *   per-(student, task) metrics.
  * @returns {AttemptBaselineDerivation} The pool and the baseline task set.
- * @throws {Error} When the class is ineligible (fewer than 2 candidates or
- *   fewer than 3 roster students), or when the pool's attempt sets share no
- *   task key in common (data-shape item 3; the descriptive failure names the
- *   class and no result is produced).
+ * @throws {AttemptBaselineUnavailableError} When the class is ineligible
+ *   (fewer than 2 candidates or fewer than 3 roster students), or when the
+ *   pool's attempt sets share no task key in common (data-shape item 3; the
+ *   descriptive failure names the class and no result is produced).
  */
 export function deriveAttemptBaseline(
   input: AttemptBaselineDerivationInput
@@ -209,7 +230,7 @@ export function deriveAttemptBaseline(
     input.rosterStudentIds
   );
   if (!isAttemptBaselineEligible(input.rosterStudentIds.length, candidates.length)) {
-    throw new Error(
+    throw new AttemptBaselineUnavailableError(
       `deriveAttemptBaseline: class '${input.classId}' is not eligible for attempt-baseline mode: roster size ${input.rosterStudentIds.length} (minimum ${BASELINE_ROSTER_MINIMUM}), students with at least one attempted task ${candidates.length} (minimum ${BASELINE_POOL_MINIMUM})`
     );
   }
@@ -226,7 +247,7 @@ export function deriveAttemptBaseline(
 
   const baselineTaskKeys = intersectAttemptSets(poolStudentIds, attemptedTaskKeysByStudent);
   if (baselineTaskKeys.length === 0) {
-    throw new Error(
+    throw new AttemptBaselineUnavailableError(
       `deriveAttemptBaseline: class '${input.classId}' derived an empty attempt baseline: the ${poolStudentIds.length} pooled students attempted no task key in common`
     );
   }

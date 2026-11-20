@@ -222,10 +222,10 @@ Use topic-specific docs for runtime policy details:
 
 ### 9.28 Class summary and ABClass metadata enrichment
 
-The metadata schema owner has been delivered. The `ClassSummaryAnalyser` and `mergeClassMetadata`
-entries below remain **Not implemented** and are recorded here as implementation targets. Apply
-the reuse-first rule above when reviewing them.
+The metadata schema owner and `ClassSummaryAnalyser` have been delivered. The `mergeClassMetadata`
+entry below remains **Not implemented** and is recorded here as an implementation target. Apply
+the reuse-first rule above when reviewing it.
 
 - Metadata schema owner (`extend`): `src/frontend/src/services/abClass/abClassMetadata.zod.ts` — the single frontend ABClass metadata schema owner referenced by `ClassFullSchema`, `ClassPartialSchema` and the mutation schemas, extended in place rather than duplicated in a second schema. Both `ABClassMetadataSchema` and `NonNullableABClassMetadataSchema` accept the legacy two-field and current five-field inputs and emit the five-field shape with three enumerable `null` placeholders, matching backend read normalisation. See the [ABClass metadata contract](../data-shapes/abclass.md#sub-entity-abclassmetadata).
-- `ClassSummaryAnalyser` (`new`, **Not implemented**): `src/frontend/src/services/dataAnalysis/classSummaryAnalyser.ts` with adjacent `classSummary.zod.ts` — single owner for summary calculation, registered in `DataAnalysisService` so the writer and future consumers call `analyseClassSummary()`. It composes `AveragingAnalyser` and reuses its exported helpers; all new calculation stays in the service.
+- `ClassSummaryAnalyser` (`new`): `src/frontend/src/services/dataAnalysis/classSummaryAnalyser.ts` with adjacent `classSummary.zod.ts` — single owner for summary calculation, registered in `DataAnalysisService` in its own `classSummaryAnalyser` field so the writer and future consumers call `analyseClassSummary()`. It composes `AveragingAnalyser` and reuses its exported `rollupMetric`, `computeOverallComposite` and `convertToBaselineExcluded` helpers; all new calculation stays in the service.
 - `mergeClassMetadata` (`extend`, **Not implemented**): `src/frontend/src/services/dataAnalysis/postAnalysis/metadataProjection.ts` — single owner of rolling history. Extend it to accept a `ClassSummary` as its score source and map analyser-native values through `projectAverageScores()`, retaining the rolling-three, target replacement and newest-first rules.
