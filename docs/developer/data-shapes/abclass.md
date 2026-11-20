@@ -938,8 +938,10 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
   - `TeacherSummarySchema` — duplicated from `classPartials.zod.ts` for self-contained validation.
 - `src/frontend/src/services/abClass/abClassMetadata.zod.ts` (shared by both class read schemas):
   - `CanonicalMetadataTimestampSchema` — exact canonical UTC metadata timestamp.
-  - `AverageScoreSchema`, `AverageScoresSchema`, `ClassAveragesSchema`, `RecentAssignmentSchema`
-    — strict nested metadata records.
+  - `AverageScoreSchema`, `AverageScoresSchema`, `ClassAveragesSchema`, `BaselineAveragesSchema`,
+    `RecentAssignmentSchema`, `StudentStandingSchema`, `StudentStandingsSchema` — strict nested
+    metadata records. The two public snapshot schemas emit the current five-field shape from legacy
+    input; see [§ Baseline averages and student standings](#baseline-averages-and-student-standings).
   - `NonNullableABClassMetadataSchema` — complete non-null snapshot; raw exact-record pre-check
     plus the strict metadata shape. Merge/write path input; parsing with this inner schema
     narrows the result without a nullable-union branch.
@@ -1192,7 +1194,9 @@ Corpus policy, profile matrix and commands live in
 [Synthetic Test Data](../testing/synthetic-test-data.md); this subsection records only the
 capability's contribution to this contract and must not duplicate that guide. This is
 generator/test infrastructure only: it does **not** make production metadata accepted by write
-requests.
+requests. Generated non-null snapshots also carry the three new fields as supplied values; see
+[Synthetic Test Data § ABClass metadata generator capability](../testing/synthetic-test-data.md#abclass-metadata-generator-capability)
+for the five-field generator and raw validator.
 
 Supplied snapshots (no calculation):
 
@@ -1298,11 +1302,11 @@ readiness-null contexts. Test paths are listed in the [File Index](#file-index).
 
 ---
 
-## Planned changes: baseline averages and student standings (Not implemented)
+## Baseline averages and student standings
 
-The backend entries and the frontend parity entry are implemented and described in
-[§ Sub-entity: ABClassMetadata](#sub-entity-abclassmetadata). The snapshot-source entry remains
-`Not implemented`; the section marker is removed once it is delivered.
+All entries below are delivered. The shape, validation and read normalisation are also described
+in [§ Sub-entity: ABClassMetadata](#sub-entity-abclassmetadata); the calculation owner is recorded
+in [Frontend Data Analysis Response — class summary contract](frontend-data-analysis-response.md#class-summary-contract).
 
 - **Extended metadata shape**: a non-null `ABClassMetadata` carries three additional nullable
   fields: `baselineAverages` (four scores plus `updatedAt`), `allTaskStandings` and
@@ -1331,10 +1335,10 @@ The backend entries and the frontend parity entry are implemented and described 
   lists are dense zero-to-three arrays, each entry's `recentAssignmentScores.length` matches
   `recentAssignments.length`, and the schema adds no top/bottom disjointness rule, so acceptance
   stays aligned with the backend validator.
-- **Snapshot source — `Not implemented`**: the values are supplied by the frontend
-  `ClassSummary` analyser (see
-  [Frontend Data Analysis Response — class summary contract](../data-shapes/frontend-data-analysis-response.md#class-summary-contract));
-  the backend continues to validate and store without calculating or refreshing them.
+- **Snapshot source**: the values are supplied by the frontend `ClassSummary` analyser and written
+  by the metadata-refresh task; the backend only validates and stores them and never calculates or
+  refreshes them. See
+  [Frontend Data Analysis Response — class summary contract](frontend-data-analysis-response.md#class-summary-contract).
 
 ---
 

@@ -135,6 +135,8 @@ For ABClass metadata contract work, keep the same split:
 
 - frontend schema coverage belongs in `src/frontend/src/services/abClass/abClassMetadata.zod.spec.ts`, using the frozen canonical selectors in `src/frontend/src/test/abClass/abClassMetadataFixtures.ts` (clone with `cloneMetadata` before any deliberate mutation)
 - frontend/backend acceptance parity belongs in `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts`, which generates the analysis graph directly by profile, imports the real backend `ABClassMetadata.validateMetadata` test-locally, and compares backend and frontend acceptance across generated snapshots plus strict raw-object, score, identifier and timestamp boundary probes. The parity suite does not import the frontend selectors; the two suites cover the same contract independently.
+- generator and raw-validator coverage belongs in `tests/synthetic-analysis/syntheticABClassMetadataGeneratorValidator.test.ts`: deterministic five-field generation plus raw-validator acceptance of legacy and current shapes and rejection of malformed nested fields. The parity suite compares acceptance across both sides; this suite pins the generator and raw validator directly.
+- five-field dispatcher read/write round-trip coverage belongs in `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` (see [Post-analysis metadata browser and Node integration coverage](#post-analysis-metadata-browser-and-node-integration-coverage)). Keep these suites split by responsibility rather than merging them.
 - backend transport coverage belongs in `tests/api/apiHandler/abclassMetadata*.test.js` and `tests/api/abclassMetadataApi.test.js`
 
 Class-read metadata adoption is covered by responsibility:
@@ -179,6 +181,16 @@ real backend dispatcher coverage. The numeric oracle reads assessment evidence
 and live weights independently of production calculation/projection; supplied
 metadata scores are never an oracle. Other scope/projection assertions also use
 the real analyser, so do not present those alone as independent arithmetic proof.
+
+Class-summary analysis and schema coverage sits beside its subject:
+
+- `services/dataAnalysis/classSummaryAnalyser.spec.ts`: composition with `AveragingAnalyser`,
+  absolute-mode all-tasks pinning, disjoint top/bottom ranking, tie-break and per-assignment
+  score alignment.
+- `services/dataAnalysis/classSummaryAnalyser.boundary.spec.ts`: local boundary fixtures,
+  baseline unavailability and error propagation for `AttemptBaselineUnavailableError`.
+- `services/dataAnalysis/classSummary.zod.spec.ts`: the strict in-memory `ClassSummarySchema`,
+  including its disjointness and score-alignment refinements.
 
 Success inputs are **explicit historical-source boundary clones**: the compact
 classes ship a null submission `studentName` in their newest assignment, which

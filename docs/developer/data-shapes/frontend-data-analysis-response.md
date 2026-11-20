@@ -1283,7 +1283,7 @@ caption follow.
 The in-memory contract below is recorded from `SPEC.md`, which remains the source contract.
 All entries are delivered: the typed error, analyser, baseline-key reuse, strict schema and
 writer consumption. See also
-[abclass.md § Planned changes](abclass.md#planned-changes-baseline-averages-and-student-standings-not-implemented).
+[abclass.md § Baseline averages and student standings](abclass.md#baseline-averages-and-student-standings).
 
 - **Typed `AttemptBaselineUnavailableError`**: `deriveAttemptBaseline` throws `AttemptBaselineUnavailableError` extending `Error` for exactly the three documented failure conditions (roster below three students, fewer than two attempt candidates, empty pool intersection), keeping the existing messages; plain invariant errors remain plain `Error`. `ClassSummaryAnalyser` catches only this type around the full-class baseline analysis and emits `available: false` with null baseline averages and standings; every other error propagates without message matching.
 - **`ClassSummaryAnalyser` single-owner guarantee**: a dedicated analyser registered in `DataAnalysisService` in its own `classSummaryAnalyser` field owns all new calculation. It composes `AveragingAnalyser` and reuses its exported `rollupMetric`, `computeOverallComposite` and `convertToBaselineExcluded` helpers; all new calculation stays in the service. `analyse(input, 'averaging')` and `analyseAssignmentSummary()` keep their existing contracts.
@@ -1319,6 +1319,8 @@ Analyser: `src/frontend/src/services/dataAnalysis/analysers/`
 ├── `averagingAnalyser.types.ts`
 ├── `resolveAssignmentDefinition.ts`
 └── `rollupMetric.ts`
+
+Class summary analyser: `src/frontend/src/services/dataAnalysis/classSummaryAnalyser.ts` (single-owner `ClassSummaryAnalyser`), `src/frontend/src/services/dataAnalysis/classSummary.zod.ts` (strict in-memory `ClassSummarySchema`)
 
 Heatmap adapters: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`, `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.ts`
 Metric display: `src/frontend/src/services/dataAnalysis/metricDisplay/`
