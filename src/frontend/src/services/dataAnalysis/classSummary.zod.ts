@@ -1,8 +1,10 @@
 import { z } from 'zod';
+import {
+  isTrimmed,
+  MAX_LIST_ENTRIES,
+  validateStandingsScoreAlignment,
+} from '../abClass/abClassMetadata.zod';
 import { MetricResultSchema } from './dataAnalysis.zod';
-
-/** Maximum entries in a standing list or the recent-assignment list. */
-const MAX_LIST_ENTRIES = 3;
 
 /**
  * The four analyser-native criterion results carried by every score set.
@@ -32,7 +34,7 @@ const AssignmentIdentitySchema = z.strictObject({
 /** One ranked student with the full score set for the basis and each recent assignment. */
 const MetricStandingSchema = z.strictObject({
   studentId: z.string().min(1),
-  studentName: z.string().min(1),
+  studentName: z.string().min(1).refine(isTrimmed),
   scores: MetricScoresSchema,
   recentAssignmentScores: z.array(MetricScoresSchema),
 });
@@ -98,30 +100,20 @@ function validateStandingsDisjointness(
 }
 
 /**
- * Add issues for standing entries whose score list length differs from the number
- * of supplied recent assignments.
+ * Add an issue when baseline availability disagrees with the presence of its data.
  *
- * @param {MetricStandings} standings - The basis being validated.
- * @param {readonly string[]} path - Path prefix for the diagnostic issue.
- * @param {number} expected - The required score-list length.
+ * @param {ClassSummaryShape} summary - The parsed summary shape.
  * @param {z.RefinementCtx} context - Zod refinement context.
  * @returns {void} Adds validation issues to the context when needed.
  */
-function validateBasisScoreAlignment(
-  standings: MetricStandings,
-  path: readonly string[],
-  expected: number,
-  context: z.RefinementCtx
-): void {
-  for (const list of ['top', 'bottom'] as const) {
-    standings[list].forEach((entry, index) => {
-      if (entry.recentAssignmentScores.length !== expected) {
-        context.addIssue({
-          code: 'custom',
-          path: [...path, list, index, 'recentAssignmentScores'],
-          message: 'recentAssignmentScores must have one score set per recent assignment',
-        });
-      }
+function validateBaselineCoherence(summary: ClassSummaryShape, context: z.RefinementCtx): void {
+  const { available, classAverages, standings } = summary.baseline;
+  if (available !== (classAverages !== null) || available !== (standings !== null)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['baseline', 'available'],
+      message:
+        'baseline.available must match the presence of baseline.classAverages and baseline.standings',
     });
   }
 }
@@ -135,14 +127,14 @@ function validateBasisScoreAlignment(
  */
 function validateScoreAlignment(summary: ClassSummaryShape, context: z.RefinementCtx): void {
   const expected = summary.recentAssignments.length;
-  validateBasisScoreAlignment(
+  validateStandingsScoreAlignment(
     summary.allTasks.standings,
     ['allTasks', 'standings'],
     expected,
     context
   );
   if (summary.baseline.standings !== null) {
-    validateBasisScoreAlignment(
+    validateStandingsScoreAlignment(
       summary.baseline.standings,
       ['baseline', 'standings'],
       expected,
@@ -157,9 +149,9 @@ function validateScoreAlignment(summary: ClassSummaryShape, context: z.Refinemen
  * @remarks
  * This is neither a wire nor a persistence shape. Each analyser declares its own
  * output schema, and `DataAnalysisService.analyseClassSummary` parses with this one.
- * The cross-field refinement asserts the producer's disjoint-selection rule and the
- * index alignment between `recentAssignmentScores` and `recentAssignments` so a
- * malformed summary cannot reach the writer.
+ * The cross-field refinement asserts the producer's disjoint-selection rule, baseline
+ * coherence and the index alignment between `recentAssignmentScores` and
+ * `recentAssignments` so a malformed summary cannot reach the writer.
  */
 export const ClassSummarySchema = ClassSummaryObjectSchema.superRefine((summary, context) => {
   validateStandingsDisjointness(summary.allTasks.standings, ['allTasks', 'standings'], context);
@@ -167,6 +159,7 @@ export const ClassSummarySchema = ClassSummaryObjectSchema.superRefine((summary,
     validateStandingsDisjointness(summary.baseline.standings, ['baseline', 'standings'], context);
   }
   validateScoreAlignment(summary, context);
+  validateBaselineCoherence(summary, context);
 });
 
 export type ClassSummary = z.infer<typeof ClassSummarySchema>;

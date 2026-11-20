@@ -18,7 +18,8 @@ const STUDENT_STANDING_KEYS = [
   'recentAssignmentScores',
 ] as const;
 const MAX_SCORE = 5;
-const MAX_RECENT_ASSIGNMENTS = 3;
+/** Maximum entries in a recent-assignment, standing or per-assignment score list. */
+export const MAX_LIST_ENTRIES = 3;
 
 /**
  * Validates the canonical UTC timestamp used by ABClass metadata.
@@ -86,7 +87,7 @@ export const RecentAssignmentSchema = z
 function isBoundedDenseArray(value: unknown): boolean {
   if (
     !Array.isArray(value) ||
-    value.length > MAX_RECENT_ASSIGNMENTS ||
+    value.length > MAX_LIST_ENTRIES ||
     Reflect.ownKeys(value).length !== value.length + 1
   )
     return false;
@@ -97,11 +98,11 @@ function isBoundedDenseArray(value: unknown): boolean {
 
 const recentAssignmentsSchema = z
   .custom<unknown>(isBoundedDenseArray)
-  .pipe(z.array(RecentAssignmentSchema).max(MAX_RECENT_ASSIGNMENTS));
+  .pipe(z.array(RecentAssignmentSchema).max(MAX_LIST_ENTRIES));
 
 const recentAssignmentScoresSchema = z
   .custom<unknown>(isBoundedDenseArray)
-  .pipe(z.array(AverageScoresSchema).max(MAX_RECENT_ASSIGNMENTS));
+  .pipe(z.array(AverageScoresSchema).max(MAX_LIST_ENTRIES));
 
 const studentStandingShape = {
   studentId: z.string().min(1).refine(isTrimmed),
@@ -120,7 +121,7 @@ export const StudentStandingSchema = z
 
 const standingListSchema = z
   .custom<unknown>(isBoundedDenseArray)
-  .pipe(z.array(StudentStandingSchema).max(MAX_RECENT_ASSIGNMENTS));
+  .pipe(z.array(StudentStandingSchema).max(MAX_LIST_ENTRIES));
 
 const standingsShape = {
   top: standingListSchema,
@@ -177,7 +178,7 @@ export const NonNullableABClassMetadataSchema = z
   .superRefine((snapshot, context) => {
     validateRecentAssignmentOrdering(snapshot.recentAssignments, context);
     if ('allTaskStandings' in snapshot) {
-      validateStandingsScoreAlignment(snapshot, context);
+      validateSnapshotStandingsScoreAlignment(snapshot, context);
     }
   })
   .transform(emitCurrentFiveFieldShape);
@@ -261,7 +262,7 @@ function hasRequiredOwnKeys(value: object, keys: readonly string[]): boolean {
  * @param {string} value - Candidate identifier.
  * @returns {boolean} Whether the string contains no surrounding whitespace.
  */
-function isTrimmed(value: string): boolean {
+export function isTrimmed(value: string): boolean {
   return value.trim() === value;
 }
 
@@ -309,12 +310,46 @@ function validateRecentAssignmentOrdering(
 }
 
 /**
+ * Add an issue for each entry in a standings basis whose score list is not one set
+ * per recent assignment. The top/bottom iteration is shared by both frontend
+ * representations of a standings basis; callers keep their own basis-level loops.
+ * @param {object} standings - Standings basis with top and bottom entry lists.
+ * @param {readonly { recentAssignmentScores: readonly unknown[] }[]} standings.top - Ranked top entries.
+ * @param {readonly { recentAssignmentScores: readonly unknown[] }[]} standings.bottom - Ranked bottom entries.
+ * @param {readonly string[]} path - Path prefix for the diagnostic issues.
+ * @param {number} expected - Required score-list length.
+ * @param {z.RefinementCtx} context - Zod refinement context.
+ * @returns {void} Adds validation issues to the context when needed.
+ */
+export function validateStandingsScoreAlignment(
+  standings: {
+    readonly top: readonly { recentAssignmentScores: readonly unknown[] }[];
+    readonly bottom: readonly { recentAssignmentScores: readonly unknown[] }[];
+  },
+  path: readonly string[],
+  expected: number,
+  context: z.RefinementCtx
+): void {
+  for (const list of ['top', 'bottom'] as const) {
+    standings[list].forEach((entry, index) => {
+      if (entry.recentAssignmentScores.length !== expected) {
+        context.addIssue({
+          code: 'custom',
+          path: [...path, list, index, 'recentAssignmentScores'],
+          message: 'recentAssignmentScores must have one score set per recent assignment',
+        });
+      }
+    });
+  }
+}
+
+/**
  * Aligns every standing entry's score list with the metadata's recent assignments.
  * @param {object} snapshot - Parsed current-shape snapshot.
  * @param {z.RefinementCtx} context - Zod refinement context.
  * @returns {void} Adds validation issues to the context when needed.
  */
-function validateStandingsScoreAlignment(
+function validateSnapshotStandingsScoreAlignment(
   snapshot: z.infer<typeof currentSnapshotSchema>,
   context: z.RefinementCtx
 ): void {
@@ -322,16 +357,6 @@ function validateStandingsScoreAlignment(
   for (const basis of ['allTaskStandings', 'baselineStandings'] as const) {
     const standings = snapshot[basis];
     if (standings === null) continue;
-    for (const list of ['top', 'bottom'] as const) {
-      standings[list].forEach((entry, index) => {
-        if (entry.recentAssignmentScores.length !== expected) {
-          context.addIssue({
-            code: 'custom',
-            path: [basis, list, index, 'recentAssignmentScores'],
-            message: 'recentAssignmentScores must have one score set per recent assignment',
-          });
-        }
-      });
-    }
+    validateStandingsScoreAlignment(standings, [basis], expected, context);
   }
 }

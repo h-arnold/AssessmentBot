@@ -176,4 +176,68 @@ describe('ClassSummarySchema', () => {
 
     expect(() => ClassSummarySchema.parse(summary)).toThrow();
   });
+
+  it('accepts both coherent baseline availability states', () => {
+    const availableSummary = createValidClassSummary();
+    expect(ClassSummarySchema.parse(availableSummary)).toEqual(availableSummary);
+
+    const unavailableSummary = createValidClassSummary();
+    unavailableSummary.baseline = { available: false, classAverages: null, standings: null };
+    expect(ClassSummarySchema.parse(unavailableSummary)).toEqual(unavailableSummary);
+  });
+
+  it.each([
+    ['available with null standings', true, true, false],
+    ['available with null class averages', true, false, true],
+    ['available with both fields null', true, false, false],
+    ['unavailable with class averages', false, true, false],
+    ['unavailable with standings', false, false, true],
+    ['unavailable with both fields set', false, true, true],
+  ] as const)(
+    'rejects a baseline that is %s',
+    (_description, available, hasAverages, hasStandings) => {
+      const summary = createValidClassSummary();
+      const classAverages = summary.baseline.classAverages;
+      const standings = summary.baseline.standings;
+      if (standings === null) {
+        throw new Error('Expected the valid summary to carry baseline standings');
+      }
+      summary.baseline = {
+        available,
+        classAverages: hasAverages ? classAverages : null,
+        standings: hasStandings ? standings : null,
+      };
+
+      expect(() => ClassSummarySchema.parse(summary)).toThrow();
+    }
+  );
+
+  it.each([' Alice ', '', 'Alice ', ' Alice', '\nAlice'])(
+    'rejects a standing studentName that is empty or not already trimmed: %j',
+    (studentName) => {
+      for (const basis of ['allTasks', 'baseline'] as const) {
+        const summary = createValidClassSummary();
+        const standings = summary[basis].standings;
+        if (standings === null) {
+          throw new Error(`Expected the valid summary to carry ${basis} standings`);
+        }
+        standings.top[0].studentName = studentName;
+        expect(
+          () => ClassSummarySchema.parse(summary),
+          `${basis}: ${JSON.stringify(studentName)}`
+        ).toThrow();
+      }
+    }
+  );
+
+  it('accepts ordinary already-trimmed standing names', () => {
+    const summary = createValidClassSummary();
+    summary.allTasks.standings.top[0].studentName = 'Alice';
+    if (summary.baseline.standings === null) {
+      throw new Error('Expected the valid summary to carry baseline standings');
+    }
+    summary.baseline.standings.top[0].studentName = 'Bob';
+
+    expect(ClassSummarySchema.parse(summary)).toEqual(summary);
+  });
 });
