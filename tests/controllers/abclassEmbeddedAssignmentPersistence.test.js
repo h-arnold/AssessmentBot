@@ -11,6 +11,18 @@ import {
 
 const clone = (value) => structuredClone(value);
 const teacherGlobal = { Teacher: () => Teacher };
+
+// Legacy corpus snapshots carry two fields; emitted metadata carries three null placeholders
+// for the new fields while the original fields stay unchanged.
+const emitted = (value) =>
+  value === null
+    ? null
+    : {
+        ...structuredClone(value),
+        baselineAverages: null,
+        allTaskStandings: null,
+        baselineStandings: null,
+      };
 let saved;
 
 afterEach(() => {
@@ -83,8 +95,8 @@ describe('persistAssignmentRun with canonical embedded partials', () => {
         classInput.assignments.map((row) => row.assignmentId)
       );
       const storedPartialPayload = partialCollection.replaceOne.mock.calls[0][1];
-      expect(storedClass.metadata).toStrictEqual(expectedMetadata);
-      expect(storedPartialPayload.metadata).toStrictEqual(expectedMetadata);
+      expect(storedClass.metadata).toStrictEqual(emitted(expectedMetadata));
+      expect(storedPartialPayload.metadata).toStrictEqual(emitted(expectedMetadata));
       expect(storedClass.metadata).toStrictEqual(storedPartialPayload.metadata);
       expect(classInput.metadata).toStrictEqual(expectedMetadata);
       if (expectedMetadata !== null) {

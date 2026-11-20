@@ -8,6 +8,13 @@ const ABClassPersistence = require('#backend/y_controllers/ABClassController/ABC
 const ABClassValidation = require('#backend/y_controllers/ABClassController/ABClassValidation.js');
 
 const clone = (value) => structuredClone(value);
+
+// Legacy corpus snapshots carry two fields; reads and writes emit the current five-field
+// shape with null placeholders while the original fields stay unchanged.
+const emitted = (value) =>
+  value === null
+    ? null
+    : { ...clone(value), baselineAverages: null, allTaskStandings: null, baselineStandings: null };
 const mutations = ['insertOne', 'replaceOne', 'updateOne', 'save'];
 let savedGlobals;
 let logger;
@@ -166,8 +173,8 @@ describe('ABClass whole-write preparation', () => {
     const partialPayload = partial.insertOne.mock.calls[0][0];
     expect(fullPayload).not.toBe(caller);
     expect(partialPayload).not.toBe(caller);
-    expect(fullPayload.metadata).toStrictEqual(expected);
-    expect(partialPayload.metadata).toStrictEqual(expected);
+    expect(fullPayload.metadata).toStrictEqual(emitted(expected));
+    expect(partialPayload.metadata).toStrictEqual(emitted(expected));
     expect(fullPayload.metadata).not.toBe(partialPayload.metadata);
     expect(caller).toHaveProperty('metadata', expected);
     expect(fullPayload.metadata.classAverages).not.toBe(caller.metadata.classAverages);
@@ -180,7 +187,7 @@ describe('ABClass whole-write preparation', () => {
     );
     expect(caller.toPartialJSON.mock.results[0].value).not.toHaveProperty('metadata');
     fullPayload.metadata.recentAssignments[0].averages.overall = 0;
-    expect(partialPayload.metadata).toStrictEqual(expected);
+    expect(partialPayload.metadata).toStrictEqual(emitted(expected));
     expect(caller.metadata).toStrictEqual(expected);
   });
 
@@ -222,15 +229,15 @@ describe('ABClass whole-write preparation', () => {
     persistence({ full, partial }).owner.persistClassAndPartial(caller);
     const fullMetadata = full.insertOne.mock.calls[0][0].metadata;
     const partialMetadata = partial.insertOne.mock.calls[0][0].metadata;
-    expect(fullMetadata).toStrictEqual(expected);
-    expect(partialMetadata).toStrictEqual(expected);
+    expect(fullMetadata).toStrictEqual(emitted(expected));
+    expect(partialMetadata).toStrictEqual(emitted(expected));
     expectMetadataNodesDetached([fullMetadata, partialMetadata]);
     expectMetadataNodesDetached([fullMetadata, caller.metadata]);
     expectMetadataNodesDetached([partialMetadata, caller.metadata]);
     expectMetadataNodesDetached([fullMetadata, projectionOutput.metadata]);
     expectMetadataNodesDetached([partialMetadata, projectionOutput.metadata]);
     fullMetadata.classAverages.accuracy = 0;
-    expect(partialMetadata).toStrictEqual(expected);
+    expect(partialMetadata).toStrictEqual(emitted(expected));
     expect(caller.metadata).toStrictEqual(expected);
   });
 

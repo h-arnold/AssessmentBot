@@ -20,6 +20,18 @@ const replacement = Object.values(loadBackendModelInputs('medium').classesById).
   (row) => row.metadata
 )?.metadata;
 
+// Legacy corpus snapshots carry two fields; writes emit the current five-field shape with
+// null placeholders while the supplied fields stay unchanged.
+const emitted = (value) =>
+  value === null
+    ? null
+    : {
+        ...structuredClone(value),
+        baselineAverages: null,
+        allTaskStandings: null,
+        baselineStandings: null,
+      };
+
 /**
  * Calls the global `apiHandler` and parses the transport string it returns.
  *
@@ -50,12 +62,12 @@ describe('ABClass metadata dispatcher success writes', () => {
     const response = dispatch(context.api, { method: 'updateABClass', params: request });
     expect(response).toMatchObject({
       ok: true,
-      data: { classId: context.classId, metadata: replacement },
+      data: { classId: context.classId, metadata: emitted(replacement) },
     });
     expect(context.full.updateOne).toHaveBeenCalledTimes(1);
     expect(context.partial.replaceOne).toHaveBeenCalledTimes(1);
-    expect(context.full.rows()[0].metadata).toEqual(replacement);
-    expect(context.partial.rows()[0].metadata).toEqual(replacement);
+    expect(context.full.rows()[0].metadata).toEqual(emitted(replacement));
+    expect(context.partial.rows()[0].metadata).toEqual(emitted(replacement));
     expect(response.data.metadata.classAverages.updatedAt).toEqual(expect.any(String));
     expect(JSON.parse(JSON.stringify(response))).toEqual(response);
   });
@@ -90,12 +102,12 @@ describe('ABClass metadata dispatcher success writes', () => {
       ).toBe(true);
       expect(response).toMatchObject({
         ok: true,
-        data: { classId: context.classId, metadata: expected },
+        data: { classId: context.classId, metadata: emitted(expected) },
       });
       expect(context.full.replaceOne).toHaveBeenCalledTimes(1);
       expect(context.partial.replaceOne).toHaveBeenCalledTimes(1);
-      expect(context.full.rows()[0].metadata).toEqual(expected);
-      expect(context.partial.rows()[0].metadata).toEqual(expected);
+      expect(context.full.rows()[0].metadata).toEqual(emitted(expected));
+      expect(context.partial.rows()[0].metadata).toEqual(emitted(expected));
       expect(JSON.parse(JSON.stringify(response))).toEqual(response);
     }
   );
@@ -110,7 +122,7 @@ describe('ABClass metadata dispatcher success writes', () => {
       method: 'updateABClass',
       params: { classId: context.classId, active: false },
     });
-    expect(updated.data.metadata).toEqual(original);
+    expect(updated.data.metadata).toEqual(emitted(original));
     expect(context.full.rows()[0].metadata).toEqual(original);
     const deleted = dispatch(context.api, {
       method: 'deleteABClass',
@@ -191,8 +203,8 @@ describe('ABClass metadata dispatcher success writes', () => {
       expect(response.data.metadata.recentAssignments.map((entry) => entry.assignmentId)).toEqual(
         metadata.recentAssignments.map((entry) => entry.assignmentId)
       );
-      expect(context.full.rows()[0].metadata).toStrictEqual(metadata);
-      expect(context.partial.rows()[0].metadata).toStrictEqual(metadata);
+      expect(context.full.rows()[0].metadata).toStrictEqual(emitted(metadata));
+      expect(context.partial.rows()[0].metadata).toStrictEqual(emitted(metadata));
     }
   );
 
@@ -216,7 +228,7 @@ describe('ABClass metadata dispatcher success writes', () => {
     };
 
     const upsert = dispatch(context.api, { method: 'upsertABClass', params: request });
-    expect(upsert.data.metadata).toStrictEqual(untouched);
+    expect(upsert.data.metadata).toStrictEqual(emitted(untouched));
     dispatch(context.api, {
       method: 'updateABClass',
       params: { classId: context.classId, active: false },
@@ -239,8 +251,8 @@ describe('ABClass metadata dispatcher success writes', () => {
     // Both stores already hold the refreshed roster after the upsert and update,
     // so the roster refresh must skip persistence and perform no store writes.
     expect(rosterOrder).toEqual(['partial.findOne']);
-    expect(context.full.rows()[0].metadata).toStrictEqual(untouched);
-    expect(context.partial.rows()[0].metadata).toStrictEqual(untouched);
+    expect(context.full.rows()[0].metadata).toStrictEqual(emitted(untouched));
+    expect(context.partial.rows()[0].metadata).toStrictEqual(emitted(untouched));
     const fullAssignmentInput = Object.values(canonical.assignmentsByKey).find(
       (assignment) => assignment.courseId === context.classId
     );
@@ -253,11 +265,11 @@ describe('ABClass metadata dispatcher success writes', () => {
       params: { classId: context.classId },
     });
     expect(list.data.find((row) => row.classId === context.classId).metadata).toStrictEqual(
-      untouched
+      emitted(untouched)
     );
-    expect(fullRead.data.metadata).toStrictEqual(untouched);
-    expect(context.full.rows()[0].metadata).toStrictEqual(untouched);
-    expect(context.partial.rows()[0].metadata).toStrictEqual(untouched);
+    expect(fullRead.data.metadata).toStrictEqual(emitted(untouched));
+    expect(context.full.rows()[0].metadata).toStrictEqual(emitted(untouched));
+    expect(context.partial.rows()[0].metadata).toStrictEqual(emitted(untouched));
     expect(context.full.rows()[0].assignments.map((row) => row.assignmentId)).toEqual(
       source.assignments.map((row) => row.assignmentId)
     );
@@ -275,9 +287,9 @@ describe('ABClass metadata dispatcher success writes', () => {
       method: 'updateABClass',
       params: { classId: context.classId, metadata: replacement },
     });
-    expect(replaced.data.metadata).toStrictEqual(replacement);
-    expect(context.full.rows()[0].metadata).toStrictEqual(replacement);
-    expect(context.partial.rows()[0].metadata).toStrictEqual(replacement);
+    expect(replaced.data.metadata).toStrictEqual(emitted(replacement));
+    expect(context.full.rows()[0].metadata).toStrictEqual(emitted(replacement));
+    expect(context.partial.rows()[0].metadata).toStrictEqual(emitted(replacement));
     const cleared = dispatch(context.api, {
       method: 'updateABClass',
       params: { classId: context.classId, metadata: null },

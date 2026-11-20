@@ -5,7 +5,8 @@ Contains class configuration, assessment-summary metadata, students, teachers an
 assignments.
 
 Backend model: `src/backend/Models/ABClass.js`
-Metadata domain owner: `src/backend/Models/ABClassMetadata.js`
+Metadata domain owner: `src/backend/Models/ABClassMetadata.js` (facade); nested baseline/standings
+validators: `src/backend/Models/ABClassMetadataStandings.js`
 Collections: per-class collections named by `classId` (main documents), `abclass_partials` (fixed registry, keyed by `classId`)
 API handlers: `src/backend/z_Api/abclass/abclassRead.js`, `src/backend/z_Api/abclass/abclassMutations.js`
 Response mapper: `src/backend/y_controllers/ABClassController/ABClassResponseMapper.js`
@@ -604,8 +605,11 @@ Key notes:
 
 ### Sub-entity: ABClassMetadata
 
-Backend model: `src/backend/Models/ABClassMetadata.js` (the dedicated metadata-domain owner;
-deliberately **not** part of `Models/ABClass.js` or the generic `Validate`)
+Backend model: `src/backend/Models/ABClassMetadata.js` (the dedicated metadata-domain owner and
+facade; deliberately **not** part of `Models/ABClass.js` or the generic `Validate`). Nested
+baseline-average and standings validation and copying are delegated to the sibling
+`src/backend/Models/ABClassMetadataStandings.js`; both modules resolve their dependencies inside
+method bodies to respect GAS concatenation order.
 Frontend Zod: `src/frontend/src/services/abClass/abClassMetadata.zod.ts` → `ABClassMetadataSchema`,
 `NonNullableABClassMetadataSchema`, `CanonicalMetadataTimestampSchema`, `AverageScoreSchema`,
 `AverageScoresSchema`, `ClassAveragesSchema`, `RecentAssignmentSchema`
@@ -642,26 +646,49 @@ type RecentAssignment = {
   updatedAt: string;
 };
 
+type BaselineAverages = AverageScores & { updatedAt: string };
+
+type StudentStanding = {
+  studentId: string;
+  studentName: string;
+  scores: AverageScores;
+  recentAssignmentScores: AverageScores[]; // one per recent assignment, zero to three
+};
+
+type StudentStandings = { top: StudentStanding[]; bottom: StudentStanding[] };
+
 type ABClassMetadata = {
   classAverages: ClassAverages;
   recentAssignments: RecentAssignment[];
+  baselineAverages: BaselineAverages | null;
+  allTaskStandings: StudentStandings | null;
+  baselineStandings: StudentStandings | null;
 } | null;
 ```
 
-| Field                                                  | Type                 | Persistence / shape rules (enforced by `ABClassMetadata`)                                                                  | Frontend Zod                                                                      | Notes                                                                                                                                                                                                                                                                      |
-| ------------------------------------------------------ | -------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `metadata`                                             | `object\|null`       | Optional on write; nullable as a whole on read                                                                             | `ABClassMetadataSchema` (`z.union([z.null(), NonNullableABClassMetadataSchema])`) | Constructor-owned null normalisation via `new ABClassMetadata()`; an **own** `undefined` is invalid (only true omission triggers preserve/new-class-null). `new ABClassMetadata(value)` validates/copies; `toJSON()` returns an independently owned plain snapshot/`null`. |
-| `metadata.classAverages`                               | `object`             | Required and complete when `metadata` is non-null; never `null`                                                            | `ClassAveragesSchema`                                                             | Five own fields: four scores plus `updatedAt`.                                                                                                                                                                                                                             |
-| `metadata.classAverages.completeness`                  | `AverageScore`       | Finite number in the inclusive range 0–5, or exactly `'N'`, `'E'`, `'excluded'`                                            | `AverageScoreSchema`                                                              | Independent field; no cross-metric inference.                                                                                                                                                                                                                              |
-| `metadata.classAverages.accuracy`                      | `AverageScore`       | As above                                                                                                                   | `AverageScoreSchema`                                                              |                                                                                                                                                                                                                                                                            |
-| `metadata.classAverages.spag`                          | `AverageScore`       | As above                                                                                                                   | `AverageScoreSchema`                                                              |                                                                                                                                                                                                                                                                            |
-| `metadata.classAverages.overall`                       | `AverageScore`       | As above                                                                                                                   | `AverageScoreSchema`                                                              | Retains existing weighted-scoring meaning; **not** a separate arithmetic mean.                                                                                                                                                                                             |
-| `metadata.classAverages.updatedAt`                     | `string`             | Exact canonical UTC datetime (see below); never `null`                                                                     | `CanonicalMetadataTimestampSchema`                                                | Records when the supplied class summary was updated.                                                                                                                                                                                                                       |
-| `metadata.recentAssignments`                           | `RecentAssignment[]` | Dense array of zero to three complete entries; sparse slots, `undefined` entries and incomplete entries are invalid        | `z.array(RecentAssignmentSchema)`                                                 | Ordered by non-increasing `updatedAt`; equal timestamps keep caller order.                                                                                                                                                                                                 |
-| `metadata.recentAssignments[].assignmentId`            | `string`             | Non-empty, already-trimmed, unique within the list; opaque (no numeric coercion, no UUID-only or fixed-length restriction) | `z.string()` (plus raw-record pre-check)                                          | Identifies a distinct Google Classroom assignment.                                                                                                                                                                                                                         |
-| `metadata.recentAssignments[].assignmentDefinitionKey` | `string`             | Non-empty, already-trimmed; need **not** be unique within the list (definitions are reusable)                              | `z.string()` (plus raw-record pre-check)                                          |                                                                                                                                                                                                                                                                            |
-| `metadata.recentAssignments[].averages`                | `AverageScores`      | Required and complete; the four score fields exactly, with no nesting and no timestamp                                     | `AverageScoresSchema`                                                             | A nested partial object is invalid, not a patch.                                                                                                                                                                                                                           |
-| `metadata.recentAssignments[].updatedAt`               | `string`             | Exact canonical UTC datetime; supplied as the corresponding Assignment's existing `updatedAt`, not independently generated | `CanonicalMetadataTimestampSchema`                                                | Not compared by the API against the stored Assignment timestamp.                                                                                                                                                                                                           |
+Legacy two-field snapshots (`classAverages` and `recentAssignments` only) are accepted on read.
+`ABClassMetadata.validateMetadata()` validates either shape and `toJSON()` emits the five-field
+shape with `null` for every absent new field. `ABClass.toJSON()` and `ABClass.toPartialJSON()`
+use the same owner, so full and partial snapshots are identical. Reads never write, repair or
+backfill stored bytes.
+
+| Field                                                  | Type                     | Persistence / shape rules (enforced by `ABClassMetadata`)                                                                  | Frontend Zod                                                                      | Notes                                                                                                                                                                                                                                                                      |
+| ------------------------------------------------------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `metadata`                                             | `object\|null`           | Optional on write; nullable as a whole on read                                                                             | `ABClassMetadataSchema` (`z.union([z.null(), NonNullableABClassMetadataSchema])`) | Constructor-owned null normalisation via `new ABClassMetadata()`; an **own** `undefined` is invalid (only true omission triggers preserve/new-class-null). `new ABClassMetadata(value)` validates/copies; `toJSON()` returns an independently owned plain snapshot/`null`. |
+| `metadata.classAverages`                               | `object`                 | Required and complete when `metadata` is non-null; never `null`                                                            | `ClassAveragesSchema`                                                             | Five own fields: four scores plus `updatedAt`.                                                                                                                                                                                                                             |
+| `metadata.classAverages.completeness`                  | `AverageScore`           | Finite number in the inclusive range 0–5, or exactly `'N'`, `'E'`, `'excluded'`                                            | `AverageScoreSchema`                                                              | Independent field; no cross-metric inference.                                                                                                                                                                                                                              |
+| `metadata.classAverages.accuracy`                      | `AverageScore`           | As above                                                                                                                   | `AverageScoreSchema`                                                              |                                                                                                                                                                                                                                                                            |
+| `metadata.classAverages.spag`                          | `AverageScore`           | As above                                                                                                                   | `AverageScoreSchema`                                                              |                                                                                                                                                                                                                                                                            |
+| `metadata.classAverages.overall`                       | `AverageScore`           | As above                                                                                                                   | `AverageScoreSchema`                                                              | Retains existing weighted-scoring meaning; **not** a separate arithmetic mean.                                                                                                                                                                                             |
+| `metadata.classAverages.updatedAt`                     | `string`                 | Exact canonical UTC datetime (see below); never `null`                                                                     | `CanonicalMetadataTimestampSchema`                                                | Records when the supplied class summary was updated.                                                                                                                                                                                                                       |
+| `metadata.recentAssignments`                           | `RecentAssignment[]`     | Dense array of zero to three complete entries; sparse slots, `undefined` entries and incomplete entries are invalid        | `z.array(RecentAssignmentSchema)`                                                 | Ordered by non-increasing `updatedAt`; equal timestamps keep caller order.                                                                                                                                                                                                 |
+| `metadata.recentAssignments[].assignmentId`            | `string`                 | Non-empty, already-trimmed, unique within the list; opaque (no numeric coercion, no UUID-only or fixed-length restriction) | `z.string()` (plus raw-record pre-check)                                          | Identifies a distinct Google Classroom assignment.                                                                                                                                                                                                                         |
+| `metadata.recentAssignments[].assignmentDefinitionKey` | `string`                 | Non-empty, already-trimmed; need **not** be unique within the list (definitions are reusable)                              | `z.string()` (plus raw-record pre-check)                                          |                                                                                                                                                                                                                                                                            |
+| `metadata.recentAssignments[].averages`                | `AverageScores`          | Required and complete; the four score fields exactly, with no nesting and no timestamp                                     | `AverageScoresSchema`                                                             | A nested partial object is invalid, not a patch.                                                                                                                                                                                                                           |
+| `metadata.recentAssignments[].updatedAt`               | `string`                 | Exact canonical UTC datetime; supplied as the corresponding Assignment's existing `updatedAt`, not independently generated | `CanonicalMetadataTimestampSchema`                                                | Not compared by the API against the stored Assignment timestamp.                                                                                                                                                                                                           |
+| `metadata.baselineAverages`                            | `BaselineAverages\|null` | Omitted on legacy input and emitted as `null`; when present, four scores plus a canonical `updatedAt`                      | `—` (frontend parity pending)                                                     | Validated by `ABClassMetadataStandings.validateBaselineAverages()`. A present `undefined` is invalid.                                                                                                                                                                      |
+| `metadata.allTaskStandings`                            | `StudentStandings\|null` | Omitted on legacy input and emitted as `null`; when present, exactly `top` and `bottom`, each a dense 0–3 list             | `—` (frontend parity pending)                                                     | Validated by `ABClassMetadataStandings.validateStandings()`. Each entry's `recentAssignmentScores` has one score set per `recentAssignments` entry.                                                                                                                        |
+| `metadata.baselineStandings`                           | `StudentStandings\|null` | As `allTaskStandings`                                                                                                      | `—` (frontend parity pending)                                                     | Same validator as `allTaskStandings`; the two bases are independent.                                                                                                                                                                                                       |
 
 `excluded` is stored as the literal string `'excluded'`. This is a compact supplied-snapshot
 value and is **not** the frontend `MetricResult` union (which represents exclusion as
@@ -670,19 +697,25 @@ between the two representations. The marker values `N`, `E` and `excluded` are e
 case-sensitive strings that stay distinct and are never converted to zero (any other spelling,
 including lower case, is rejected).
 
-**Domain validation rules** (owned by `ABClassMetadata`):
+**Domain validation rules** (facade `ABClassMetadata`, with nested new-field rules delegated to
+`ABClassMetadataStandings`; the facade stays the single validation and copy owner):
 
-| Routine                                    | Behaviour                                                                                                                    |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `validateAverageScore(value, context)`     | Enforce the exact finite 0–5 / `'N'` / `'E'` / `'excluded'` union.                                                           |
-| `validateAverageScores(scores, context)`   | Require all four own metric fields and validate each; reject unexpected fields.                                              |
-| `validateClassAverages(value, context)`    | Require exactly the four scores plus valid `updatedAt`; reuse score validation without rejecting the permitted timestamp.    |
-| `validateRecentAssignment(value, context)` | Require exactly both identifiers, complete `averages` and valid `updatedAt`.                                                 |
-| `validateMetadata(value, context)`         | Accept `null`; otherwise enforce complete shape, dense zero-to-three array, unique assignment IDs and newest-first ordering. |
+| Routine                                    | Behaviour                                                                                                                                                                                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `validateAverageScore(value, context)`     | Enforce the exact finite 0–5 / `'N'` / `'E'` / `'excluded'` union.                                                                                                                                                                   |
+| `validateAverageScores(scores, context)`   | Require all four own metric fields and validate each; reject unexpected fields.                                                                                                                                                      |
+| `validateClassAverages(value, context)`    | Require exactly the four scores plus valid `updatedAt`; reuse score validation without rejecting the permitted timestamp.                                                                                                            |
+| `validateRecentAssignment(value, context)` | Require exactly both identifiers, complete `averages` and valid `updatedAt`.                                                                                                                                                         |
+| `validateMetadata(value, context)`         | Accept `null`; otherwise validate the legacy two-field or current five-field shape, dense zero-to-three recent array, unique assignment IDs, newest-first ordering, and delegate the three new fields to `ABClassMetadataStandings`. |
 
-- Every listed property of a non-null metadata object is required and must be an **own**
-  property. Only the top-level `metadata` value may be `null`; no metric, `classAverages`,
-  entry, `averages`, identifier or timestamp may be `null`.
+The nested baseline-average and standings validators, and their copy helpers, live in
+`ABClassMetadataStandings` and reuse the facade's record, score, array and timestamp rules.
+
+- On current-shape input every listed property is required and must be an **own** property. The
+  three new fields may be omitted (legacy shape) or `null`; when present they must be valid.
+  Apart from those three fields and the whole `metadata` value, no metric, `classAverages`,
+  entry, `averages`, identifier or timestamp may be `null`. Every emitted snapshot carries all
+  five fields, with `null` where a new field was absent.
 - The metric names are not declared here. `ABClassMetadata._metrics()` derives them at call
   time as `[...Assessment.CRITERIA, 'overall']`, so `Assessment.CRITERIA` remains the single
   owner of the three criterion identities and this file adds only the weighted `overall`
@@ -738,7 +771,7 @@ request-time tagging step sets `inputSource: 'request'`.
 - `new ABClass(options)` distinguishes an absent own `metadata` property from a present value. Absence is normalised by `new ABClassMetadata()` to `null`; present values, including own `undefined`, are passed explicitly to the domain constructor and validated.
 - `ABClass.fromJSON(json)` applies the same own-property distinction despite using `Object.create()` for restoration. Legacy full or partial JSON without an own `metadata` field therefore restores as an own `metadata: null`; explicitly present invalid data is rejected, not repaired. A present stored `metadata` value is passed through `DateUtils.deepConvertDates()` before validation, because JsonDbApp revives stored ISO timestamp strings as live `Date` objects and `ABClassMetadata` accepts only canonical UTC strings. The constructor and `setMetadata` take request or in-memory input, where `Date` is not expected, and apply no such conversion.
 - `ABClass.setMetadata(value)` replaces the whole snapshot or clears it with `null`. Its argument is always explicit, so `undefined` is invalid. Validation/copying completes before assignment, leaving existing state intact on failure.
-- `toJSON()` and `toPartialJSON()` always emit `metadata`; each revalidates mutable model state through `ABClassMetadata` and returns an independently owned plain snapshot (or `null`). Input, full output, partial output and model state do not share nested metadata objects or arrays.
+- `toJSON()` and `toPartialJSON()` always emit `metadata`; each revalidates mutable model state through `ABClassMetadata` and returns an independently owned plain snapshot (or `null`). Both emit the same five-field shape, inserting `null` for new fields absent from a legacy snapshot. Input, full output, partial output and model state do not share nested metadata objects or arrays.
 - A caller that deletes `model.metadata` or assigns `undefined` has corrupted model state; serialisation rejects it rather than invoking the absence default.
 - Invalid metadata fails ABClass restoration even if later code intends to replace it; no restoration bypass is provided. Constructors/restoration, explicit metadata replacement and metadata-bearing serialisation use the same authoritative rules, so mutable metadata cannot bypass validation at those model boundaries.
 
@@ -1146,7 +1179,9 @@ are owned by the linked lifecycle section.
 - Metadata is a frontend-supplied snapshot: the backend does not calculate averages or refresh it
   after assessments; the frontend task is registered with the shared lifecycle and both averaging
   surfaces activate it.
-- Absent or corrupt stored metadata has no migration, backfill or repair job.
+- Absent or corrupt stored metadata has no migration, backfill or repair job. Legacy two-field
+  stored snapshots are accepted on read and emitted with three `null` placeholders in memory;
+  no read writes stored bytes.
 - `deleteABClass` has no metadata field and there is no metadata-specific endpoint.
 - Persistence has no transaction emulation, rollback, automatic retry or concurrent-write recovery.
 - Frontend warning ownership and copy live in the linked local lifecycle contract.
@@ -1265,28 +1300,31 @@ readiness-null contexts. Test paths are listed in the [File Index](#file-index).
 
 ## Planned changes: baseline averages and student standings (Not implemented)
 
-The following contract changes are planned in `SPEC.md` and are **Not implemented**. They are
-recorded here as the implementation target; remove the `Not implemented` marker as each entry is
-delivered. Until then the shape above remains the implemented contract.
+The backend entries below are implemented and described in
+[§ Sub-entity: ABClassMetadata](#sub-entity-abclassmetadata). The frontend parity and snapshot-source
+entries remain `Not implemented`; they are recorded as the implementation target, and the marker
+is removed as each is delivered.
 
-- **Extended metadata shape — `Not implemented`**: add three nullable fields to a non-null
-  `ABClassMetadata`: `baselineAverages` (four scores plus `updatedAt`), `allTaskStandings` and
+- **Extended metadata shape**: a non-null `ABClassMetadata` carries three additional nullable
+  fields: `baselineAverages` (four scores plus `updatedAt`), `allTaskStandings` and
   `baselineStandings` (each `{ top: StudentStanding[]; bottom: StudentStanding[] }`, where a
   `StudentStanding` carries `studentId`, `studentName`, `scores: AverageScores` and
-  `recentAssignmentScores: AverageScores[]` with exactly one score set per newest fresh-class
-  assignment, aligned positionally to `ClassSummary.recentAssignments`). Only the whole `metadata`
-  and these three new fields may be `null`; no nested score or list entry becomes `null`. Lists
-  are dense with zero to three entries, and `top` and `bottom` are disjoint within a basis.
-- **Legacy shape tolerance and null normalisation — `Not implemented`**: `ABClassMetadata`
-  accepts both the existing two-field shape and the extended five-field shape. Validation and
-  defensive copying emit the five-field shape, inserting `null` for absent new fields. Reads
-  (`getABClass`, `getABClassPartials`, mutation summaries) normalise in memory and never write,
-  repair or backfill stored bytes. A present `undefined` for a new field remains invalid; present
-  invalid values remain integrity failures. Request provenance and `INVALID_REQUEST` adaptation
-  are unchanged.
-- **Validator module separation — `Not implemented`**: nested validation for the three new
-  fields moves to a dedicated sibling module so `src/backend/Models/ABClassMetadata.js` stays at
-  or under the 500-line backend lint gate; `ABClassMetadata` remains the single owner and facade.
+  `recentAssignmentScores: AverageScores[]` with one score set per newest fresh-class assignment,
+  aligned positionally to `ClassSummary.recentAssignments`). Only the whole `metadata` and these
+  three new fields may be `null`; no nested score or list entry becomes `null`. Lists are dense
+  with zero to three entries. The validator allows the same student in both `top` and `bottom`;
+  disjointness is a producer rule.
+- **Legacy shape tolerance and null normalisation**: `ABClassMetadata` accepts both the existing
+  two-field shape and the extended five-field shape. Validation and defensive copying emit the
+  five-field shape, inserting `null` for absent new fields. Reads (`getABClass`,
+  `getABClassPartials`, mutation summaries) normalise in memory and never write, repair or
+  backfill stored bytes. A present `undefined` for a new field remains invalid; present invalid
+  values remain integrity failures. Request provenance and `INVALID_REQUEST` adaptation are
+  unchanged.
+- **Validator module separation**: nested validation and copying for the three new fields live in
+  `src/backend/Models/ABClassMetadataStandings.js`, keeping `ABClassMetadata.js` at or under the
+  500-line backend lint gate. `ABClassMetadata` remains the single owner and facade, resolving the
+  sibling module inside method bodies for GAS concatenation order.
 - **Frontend parity — `Not implemented`**: `ABClassMetadataSchema` and
   `NonNullableABClassMetadataSchema` accept legacy and current inputs and emit the five-field
   shape. `ClassFullSchema`, `ClassPartialSchema` and the mutation schemas keep referencing the
@@ -1315,13 +1353,19 @@ Student model:              src/backend/Models/Student.js
   └── Student.toJSON()          — student shape
 
 Metadata domain owner:      src/backend/Models/ABClassMetadata.js
-  └── new ABClassMetadata()/toJSON()  — constructor-owned null default + defensive plain-snapshot boundary
-  └── validateMetadata()              — top-level shape, dense 0–3 array, unique IDs, newest-first order
+  └── new ABClassMetadata()/toJSON()  — constructor-owned null default + defensive five-field snapshot
+  └── validateMetadata()              — legacy/current top-level shape, dense 0–3 array, unique IDs, newest-first order, new-field delegation
   └── validateClassAverages()         — five-field class summary (four scores + updatedAt)
   └── validateRecentAssignment()      — complete recent entry
   └── validateAverageScores()         — four metric fields
   └── validateAverageScore()          — single 0–5 score or exact N/E/excluded marker
-  └── private _checkRecord/_validateScoreFields/_validateTimestamp/_copyMetadata helpers
+  └── private _checkRecord/_checkArrayKeys/_assertDenseIndex/_validateScoreFields/_validateTimestamp/_copyMetadata helpers
+
+Nested validator module:    src/backend/Models/ABClassMetadataStandings.js
+  └── validateBaselineAverages(), validateStandings(), validateStandingList(),
+      validateStandingEntry(), validateRecentAssignmentScores()
+  └── copyBaselineAverages(), copyStandings(), copyStandingEntry(), copyScoreSet()
+  └── reuses facade record/score/array/timestamp rules; resolved inside method bodies
 
 Metadata error type:        src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js
   └── fieldPath + default inputSource 'model' (extends Error, not ApiValidationError)

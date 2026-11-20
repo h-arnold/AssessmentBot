@@ -1,5 +1,14 @@
 # Feature Delivery Plan (TDD-First)
 
+## Delivery status
+
+- Current section: Section 1 complete — backend metadata validator delivered; Section 2 (frontend metadata Zod schema) is next.
+- Regression-checker session ID: `feat-enahncedABClassMetadata` (passed explicitly; this worktree is detached HEAD, so branch-based resolution is unavailable).
+- Baseline report: `.ts-regression-checker/reports/session-feat-enahncedABClassMetadata/baseline/baseline.txt` (created 2026-11-19T22:39:22Z; 6 of 8 checks passing, zero regressions, zero new failures).
+- Accepted baseline debt: (a) `backend-lint-check` fails on 4 pre-existing `max-lines` warnings in untouched test files (`assignmentDefinitionPartials.unit.test.js`, `dbManager.test.js`, `classroomApiClient.test.js`, `batchUpdateUtility.test.js`); (b) `frontend-e2e-check` recorded exit 143 after an environment-hung Playwright process was terminated during baseline capture — this plan adds no E2E tests (no user-visible change) and no E2E file is in the authorised change surface. These files and checks are outside every section's change surface; no section may repair them.
+- Start-up environment note: root and frontend `node_modules` were empty and were installed with `npm ci` and `npm --prefix src/frontend ci`. A first baseline captured before installation was discarded as contaminated.
+- Pre-flight docs registration: three planned entries marked `Not implemented` were added to `docs/developer/backend/api-layer.md`, `docs/developer/data-shapes/frontend-data-analysis-response.md` and `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`, satisfying the section-start planning gate.
+
 ## Read-First Context
 
 Before writing or executing this plan:
@@ -102,90 +111,54 @@ Record decision (`reuse` | `extend` | `new` | `keep local`), owning path and cal
 
 ## Section 1 — Backend metadata validator: legacy tolerance, five-field shape, separation
 
-### Objective
+### Outcome (compacted)
 
-Make `ABClassMetadata` accept the legacy two-field shape and the current five-field shape, emit the current shape with `null` placeholders through `ABClass.toJSON()`/`ABClass.toPartialJSON()`, and keep the facade under the 500-line backend lint gate.
+`ABClassMetadata` accepts both the legacy two-field snapshot and the current five-field snapshot, and `ABClass.toJSON()`/`toPartialJSON()` always emit the five-field shape through the same owner, inserting `null` for absent new fields. Nested baseline/standings validation and defensive copying were extracted to `src/backend/Models/ABClassMetadataStandings.js`; the facade is 349 lines and the helper 182 lines, both within the 500-line gate. Reads normalise in memory and never write, repair or backfill stored bytes; request provenance and `INVALID_REQUEST` adaptation are unchanged.
 
-### Constraints
+### Retained for later sections
 
-- Backend plain GAS JavaScript; no Node module wiring beyond the guarded export block.
-- Legacy absence is accepted; present `undefined` for a new field is invalid; present invalid values remain integrity failures.
-- No stored bytes are written, repaired or backfilled by reads.
-- Request provenance and `INVALID_REQUEST` adaptation are unchanged.
-- Runtime references to `Validate` and `Assessment` stay call-time (load order).
-- **File separation (planned, not conditional)**: this is a lint-gate-driven split below the 550-line facade-decomposition trigger in `@docs/developer/backend/backend-file-organisation.md`, so a folder/`index.js` facade is **not** required. `src/backend/Models/ABClassMetadata.js` is **269 lines** today; with all new nested validators it projects to roughly **470–510 lines**, over the binding 500-line `max-lines` gate. Extract the baseline/standings validators into the exact sibling module `src/backend/Models/ABClassMetadataStandings.js` (projected **~200–230 lines**), leaving the facade at roughly **300–320 lines**; both must be ≤ 500 after the change. No numeric prefix is used because sibling files in `Models/` carry none. The builder sorts backend files by filename, so the facade loads before the helper; the helper is referenced only from method bodies, so that order is safe. In `tests/setupGlobals.js`, attach the helper global immediately before `g.ABClassMetadata` is assigned.
+**Emitted five-field shape and data shape.** `ABClassMetadata` is the sole backend validation and copy owner. Every emitted non-null snapshot has exactly these five fields:
 
-### Delegation mandatory reads (when sub-agents are used)
+```js
+{
+  (classAverages, // existing: completeness, accuracy, spag, overall, updatedAt
+    recentAssignments, // existing: dense 0–3 entries, unique assignmentId, non-increasing updatedAt
+    baselineAverages, // four scores + updatedAt, or null
+    allTaskStandings, // { top, bottom } or null
+    baselineStandings); // { top, bottom } or null
+}
+```
 
-Testing Specialist:
+A non-null standings object has exactly `top` and `bottom`, each a dense array of 0–3 entries `{ studentId, studentName, scores, recentAssignmentScores }`. `recentAssignmentScores` holds exactly one `AverageScores` set per `recentAssignments` entry, aligned by index. Each score set is the four fields `completeness`, `accuracy`, `spag`, `overall`, each a finite number 0–5 or exactly `'N'`, `'E'`, `'excluded'`, with no coercion. Only whole `metadata` and the three new fields may be `null`; no nested score or list entry is nullable.
 
-- `@src/backend/Models/ABClassMetadata.js`, `@src/backend/Models/ABClass.js`, `@tests/models/abclassMetadataIntegration.test.js`, `@tests/models/abclassMetadataRecordBoundaries.test.js`, `@tests/models/abclassMetadataTimestampAndOrdering.test.js`, `@docs/developer/backend/backend-testing.md`
+**Validation boundaries later sections must mirror.** Omitting all three new fields is the legacy path; a present `undefined`, an unexpected own field, a sparse list, a malformed nested entry, or a `recentAssignmentScores` length that differs from `recentAssignments` rejects as a non-request `ABClassMetadataValidationError` carrying a nested `fieldPath` (for example `metadata.allTaskStandings.top[0].scores.overall`). Duplicate students across `top`/`bottom` are valid at the validator level; disjointness is a producer rule for the Section 3 analyser, not a validator rule, so the frontend schema and parity tests must not add it. Stored ISO timestamps revived by `DateUtils.deepConvertDates()` validate, and `toJSON()`/`toPartialJSON()` return equal but independently detached copies.
 
-Implementation:
+**Module ownership, load order and harness wiring.** `src/backend/Models/ABClassMetadata.js` remains the facade and owns the shared score, record, array-strictness and timestamp rules (`_metrics`, `_checkRecord`, `_checkArrayKeys`, `_assertDenseIndex`, `validateAverageScore(s)`, `_validateTimestamp`). `src/backend/Models/ABClassMetadataStandings.js` owns `validateBaselineAverages`, `validateStandings`, `validateStandingList`, `validateStandingEntry`, `validateRecentAssignmentScores`, `_validateIdentifier` and the matching `copy*` helpers. Every cross-module reference (`ABClassMetadataStandings`, `Validate`, `Assessment`, `ABClassMetadataValidationError`) resolves inside a method body: the builder concatenates backend files by filename, so the facade loads before the helper and no module-load-time reference is safe. In `tests/setupGlobals.js`, `g.ABClassMetadataStandings` is attached immediately before `g.ABClassMetadata` with the matching comment.
 
-- `@src/backend/Models/ABClassMetadata.js`, `@src/backend/Models/ABClass.js`, `@src/backend/Utils/Validate.js`, `@src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js`, `@docs/developer/data-shapes/abclass.md`, `@docs/developer/backend/backend-file-organisation.md`
+**Test-harness pattern.** `tests/models/abclassMetadataFiveFieldShape.test.js` selects legacy rows structurally from the committed `small`/`medium`/`large-representative` `classesById.json` views, excluding any row already carrying a new field, so Section 5 fixture regeneration cannot silently switch it to a current-shape row. Invalid, boundary and present-`undefined` probes stay local; no realism or type-matching gate was relaxed and no profile or view was added.
 
-Code Reviewer:
+**`@remarks` commitments (delivered in code).** `ABClassMetadata` records why the legacy shape is accepted on reads without backfill; `ABClassMetadataStandings` records why nested validators live in a sibling module (lint gate, GAS load order) and why every `ABClassMetadata` reference is call-time.
 
-- `@SPEC.md`, `@src/backend/Models/ABClassMetadata.js`, `@docs/developer/backend/api-layer.md`
+**Doc-entry status.** The behaviour delivered here corresponds to the extended shape, legacy tolerance/null normalisation and validator module separation entries in `abclass.md` § Planned changes; their doc markers are reconciled in the final Documentation and rollout section. The frontend parity and snapshot-source entries remain `Not implemented` for Sections 2–4, as do all shared-helper and data-shape entries owned by Sections 2–5.
 
-### Shared helper plan
+### Shared helper plan — delivered
 
 1. Helper: backend metadata nested-field validators
-   - Decision: `new` (extracted facade helper)
-   - Owning module/path: `src/backend/Models/ABClassMetadataStandings.js`
-   - Call-site rationale: called by `ABClassMetadata.validateMetadata()` and `_copyMetadata()`; keeps the facade under the lint gate without duplicating request or transport rules.
-   - Relevant canonical doc target: `@docs/developer/backend/api-layer.md` § Shared helpers (entry already recorded as `Not implemented`)
-   - Planned doc status: `Not implemented` — reconcile to implemented in the docs pass.
-
-### Data-shape planning block
-
-- Changes: validation schema and persistence model for ABClass metadata.
-- Planned-only entries already recorded: `@docs/developer/data-shapes/abclass.md` § Planned changes (all five bullets `Not implemented`).
-- Implementation must remove the `Not implemented` marker from each entry it delivers, keeping the documented contract as the target.
-
-### Canonical-fixture note
-
-- Use the committed `small`/`medium`/`large-representative` `classPartials.json` and `classesById.json` views through the existing synthetic backend harness for realistic legacy-shape coverage; no new profile or view.
-- Invalid, boundary and present-`undefined` probes stay local to the new tests.
-- Do not relax any realism or type-matching gate.
-
-### Acceptance criteria
-
-- Legacy `{ classAverages, recentAssignments }` validates and is emitted with three null fields.
-- Current five-field shape validates, including non-null standings with dense 0–3 lists and exact per-assignment score alignment.
-- Present `undefined` for a new field, unexpected fields, malformed nested entries and sparse lists throw `ABClassMetadataValidationError` with correct `fieldPath`.
-- `ABClass.toJSON()` and `toPartialJSON()` emit identical validated snapshots.
-- Facade and helper are both ≤ 500 lines; backend lint and touched suites are green.
-
-### Required test cases (Red first)
-
-1. Legacy input → `toJSON()` emits `baselineAverages: null`, `allTaskStandings: null`, `baselineStandings: null`, with original fields unchanged.
-2. Current input with all three fields populated → round-trip unchanged.
-3. Each new nullable field set to `undefined` explicitly → throws; true omission follows the legacy path.
-4. Standings with sparse lists, missing `studentId`/`studentName`, wrong score union, or `recentAssignmentScores.length !== recentAssignments.length` → throws with the nested field path.
-5. `top`/`bottom` with duplicate students is valid at the validator level (disjointness is a producer rule, not a validator rule).
-6. Stored ISO timestamp revival through `DateUtils.deepConvertDates()` still validates.
-7. `ABClass.toJSON()`/`toPartialJSON()` emit equal detached copies; mutating one does not affect the other.
-8. Regression: existing `abclassMetadata*.test.js` suites pass unchanged except for explicit legacy-shape additions.
+   - Status: **Delivered**. Planning decision: `new` (extracted facade helper).
+   - Owning module/path: `src/backend/Models/ABClassMetadataStandings.js` (182 lines).
+   - Call sites: `ABClassMetadata.validateMetadata()` via `_validateNewFields`, and `ABClassMetadata._copyMetadata()`; keeps the facade under the lint gate without duplicating request or transport rules.
+   - Canonical doc target: `@docs/developer/backend/api-layer.md` § Shared helpers; doc-entry reconciliation is tracked by the final Documentation and rollout section.
 
 ### Section checks
 
-- `npm run test:backend -- tests/models/abclassMetadataIntegration.test.js`
-- `npm run test:backend -- tests/models/abclassMetadataRecordBoundaries.test.js`
-- `npm run lint:backend:check`
-- Confirm both module line counts ≤ 500 and `tests/setupGlobals.js` loads the helper before the facade uses it.
-- Planned helper and data-shape entries still present and correctly marked at section start; outcome recorded in implementation notes.
-
-### Optional `@remarks` JSDoc follow-through
-
-Record why the legacy shape is accepted on reads without backfill, and why nested validators live in a sibling module (lint gate, GAS load order).
+Passed: `npm run test:backend -- tests/models/abclassMetadataIntegration.test.js` (10/10), `npm run test:backend -- tests/models/abclassMetadataRecordBoundaries.test.js` (7/7), the new `tests/models/abclassMetadataFiveFieldShape.test.js` (13/13), the full backend suite (3792 tests), and `npm run lint:backend:check` with only the four accepted baseline warnings. Both modules are ≤ 500 lines and `tests/setupGlobals.js` loads the helper before the facade uses it.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record actual module split, line counts and doc reconciliation.
-- **Deviations from plan:** note any different module name or placement.
-- **Follow-up implications for later sections:** confirm the emitted shape consumed by Sections 2–4.
+- **Implementation notes:** Facade `src/backend/Models/ABClassMetadata.js` is 349 lines; nested validators and copy helpers live in the new sibling `src/backend/Models/ABClassMetadataStandings.js` (182 lines). Both call-time only, guarded exports, helper global wired before the facade in `tests/setupGlobals.js`. The facade owns shared record/score/array/timestamp rules; the helper owns only nested validators/copy. Docs sync reconciled the extended-shape, legacy-tolerance and validator-separation bullets in `docs/developer/data-shapes/abclass.md` and the `ABClassMetadataStandings` helper entry in `docs/developer/backend/api-layer.md`; the frontend-parity and snapshot-source bullets remain `Not implemented` for Sections 2–4. No new documentation pages created.
+- **Deviations from plan:** Beyond the two test files the plan named (`abclassMetadataBoundary.test.js`, `abclassMetadataIntegration.test.js`), eight additional direct-dependent suites needed mechanical two-field→five-field null-placeholder expectation updates because the shared validator's emitted shape changed; all were reviewed and triaged as legitimate consequences of this section's diff, with assertions kept strict (and some strengthened). No behaviour under test was changed.
+- **Follow-up implications for later sections:** Sections 2–4 must consume the five-field shape with `null` placeholders; the frontend schema and parity tests must NOT enforce top/bottom disjointness (validator/producer split). Frontend parity and snapshot-source doc entries remain `Not implemented`.
+- **Regression gate:** passed at section completion. Report `.ts-regression-checker/reports/session-feat-enahncedABClassMetadata/runs/2026-11-19T23-58-40.614Z/comparison.txt` — 7/8 checks passing, 0 regressions, 0 new failures, 0 fixes; the sole failing check is the accepted `backend-lint-check` baseline debt (same 4 `max-lines` warnings in untouched files). E2E now passes.
 
 ---
 

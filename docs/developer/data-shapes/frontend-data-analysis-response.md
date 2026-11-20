@@ -1266,6 +1266,19 @@ caption follow.
       This override stays preview-local: class-query data, analysed scores/averages and the public
       `MetricResult` output are unaffected, and no repair is persisted.
 
+## Planned class summary contract (Not implemented)
+
+The following in-memory contract changes are planned in `SPEC.md` and are **Not implemented**.
+They are recorded here as the implementation target; remove the `Not implemented` marker as each
+entry is delivered. `SPEC.md` is the source contract. See also
+[abclass.md § Planned changes](abclass.md#planned-changes-baseline-averages-and-student-standings-not-implemented).
+
+- **Typed `AttemptBaselineUnavailableError` — `Not implemented`**: `deriveAttemptBaseline` throws a dedicated error extending `Error` for exactly the three documented failure conditions (roster below three students, fewer than two attempt candidates, empty pool intersection), keeping the existing messages. `ClassSummaryAnalyser` catches only this type around baseline-mode analysis and emits `available: false`; every other error propagates.
+- **`ClassSummaryAnalyser` single-owner guarantee — `Not implemented`**: a dedicated analyser registered in `DataAnalysisService` in its own `classSummaryAnalyser` field owns all new calculation. It composes `AveragingAnalyser` and reuses its exported `rollupMetric`, `computeOverallComposite` and `convertToBaselineExcluded` helpers; all new calculation stays in the service. `analyse(input, 'averaging')` and `analyseAssignmentSummary()` keep their existing contracts.
+- **Whole-class baseline keys for isolated scores — `Not implemented`**: baseline selection is derived once from the full-class baseline analysis. Isolated per-assignment analyses filter task metrics against those whole-class baseline keys through `rollupMetric` and `computeOverallComposite`, and students with no baseline metrics follow the `convertToBaselineExcluded` path.
+- **`ClassSummarySchema` strict validation — `Not implemented`**: a strict in-memory schema owned by `classSummary.zod.ts` validates the analyser-native `MetricResult` values, `target`, `recentAssignments`, aligned score arrays and the `available` flag, with a refinement asserting that a `studentId` appears in at most one of `top` and `bottom` per basis. It is not a wire or persistence shape.
+- **Writer consumption — `Not implemented`**: the writer calls `analyseClassSummary()` once and `mergeClassMetadata()` accepts the resulting `ClassSummary` as its score source, mapping analyser-native values through `projectAverageScores()` while retaining the rolling three-entry history, target replacement, newest-first ordering and freshness gate.
+
 ## File Index
 
 Persistence model: none (frontend-only contract).

@@ -36,6 +36,7 @@ Transport helpers are trailing-underscore functions in the relevant `z_Api` file
 - `validateParametersObject_()` and `validateMutationClassId_()` (`src/backend/z_Api/abclass/`) — request-shape and safe-identifier checks for ABClass transport handlers.
 - `_validateRequestMetadata(parameters)` (`src/backend/y_controllers/ABClassController/ABClassValidation.js`) — metadata request gate for ABClass upsert and update; see [Controller request gate](#controller-request-gate).
 - `adaptMetadataRequestError_(methodName, parameters, operation)` (`src/backend/z_Api/abclass/abclassMutations.js`) — converts request-tagged metadata failures into `ApiValidationError`; see [Transport error adaptation](#transport-error-adaptation).
+- `ABClassMetadataStandings` (`src/backend/Models/ABClassMetadataStandings.js`) — nested baseline-average and standings validators plus their copy helpers, called from `ABClassMetadata.validateMetadata()` (via `_validateNewFields()`) and `ABClassMetadata._copyMetadata()`. It keeps the facade under the 500-line backend lint gate while `ABClassMetadata` remains the single validation and copy owner, reusing the facade's record, score, array and timestamp rules. See [abclass.md § Planned changes](../data-shapes/abclass.md#planned-changes-baseline-averages-and-student-standings-not-implemented).
 - `validateUpsertParameters_()` and `validateReadParameters_()` (`src/backend/z_Api/assignmentDefinition/`) — request validators for definition upsert and read; see [Assignment-definition upsert validation split](#assignment-definition-upsert-validation-split-upsertassignmentdefinition).
 - `toTransportPartialRow_` (`src/backend/z_Api/assignmentDefinitionTransport.js`) — normalises a model or plain object into a transport partial row.
 - `LLMSeedPhase.partitionRequests(requests, uidIndex)` (`src/backend/RequestHandlers/LLMSeedPhase.js`) — splits requests into `{ seeds, remainder }`, with the first eligible request per `TaskDefinition.getId()` in generation order as the seed and both arrays preserving order; throws naming the offending UID for a missing route entry or one without `taskDefinition`; duplicate UIDs are rejected by the caller `LLMRequestManager.processStudentResponses()` before partitioning, not by this helper; seeds form one parallel round bypassing the batch-size throttle; called once from `processStudentResponses()`, with no persistence or transport surface and no payload logging.
@@ -56,6 +57,11 @@ Transport helpers are trailing-underscore functions in the relevant `z_Api` file
   `validateAverageScore`, `validateAverageScores`, `validateClassAverages`,
   `validateRecentAssignment` and `validateMetadata`. They live outside `Models/ABClass.js` and
   generic `Validate`; transport helpers must not duplicate the domain implementation.
+- Reads accept the legacy two-field shape and emit the five-field shape: `baselineAverages`,
+  `allTaskStandings` and `baselineStandings` are inserted as `null` when absent. `toJSON()` and
+  `toPartialJSON()` emit identical snapshots; reads never write, repair or backfill stored bytes.
+  A present `undefined` for a new field is invalid. See
+  [abclass.md § Sub-entity: ABClassMetadata](../data-shapes/abclass.md#sub-entity-abclassmetadata).
 - The constructor owns the nullable field's `null` default for absence: zero arguments produce
   `null`, while an explicitly supplied value (including explicit `undefined`) is validated and
   then defensively copied. `toJSON()` revalidates the owned value and returns an independent
@@ -69,12 +75,13 @@ Transport helpers are trailing-underscore functions in the relevant `z_Api` file
 - Timestamp validation delegates to the canonical UTC predicate below. `recentAssignments`
   must hold zero to three dense entries with unique `assignmentId` values ordered by
   non-increasing `updatedAt`.
-- Runtime references to `Validate`, `Assessment` and `ABClassMetadataValidationError`
-  resolve only inside method bodies, matching the concatenated GAS load model; the file
-  performs no top-level dependency evaluation and no Node module wiring beyond its guarded
-  `module.exports` block. The four metric names come from `Assessment.CRITERIA` plus
-  `'overall'`, derived in `ABClassMetadata._metrics()` at call time because this file sorts
-  before `Models/Assessment.js`.
+- Runtime references to `Validate`, `Assessment`, `ABClassMetadataStandings` and
+  `ABClassMetadataValidationError` resolve only inside method bodies, matching the concatenated
+  GAS load model; both metadata modules perform no top-level dependency evaluation and no Node
+  module wiring beyond their guarded `module.exports` blocks. The four metric names come from
+  `Assessment.CRITERIA` plus `'overall'`, derived in `ABClassMetadata._metrics()` at call time
+  because this file sorts before `Models/Assessment.js` and
+  `Models/ABClassMetadataStandings.js`.
 - `ABClass` owns a plain metadata snapshot or `null`; construction and
   `fromJSON()` distinguish actual own-property absence (normalised through the domain
   constructor) from explicitly supplied values, including invalid own `undefined`.

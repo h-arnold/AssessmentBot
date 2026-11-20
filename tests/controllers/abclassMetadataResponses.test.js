@@ -20,6 +20,13 @@ function clone(value) {
   return structuredClone(value);
 }
 
+// Legacy corpus snapshots carry two fields; reads emit the current five-field shape with
+// null placeholders while the original fields stay unchanged.
+const emitted = (value) =>
+  value === null
+    ? null
+    : { ...clone(value), baselineAverages: null, allTaskStandings: null, baselineStandings: null };
+
 let collection;
 let partials;
 let savedGlobals;
@@ -77,21 +84,23 @@ describe('ABClass metadata response projections', () => {
     const full = mapper._toReadView(model);
     const summary = mapper._buildClassSummary(model);
 
-    expect.soft(partial.metadata).toEqual(metadata);
-    expect.soft(full.metadata).toEqual(metadata);
-    expect.soft(summary.metadata).toEqual(metadata);
+    expect.soft(partial.metadata).toEqual(emitted(metadata));
+    expect.soft(full.metadata).toEqual(emitted(metadata));
+    expect.soft(summary.metadata).toEqual(emitted(metadata));
     expect(partial).not.toHaveProperty('_id');
     expect(new Set([partial.metadata, full.metadata, summary.metadata]).size).toBe(3);
     if (partial.metadata) partial.metadata.classAverages.completeness = 0;
     if (full.metadata?.recentAssignments[0]) {
       full.metadata.recentAssignments[0].averages.accuracy = 0;
     }
-    expect(summary.metadata).toEqual(metadata);
-    expect(model.metadata).toEqual(metadata);
+    expect(summary.metadata).toEqual(emitted(metadata));
+    expect(model.metadata).toEqual(emitted(metadata));
     expect(partialInput.metadata).toEqual(metadata);
     expect(() => JSON.stringify(full)).not.toThrow();
     collection.findOne.mockReturnValue(clone(sourceClass));
-    expect(new ABClassController().readClass(sourceClass.classId).metadata).toEqual(metadata);
+    expect(new ABClassController().readClass(sourceClass.classId).metadata).toEqual(
+      emitted(metadata)
+    );
   });
 
   it('converts live Dates in a stored partial document to ISO strings during normalisation', () => {
@@ -174,7 +183,7 @@ describe('ABClass metadata response projections', () => {
     const controller = new ABClassController();
     partials.find.mockReturnValue([{ classId: 'listed', teachers: [], metadata: clone(metadata) }]);
 
-    expect.soft(controller.getAllClassPartials()[0].metadata).toEqual(metadata);
+    expect.soft(controller.getAllClassPartials()[0].metadata).toEqual(emitted(metadata));
     expect(manager.getCollection).toHaveBeenCalledTimes(1);
     expect(manager.getCollection).toHaveBeenCalledWith('abclass_partials');
     expect(partials.find).toHaveBeenCalledWith({});

@@ -12,6 +12,18 @@ const selectedPartial = canonical.classPartials.find(
 );
 const registryRows = [{ ...selectedPartial, _id: 'partial-row' }];
 
+// Legacy corpus snapshots carry two fields; reads and writes emit the current five-field
+// shape with null placeholders while the original fields stay unchanged.
+const emitted = (value) =>
+  value === null
+    ? null
+    : {
+        ...structuredClone(value),
+        baselineAverages: null,
+        allTaskStandings: null,
+        baselineStandings: null,
+      };
+
 /**
  * Calls the global `apiHandler` and parses the transport string it returns.
  *
@@ -53,7 +65,10 @@ describe('ABClass metadata dispatcher read contracts', () => {
     expect(response).toMatchObject({
       ok: true,
       data: [
-        expect.objectContaining({ classId: context.classId, metadata: context.source.metadata }),
+        expect.objectContaining({
+          classId: context.classId,
+          metadata: emitted(context.source.metadata),
+        }),
       ],
     });
     expect(response.data[0]).not.toHaveProperty('_id');
@@ -76,7 +91,7 @@ describe('ABClass metadata dispatcher read contracts', () => {
       ok: true,
       data: expect.objectContaining({
         classId: context.classId,
-        metadata: context.source.metadata,
+        metadata: emitted(context.source.metadata),
       }),
     });
     expect(context.full.findOne).toHaveBeenCalledWith({ classId: context.classId });

@@ -127,6 +127,11 @@ g.ScriptAppManager = class ScriptAppManager {
 g.Validate = require('../src/backend/Utils/Validate.js').Validate;
 g.ABClassMetadataValidationError =
   require('../src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js').ABClassMetadataValidationError;
+// Attach the nested standings helper before the facade: production GAS concatenation
+// loads ABClassMetadata.js first, but the facade resolves this global only inside
+// method bodies.
+g.ABClassMetadataStandings =
+  require('../src/backend/Models/ABClassMetadataStandings.js').ABClassMetadataStandings;
 g.ABClassMetadata = require('../src/backend/Models/ABClassMetadata.js').ABClassMetadata;
 g.ArrayUtils = require('../src/backend/Utils/00_ArrayUtils.js');
 

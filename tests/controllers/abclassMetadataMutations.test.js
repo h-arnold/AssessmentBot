@@ -14,6 +14,13 @@ const ABClassMetadataValidationError =
   require('#backend/Utils/ErrorTypes/ABClassMetadataValidationError.js').ABClassMetadataValidationError;
 
 const clone = (value) => structuredClone(value);
+
+// Legacy corpus snapshots carry two fields; reads and writes emit the current five-field
+// shape with null placeholders while the original fields stay unchanged.
+const emitted = (value) =>
+  value === null
+    ? null
+    : { ...clone(value), baselineAverages: null, allTaskStandings: null, baselineStandings: null };
 const canonical = loadBackendModelInputs('small');
 const sourceSnapshot = Object.values(loadBackendModelInputs('medium').classesById).find(
   (row) => row.metadata?.recentAssignments.length === 3
@@ -206,12 +213,16 @@ describe('ABClass metadata mutation requests', () => {
     if (operation === 'update' && mode === 'omit' && restoredModels.length > 0) {
       expectSnapshotDetached(result.metadata, restoredModels[0].metadata);
       restoredModels[0].metadata.classAverages.completeness = 0;
-      expect(result.metadata).toEqual(expected);
+      expect(result.metadata).toEqual(emitted(expected));
     }
 
-    expect(persistedFull.metadata).toEqual(expected);
-    expect(persistedPartial.metadata).toEqual(expected);
-    expect(result.metadata).toEqual(expected);
+    // An update omission never rewrites the full document, so that row keeps its legacy bytes;
+    // the rebuilt partial projection and the summary still emit the five-field shape.
+    const persistedFullExpected =
+      operation === 'update' && mode === 'omit' ? expected : emitted(expected);
+    expect(persistedFull.metadata).toEqual(persistedFullExpected);
+    expect(persistedPartial.metadata).toEqual(emitted(expected));
+    expect(result.metadata).toEqual(emitted(expected));
     if (mode === 'replace') expect(request.metadata).toEqual(replacementSnapshot.metadata);
     if (operation !== 'update' || mode !== 'omit') {
       expect.soft(fullPayloadMetadata.found, 'full store metadata write').toBe(true);
@@ -223,16 +234,18 @@ describe('ABClass metadata mutation requests', () => {
       expectSnapshotDetached(...references);
       if (mode === 'replace') {
         request.metadata.classAverages.completeness = 0;
-        expect(fullPayloadMetadata.value).toEqual(expected);
-        expect(partialPayloadMetadata.value).toEqual(expected);
-        expect(result.metadata).toEqual(expected);
-        if (restoredModels.length > 0) expect(restoredModels[0].metadata).toEqual(expected);
+        expect(fullPayloadMetadata.value).toEqual(emitted(expected));
+        expect(partialPayloadMetadata.value).toEqual(emitted(expected));
+        expect(result.metadata).toEqual(emitted(expected));
+        if (restoredModels.length > 0)
+          expect(restoredModels[0].metadata).toEqual(emitted(expected));
       }
       if (expected !== null) {
         fullPayloadMetadata.value.classAverages.completeness = 0;
-        expect(partialPayloadMetadata.value).toEqual(expected);
-        expect(result.metadata).toEqual(expected);
-        if (restoredModels.length > 0) expect(restoredModels[0].metadata).toEqual(expected);
+        expect(partialPayloadMetadata.value).toEqual(emitted(expected));
+        expect(result.metadata).toEqual(emitted(expected));
+        if (restoredModels.length > 0)
+          expect(restoredModels[0].metadata).toEqual(emitted(expected));
       }
     }
     if (existing) {

@@ -12,6 +12,18 @@ import {
 const clone = (value) => structuredClone(value);
 const teacherGlobal = { Teacher: () => Teacher };
 
+// Legacy corpus snapshots carry two fields; emitted metadata carries three null placeholders
+// for the new fields while the original fields stay unchanged.
+const emitted = (value) =>
+  value === null
+    ? null
+    : {
+        ...structuredClone(value),
+        baselineAverages: null,
+        allTaskStandings: null,
+        baselineStandings: null,
+      };
+
 function restoredClass(profile, predicate) {
   const input = Object.values(loadBackendModelInputs(profile).classesById).find(predicate);
   return {
@@ -63,7 +75,7 @@ describe('ABClass embedded assignment serialization', () => {
           ABClass.fromJSON(JSON.parse(JSON.stringify(output)))
         );
         expect(roundTrip.toJSON()).toStrictEqual(output);
-        expect(roundTrip.toPartialJSON().metadata).toStrictEqual(input.metadata);
+        expect(roundTrip.toPartialJSON().metadata).toStrictEqual(emitted(input.metadata));
       }
       expect(assignmentCount).toBeGreaterThan(0);
       expect(submissionCount).toBeGreaterThan(0);

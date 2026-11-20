@@ -13,6 +13,13 @@ const ABClassController = require('#backend/y_controllers/ABClassController/inde
 const MetadataError =
   require('#backend/Utils/ErrorTypes/ABClassMetadataValidationError.js').ABClassMetadataValidationError;
 const clone = (value) => structuredClone(value);
+
+// Legacy corpus snapshots carry two fields; reads and writes emit the current five-field
+// shape with null placeholders while the original fields stay unchanged.
+const emitted = (value) =>
+  value === null
+    ? null
+    : { ...clone(value), baselineAverages: null, allTaskStandings: null, baselineStandings: null };
 const inputs = loadBackendModelInputs('small');
 const medium = loadBackendModelInputs('medium');
 const classWithMetadata = Object.values(inputs.classesById).find((row) => row.metadata !== null);
@@ -238,13 +245,13 @@ describe('ABClass metadata storage lifecycle and compatibility', () => {
     const fullPatch = ctx.full.updateOne.mock.calls[0][1].$set;
     const partialPayload = ctx.partial.replaceOne.mock.calls[0][1];
     expect(ctx.full.rows()[0].metadata).toEqual(before);
-    expect(ctx.partial.rows()[0].metadata).toEqual(before);
-    expect(result.metadata).toEqual(before);
+    expect(ctx.partial.rows()[0].metadata).toEqual(emitted(before));
+    expect(result.metadata).toEqual(emitted(before));
     expectCanonicalAssignments(ctx.full.rows()[0]);
     expect(fullPatch).not.toHaveProperty('metadata');
     expectOwnedSnapshots(partialPayload.metadata, result.metadata);
     partialPayload.metadata.classAverages.completeness = 0;
-    expect(result.metadata).toEqual(before);
+    expect(result.metadata).toEqual(emitted(before));
     expect(ctx.classroom.fetchCourse).not.toHaveBeenCalled();
   });
 
@@ -280,15 +287,15 @@ describe('ABClass metadata storage lifecycle and compatibility', () => {
     const wholeFullPayload = ctx.full.replaceOne.mock.calls.at(-1)[1];
     const wholePartialPayload = ctx.partial.replaceOne.mock.calls.at(-1)[1];
     expect(ctx.classroom.fetchCourse).toHaveBeenCalledTimes(2);
-    expect(ctx.full.rows()[0].metadata).toEqual(before);
-    expect(ctx.partial.rows()[0].metadata).toEqual(before);
-    expect(summary.metadata).toEqual(before);
+    expect(ctx.full.rows()[0].metadata).toEqual(emitted(before));
+    expect(ctx.partial.rows()[0].metadata).toEqual(emitted(before));
+    expect(summary.metadata).toEqual(emitted(before));
     expectCanonicalAssignments(ctx.full.rows()[0]);
     expectOwnedSnapshots(wholeFullPayload.metadata, wholePartialPayload.metadata);
     expectOwnedSnapshots(wholeFullPayload.metadata, summary.metadata);
     wholeFullPayload.metadata.classAverages.accuracy = 0;
-    expect(wholePartialPayload.metadata).toEqual(before);
-    expect(summary.metadata).toEqual(before);
+    expect(wholePartialPayload.metadata).toEqual(emitted(before));
+    expect(summary.metadata).toEqual(emitted(before));
   });
 
   it('persists assessment assignment separately and retains metadata plus embedded redaction', () => {
@@ -304,12 +311,12 @@ describe('ABClass metadata storage lifecycle and compatibility', () => {
     expectOwnedSnapshots(storedClassPayload.metadata, storedPartialPayload.metadata);
     expectOwnedSnapshots(storedClassPayload.metadata, abClass.metadata);
     storedClassPayload.metadata.classAverages.completeness = 0;
-    expect(storedPartialPayload.metadata).toEqual(before);
-    expect(abClass.metadata).toEqual(before);
+    expect(storedPartialPayload.metadata).toEqual(emitted(before));
+    expect(abClass.metadata).toEqual(emitted(before));
     expect(ctx.fullAssignmentCollection.insertOne).toHaveBeenCalledTimes(1);
     expect(ctx.fullAssignmentCollection.rows()[0].assignmentId).toBe(fullAssignment.assignmentId);
-    expect(ctx.full.rows()[0].metadata).toEqual(before);
-    expect(ctx.partial.rows()[0].metadata).toEqual(before);
+    expect(ctx.full.rows()[0].metadata).toEqual(emitted(before));
+    expect(ctx.partial.rows()[0].metadata).toEqual(emitted(before));
     expectCanonicalAssignments(ctx.full.rows()[0]);
     expect(
       ctx.full.rows()[0].assignments.every((row) => Array.isArray(row.assignmentDefinition?.tasks))
