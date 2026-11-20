@@ -12,9 +12,14 @@ import {
   type MetricStanding,
   type MetricStandings,
 } from '../classSummary.zod';
-import type { AssignmentPartial } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+import type {
+  AssignmentPartial,
+  ClassFull,
+} from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import {
   ABClassMetadataSchema,
+  MAX_LIST_ENTRIES,
+  NonNullableABClassMetadataSchema,
   type AverageScore,
   type AverageScores,
   type RecentAssignment,
@@ -27,7 +32,11 @@ import {
   recentEntry,
   SUMMARY_TIME,
 } from '@/test/abClass/metadataRefreshFixtures';
-import { mergeClassMetadata, projectAverageScores } from './metadataProjection';
+import {
+  getMetadataRefreshDecision,
+  mergeClassMetadata,
+  projectAverageScores,
+} from './metadataProjection';
 
 const PRECISE_SCORE = 1.2345678912345;
 const HISTORY_LIMIT = 3;
@@ -79,29 +88,113 @@ function asMetricScores(scores: AverageScores): MetricScores {
   };
 }
 
+/** Copies an assignment's summary identity fields.
+ * @param {AssignmentPartial} assignment - Source assignment.
+ * @returns {object} Identity fields for a summary entry.
+ */
+function identityOf(assignment: AssignmentPartial) {
+  return {
+    assignmentId: assignment.assignmentId,
+    assignmentDefinitionKey: assignment.assignmentDefinitionKey,
+    updatedAt: assignment.updatedAt,
+  };
+}
+
 /** Builds a schema-valid ClassSummary carrying the supplied projected scores.
+ * @param {ClassFull} classFull - Fresh class supplying three recent assignment identities.
  * @param {AssignmentPartial} target - Assignment supplying the target identity.
  * @param {AverageScores} classScores - Scores placed in the all-task basis.
  * @param {AverageScores} assignmentScores - Scores placed on the target.
  * @returns {ClassSummary} The validated summary with empty standings.
+ * @remarks The recent identities mirror a real summary (the newest three, target
+ * first) so the merge's shared count is governed by stored history, not an empty
+ * list. Empty standings carry no entries, so they impose no score-alignment bound.
  */
 function summaryForScores(
+  classFull: ClassFull,
   target: AssignmentPartial,
   classScores: AverageScores,
   assignmentScores: AverageScores
 ): ClassSummary {
+  const recentIdentities = classFull.assignments
+    .toSorted((a, b) => {
+      return (
+        String(b.updatedAt).localeCompare(String(a.updatedAt)) ||
+        a.assignmentId.localeCompare(b.assignmentId)
+      );
+    })
+    .slice(0, MAX_LIST_ENTRIES)
+    .map((assignment) => identityOf(assignment));
+  recentIdentities[0] = identityOf(target);
   return ClassSummarySchema.parse({
-    classId: target.assignmentId,
+    classId: classFull.classId,
     allTasks: { classAverages: asMetricScores(classScores), standings: { top: [], bottom: [] } },
     baseline: { available: false, classAverages: null, standings: null },
-    target: {
-      assignmentId: target.assignmentId,
-      assignmentDefinitionKey: target.assignmentDefinitionKey,
-      updatedAt: target.updatedAt,
-      averages: asMetricScores(assignmentScores),
-    },
-    recentAssignments: [],
+    target: { ...identityOf(target), averages: asMetricScores(assignmentScores) },
+    recentAssignments: recentIdentities,
   });
+}
+
+/** Builds a schema-valid summary whose standings carry one score set per recent assignment.
+ * @param {string} classId - Class identity carried by the summary.
+ * @param {ReadonlyArray<{ assignment: AssignmentPartial; scores: AverageScores }>} recent - Newest-first recent assignments with corpus-derived scores; entry zero is the target.
+ * @param {AverageScores} basisScores - Basis scores for each standing entry.
+ * @returns {ClassSummary} The validated controlled summary with both bases populated.
+ */
+function summaryWithRecentAssignments(
+  classId: string,
+  recent: readonly { assignment: AssignmentPartial; scores: AverageScores }[],
+  basisScores: AverageScores
+): ClassSummary {
+  if (recent.length === 0) throw new Error('Controlled summary requires a target assignment');
+  const alignedScores = () => recent.map(({ scores }) => asMetricScores(scores));
+  const entry = (label: string, suffix: string): MetricStanding => {
+    return {
+      studentId: `${label}-${suffix}`,
+      studentName: `${label} ${suffix} student`,
+      scores: asMetricScores(basisScores),
+      recentAssignmentScores: alignedScores(),
+    };
+  };
+  const standings = (label: string): MetricStandings => {
+    return {
+      top: [entry(label, 'top')],
+      bottom: [entry(label, 'bottom')],
+    };
+  };
+  const target = recent[0].assignment;
+  return ClassSummarySchema.parse({
+    classId,
+    allTasks: {
+      classAverages: asMetricScores(basisScores),
+      standings: standings('all-tasks'),
+    },
+    baseline: {
+      available: true,
+      classAverages: asMetricScores(basisScores),
+      standings: standings('baseline'),
+    },
+    target: { ...identityOf(target), averages: asMetricScores(basisScores) },
+    recentAssignments: recent.map(({ assignment }) => identityOf(assignment)),
+  });
+}
+
+/** Asserts both standings bases align every top/bottom score array with the shared count.
+ * @param {ReturnType<typeof mergeClassMetadata>} result - Emitted metadata snapshot.
+ * @param {AverageScores[]} expectedScores - Expected newest-first score arrays.
+ * @returns {void}
+ */
+function expectAlignedStandings(
+  result: ReturnType<typeof mergeClassMetadata>,
+  expectedScores: AverageScores[]
+): void {
+  for (const standings of [result.allTaskStandings, result.baselineStandings]) {
+    if (standings === null) throw new Error('Expected a populated standings basis');
+    for (const list of ['top', 'bottom'] as const) {
+      expect(standings[list]).toHaveLength(1);
+      expect(standings[list][0].recentAssignmentScores).toEqual(expectedScores);
+    }
+  }
 }
 
 /** Maps one list of analyser-native standings to persisted score sets.
@@ -167,7 +260,7 @@ describe('mergeClassMetadata stable rolling history', () => {
 
     const result = mergeClassMetadata(
       previous,
-      summaryForScores(target, scores, scores),
+      summaryForScores(classFull, target, scores, scores),
       SUMMARY_TIME
     );
 
@@ -192,7 +285,11 @@ describe('mergeClassMetadata stable rolling history', () => {
     const clock = vi.spyOn(Date, 'now').mockImplementation(() => {
       throw new Error('Pure merge read clock');
     });
-    const result = mergeClassMetadata(null, summaryForScores(target, scores, scores), SUMMARY_TIME);
+    const result = mergeClassMetadata(
+      null,
+      summaryForScores(classFull, target, scores, scores),
+      SUMMARY_TIME
+    );
     expect(result).toEqual({
       classAverages: { ...scores, updatedAt: SUMMARY_TIME },
       recentAssignments: [
@@ -216,14 +313,14 @@ describe('mergeClassMetadata stable rolling history', () => {
     const scores = recentEntry(classFull, 0).averages;
     let metadata = mergeClassMetadata(
       null,
-      summaryForScores(classFull.assignments[0], scores, scores),
+      summaryForScores(classFull, classFull.assignments[0], scores, scores),
       SUMMARY_TIME
     );
     for (const index of [1, SECOND_INDEX, HISTORY_LIMIT]) {
       const before = structuredClone(metadata);
       metadata = mergeClassMetadata(
         metadata,
-        summaryForScores(classFull.assignments[index], scores, scores),
+        summaryForScores(classFull, classFull.assignments[index], scores, scores),
         SUMMARY_TIME
       );
       expect(
@@ -268,7 +365,7 @@ describe('mergeClassMetadata stable rolling history', () => {
     } as const;
     const result = mergeClassMetadata(
       previous,
-      summaryForScores(target, replacement, replacement),
+      summaryForScores(classFull, target, replacement, replacement),
       SUMMARY_TIME
     );
     expect(result.recentAssignments.map((entry: RecentAssignment) => entry.assignmentId)).toEqual(
@@ -298,7 +395,7 @@ describe('mergeClassMetadata stable rolling history', () => {
     const target = { ...classFull.assignments[0], updatedAt: SUMMARY_TIME };
     const result = mergeClassMetadata(
       previous,
-      summaryForScores(target, entries[0].averages, entries[0].averages),
+      summaryForScores(classFull, target, entries[0].averages, entries[0].averages),
       SUMMARY_TIME
     );
     expect(result.recentAssignments.map((entry: RecentAssignment) => entry.assignmentId)).toEqual([
@@ -338,5 +435,61 @@ describe('mergeClassMetadata stable rolling history', () => {
     });
     expect(result.baselineStandings).toEqual(projectStandings(summary.baseline.standings!));
     expect(ABClassMetadataSchema.parse(result)).toEqual(result);
+  });
+
+  it('narrows three stored entries to two when the fresh summary has fewer recent assignments', () => {
+    const { classFull } = createMetadataRefreshFixture('large-representative');
+    const previous = classFull.metadata;
+    if (previous === null) throw new Error('Expected canonical stored history');
+    if (previous.recentAssignments.length !== HISTORY_LIMIT)
+      throw new Error('Expected three stored history entries');
+
+    // One stored assignment was deleted; the two survivors are reassessed so the
+    // newer one sits above every stored version and the freshness gate returns changed.
+    const survivors = classFull.assignments.slice(0, TWO_RECENT_ENTRIES);
+    if (survivors.length !== TWO_RECENT_ENTRIES)
+      throw new Error('Expected two surviving fresh assignments');
+    const target = { ...survivors[1], updatedAt: NEW_SOURCE_TIME };
+    classFull.assignments = [survivors[0], target];
+    expect(getMetadataRefreshDecision(classFull)).toEqual({ status: 'changed', target });
+
+    const targetRecentScore = recentEntry(classFull, 1).averages;
+    const olderRecentScore = recentEntry(classFull, 0).averages;
+    const summary = summaryWithRecentAssignments(
+      classFull.classId,
+      [
+        { assignment: target, scores: targetRecentScore },
+        { assignment: survivors[0], scores: olderRecentScore },
+      ],
+      olderRecentScore
+    );
+
+    const result = mergeClassMetadata(previous, summary, SUMMARY_TIME);
+
+    expect(result.recentAssignments).toHaveLength(TWO_RECENT_ENTRIES);
+    expect(result.recentAssignments.map((entry) => entry.assignmentId)).toEqual([
+      target.assignmentId,
+      previous.recentAssignments[0].assignmentId,
+    ]);
+    expectAlignedStandings(result, [targetRecentScore, olderRecentScore]);
+    expect(NonNullableABClassMetadataSchema.parse(result)).toEqual(result);
+  });
+
+  it('shares one length between history and scores when a fresh summary lists three assignments', () => {
+    const { classFull } = createMetadataRefreshFixture('small');
+    const recent = classFull.assignments
+      .map((assignment, index) => ({ assignment, scores: recentEntry(classFull, index).averages }))
+      .toReversed()
+      .slice(0, HISTORY_LIMIT);
+    if (recent.length !== HISTORY_LIMIT) throw new Error('Expected three fresh recent assignments');
+    const basisScores = recent[0].scores;
+    const summary = summaryWithRecentAssignments(classFull.classId, recent, basisScores);
+
+    const result = mergeClassMetadata(null, summary, SUMMARY_TIME);
+
+    expect(result.recentAssignments).toHaveLength(1);
+    expect(result.recentAssignments[0].assignmentId).toBe(recent[0].assignment.assignmentId);
+    expectAlignedStandings(result, [basisScores]);
+    expect(NonNullableABClassMetadataSchema.parse(result)).toEqual(result);
   });
 });

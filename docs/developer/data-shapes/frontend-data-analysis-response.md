@@ -307,10 +307,13 @@ through `projectAverageScores()`:
 | `error`              | `'E'`                     | Distinct from N and excluded.                                                                 |
 | `excluded`           | `'excluded'`              | Explicit mapping from the analyser's `value: null`; metadata metric null is invalid.          |
 
-Each standing's `recentAssignmentScores` is trimmed to the persisted rolling history length,
-newest-first, so a fresh single-entry write cannot emit a three-score array rejected by the
-persisted schema. The rolling history is taken from the previous snapshot plus the summary target
-and is never seeded from the summary's three assignments.
+Both the emitted `recentAssignments` and every standing's `recentAssignmentScores` are trimmed to
+one common count, newest-first: the smaller of the persisted history length and the summary's own
+`recentAssignments.length`. When stored history is longer, it is narrowed to the summary's score
+count; when the summary has more scores, the score arrays are trimmed to the history length. This
+keeps `recentAssignments.length` equal to every standing's `recentAssignmentScores.length`, as the
+persisted schema requires, without fabricating score data. History is still taken from the previous
+snapshot plus the summary target and is never seeded from the summary's three assignments.
 
 The exact source timestamp, summary clock, stable immutable rolling-three merge and
 `{ classId, metadata }` update are owned by
@@ -1289,7 +1292,7 @@ writer consumption. See also
 - **`ClassSummaryAnalyser` single-owner guarantee**: a dedicated analyser registered in `DataAnalysisService` in its own `classSummaryAnalyser` field owns all new calculation. It composes `AveragingAnalyser` and reuses its exported `rollupMetric`, `computeOverallComposite` and `convertToBaselineExcluded` helpers; all new calculation stays in the service. `analyse(input, 'averaging')` and `analyseAssignmentSummary()` keep their existing contracts.
 - **Whole-class baseline keys for isolated scores**: baseline selection is derived once from the full-class baseline analysis. Isolated per-assignment analyses filter task metrics against those whole-class baseline keys through `rollupMetric` and `computeOverallComposite`, and students with no baseline metrics follow the `convertToBaselineExcluded` path.
 - **`ClassSummarySchema` strict validation**: a strict in-memory schema owned by `classSummary.zod.ts` validates the analyser-native `MetricResult` values, `target`, `recentAssignments`, aligned score arrays and the `available` flag, with a refinement asserting that a `studentId` appears in at most one of `top` and `bottom` per basis. It is not a wire or persistence shape.
-- **Writer consumption**: the writer calls `analyseClassSummary(input, { target, recentAssignments })` once from the fresh class read and `mergeClassMetadata(previous: ABClassMetadata, summary: ClassSummary, summaryUpdatedAt: string)` maps all five fields from the summary through `projectAverageScores()` (see [Metadata refresh execution contracts](#metadata-refresh-execution-contracts)). Rolling history, target replacement, newest-first ordering and the freshness gate are unchanged; each standing's `recentAssignmentScores` is trimmed to the persisted history length, newest-first, without seeding history from the summary's assignments.
+- **Writer consumption**: the writer calls `analyseClassSummary(input, { target, recentAssignments })` once from the fresh class read and `mergeClassMetadata(previous: ABClassMetadata, summary: ClassSummary, summaryUpdatedAt: string)` maps all five fields from the summary through `projectAverageScores()` (see [Metadata refresh execution contracts](#metadata-refresh-execution-contracts)). Target replacement, newest-first ordering and the freshness gate are unchanged; the emitted `recentAssignments` and every standing's `recentAssignmentScores` share one common newest-first count, `min(stored history length, summary.recentAssignments.length, MAX_LIST_ENTRIES)`: stored history longer than the summary's scores is narrowed (no fabricated score data), and a summary with more scores has its score arrays trimmed down, without seeding history from the summary's assignments.
 
 `ClassSummary` carries `updatedAt: string | null` on its `target` and `recentAssignments`
 identities: the analyser copies these verbatim from `AssignmentPartial.updatedAt`, which is
