@@ -24,6 +24,7 @@ For each batch, in order:
 5. Run the scoped checks for the touched layers (the `:check` lint variants, type checks, and scoped tests) and fix any failure inside the loop.
 6. Update the review document's progress section: batch status, findings resolved, checks run, commit hash.
 7. Commit the batch as one commit whose message names the findings it resolves. The commit must pass the pre-commit hooks; never bypass them.
+8. Once the batch is successfully completed, call `compact_context` exactly once before moving on. It is asynchronous and takes effect at the next step boundary; it compacts this session only and leaves the review document and its progress section intact.
 
 ## 3. Wrap-up
 
