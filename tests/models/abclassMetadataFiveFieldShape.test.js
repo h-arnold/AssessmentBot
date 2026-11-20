@@ -12,77 +12,71 @@ const STAMP = '2024-06-01T12:00:00.000Z';
 const MAX_STANDINGS = 3;
 
 /**
- * Selects a committed legacy metadata row (classAverages + recentAssignments only)
- * that carries at least one recent assignment, so standing score arrays can be
- * aligned against a real assignment count. The corpus is regenerated from time to
- * time, so the row is selected on structure rather than on a pinned class key. Rows
- * already carrying a new field are excluded: once Section 5 regenerates the views,
- * this helper must never silently switch to a current-shape row.
+ * Derives a legacy two-field probe from a committed metadata row. The new fields are
+ * removed from a current-shape snapshot, so classAverages and recentAssignments still
+ * come from regenerated corpus bytes and the row is selected on structure rather than
+ * on a pinned class key.
+ * @param {string} profile Committed compact profile name.
+ * @param {Function} predicate Row filter over raw metadata snapshots.
+ * @param {string} description Diagnostic describing the required row.
+ * @returns {Object} A cloned, corpus-backed legacy metadata snapshot.
+ */
+function canonicalLegacyRow(profile, predicate, description) {
+  const rows = Object.values(loadBackendModelInputs(profile).classesById)
+    .map((row) => row.metadata)
+    .filter((value) => value && Array.isArray(value.recentAssignments) && predicate(value));
+  if (rows.length === 0) {
+    throw new Error(`Expected a committed ${profile} metadata row ${description}`);
+  }
+  const legacy = structuredClone(rows[0]);
+  for (const field of NEW_FIELDS) {
+    delete legacy[field];
+  }
+  return legacy;
+}
+
+/**
+ * Selects a committed metadata row with at least one recent assignment, so standing
+ * score arrays can be aligned against a real assignment count.
  * @param {string} profile Committed compact profile name.
  * @returns {Object} A cloned, corpus-backed legacy metadata snapshot.
  */
 function canonicalLegacy(profile) {
-  const rows = Object.values(loadBackendModelInputs(profile).classesById)
-    .map((row) => row.metadata)
-    .filter(
-      (value) =>
-        value &&
-        Array.isArray(value.recentAssignments) &&
-        value.recentAssignments.length > 0 &&
-        NEW_FIELDS.every((field) => !Object.hasOwn(value, field))
-    );
-  if (rows.length === 0) {
-    throw new Error(`Expected a committed ${profile} legacy metadata row with recent assignments`);
-  }
-  return rows[0];
+  return canonicalLegacyRow(
+    profile,
+    (value) => value.recentAssignments.length > 0,
+    'with recent assignments'
+  );
 }
 
 /**
- * Selects a committed legacy metadata row with an exact recent-assignment count, used to
+ * Selects a committed metadata row with an exact recent-assignment count, used to
  * align standing score arrays with a known assignment count.
  * @param {string} profile Committed compact profile name.
  * @param {number} count Required number of recent assignments.
  * @returns {Object} A cloned, corpus-backed legacy metadata snapshot.
  */
 function canonicalLegacyWithRecentCount(profile, count) {
-  const rows = Object.values(loadBackendModelInputs(profile).classesById)
-    .map((row) => row.metadata)
-    .filter(
-      (value) =>
-        value &&
-        Array.isArray(value.recentAssignments) &&
-        value.recentAssignments.length === count &&
-        NEW_FIELDS.every((field) => !Object.hasOwn(value, field))
-    );
-  if (rows.length === 0) {
-    throw new Error(
-      `Expected a committed ${profile} legacy metadata row with ${count} recent assignments`
-    );
-  }
-  return rows[0];
+  return canonicalLegacyRow(
+    profile,
+    (value) => value.recentAssignments.length === count,
+    `with ${count} recent assignments`
+  );
 }
 
 /**
- * Selects a committed legacy metadata row with an empty recentAssignments array.
+ * Selects a committed metadata row with an empty recentAssignments array.
  * Used to prove null placeholders are emitted independently of recent-entry count.
  * Only `small` and `medium` carry such a row today; `large-representative` has none.
  * @param {string} profile Committed compact profile name.
  * @returns {Object} A cloned, corpus-backed legacy metadata snapshot.
  */
 function canonicalLegacyWithoutRecent(profile) {
-  const rows = Object.values(loadBackendModelInputs(profile).classesById)
-    .map((row) => row.metadata)
-    .filter(
-      (value) =>
-        value &&
-        Array.isArray(value.recentAssignments) &&
-        value.recentAssignments.length === 0 &&
-        NEW_FIELDS.every((field) => !Object.hasOwn(value, field))
-    );
-  if (rows.length === 0) {
-    throw new Error(`Expected a committed ${profile} legacy metadata row with no recent entries`);
-  }
-  return rows[0];
+  return canonicalLegacyRow(
+    profile,
+    (value) => value.recentAssignments.length === 0,
+    'with no recent entries'
+  );
 }
 
 const scoreSet = (value = 3) => ({

@@ -29,8 +29,8 @@ const classesByProfile = deepFreeze({
 
 /**
  * Derives the five-field metadata value emitted by the response parsers from a raw
- * committed snapshot: a legacy two-field snapshot gains three null placeholders and
- * a null snapshot stays null.
+ * committed snapshot: supplied new-field values are preserved, a legacy two-field snapshot
+ * gains three null placeholders and a whole-metadata null stays null.
  * @param {unknown} rawMetadata - Raw metadata from a committed class-partial row.
  * @returns {unknown} The normalised metadata expectation.
  */
@@ -39,11 +39,12 @@ function normalisedMetadataExpectation(rawMetadata: unknown): unknown {
   if (typeof rawMetadata !== 'object' || Array.isArray(rawMetadata)) {
     throw new TypeError('Expected a null or object metadata snapshot');
   }
+  const raw = rawMetadata as Record<string, unknown>;
   return {
-    ...rawMetadata,
-    baselineAverages: null,
-    allTaskStandings: null,
-    baselineStandings: null,
+    ...raw,
+    baselineAverages: raw.baselineAverages ?? null,
+    allTaskStandings: raw.allTaskStandings ?? null,
+    baselineStandings: raw.baselineStandings ?? null,
   };
 }
 

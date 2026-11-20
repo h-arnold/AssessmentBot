@@ -20,17 +20,18 @@ const replacement = Object.values(loadBackendModelInputs('medium').classesById).
   (row) => row.metadata
 )?.metadata;
 
-// Legacy corpus snapshots carry two fields; writes emit the current five-field shape with
-// null placeholders while the supplied fields stay unchanged.
-const emitted = (value) =>
-  value === null
-    ? null
-    : {
-        ...structuredClone(value),
-        baselineAverages: null,
-        allTaskStandings: null,
-        baselineStandings: null,
-      };
+// Writes emit the current five-field shape: supplied new-field values are preserved, a legacy
+// two-field snapshot gains three null placeholders and a whole-metadata null stays null.
+const emitted = (value) => {
+  if (value === null) return null;
+  const raw = structuredClone(value);
+  return {
+    ...raw,
+    baselineAverages: raw.baselineAverages ?? null,
+    allTaskStandings: raw.allTaskStandings ?? null,
+    baselineStandings: raw.baselineStandings ?? null,
+  };
+};
 
 /**
  * Calls the global `apiHandler` and parses the transport string it returns.

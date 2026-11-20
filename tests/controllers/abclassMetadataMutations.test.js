@@ -15,12 +15,18 @@ const ABClassMetadataValidationError =
 
 const clone = (value) => structuredClone(value);
 
-// Legacy corpus snapshots carry two fields; reads and writes emit the current five-field
-// shape with null placeholders while the original fields stay unchanged.
-const emitted = (value) =>
-  value === null
-    ? null
-    : { ...clone(value), baselineAverages: null, allTaskStandings: null, baselineStandings: null };
+// Mutations emit the current five-field shape: supplied new-field values are preserved, a legacy
+// two-field snapshot gains three null placeholders and a whole-metadata null stays null.
+const emitted = (value) => {
+  if (value === null) return null;
+  const raw = clone(value);
+  return {
+    ...raw,
+    baselineAverages: raw.baselineAverages ?? null,
+    allTaskStandings: raw.allTaskStandings ?? null,
+    baselineStandings: raw.baselineStandings ?? null,
+  };
+};
 const canonical = loadBackendModelInputs('small');
 const sourceSnapshot = Object.values(loadBackendModelInputs('medium').classesById).find(
   (row) => row.metadata?.recentAssignments.length === 3

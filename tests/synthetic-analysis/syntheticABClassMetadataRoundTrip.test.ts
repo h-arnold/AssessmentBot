@@ -21,22 +21,32 @@ const canonicalClasses = loadSyntheticAnalysisProfile(PROFILE, 'classesById') as
   string,
   Record<string, unknown>
 >;
+const FIVE_FIELD_KEYS = [
+  'classAverages',
+  'recentAssignments',
+  'baselineAverages',
+  'allTaskStandings',
+  'baselineStandings',
+] as const;
 const sourcePartial = canonicalPartials.find((row) => row.metadata !== null)!;
 const classId = String(sourcePartial.classId);
-const replacement = ABClassMetadataSchema.parse(sourcePartial.metadata);
-// Read projections normalise the committed legacy fixture into the five-field shape;
-// derive that expectation from the raw fixture itself, independently of the schema parse.
+const rawMetadata = sourcePartial.metadata as Record<string, unknown>;
+// The replacement is derived from the fixture's own five fields; after regeneration it carries
+// real supplied standings and baseline rather than null placeholders.
+const replacement = ABClassMetadataSchema.parse(rawMetadata);
+// Read projections emit all five fields. Derive the expectation from the raw bytes, not from the
+// schema under test: any new field absent from the raw fixture normalises to an enumerable null.
 const normalisedSourceMetadata = {
-  ...(sourcePartial.metadata as Record<string, unknown>),
-  baselineAverages: null,
-  allTaskStandings: null,
-  baselineStandings: null,
+  ...rawMetadata,
+  baselineAverages: rawMetadata.baselineAverages ?? null,
+  allTaskStandings: rawMetadata.allTaskStandings ?? null,
+  baselineStandings: rawMetadata.baselineStandings ?? null,
 };
-// Raw dispatch bytes omit null-valued properties, so they carry only the two stored fields.
-const rawReplacement = {
-  classAverages: replacement?.classAverages,
-  recentAssignments: replacement?.recentAssignments,
-};
+// Raw dispatch bytes omit null-valued properties; derive them from the raw fixture so the
+// expectation follows regeneration instead of pinning the current two-field literal.
+const rawReplacement = Object.fromEntries(
+  Object.entries(rawMetadata).filter(([, value]) => value !== null)
+);
 
 function installRunner(bridge: ReturnType<typeof createApiHandlerRoundTripBridge>): void {
   vi.stubGlobal('google', {
@@ -69,6 +79,39 @@ describe('ABClass metadata real dispatcher round trip', () => {
     expect(partial?.metadata).toEqual(normalisedSourceMetadata);
     expect(ClassPartialSchema.parse(partial).metadata).toEqual(normalisedSourceMetadata);
     expect(canonicalClasses[classId].metadata).toEqual(sourcePartial.metadata);
+  });
+
+  it('commits a five-field source snapshot in the regenerated fixture', () => {
+    expect(Object.keys(rawMetadata).sort()).toEqual([...FIVE_FIELD_KEYS].sort());
+    expect(normalisedSourceMetadata).toEqual(rawMetadata);
+    expect(replacement).toEqual(rawMetadata);
+  });
+
+  it('round trips a five-field replacement with supplied standings through update and upsert', async () => {
+    const bridge = createApiHandlerRoundTripBridge({ vi, profileName: PROFILE });
+    installRunner(bridge);
+    const base = {
+      classAverages: rawMetadata.classAverages,
+      recentAssignments: rawMetadata.recentAssignments,
+    };
+    const supplied = ABClassMetadataSchema.parse(suppliedFiveField(base));
+    for (const mutate of [
+      (metadata: typeof supplied) => updateABClass({ classId, metadata }),
+      (metadata: typeof supplied) =>
+        upsertABClass({
+          classId,
+          cohortKey: 'cohort-0',
+          yearGroupKey: 'year-group-7',
+          courseLength: sourcePartial.courseLength as number,
+          metadata,
+        }),
+    ]) {
+      await mutate(supplied);
+      expect((await getABClass({ classId }))?.metadata).toEqual(supplied);
+      expect((await getABClassPartials()).find((row) => row.classId === classId)?.metadata).toEqual(
+        supplied
+      );
+    }
   });
 
   it('retains, clears, and replaces metadata through queued update and upsert requests', async () => {
@@ -203,3 +246,30 @@ describe('ABClass metadata real dispatcher round trip', () => {
     expect(console.debug).toBe(ownedSpy);
   });
 });
+
+/**
+ * Builds a five-field snapshot from a two-field fixture base using deterministic supplied
+ * standings derived only from that base's own scores and recent entries.
+ * @param base - Legacy class averages and recent assignments from the raw fixture.
+ * @returns A controlled five-field raw snapshot.
+ */
+function suppliedFiveField(base: Record<string, unknown>): Record<string, unknown> {
+  const scores = { ...(base.classAverages as Record<string, unknown>) };
+  delete scores.updatedAt;
+  const recent = base.recentAssignments as Array<{ averages: Record<string, unknown> }>;
+  const standing = {
+    studentId: 'student-0',
+    studentName: 'Student 0',
+    scores: { ...scores },
+    recentAssignmentScores: recent.map((assignment) => ({ ...assignment.averages })),
+  };
+  return {
+    ...base,
+    baselineAverages: {
+      ...scores,
+      updatedAt: (base.classAverages as Record<string, unknown>).updatedAt,
+    },
+    allTaskStandings: { top: [standing], bottom: [] },
+    baselineStandings: { top: [], bottom: [] },
+  };
+}

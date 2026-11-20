@@ -12,17 +12,18 @@ import {
 const clone = (value) => structuredClone(value);
 const teacherGlobal = { Teacher: () => Teacher };
 
-// Legacy corpus snapshots carry two fields; emitted metadata carries three null placeholders
-// for the new fields while the original fields stay unchanged.
-const emitted = (value) =>
-  value === null
-    ? null
-    : {
-        ...structuredClone(value),
-        baselineAverages: null,
-        allTaskStandings: null,
-        baselineStandings: null,
-      };
+// Emitted metadata keeps the five-field shape: supplied new-field values are preserved, a legacy
+// two-field snapshot gains three null placeholders and a whole-metadata null stays null.
+const emitted = (value) => {
+  if (value === null) return null;
+  const raw = structuredClone(value);
+  return {
+    ...raw,
+    baselineAverages: raw.baselineAverages ?? null,
+    allTaskStandings: raw.allTaskStandings ?? null,
+    baselineStandings: raw.baselineStandings ?? null,
+  };
+};
 let saved;
 
 afterEach(() => {

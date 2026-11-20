@@ -12,17 +12,18 @@ const clone = (value) => structuredClone(value);
 const canonicalClasses = (profile) => loadBackendModelInputs(profile).classesById;
 const teacherGlobal = { Teacher: () => Teacher };
 
-// Legacy corpus snapshots carry only the two original fields. Reads normalise in memory
-// and emit the three new fields as null placeholders; assert both original fields survive.
-const withNullPlaceholders = (value) =>
-  value === null
-    ? null
-    : {
-        ...clone(value),
-        baselineAverages: null,
-        allTaskStandings: null,
-        baselineStandings: null,
-      };
+// Normalised metadata keeps the five-field shape: supplied new-field values are preserved, a
+// legacy two-field snapshot gains three null placeholders and a whole-metadata null stays null.
+const withNullPlaceholders = (value) => {
+  if (value === null) return null;
+  const raw = clone(value);
+  return {
+    ...raw,
+    baselineAverages: raw.baselineAverages ?? null,
+    allTaskStandings: raw.allTaskStandings ?? null,
+    baselineStandings: raw.baselineStandings ?? null,
+  };
+};
 
 function invalidMetadata(canonicalMetadata) {
   const invalid = clone(canonicalMetadata);

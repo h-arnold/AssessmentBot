@@ -2,7 +2,7 @@
 
 ## Delivery status
 
-- Current section: Section 4 complete — writer integration delivered (single `analyseClassSummary` call; 3-arg `mergeClassMetadata`; five-field snapshot; Option A score trimming per user decision). RED and GREEN loops reviewed PASS; docs synced; plan compacted; section regression gate passed (0 regressions, 0 new failures); committed and pushed. Section 5 (synthetic generator/validator extension and fixture regeneration) is next. Sections 1–3 complete — backend metadata validator, frontend metadata Zod schema, and typed baseline error + ClassSummary analyser/service registration all delivered; RED and GREEN loops reviewed PASS; authored files kept under the binding line gates; docs synced; section regression gates passed (0 regressions, 0 new failures). Section 3 committed as `43876527` + `668f823d` on `feat/enahncedABClassMetadata-impl`, pushed.
+- Current section: Section 5 complete — synthetic generator/validator extended to the five-field supplied-snapshot shape, six committed views regenerated via CLI, downstream expectation helpers updated. RED and GREEN loops reviewed PASS; docs synced; plan compacted; section regression gate passed (0 regressions, 0 new failures); committed and pushed. Regression and contract hardening is next. Sections 1–4 complete — backend metadata validator, frontend metadata Zod schema, typed baseline error + ClassSummary analyser/service registration, and writer integration all delivered; RED and GREEN loops reviewed PASS; authored files kept under the binding line gates; docs synced; section regression gates passed (0 regressions, 0 new failures). Section 4 committed as `1665f6c3` + `86f227d5` on `feat/enahncedABClassMetadata-impl`, pushed.
 - Regression-checker session ID: `feat-enahncedABClassMetadata` (passed explicitly; this worktree is detached HEAD, so branch-based resolution is unavailable).
 - Baseline report: `.ts-regression-checker/reports/session-feat-enahncedABClassMetadata/baseline/baseline.txt` (created 2026-11-19T22:39:22Z; 6 of 8 checks passing, zero regressions, zero new failures).
 - Accepted baseline debt: (a) `backend-lint-check` fails on 4 pre-existing `max-lines` warnings in untouched test files (`assignmentDefinitionPartials.unit.test.js`, `dbManager.test.js`, `classroomApiClient.test.js`, `batchUpdateUtility.test.js`); (b) `frontend-e2e-check` recorded exit 143 after an environment-hung Playwright process was terminated during baseline capture — this plan adds no E2E tests (no user-visible change) and no E2E file is in the authorised change surface. These files and checks are outside every section's change surface; no section may repair them.
@@ -353,79 +353,42 @@ RED and GREEN loops both reviewed PASS (GREEN verdict PASS, no Critical/Improvem
 
 ## Section 5 — Synthetic generator/validator extension and fixture regeneration
 
-### Objective
+### Outcome (compacted)
 
-Extend the test-only metadata generator and validator to the new shape, regenerate the three committed metadata views through the CLI, and update parity/round-trip suites.
+The test-only synthetic metadata generator and raw validator now emit and accept the current five-field shape without changing generation determinism or the committed profile matrix. `npm run fixtures:synthetic` regenerated exactly the six class-bearing committed views, and the parity, round-trip and new generator/validator specs prove both shapes survive generation, validation, reads and whole replacement. RED and GREEN loops both reviewed PASS and all section checks passed; docs sync runs in parallel under a separate Docs agent, with the pending gate/commit lines left in the authoritative Implementation notes below.
 
-### Constraints
+### Retained for later sections
 
-- Generator values remain supplied snapshots: no averaging, no clock, no Faker consumption; deterministic seeds and byte reproducibility unchanged.
-- Only `classPartials.json` and `classesById.json` change per compact profile; other views rewrite byte-identically.
-- No new profile, view, generator stage or rescale; no relaxation of realism/type gates.
-- **File separation**: `generateClassMetadata.js` **125 lines** → ~165; `validateClassMetadata.js` **256 lines** → ~320. Both well under their applicable limits; keep the new field logic in these existing stages rather than adding a third script.
+**Generator rules (`scripts/synthetic-test-data/generateClassMetadata.js`, 196 lines).** Every non-null class emits `baselineAverages`, `allTaskStandings` and `baselineStandings`:
 
-### Delegation mandatory reads (when sub-agents are used)
+- `baselineAverages` is a fixed one-step `SCORE_TEMPLATES` rotation from the all-task basis (`(templateIndex + BASELINE_TEMPLATE_OFFSET) % 5`) with `updatedAt` reused from the class's newest generated assignment; no averaging or cross-metric relation.
+- Both standings bases are `{top, bottom}` and each carries exactly one deterministic supplied entry; `studentId`/`studentName` are derived only from class index + template index + basis ordinal (`ALL_TASK_STANDING_ORDINAL = 0`, `BASELINE_STANDING_ORDINAL = 1`); `scores` is a plain four-metric template set with no timestamp; `recentAssignmentScores.length === recentAssignments.length`.
+- Whole-metadata null cases are unchanged: `small` class-0, `large-representative` class-0, none for `medium`. The `COMPACT_MATRIX` and five-class `large-full` cycle are untouched.
+- No clock read, Faker consumption or random draw; byte reproducibility is preserved. The `@remarks` on `generateClassMetadata()` records that generated scores are supplied snapshots and never an oracle for calculated averages.
 
-Testing Specialist: `@tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts`, `@tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts`, `@docs/developer/testing/synthetic-test-data.md`
+**Raw validator rules (`scripts/synthetic-test-data/validateClassMetadata.js`, 359 lines).** Accepts exactly the legacy two-field or current five-field shape; whole `null` is accepted, 3/4-field subsets and extra keys are rejected (`hasExactKeys` selects the shape, `assertKeys` owns the diagnostics). Nested rules mirror the backend and frontend: exact keys, four independently bounded scores, canonical UTC millisecond timestamps, dense 0–3 standings lists, trimmed identifiers and `recentAssignmentScores.length === recentAssignments.length`. Present-undefined and custom-prototype nested nodes reject via `assertKeys`; existing helpers are reused with no duplicated score/timestamp logic.
 
-Implementation: `@scripts/synthetic-test-data/generateClassMetadata.js`, `@scripts/synthetic-test-data/validateClassMetadata.js`, `@docs/developer/testing/synthetic-test-data.md`, `@docs/developer/data-shapes/abclass.md`
+**CLI regeneration and fixture shape.** `npm run fixtures:synthetic` rewrote EXACTLY six committed files — `classPartials.json` + `classesById.json` for `small`, `medium`, `large-representative`. All other views (manifest, definitions, assignments, editableDefinitions, assignmentsByKey) rewrite byte-identically; no new profile, view, generator stage or rescale; no generation-time/RSS measurement. The committed-fixture comparison suite passes 8/8 after regeneration. Profiles remain `small` (3 classes), `medium` (4), `large-representative` (4); baseline eligibility was verified during planning, so no generator extension for baseline data was needed.
 
-Code Reviewer: `@SPEC.md`, `@scripts/synthetic-test-data/generateClassMetadata.js`, `@docs/developer/testing/synthetic-test-data.md`
+**Downstream expectation updates.** Eleven test helpers changed from forcing the three new fields to `null` to deriving `raw.<field> ?? null` from the regenerated bytes (legacy two-field snapshots still gain null placeholders; whole null stays null): `classReadServices.metadata.spec.ts` (`normalisedMetadataExpectation`); `tests/api/apiHandler/abclassMetadata{Reads,Writes}.test.js`; `tests/controllers/abclassMetadata{Lifecycle,Responses,Mutations,Persistence}.test.js`; `tests/controllers/abclassEmbeddedAssignmentPersistence.test.js`; `tests/models/abclassMetadata{Integration,FiveFieldShape}.test.js`; `tests/models/abclassEmbeddedAssignmentSerialisation.test.js`. `tests/models/abclassMetadataFiveFieldShape.test.js` was an authorised expansion: a full backend run proved its three legacy selectors excluded every regenerated row, so a shared `canonicalLegacyRow(profile, predicate, description)` helper now selects a current-shape row structurally, clones it and deletes the three new fields; the controlled `fiveField()` probes are unchanged. No assertion was relaxed, deleted or re-anchored and no regenerated literal was hardcoded.
 
-### Shared helper plan
+**Shared-helper decisions and delivered file surface.** Both helpers are `extend` decisions on their single owning modules (`generateClassMetadata.js`, `validateClassMetadata.js`), with no third script. Files and line counts: `scripts/synthetic-test-data/generateClassMetadata.js` 196 (was 125), `scripts/synthetic-test-data/validateClassMetadata.js` 359 (was 256), new sibling spec `tests/synthetic-analysis/syntheticABClassMetadataGeneratorValidator.test.ts` 272 (new), `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts` 359 (was 298), `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` 275 (was 205), plus the eleven expectation-helper files above and the six regenerated fixture views. All are within the applicable line gates.
 
-1. Helper: metadata generator stage
-   - Decision: `extend`
-   - Owning module/path: `scripts/synthetic-test-data/generateClassMetadata.js`
-   - Call-site rationale: single generation stage already projects metadata into both class views.
-   - Relevant canonical doc target: `@docs/developer/testing/synthetic-test-data.md` § ABClass metadata generator capability
-   - Planned doc status: `Not implemented` for the new field coverage.
-2. Helper: raw metadata validator
-   - Decision: `extend`
-   - Owning module/path: `scripts/synthetic-test-data/validateClassMetadata.js`
-   - Call-site rationale: single raw-shape validator used by generation and committed-fixture validation.
-
-### Data-shape planning block
-
-- Changes: test-only fixture data shape, not a production contract; mirrors Sections 1–2.
-- Planned-only entries: `@docs/developer/data-shapes/abclass.md` § Planned changes (Frontend parity bullet) and `@docs/developer/testing/synthetic-test-data.md` § ABClass metadata generator capability (the `Not implemented` new-field coverage paragraph).
-- Reconcile both markers in the docs pass; `SPEC.md` is the source contract, not a planned-only data-shape entry.
-
-### Canonical-fixture note
-
-- Profiles/views: committed `small` (3 classes), `medium` (4), `large-representative` (4), both `classPartials.json` and `classesById.json`.
-- Baseline-eligibility already verified with real analysis; no generator extension for baseline data.
-- Regeneration rewrites committed bytes; use the CLI only and verify byte-for-byte reproducibility via the committed-fixture comparison suite. No large-profile rescale is planned, so no generation-time/RSS measurement is required.
-
-### Acceptance criteria
-
-- Generated snapshots include the three new fields with deterministic, documented coverage. Legacy `null` cases are retained exactly where the current matrix has them: `small` class 0 and `large-representative` class 0; `medium` has no legacy case today and keeps none. Every non-null case gains current-shape fields.
-- Parity test proves frontend Zod and backend validator agree on both shapes for all three profiles.
-- Round-trip test proves legacy/current metadata survives reads, clear-on-null and whole replacement.
-- Regenerated committed views are byte-reproducible; no unrelated view changes.
-
-### Required test cases (Red first)
-
-1. Generator emits new fields for each profile with deterministic values; no clock/Faker consumption added.
-2. Raw validator accepts legacy and current shapes and rejects malformed nested fields.
-3. Frontend/backend parity passes for all three compact profiles on both shapes.
-4. Dispatcher round trip preserves null placeholders and whole replacement for the new shape.
-5. Committed-fixture regeneration comparison passes after CLI regeneration.
+**Docs sync and deferred pointers.** Docs sync is running in parallel under a separate Docs agent that owns the canonical docs; the Implementation notes below hold the pending lines. Reconciliation targets are the `abclass.md` § Planned-changes Frontend-parity/snapshot-source bullets and the `synthetic-test-data.md` § ABClass metadata generator capability `Not implemented` new-field paragraph. The `abclass.md` snapshot-source bullet and the `data-analysis-architecture.md` analyser description remain deferred to the final Documentation and rollout pass; nitpicks are logged in `.opencode/scratchpad/feat-enahncedABClassMetadata-deferred-findings.md`, and the `## Deferred and Out-of-Scope Findings` ledger in this plan is unchanged. No new deferred finding was raised by this section.
 
 ### Section checks
 
-- `npm run test:synthetic -- tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts`
-- `npm run test:synthetic -- tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts`
-- Fixture regeneration command from `@docs/developer/testing/synthetic-test-data.md` § Commands; `npm run lint:synthetic:check`.
-- Confirm only the two class-bearing views changed per profile.
-
-### Optional `@remarks` JSDoc follow-through
-
-Record that generated scores are supplied snapshots and never an oracle for calculated averages.
+Passed: RED and GREEN loops both reviewed PASS (GREEN verdict PASS, no findings). Synthetic 801/801; backend 275 files / 3792 tests; frontend 335 files / 3260 tests; lint checks 0 errors with only the accepted baseline `max-lines` warnings in untouched files; `typecheck:all` exit 0; Prettier clean. The committed-fixture comparison suite passed 8/8 after regeneration. No E2E run (no user-visible change).
 
 ### Implementation notes / deviations / follow-up
 
-- Record regeneration output and any fixture-byte differences observed.
+- **Generator (`generateClassMetadata.js`, 125 → 196 lines):** every non-null class now emits `baselineAverages` (a fixed one-step template rotation from the all-task basis plus `updatedAt` reused from the class's newest generated assignment) and both `allTaskStandings`/`baselineStandings` (`{top, bottom}` with one deterministic supplied entry each; `studentId`/`studentName` derived from class index + template index + basis ordinal; `scores` a plain four-metric template set; `recentAssignmentScores.length === recentAssignments.length`). No clock/Faker/random draw; byte reproducibility preserved. `@remarks` records that generated scores are supplied snapshots and never an oracle for calculated averages. Whole-metadata null cases unchanged (small class-0, large-representative class-0, none for medium).
+- **Raw validator (`validateClassMetadata.js`, 256 → 359 lines):** accepts exactly the legacy two-field or current five-field shape (whole `null` accepted; partial 3/4-field subsets and extra keys rejected), with nested rules mirroring the backend/frontend — exact keys, four bounded scores, canonical timestamps, dense 0–3 standings lists, trimmed identifiers, and `recentAssignmentScores.length === recentAssignments.length`. Present-undefined and custom-prototype nested nodes reject via the existing `assertKeys`; existing helpers reused, no duplicated score/timestamp logic.
+- **CLI regeneration:** `npm run fixtures:synthetic` rewrote EXACTLY six committed files — `classPartials.json` + `classesById.json` for `small`, `medium`, `large-representative`. No manifest, definition, assignment, editableDefinitions or assignmentsByKey view changed; no large-full generation or rescale. Committed-fixture comparison test green (8/8) after regeneration.
+- **Downstream expectation updates (consequence of regenerated bytes, in scope under §3.4.1 rule 2):** eleven test helpers changed from forcing the three new fields to `null` to deriving `raw.<field> ?? null` (legacy two-field snapshots still gain null placeholders; whole null stays null). Files: `classReadServices.metadata.spec.ts` (`normalisedMetadataExpectation`); `tests/api/apiHandler/abclassMetadata{Reads,Writes}.test.js`; `tests/controllers/abclassMetadata{Lifecycle,Responses,Mutations,Persistence}.test.js`; `tests/controllers/abclassEmbeddedAssignmentPersistence.test.js`; `tests/models/abclassMetadata{Integration,FiveFieldShape}.test.js`; `tests/models/abclassEmbeddedAssignmentSerialisation.test.js`. `abclassMetadataFiveFieldShape.test.js` was an authorised expansion reported by the agent: a full backend run proved its three legacy selectors excluded every regenerated row, so a shared `canonicalLegacyRow(profile, predicate, description)` now selects a current-shape row structurally, clones it and deletes the three new fields; the controlled `fiveField()` probes are unchanged. No assertion relaxed, deleted or re-anchored; no hardcoded regenerated literals.
+- **Docs sync outcome:** updated `docs/developer/testing/synthetic-test-data.md` (+30/−9) — removed the "Planned new-field coverage (`Not implemented`)" paragraph and replaced it with delivered behaviour; updated the generator stage, raw validator, Frontend Zod parity, Node dispatcher round trip and Regeneration and scope subsections to describe the five-field generator/validator, deterministic supplied values and the CLI regeneration of exactly six views. No `Not implemented` markers remain in that doc. `docs/developer/data-shapes/abclass.md` was verified (Frontend parity bullet accurate) and left unchanged; its section-level and "Snapshot source — `Not implemented`" markers remain, owned by the final documentation-and-rollout pass. No pages created; both edited docs Prettier-clean; JSDoc on both scripts verified accurate. Out-of-scope drift reported, not fixed: the `abclass.md` "Test-only synthetic capability" section still describes only the two-field matrix (a pointer may be added at final rollout), and the `synthetic-test-data.md` "Metadata refresh analysis boundaries" table names historical target IDs that differ from SPEC's planning handoff (pre-existing). Both logged as nitpicks.
+- **PASSED section regression gate (section-completion):** `.ts-regression-checker/reports/session-feat-enahncedABClassMetadata/runs/2026-11-20T13-31-54.404Z/comparison.txt`; compare mode, session `feat-enahncedABClassMetadata`, 7/8 checks passing, **0 regressions, 0 new failures**. All new code clean (frontend lint, all three coverage suites, typecheck, builder checks, frontend E2E pass). The single failing check is `backend-lint-check` with the 4 accepted pre-existing `max-lines` warnings in untouched test files, unchanged from baseline debt. Full log: `.opencode/scratchpad/s5-gate.log`.
+- **Commit and push:** (pending)
 
 ---
 

@@ -1553,7 +1553,46 @@
         "overall": 3.9,
         "updatedAt": "2024-01-03T12:03:00.000Z"
       },
-      "recentAssignments": []
+      "recentAssignments": [],
+      "baselineAverages": {
+        "completeness": "N",
+        "accuracy": "N",
+        "spag": "N",
+        "overall": "N",
+        "updatedAt": "2024-01-03T12:03:00.000Z"
+      },
+      "allTaskStandings": {
+        "top": [
+          {
+            "studentId": "student-5",
+            "studentName": "Student 5",
+            "scores": {
+              "completeness": 4,
+              "accuracy": 3.5,
+              "spag": 4.5,
+              "overall": 3.9
+            },
+            "recentAssignmentScores": []
+          }
+        ],
+        "bottom": []
+      },
+      "baselineStandings": {
+        "top": [],
+        "bottom": [
+          {
+            "studentId": "student-6",
+            "studentName": "Student 6",
+            "scores": {
+              "completeness": "N",
+              "accuracy": "N",
+              "spag": "N",
+              "overall": "N"
+            },
+            "recentAssignmentScores": []
+          }
+        ]
+      }
     },
     "students": [
       {
@@ -3097,7 +3136,60 @@
             "overall": "N"
           }
         }
-      ]
+      ],
+      "baselineAverages": {
+        "completeness": "E",
+        "accuracy": "E",
+        "spag": "E",
+        "overall": "E",
+        "updatedAt": "2024-01-04T12:03:00.000Z"
+      },
+      "allTaskStandings": {
+        "top": [
+          {
+            "studentId": "student-11",
+            "studentName": "Student 11",
+            "scores": {
+              "completeness": "N",
+              "accuracy": "N",
+              "spag": "N",
+              "overall": "N"
+            },
+            "recentAssignmentScores": [
+              {
+                "completeness": "N",
+                "accuracy": "N",
+                "spag": "N",
+                "overall": "N"
+              }
+            ]
+          }
+        ],
+        "bottom": []
+      },
+      "baselineStandings": {
+        "top": [],
+        "bottom": [
+          {
+            "studentId": "student-12",
+            "studentName": "Student 12",
+            "scores": {
+              "completeness": "E",
+              "accuracy": "E",
+              "spag": "E",
+              "overall": "E"
+            },
+            "recentAssignmentScores": [
+              {
+                "completeness": "E",
+                "accuracy": "E",
+                "spag": "E",
+                "overall": "E"
+              }
+            ]
+          }
+        ]
+      }
     },
     "students": [
       {
