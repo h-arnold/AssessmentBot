@@ -9,7 +9,7 @@ import { BulkCreateModal } from '../bulk/BulkCreateModal';
 import { BulkDeleteModal } from '../bulk/BulkDeleteModal';
 import { BulkSetCourseLengthModal } from '../bulk/BulkSetCourseLengthModal';
 import { BulkSetSelectModal } from '../bulk/BulkSetSelectModal';
-import { ManageCohortsModal } from '@/features/referenceData/ManageCohortsModal';
+import { ManageCohortsModal } from '@/features/referenceData/ManageCohortsModal/ManageCohortsModal';
 import { ManageYearGroupsModal } from '@/features/referenceData/ManageYearGroupsModal';
 import { ClassesBulkProgressModal } from '../bulk/ClassesBulkProgressModal';
 

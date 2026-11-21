@@ -12,8 +12,8 @@ import { setBackendConfig } from '@/services/backendConfiguration/backendConfigu
 import {
   mapBackendConfigToBackendSettingsFormValues,
   mapBackendSettingsFormValuesToBackendConfigWriteInput,
-} from './backendSettingsFormMapper';
-import type { BackendSettingsForm } from './backendSettingsForm.zod';
+} from '../backendSettingsFormMapper';
+import type { BackendSettingsForm } from '../backendSettingsForm.zod';
 
 const genericLoadErrorMessage = 'Unable to load backend settings right now.';
 const genericSaveErrorMessage = 'Unable to save backend settings right now.';

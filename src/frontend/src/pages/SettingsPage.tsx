@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { ClassesManagementPanel } from '../features/classes/ClassesManagementPanel/ClassesManagementPanel';
 import { useApplicationAccessContext } from '../features/auth/ApplicationAccessContext';
 import { BackendSettingsPanel } from '../features/settings/backend/BackendSettingsPanel';
-import { AuthenticationSettingsTab } from '../features/settings/authentication/AuthenticationSettingsTab';
+import { AuthenticationSettingsTab } from '../features/settings/authentication/AuthenticationSettingsTab/AuthenticationSettingsTab';
 import { ReferenceDataSettingsPanel } from '../features/referenceData/ReferenceDataSettingsPanel';
 import { PageSection } from './PageSection';
 import { SettingsPageGoogleClassroomsPrefetch } from '../features/settings/SettingsPageGoogleClassroomsPrefetch';

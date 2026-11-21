@@ -30,9 +30,9 @@ import {
 } from '@/services/referenceData/referenceDataService';
 import { getAssignmentTopicsQueryOptions, getYearGroupsQueryOptions } from '@/query/sharedQueries';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
-import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
-import { sortYearGroups } from './yearGroupSorting';
+import { ReferenceDataInitialLoadingState } from '../ReferenceDataInitialLoadingState';
+import { ReferenceDataManagementModalScaffold } from '../ReferenceDataManagementModalScaffold';
+import { sortYearGroups } from '../yearGroupSorting';
 import {
   getPersistedBlockingLoadError,
   getReferenceDataBlockingLoadErrorQueryKey,
@@ -40,13 +40,13 @@ import {
   setPersistedBlockingLoadError,
   clearPersistedBlockingLoadError,
   type BlockingLoadErrorState,
-} from './manageReferenceDataHelpers';
-import { InlineDialog } from './InlineDialog';
-import { useReferenceDataManagement } from './useReferenceDataManagement/useReferenceDataManagement';
+} from '../manageReferenceDataHelpers';
+import { InlineDialog } from '../InlineDialog';
+import { useReferenceDataManagement } from '../useReferenceDataManagement/useReferenceDataManagement';
 import type {
   ReferenceDataManagementConfig,
   FormDialogProperties,
-} from './useReferenceDataManagement/useReferenceDataManagement.types';
+} from '../useReferenceDataManagement/useReferenceDataManagement.types';
 import { useCallback, useEffect, useMemo } from 'react';
 
 // ============================================================================

@@ -75,7 +75,7 @@ vi.mock('../features/classes/ClassesManagementPanel/ClassesManagementPanel', () 
   };
 });
 
-vi.mock('../features/settings/backend/useBackendSettings', () => {
+vi.mock('../features/settings/backend/useBackendSettings/useBackendSettings', () => {
   return {
     useBackendSettings: useBackendSettingsMock,
   };

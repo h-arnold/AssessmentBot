@@ -4,16 +4,16 @@ import type { PropsWithChildren } from 'react';
 import { mapErrorToUserMessage } from '@/errors/map-error-to-ui';
 import { getAuthorisationStatusQueryOptions } from '@/query/sharedQueries';
 import type { ApplicationAccess } from '@/services/authService/authService.zod';
-import { StartupWarmupStateProvider } from './startupWarmupState';
-import { useAuthorisationStatus } from './useAuthorisationStatus';
-import { useApplicationAccess } from './useApplicationAccess';
-import { useStartupWarmupCycle } from './useStartupWarmupCycle';
-import { ApplicationAccessContext } from './ApplicationAccessContext';
+import { StartupWarmupStateProvider } from '../startupWarmupState';
+import { useAuthorisationStatus } from '../useAuthorisationStatus';
+import { useApplicationAccess } from '../useApplicationAccess';
+import { useStartupWarmupCycle } from '../useStartupWarmupCycle';
+import { ApplicationAccessContext } from '../ApplicationAccessContext';
 import {
   ApplicationAccessBlockingResult,
   OAuthTransportErrorResult,
   PermissionsRequiredResult,
-} from './AuthGateStates';
+} from '../AuthGateStates';
 
 /**
  * Derives whether the application-access query should run from the OAuth admission state.

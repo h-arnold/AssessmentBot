@@ -1,8 +1,8 @@
 import { Alert, Button, Card, Flex, Form, Input, Modal, Select, Skeleton, Typography } from 'antd';
 import { useMemo, type ReactElement } from 'react';
 import { APP_GAP_LG } from '@/theme/spacing';
-import { useAuthenticationSettings } from './useAuthenticationSettings';
-import type { AuthMode } from './useAuthenticationSettings.helpers';
+import { useAuthenticationSettings } from '../useAuthenticationSettings';
+import type { AuthMode } from '../useAuthenticationSettings.helpers';
 import { AuthenticationSettingsUserTable } from './AuthenticationSettingsUserTable';
 import type { AuthUserEntry, AuthUserRole } from '@/services/authService/authService.zod';
 

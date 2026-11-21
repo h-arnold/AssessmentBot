@@ -10,13 +10,13 @@ import {
 } from '@/query/sharedQueries';
 import { createQueryWrapper, grantedAdminAccess } from '@/test/auth/appAuthGateTestHelpers';
 import { createDeferredPromise } from '@/test/shared/testDeferredPromise';
-import { AuthStatusCard } from './AuthStatusCard';
+import { AuthStatusCard } from '../AuthStatusCard';
 import { AppAuthGate } from './AppAuthGate';
 import {
   StartupWarmupStateProvider,
   useStartupWarmupState,
   type StartupWarmupSnapshot,
-} from './startupWarmupState';
+} from '../startupWarmupState';
 
 const {
   getAuthorisationStatusMock,

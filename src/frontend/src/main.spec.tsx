@@ -24,7 +24,7 @@ vi.mock('react-dom/client', () => {
   };
 });
 
-vi.mock('./App', () => {
+vi.mock('./App/App', () => {
   return {
     default: function MockApp() {
       return null;
@@ -155,7 +155,7 @@ describe('main entrypoint', () => {
       'query/AppQueryProvider.tsx'
     );
     const { AppAuthGate } = await importRequiredModule<AuthGateModule>(
-      'features/auth/AppAuthGate.tsx'
+      'features/auth/AppAuthGate/AppAuthGate.tsx'
     );
 
     const rootElement = document.createElement('div');

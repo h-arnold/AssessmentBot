@@ -19,7 +19,7 @@ import {
   grantedAdminAccess,
 } from '@/test/auth/appAuthGateTestHelpers';
 import { createDeferredPromise } from '@/test/shared/testDeferredPromise';
-import { useApplicationAccessContext } from './ApplicationAccessContext';
+import { useApplicationAccessContext } from '../ApplicationAccessContext';
 import { AppAuthGate } from './AppAuthGate';
 import {
   getApplicationAccess,

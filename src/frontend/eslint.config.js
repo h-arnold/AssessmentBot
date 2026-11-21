@@ -153,7 +153,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['src/App.tsx'],
+    files: ['src/App/App.tsx'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -173,19 +173,19 @@ export default defineConfig([
                 'Keep App.tsx as a composition root. Move state and side effects to feature hooks/components.',
             },
             {
-              name: './services/authService',
+              name: '../services/authService',
               message:
                 'Keep App.tsx service-free. Access services through feature hooks/components.',
             },
           ],
           patterns: [
             {
-              group: ['./services/*', './services/**'],
+              group: ['**/services/*', '**/services/**'],
               message:
                 'Keep App.tsx service-free. Access services through feature hooks/components.',
             },
             {
-              group: ['./test/*', './test/**'],
+              group: ['**/test/*', '**/test/**'],
               message:
                 'Keep App.tsx within production source boundaries. Import shared test helpers only from spec files or src/test support files.',
             },

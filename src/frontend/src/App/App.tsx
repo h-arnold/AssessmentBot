@@ -1,5 +1,5 @@
-import { AppThemeShell } from './AppThemeShell';
-import { AuthStatusCard } from './features/auth/AuthStatusCard';
+import { AppThemeShell } from '../AppThemeShell';
+import { AuthStatusCard } from '../features/auth/AuthStatusCard';
 
 /**
  * Renders the application shell with the authentication status card.

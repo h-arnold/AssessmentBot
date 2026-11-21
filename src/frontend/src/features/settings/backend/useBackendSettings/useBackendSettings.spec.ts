@@ -15,7 +15,7 @@ import type {
   BackendConfigWriteInput,
   BackendConfigWriteResult,
 } from '@/services/backendConfiguration/backendConfiguration.zod';
-import type { BackendSettingsForm } from './backendSettingsForm.zod';
+import type { BackendSettingsForm } from '../backendSettingsForm.zod';
 
 const {
   getBackendConfigMock,
@@ -40,7 +40,7 @@ vi.mock('@/services/backendConfiguration/backendConfigurationService', () => {
   };
 });
 
-vi.mock('./backendSettingsFormMapper', () => {
+vi.mock('../backendSettingsFormMapper', () => {
   return {
     mapBackendConfigToBackendSettingsFormValues: mapBackendConfigToBackendSettingsFormValuesMock,
     mapBackendSettingsFormValuesToBackendConfigWriteInput:

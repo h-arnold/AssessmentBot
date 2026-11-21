@@ -1,4 +1,4 @@
-import appSource from './App.tsx?raw';
+import appSource from './App/App.tsx?raw';
 import { describe, expect, it } from 'vitest';
 import {
   type ImportDeclaration,
@@ -24,7 +24,8 @@ import {
 
 const quotedStringStartIndex = 1;
 const quotedStringEndIndex = -1;
-const serviceImportPrefix = './services/';
+// Matches service module specifiers at any depth: ./services/x, ../services/x or @/services/x.
+const serviceImportPattern = /(^|\/)services\//;
 const providerOrchestrationIdentifiers = new Set([
   'callApi',
   'createAppQueryClient',
@@ -265,7 +266,7 @@ function expectAppToStayThin() {
 
   expect(importedModuleSpecifiers).not.toContain('@tanstack/react-query');
   expect(
-    runtimeImportedModuleSpecifiers.every((specifier) => !specifier.startsWith(serviceImportPrefix))
+    runtimeImportedModuleSpecifiers.every((specifier) => !serviceImportPattern.test(specifier))
   ).toBe(true);
   expect(orchestrationCalls).toEqual([]);
   expect(providerComponents).toEqual([]);

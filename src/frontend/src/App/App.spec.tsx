@@ -2,21 +2,21 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { vi } from 'vitest';
 import App from './App';
-import { AppAuthGate } from './features/auth/AppAuthGate';
-import appStyles from './index.css?raw';
-import { pageContent } from './pages/pageContent';
-import { createAppQueryClient } from './query/queryClient';
+import { AppAuthGate } from '../features/auth/AppAuthGate/AppAuthGate';
+import appStyles from '../index.css?raw';
+import { pageContent } from '../pages/pageContent';
+import { createAppQueryClient } from '../query/queryClient';
 import {
   appBreadcrumbBaseLabel,
   defaultNavigationKey,
   getBreadcrumbItems,
   getNavigationLabel,
   type AppNavigationKey,
-} from './navigation/appNavigation';
+} from '../navigation/appNavigation';
 import {
   createGoogleScriptRunApiHandlerMock,
   type GoogleScriptRunApiHandlerCallbacks,
-} from './test/googleScriptRunHarness';
+} from '../test/googleScriptRunHarness';
 
 const loadingAuthorisationStatusLabel = 'Loading authorisation status';
 const applicationTitleText = appBreadcrumbBaseLabel;
@@ -376,7 +376,7 @@ describe('App', () => {
     vi.resetModules();
     vi.doUnmock('antd');
     vi.doUnmock('react-dom/client');
-    vi.doUnmock('./navigation/appNavigation');
+    vi.doUnmock('../navigation/appNavigation');
   });
 
   it('menu renders all four entries in expanded mode with expected labels', async () => {
@@ -492,7 +492,7 @@ describe('App', () => {
       };
     });
 
-    const { AppShell } = await import('./AppShell');
+    const { AppShell } = await import('../AppShell');
 
     expect(() =>
       render(
@@ -516,7 +516,7 @@ describe('App', () => {
       );
     });
 
-    vi.doMock('./navigation/appNavigation', () => {
+    vi.doMock('../navigation/appNavigation', () => {
       return {
         appBreadcrumbBaseLabel: 'AssessmentBot Frontend',
         defaultNavigationKey: 'dashboard',
@@ -534,7 +534,7 @@ describe('App', () => {
       };
     });
 
-    const { AppShell } = await import('./AppShell');
+    const { AppShell } = await import('../AppShell');
     const dashboardContent = <div data-testid="mock-dashboard-slot">dashboard slot</div>;
 
     render(
@@ -698,7 +698,7 @@ describe('App', () => {
   });
 
   it('theme toggle updates the Ant Design shell styling', async () => {
-    const { AppThemeShell } = await import('./AppThemeShell');
+    const { AppThemeShell } = await import('../AppThemeShell');
 
     await act(async () => {
       render(<AppThemeShell />);

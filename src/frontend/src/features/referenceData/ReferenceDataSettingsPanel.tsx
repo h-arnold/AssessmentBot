@@ -1,6 +1,6 @@
 import { Button, Card, Flex, Typography } from 'antd';
 import { useState } from 'react';
-import { ManageTopicsModal } from './ManageTopicsModal';
+import { ManageTopicsModal } from './ManageTopicsModal/ManageTopicsModal';
 
 const { Title, Text } = Typography;
 
