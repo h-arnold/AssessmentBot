@@ -1,6 +1,6 @@
 /**
- * Shared test helpers for assignmentDefinitionPartials.unit.test.js
- * Reduces duplication across Section 5 API layer refactoring tests
+ * Shared fixtures and helpers for the assignmentDefinitionPartials.<concern>.test.js suites.
+ * Used by the split transport and validation suites to avoid duplicated setup.
  */
 
 import { expect, vi } from 'vitest';
@@ -16,6 +16,27 @@ const upsertValidationModulePath =
 const partialRowValidationModulePath =
   '../../src/backend/z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js';
 const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
+
+// Test URLs similar to but not exactly the same as the example:
+// https://docs.google.com/presentation/d/1udlgDTkZlHB6Xh4GKlOk6I0zJI-dvAF4iFAun09yW0k/edit
+export const VALID_GOOGLE_URLS = {
+  SLIDES: {
+    basic: 'https://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+    withQuery:
+      'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit?usp=sharing',
+    withHash: 'https://docs.google.com/presentation/d/3aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit#slide=id.p1',
+    withQueryAndHash:
+      'https://docs.google.com/presentation/d/4aBcDeFgHiJkLmNoPqRsTuVwXyZ/view?usp=sharing#slide=id.p1',
+    viewMode: 'https://docs.google.com/presentation/d/5aBcDeFgHiJkLmNoPqRsTuVwXyZ/view',
+    mixedCaseHost: 'https://DOCS.GOOGLE.COM/presentation/d/6aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+  },
+  SHEETS: {
+    basic: 'https://docs.google.com/spreadsheets/d/1xYzAbCdEfGhIjKlMnOpQrStUvWx/edit',
+    withQuery:
+      'https://docs.google.com/spreadsheets/d/2xYzAbCdEfGhIjKlMnOpQrStUvWx/edit?usp=sharing',
+    gsheetPrefix: 'https://docs.google.com/spreadsheets/d/3xYzAbCdEfGhIjKlMnOpQrStUvWx/edit#gid=0',
+  },
+};
 
 /**
  * Creates a mock AssignmentDefinitionController and installs it globally.
