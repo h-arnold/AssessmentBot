@@ -1,10 +1,20 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe } from 'vitest';
 import {
   createAssignmentDefinitionControllerHooks,
-  installAssignmentDefinitionControllerStub,
   loadAssignmentDefinitionValidationModule,
+  runValidationCases,
 } from '../helpers/assignmentDefinitionPartialsTestHelpers.js';
-const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
+
+const yk = 'yearGroupKey';
+const yl = 'yearGroupLabel';
+const stringMsg = (field) => `${field} must be a string.`;
+const nonEmptyMsg = (field) => `${field} must be a non-empty string.`;
+const trimmedMsg = (field) => `${field} must already be trimmed.`;
+const tsError = 'createdAt must be null or an ISO datetime string.';
+const missingError = 'Missing required field: yearGroupKey.';
+const nullKeyError = 'yearGroupKey must be a non-null selected reference-data key.';
+const providedError = 'yearGroupKey must be a string when provided.';
+const unsafeError = 'yearGroupKey contains unsafe characters.';
 
 describe('validateYearGroupKeyedFields_', () => {
   const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
@@ -12,113 +22,35 @@ describe('validateYearGroupKeyedFields_', () => {
   beforeEach(beforeEachHandler);
   afterEach(afterEachHandler);
 
-  it.each([
-    {
-      description: 'valid yearGroupKey and yearGroupLabel',
-      yearGroupKey: 'year-10',
-      yearGroupLabel: 'Year 10',
-      rowIndex: 0,
-      shouldThrow: false,
-    },
-    {
-      description: 'non-string yearGroupKey',
-      yearGroupKey: 123,
-      yearGroupLabel: 'Year 10',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a string.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'empty string yearGroupKey',
-      yearGroupKey: '',
-      yearGroupLabel: 'Year 10',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a non-empty string.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'whitespace-only yearGroupKey',
-      yearGroupKey: '   ',
-      yearGroupLabel: 'Year 10',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a non-empty string.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'untrimmed yearGroupKey',
-      yearGroupKey: '  year-10',
-      yearGroupLabel: 'Year 10',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must already be trimmed.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'non-string yearGroupLabel',
-      yearGroupKey: 'year-10',
-      yearGroupLabel: 123,
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'yearGroupLabel must be a string.',
-      expectedField: 'yearGroupLabel',
-    },
-    {
-      description: 'empty string yearGroupLabel',
-      yearGroupKey: 'year-10',
-      yearGroupLabel: '',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'yearGroupLabel must be a non-empty string.',
-      expectedField: 'yearGroupLabel',
-    },
-    {
-      description: 'whitespace-only yearGroupLabel',
-      yearGroupKey: 'year-10',
-      yearGroupLabel: '   ',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'yearGroupLabel must be a non-empty string.',
-      expectedField: 'yearGroupLabel',
-    },
-    {
-      description: 'untrimmed yearGroupLabel',
-      yearGroupKey: 'year-10',
-      yearGroupLabel: '  Year 10',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'yearGroupLabel must already be trimmed.',
-      expectedField: 'yearGroupLabel',
-    },
-  ])(
-    'handles $description correctly',
-    ({ yearGroupKey, yearGroupLabel, rowIndex, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validateYearGroupKeyedFields_ } = loadAssignmentDefinitionValidationModule();
+  const testCases = [
+    ['valid yearGroupKey and yearGroupLabel', 'year-10', 'Year 10'],
+    ['non-string yearGroupKey', 123, 'Year 10', stringMsg(yk), yk],
+    ['empty string yearGroupKey', '', 'Year 10', nonEmptyMsg(yk), yk],
+    ['whitespace-only yearGroupKey', '   ', 'Year 10', nonEmptyMsg(yk), yk],
+    ['untrimmed yearGroupKey', '  year-10', 'Year 10', trimmedMsg(yk), yk],
+    ['non-string yearGroupLabel', 'year-10', 123, stringMsg(yl), yl],
+    ['empty string yearGroupLabel', 'year-10', '', nonEmptyMsg(yl), yl],
+    ['whitespace-only yearGroupLabel', 'year-10', '   ', nonEmptyMsg(yl), yl],
+    ['untrimmed yearGroupLabel', 'year-10', '  Year 10', trimmedMsg(yl), yl],
+  ].map(([description, yearGroupKey, yearGroupLabel, expectedError, expectedField]) => ({
+    description,
+    shouldThrow: Boolean(expectedError),
+    expectedError,
+    expectedField,
+    yearGroupKey,
+    yearGroupLabel,
+    rowIndex: 0,
+  }));
 
-      if (shouldThrow) {
-        expect(() => validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex)).toThrow(
-          ApiValidationError
-        );
-        expect(() => validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex)).toThrow(
-          expectedError
-        );
-        try {
-          validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('getAssignmentDefinitionPartials');
-          expect(err.details).toBe(`rowIndex=${rowIndex}`);
-        }
-      } else {
-        expect(() =>
-          validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex)
-        ).not.toThrow();
-      }
-    }
-  );
+  runValidationCases({
+    testCases,
+    method: 'getAssignmentDefinitionPartials',
+    expectDetails: true,
+    invoke: ({ yearGroupKey, yearGroupLabel, rowIndex }) => {
+      const { validateYearGroupKeyedFields_ } = loadAssignmentDefinitionValidationModule();
+      return () => validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex);
+    },
+  });
 });
 
 describe('validateTimestamp_', () => {
@@ -127,85 +59,33 @@ describe('validateTimestamp_', () => {
   beforeEach(beforeEachHandler);
   afterEach(afterEachHandler);
 
-  it.each([
-    {
-      description: 'null timestamp is valid',
-      value: null,
-      fieldName: 'createdAt',
-      rowIndex: 0,
-      shouldThrow: false,
-    },
-    {
-      description: 'valid ISO datetime string',
-      value: '2026-01-05T10:00:00.000Z',
-      fieldName: 'createdAt',
-      rowIndex: 0,
-      shouldThrow: false,
-    },
-    {
-      description: 'valid ISO datetime string with offset',
-      value: '2026-01-05T10:00:00.000+01:00',
-      fieldName: 'updatedAt',
-      rowIndex: 5,
-      shouldThrow: false,
-    },
-    {
-      description: 'invalid ISO datetime string',
-      value: 'not-a-valid-iso-string',
-      fieldName: 'createdAt',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'createdAt must be null or an ISO datetime string.',
-      expectedField: 'createdAt',
-    },
-    {
-      description: 'non-string non-null timestamp',
-      value: 1234567890,
-      fieldName: 'createdAt',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'createdAt must be null or an ISO datetime string.',
-      expectedField: 'createdAt',
-    },
-    {
-      description: 'empty string timestamp',
-      value: '',
-      fieldName: 'createdAt',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'createdAt must be null or an ISO datetime string.',
-      expectedField: 'createdAt',
-    },
-    {
-      description: 'date only string',
-      value: '2026-01-05',
-      fieldName: 'createdAt',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'createdAt must be null or an ISO datetime string.',
-      expectedField: 'createdAt',
-    },
-  ])(
-    'handles $description correctly',
-    ({ value, fieldName, rowIndex, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validateTimestamp_ } = loadAssignmentDefinitionValidationModule();
+  const testCases = [
+    ['null timestamp is valid', null, 'createdAt', 0],
+    ['valid ISO datetime string', '2026-01-05T10:00:00.000Z', 'createdAt', 0],
+    ['valid ISO datetime string with offset', '2026-01-05T10:00:00.000+01:00', 'updatedAt', 5],
+    ['invalid ISO datetime string', 'not-a-valid-iso-string', 'createdAt', 0, tsError, 'createdAt'],
+    ['non-string non-null timestamp', 1234567890, 'createdAt', 0, tsError, 'createdAt'],
+    ['empty string timestamp', '', 'createdAt', 0, tsError, 'createdAt'],
+    ['date only string', '2026-01-05', 'createdAt', 0, tsError, 'createdAt'],
+  ].map(([description, value, fieldName, rowIndex, expectedError, expectedField]) => ({
+    description,
+    shouldThrow: Boolean(expectedError),
+    expectedError,
+    expectedField,
+    value,
+    fieldName,
+    rowIndex,
+  }));
 
-      if (shouldThrow) {
-        expect(() => validateTimestamp_(value, fieldName, rowIndex)).toThrow(ApiValidationError);
-        expect(() => validateTimestamp_(value, fieldName, rowIndex)).toThrow(expectedError);
-        try {
-          validateTimestamp_(value, fieldName, rowIndex);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('getAssignmentDefinitionPartials');
-          expect(err.details).toBe(`rowIndex=${rowIndex}`);
-        }
-      } else {
-        expect(() => validateTimestamp_(value, fieldName, rowIndex)).not.toThrow();
-      }
-    }
-  );
+  runValidationCases({
+    testCases,
+    method: 'getAssignmentDefinitionPartials',
+    expectDetails: true,
+    invoke: ({ value, fieldName, rowIndex }) => {
+      const { validateTimestamp_ } = loadAssignmentDefinitionValidationModule();
+      return () => validateTimestamp_(value, fieldName, rowIndex);
+    },
+  });
 });
 
 describe('validateRequiredYearGroupKey_', () => {
@@ -214,91 +94,31 @@ describe('validateRequiredYearGroupKey_', () => {
   beforeEach(beforeEachHandler);
   afterEach(afterEachHandler);
 
-  it.each([
-    {
-      description: 'valid yearGroupKey',
-      parameters: { yearGroupKey: 'year-10' },
-      shouldThrow: false,
-    },
-    {
-      description: 'valid yearGroupKey with extra fields',
-      parameters: { yearGroupKey: 'year-10', primaryTitle: 'Test' },
-      shouldThrow: false,
-    },
-    {
-      description: 'missing yearGroupKey',
-      parameters: {},
-      shouldThrow: true,
-      expectedError: 'Missing required field: yearGroupKey.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'null yearGroupKey',
-      parameters: { yearGroupKey: null },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a non-null selected reference-data key.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'non-string yearGroupKey',
-      parameters: { yearGroupKey: 123 },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a string when provided.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'empty string yearGroupKey',
-      parameters: { yearGroupKey: '' },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a non-empty string.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'whitespace-only yearGroupKey',
-      parameters: { yearGroupKey: '   ' },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a non-empty string.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'untrimmed yearGroupKey',
-      parameters: { yearGroupKey: '  year-10' },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must already be trimmed.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'yearGroupKey with forward slash',
-      parameters: { yearGroupKey: 'invalid/key' },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey contains unsafe characters.',
-      expectedField: 'yearGroupKey',
-    },
-    {
-      description: 'yearGroupKey with control character',
-      parameters: { yearGroupKey: 'invalid\x00key' },
-      shouldThrow: true,
-      expectedError: 'yearGroupKey contains unsafe characters.',
-      expectedField: 'yearGroupKey',
-    },
-  ])(
-    'handles $description correctly',
-    ({ parameters, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validateRequiredYearGroupKey_ } = loadAssignmentDefinitionValidationModule();
+  const testCases = [
+    ['valid yearGroupKey', { yearGroupKey: 'year-10' }],
+    ['valid yearGroupKey with extra fields', { yearGroupKey: 'year-10', primaryTitle: 'Test' }],
+    ['missing yearGroupKey', {}, missingError, yk],
+    ['null yearGroupKey', { yearGroupKey: null }, nullKeyError, yk],
+    ['non-string yearGroupKey', { yearGroupKey: 123 }, providedError, yk],
+    ['empty string yearGroupKey', { yearGroupKey: '' }, nonEmptyMsg(yk), yk],
+    ['whitespace-only yearGroupKey', { yearGroupKey: '   ' }, nonEmptyMsg(yk), yk],
+    ['untrimmed yearGroupKey', { yearGroupKey: '  year-10' }, trimmedMsg(yk), yk],
+    ['yearGroupKey with forward slash', { yearGroupKey: 'invalid/key' }, unsafeError, yk],
+    ['yearGroupKey with control character', { yearGroupKey: 'invalid\x00key' }, unsafeError, yk],
+  ].map(([description, parameters, expectedError, expectedField]) => ({
+    description,
+    shouldThrow: Boolean(expectedError),
+    expectedError,
+    expectedField,
+    parameters,
+  }));
 
-      if (shouldThrow) {
-        expect(() => validateRequiredYearGroupKey_(parameters)).toThrow(ApiValidationError);
-        expect(() => validateRequiredYearGroupKey_(parameters)).toThrow(expectedError);
-        try {
-          validateRequiredYearGroupKey_(parameters);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('upsertAssignmentDefinition');
-        }
-      } else {
-        expect(() => validateRequiredYearGroupKey_(parameters)).not.toThrow();
-      }
-    }
-  );
+  runValidationCases({
+    testCases,
+    method: 'upsertAssignmentDefinition',
+    invoke: ({ parameters }) => {
+      const { validateRequiredYearGroupKey_ } = loadAssignmentDefinitionValidationModule();
+      return () => validateRequiredYearGroupKey_(parameters);
+    },
+  });
 });

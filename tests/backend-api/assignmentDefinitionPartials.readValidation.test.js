@@ -1,10 +1,40 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect } from 'vitest';
 import {
   createAssignmentDefinitionControllerHooks,
-  installAssignmentDefinitionControllerStub,
   loadAssignmentDefinitionValidationModule,
+  runValidationCases,
 } from '../helpers/assignmentDefinitionPartialsTestHelpers.js';
-const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
+
+// Error code -> [expectedError, expectedField] for each validation message family.
+const READ_ERRORS = {
+  params: ['params must be an object.', 'params'],
+  missing: ['Missing required field: definitionKey.', 'definitionKey'],
+  string: ['definitionKey must be a string.', 'definitionKey'],
+  nonEmpty: ['definitionKey must be a non-empty string.', 'definitionKey'],
+  trimmed: ['definitionKey must already be trimmed.', 'definitionKey'],
+  unsafe: ['definitionKey contains unsafe characters.', 'definitionKey'],
+};
+
+const TOPIC_ERRORS = {
+  string: ['primaryTopicKey must be a string.', 'primaryTopicKey'],
+  nonEmpty: ['primaryTopicKey must be a non-empty string.', 'primaryTopicKey'],
+  trimmed: ['primaryTopicKey must already be trimmed.', 'primaryTopicKey'],
+};
+
+const makeCase = (description, params, error, errors) => {
+  if (!error) return { description, shouldThrow: false, ...params };
+  const [expectedError, expectedField] = errors[error];
+  return { description, shouldThrow: true, expectedError, expectedField, ...params };
+};
+
+const readCase = (description, parameters, error) =>
+  makeCase(description, { parameters }, error, READ_ERRORS);
+
+const keyCase = (description, definitionKey, rowIndex, error) =>
+  makeCase(description, { definitionKey, rowIndex }, error, READ_ERRORS);
+
+const topicCase = (description, primaryTopicKey, rowIndex, error) =>
+  makeCase(description, { primaryTopicKey, rowIndex }, error, TOPIC_ERRORS);
 
 describe('validateReadParameters_', () => {
   const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
@@ -12,151 +42,63 @@ describe('validateReadParameters_', () => {
   beforeEach(beforeEachHandler);
   afterEach(afterEachHandler);
 
-  it.each([
-    {
-      description: 'valid parameters with definitionKey',
-      parameters: { definitionKey: 'valid-key' },
-      shouldThrow: false,
-    },
-    {
-      description: 'null parameters',
-      parameters: null,
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'undefined parameters',
-      parameters: undefined,
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'string parameters',
-      parameters: 'not-an-object',
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'number parameters',
-      parameters: 123,
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'array parameters',
-      parameters: ['not', 'an', 'object'],
-      shouldThrow: true,
-      expectedError: 'params must be an object.',
-      expectedField: 'params',
-    },
-    {
-      description: 'object without definitionKey',
-      parameters: { otherField: 'value' },
-      shouldThrow: true,
-      expectedError: 'Missing required field: definitionKey.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with null definitionKey',
-      parameters: { definitionKey: null },
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with undefined definitionKey',
-      parameters: { definitionKey: undefined },
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with empty string definitionKey',
-      parameters: { definitionKey: '' },
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a non-empty string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with whitespace-only definitionKey',
-      parameters: { definitionKey: '   ' },
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a non-empty string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with untrimmed definitionKey (leading spaces)',
-      parameters: { definitionKey: '  valid-key' },
-      shouldThrow: true,
-      expectedError: 'definitionKey must already be trimmed.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with untrimmed definitionKey (trailing spaces)',
-      parameters: { definitionKey: 'valid-key  ' },
-      shouldThrow: true,
-      expectedError: 'definitionKey must already be trimmed.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with definitionKey containing forward slash',
-      parameters: { definitionKey: 'invalid/key' },
-      shouldThrow: true,
-      expectedError: 'definitionKey contains unsafe characters.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with definitionKey containing backslash',
-      parameters: { definitionKey: 'invalid\\key' },
-      shouldThrow: true,
-      expectedError: 'definitionKey contains unsafe characters.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with definitionKey containing dot-dot',
-      parameters: { definitionKey: 'invalid..key' },
-      shouldThrow: true,
-      expectedError: 'definitionKey contains unsafe characters.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with definitionKey containing control character',
-      parameters: { definitionKey: 'invalid\x00key' },
-      shouldThrow: true,
-      expectedError: 'definitionKey contains unsafe characters.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'object with valid definitionKey and extra fields',
-      parameters: { definitionKey: 'valid-key', extraField: 'value' },
-      shouldThrow: false,
-    },
-  ])(
-    'handles $description correctly',
-    ({ parameters, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validateReadParameters_ } = loadAssignmentDefinitionValidationModule();
+  const testCases = [
+    readCase('valid parameters with definitionKey', { definitionKey: 'valid-key' }),
+    readCase('null parameters', null, 'params'),
+    readCase('undefined parameters', undefined, 'params'),
+    readCase('string parameters', 'not-an-object', 'params'),
+    readCase('number parameters', 123, 'params'),
+    readCase('array parameters', ['not', 'an', 'object'], 'params'),
+    readCase('object without definitionKey', { otherField: 'value' }, 'missing'),
+    readCase('object with null definitionKey', { definitionKey: null }, 'string'),
+    readCase('object with undefined definitionKey', { definitionKey: undefined }, 'string'),
+    readCase('object with empty string definitionKey', { definitionKey: '' }, 'nonEmpty'),
+    readCase('object with whitespace-only definitionKey', { definitionKey: '   ' }, 'nonEmpty'),
+    readCase(
+      'object with untrimmed definitionKey (leading spaces)',
+      { definitionKey: '  valid-key' },
+      'trimmed'
+    ),
+    readCase(
+      'object with untrimmed definitionKey (trailing spaces)',
+      { definitionKey: 'valid-key  ' },
+      'trimmed'
+    ),
+    readCase(
+      'object with definitionKey containing forward slash',
+      { definitionKey: 'invalid/key' },
+      'unsafe'
+    ),
+    readCase(
+      'object with definitionKey containing backslash',
+      { definitionKey: 'invalid\\key' },
+      'unsafe'
+    ),
+    readCase(
+      'object with definitionKey containing dot-dot',
+      { definitionKey: 'invalid..key' },
+      'unsafe'
+    ),
+    readCase(
+      'object with definitionKey containing control character',
+      { definitionKey: 'invalid\x00key' },
+      'unsafe'
+    ),
+    readCase('object with valid definitionKey and extra fields', {
+      definitionKey: 'valid-key',
+      extraField: 'value',
+    }),
+  ];
 
-      if (shouldThrow) {
-        expect(() => validateReadParameters_(parameters)).toThrow(ApiValidationError);
-        expect(() => validateReadParameters_(parameters)).toThrow(expectedError);
-        try {
-          validateReadParameters_(parameters);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('getAssignmentDefinition');
-        }
-      } else {
-        const result = validateReadParameters_(parameters);
-        expect(result).toBe(parameters.definitionKey);
-        expect(() => validateReadParameters_(parameters)).not.toThrow();
-      }
-    }
-  );
+  runValidationCases({
+    testCases,
+    invoke: (params) => {
+      const { validateReadParameters_ } = loadAssignmentDefinitionValidationModule();
+      return () => validateReadParameters_(params.parameters);
+    },
+    method: 'getAssignmentDefinition',
+    onSuccess: (result, params) => expect(result).toBe(params.parameters.definitionKey),
+  });
 });
 
 describe('validateDefinitionKey_', () => {
@@ -165,96 +107,27 @@ describe('validateDefinitionKey_', () => {
   beforeEach(beforeEachHandler);
   afterEach(afterEachHandler);
 
-  it.each([
-    {
-      description: 'valid definitionKey string',
-      definitionKey: 'valid-key',
-      rowIndex: 0,
-      shouldThrow: false,
-    },
-    {
-      description: 'valid definitionKey with numbers',
-      definitionKey: 'valid-key-123',
-      rowIndex: 5,
-      shouldThrow: false,
-    },
-    {
-      description: 'non-string definitionKey (number)',
-      definitionKey: 123,
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'non-string definitionKey (null)',
-      definitionKey: null,
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'non-string definitionKey (undefined)',
-      definitionKey: undefined,
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'empty string definitionKey',
-      definitionKey: '',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a non-empty string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'whitespace-only definitionKey',
-      definitionKey: '   ',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'definitionKey must be a non-empty string.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'untrimmed definitionKey (leading spaces)',
-      definitionKey: '  valid-key',
-      rowIndex: 10,
-      shouldThrow: true,
-      expectedError: 'definitionKey must already be trimmed.',
-      expectedField: 'definitionKey',
-    },
-    {
-      description: 'untrimmed definitionKey (trailing spaces)',
-      definitionKey: 'valid-key  ',
-      rowIndex: 10,
-      shouldThrow: true,
-      expectedError: 'definitionKey must already be trimmed.',
-      expectedField: 'definitionKey',
-    },
-  ])(
-    'handles $description correctly',
-    ({ definitionKey, rowIndex, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validateDefinitionKey_ } = loadAssignmentDefinitionValidationModule();
+  const testCases = [
+    keyCase('valid definitionKey string', 'valid-key', 0),
+    keyCase('valid definitionKey with numbers', 'valid-key-123', 5),
+    keyCase('non-string definitionKey (number)', 123, 0, 'string'),
+    keyCase('non-string definitionKey (null)', null, 0, 'string'),
+    keyCase('non-string definitionKey (undefined)', undefined, 0, 'string'),
+    keyCase('empty string definitionKey', '', 0, 'nonEmpty'),
+    keyCase('whitespace-only definitionKey', '   ', 0, 'nonEmpty'),
+    keyCase('untrimmed definitionKey (leading spaces)', '  valid-key', 10, 'trimmed'),
+    keyCase('untrimmed definitionKey (trailing spaces)', 'valid-key  ', 10, 'trimmed'),
+  ];
 
-      if (shouldThrow) {
-        expect(() => validateDefinitionKey_(definitionKey, rowIndex)).toThrow(ApiValidationError);
-        expect(() => validateDefinitionKey_(definitionKey, rowIndex)).toThrow(expectedError);
-        try {
-          validateDefinitionKey_(definitionKey, rowIndex);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('getAssignmentDefinitionPartials');
-          expect(err.details).toBe(`rowIndex=${rowIndex}`);
-        }
-      } else {
-        expect(() => validateDefinitionKey_(definitionKey, rowIndex)).not.toThrow();
-      }
-    }
-  );
+  runValidationCases({
+    testCases,
+    invoke: (params) => {
+      const { validateDefinitionKey_ } = loadAssignmentDefinitionValidationModule();
+      return () => validateDefinitionKey_(params.definitionKey, params.rowIndex);
+    },
+    method: 'getAssignmentDefinitionPartials',
+    expectDetails: true,
+  });
 });
 
 describe('validatePrimaryTopicKey_', () => {
@@ -263,82 +136,23 @@ describe('validatePrimaryTopicKey_', () => {
   beforeEach(beforeEachHandler);
   afterEach(afterEachHandler);
 
-  it.each([
-    {
-      description: 'valid primaryTopicKey string',
-      primaryTopicKey: 'valid-topic-key',
-      rowIndex: 0,
-      shouldThrow: false,
-    },
-    {
-      description: 'non-string primaryTopicKey (number)',
-      primaryTopicKey: 123,
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'primaryTopicKey must be a string.',
-      expectedField: 'primaryTopicKey',
-    },
-    {
-      description: 'non-string primaryTopicKey (null)',
-      primaryTopicKey: null,
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'primaryTopicKey must be a string.',
-      expectedField: 'primaryTopicKey',
-    },
-    {
-      description: 'empty string primaryTopicKey',
-      primaryTopicKey: '',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'primaryTopicKey must be a non-empty string.',
-      expectedField: 'primaryTopicKey',
-    },
-    {
-      description: 'whitespace-only primaryTopicKey',
-      primaryTopicKey: '   ',
-      rowIndex: 0,
-      shouldThrow: true,
-      expectedError: 'primaryTopicKey must be a non-empty string.',
-      expectedField: 'primaryTopicKey',
-    },
-    {
-      description: 'untrimmed primaryTopicKey (leading spaces)',
-      primaryTopicKey: '  valid-topic-key',
-      rowIndex: 5,
-      shouldThrow: true,
-      expectedError: 'primaryTopicKey must already be trimmed.',
-      expectedField: 'primaryTopicKey',
-    },
-    {
-      description: 'untrimmed primaryTopicKey (trailing spaces)',
-      primaryTopicKey: 'valid-topic-key  ',
-      rowIndex: 5,
-      shouldThrow: true,
-      expectedError: 'primaryTopicKey must already be trimmed.',
-      expectedField: 'primaryTopicKey',
-    },
-  ])(
-    'handles $description correctly',
-    ({ primaryTopicKey, rowIndex, shouldThrow, expectedError, expectedField }) => {
-      installAssignmentDefinitionControllerStub([]);
-      const { validatePrimaryTopicKey_ } = loadAssignmentDefinitionValidationModule();
+  const testCases = [
+    topicCase('valid primaryTopicKey string', 'valid-topic-key', 0),
+    topicCase('non-string primaryTopicKey (number)', 123, 0, 'string'),
+    topicCase('non-string primaryTopicKey (null)', null, 0, 'string'),
+    topicCase('empty string primaryTopicKey', '', 0, 'nonEmpty'),
+    topicCase('whitespace-only primaryTopicKey', '   ', 0, 'nonEmpty'),
+    topicCase('untrimmed primaryTopicKey (leading spaces)', '  valid-topic-key', 5, 'trimmed'),
+    topicCase('untrimmed primaryTopicKey (trailing spaces)', 'valid-topic-key  ', 5, 'trimmed'),
+  ];
 
-      if (shouldThrow) {
-        expect(() => validatePrimaryTopicKey_(primaryTopicKey, rowIndex)).toThrow(
-          ApiValidationError
-        );
-        expect(() => validatePrimaryTopicKey_(primaryTopicKey, rowIndex)).toThrow(expectedError);
-        try {
-          validatePrimaryTopicKey_(primaryTopicKey, rowIndex);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe('getAssignmentDefinitionPartials');
-          expect(err.details).toBe(`rowIndex=${rowIndex}`);
-        }
-      } else {
-        expect(() => validatePrimaryTopicKey_(primaryTopicKey, rowIndex)).not.toThrow();
-      }
-    }
-  );
+  runValidationCases({
+    testCases,
+    invoke: (params) => {
+      const { validatePrimaryTopicKey_ } = loadAssignmentDefinitionValidationModule();
+      return () => validatePrimaryTopicKey_(params.primaryTopicKey, params.rowIndex);
+    },
+    method: 'getAssignmentDefinitionPartials',
+    expectDetails: true,
+  });
 });
