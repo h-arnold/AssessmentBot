@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { DataAnalysisService } from './dataAnalysisService';
 import { ClassSummarySchema } from './classSummary.zod';
 import {
+  AveragingAnalyserInputSchema,
   DataAnalysisResponseSchema,
   type AveragingAnalyserInput,
   type DataAnalysisResponse,
@@ -164,21 +165,16 @@ describe('DataAnalysisService', () => {
     });
 
     // -----------------------------------------------------------------------
-    // 8) Unregistered analyser key throws typed Error
+    // 8) analyse validates input and output with a single input argument
     // -----------------------------------------------------------------------
-    it('throws a typed Error when an unregistered analyser key is requested', () => {
-      const input = buildInput([
-        {
-          classId: 'c_001',
-          assignments: [],
-        },
-      ]);
+    it('validates input and output when analyse is called with a single input argument', () => {
+      const input = buildSingleStudentInput({ accuracy: { score: 4 } });
 
       const service = new DataAnalysisService();
+      const results = service.analyse(input);
 
-      expect(() => service.analyse(input, 'bogusAnalyser')).toThrow(
-        'Unknown analyser key: bogusAnalyser'
-      );
+      expect(() => AveragingAnalyserInputSchema.parse(input)).not.toThrow();
+      expect(() => DataAnalysisResponseSchema.parse(results)).not.toThrow();
     });
 
     // -----------------------------------------------------------------------
@@ -390,13 +386,12 @@ describe('DataAnalysisService', () => {
     });
   });
 
-  describe('analyseClassSummary registration', () => {
+  describe('analyseClassSummary', () => {
     it('exposes a dedicated class summary entry point backed by its own analyser field', () => {
       const service = new DataAnalysisService();
       const augmented = service as unknown as {
         classSummaryAnalyser: unknown;
         summaryAnalyser: unknown;
-        registry: Map<string, unknown>;
         analyseClassSummary: (
           input: AveragingAnalyserInput,
           options: { target: unknown; recentAssignments: unknown[] }
@@ -406,9 +401,6 @@ describe('DataAnalysisService', () => {
       expect(typeof augmented.analyseClassSummary).toBe('function');
       expect(augmented.classSummaryAnalyser).toBeDefined();
       expect(augmented.classSummaryAnalyser).not.toBe(augmented.summaryAnalyser);
-      // The averaging registry stays untouched: only 'averaging' is registered.
-      expect(augmented.registry.size).toBe(1);
-      expect(augmented.registry.has('averaging')).toBe(true);
 
       const input = buildSingleStudentInput({
         completeness: { score: 4 },

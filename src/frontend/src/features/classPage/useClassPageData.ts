@@ -138,14 +138,11 @@ function runAnalyserStep(
   }
 
   try {
-    const response = _analysisService.analyse(
-      {
-        filter: { classIds: [classId], analysisMode },
-        classes: [classFull],
-        assignmentDefinitionPartials: assignmentDefinitionPartials!,
-      },
-      'averaging'
-    );
+    const response = _analysisService.analyse({
+      filter: { classIds: [classId], analysisMode },
+      classes: [classFull],
+      assignmentDefinitionPartials: assignmentDefinitionPartials!,
+    });
     if (response.length === 0) {
       return [null, new Error('Analyser returned empty result')];
     }

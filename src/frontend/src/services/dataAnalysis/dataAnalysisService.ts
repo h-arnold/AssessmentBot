@@ -7,36 +7,29 @@ import { ClassSummaryAnalyser, type AnalyseClassSummaryOptions } from './classSu
 import { ClassSummarySchema, type ClassSummary } from './classSummary.zod';
 
 /**
- * Thin stateless orchestrator that validates input, dispatches to registered
- * analysers, and returns their typed results.
+ * Thin stateless orchestrator that validates input, runs the averaging
+ * analyser, and returns its typed results.
  *
  * @remarks
- * The orchestrator follows a pluggable analyser pattern (strategy pattern)
- * backed by an internal {@link Map} registry.
- *
- * New analysers are added by registering an instance under a string key in
- * the constructor. The v1 analyser is registered as `'averaging'`.
+ * The orchestrator composes a single {@link AveragingAnalyser} constructed
+ * directly in the constructor. Descriptive task summaries and class summaries
+ * are delegated to their own analyser fields.
  *
  * The orchestrator itself performs no I/O or logging. Validation failures are
- * rethrown for the selected consumer boundary to log with contextual metadata,
+ * rethrown for the consumer boundary to log with contextual metadata,
  * including `zodIssues` for Zod validation failures.
  */
 export class DataAnalysisService {
-  /** Internal registry of analyser key → analyser instance. */
-  private readonly registry: Map<string, AveragingAnalyser>;
+  private readonly analyser: AveragingAnalyser;
   private readonly summaryAnalyser: AssignmentSummaryAnalyser;
   private readonly classSummaryAnalyser: ClassSummaryAnalyser;
 
   /**
-   * Constructs a `DataAnalysisService` and initialises the analyser registry.
-   *
-   * @remarks
-   * The v1 analyser is registered under the key `'averaging'` with default
-   * criterion weightings. Future analysers can be added by extending the
-   * registry initialisation and adding new key entries.
+   * Constructs a `DataAnalysisService` and its analyser instances with default
+   * criterion weightings.
    */
   constructor() {
-    this.registry = new Map<string, AveragingAnalyser>([['averaging', new AveragingAnalyser()]]);
+    this.analyser = new AveragingAnalyser();
     this.summaryAnalyser = new AssignmentSummaryAnalyser();
     this.classSummaryAnalyser = new ClassSummaryAnalyser();
   }
@@ -76,34 +69,24 @@ export class DataAnalysisService {
   }
 
   /**
-   * Validates the input via Zod, dispatches to the registered analyser
-   * identified by {@link analyserKey}, and validates the output before
-   * returning.
+   * Validates the input via Zod, runs the averaging analyser, and validates the
+   * output before returning.
    *
    * @param {AveragingAnalyserInput} input - Fully assembled input data
    *   (pre-fetched classes, partial definitions, and filter).
-   * @param {string} [analyserKey='averaging'] - Key identifying which
-   *   registered analyser to dispatch to.
    * @returns {DataAnalysisResponse} An array of per-class averaging results.
    * @throws {ZodError} When the input or analyser output fails Zod validation.
-   * @throws {Error} When {@link analyserKey} is not a registered analyser,
-   *   or when the analyser encounters an unrecoverable invariant violation
-   *   (e.g. missing `assignmentDefinition`).
+   * @throws {Error} When the analyser encounters an unrecoverable invariant
+   *   violation (e.g. missing `assignmentDefinition`).
    *
    * @remarks
-   * The service performs synchronous validation and dispatch only. It does not
+   * The service performs synchronous validation and analysis only. It does not
    * log or catch validation failures; consumer boundaries add their contextual
    * diagnostics and, where applicable, repeat-run policy.
    */
-  analyse(input: AveragingAnalyserInput, analyserKey: string = 'averaging'): DataAnalysisResponse {
+  analyse(input: AveragingAnalyserInput): DataAnalysisResponse {
     const validated = AveragingAnalyserInputSchema.parse(input);
-
-    const analyser = this.registry.get(analyserKey);
-    if (!analyser) {
-      throw new Error(`Unknown analyser key: ${analyserKey}`);
-    }
-
-    const results = analyser.analyse(validated);
+    const results = this.analyser.analyse(validated);
     return DataAnalysisResponseSchema.parse(results);
   }
 }

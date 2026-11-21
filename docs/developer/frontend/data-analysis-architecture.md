@@ -231,7 +231,7 @@ documented `deriveAttemptBaseline` conditions: the analyser catches only that ty
 baseline fields while still producing the all-tasks fields, and lets every other error propagate.
 
 The writer calls `analyseClassSummary()` once and maps the result through `mergeClassMetadata()`.
-`analyse(input, 'averaging')` and `analyseAssignmentSummary()` keep their existing contracts. The
+`analyse(input)` and `analyseAssignmentSummary()` keep their existing contracts. The
 full contract is in
 [Frontend Data Analysis Response § Class summary contract](../data-shapes/frontend-data-analysis-response.md#class-summary-contract).
 
