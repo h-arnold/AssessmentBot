@@ -18,17 +18,18 @@ The canonical contract is
 
 ## Boundaries and ownership
 
-| Layer                                                                                                                                                                                       | Owned responsibility                                                                                                                                    | Must not own                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Assignment-definition partials                                                                                                                                                              | Authoritative live assignment and task weightings                                                                                                       | Analysis display state                                          |
-| `resolveAssignmentDefinition.ts`                                                                                                                                                            | Active production resolver for live assignment/task weighting inputs                                                                                    | UI metadata or metric-state presentation                        |
-| `averagingAnalyser.accumulation.ts` (orchestration facade) plus the extracted `accumulatorRegistry`, `criterionAccumulation`, `metricResolution`, `taskProjection`, and `composite` modules | Resolve definitions via `resolveAssignmentDefinitionData`, build each `TaskWeightingIndex`, and accumulate positive-weight contributions separately     | React, Ant Design, persistence, or transport                    |
-| `averagingAnalyser.rows.ts` / `rollupMetric.ts`                                                                                                                                             | Build task, student, and class rows; apply aggregate-state precedence                                                                                   | Re-resolving assignment-definition data                         |
-| `attemptBaselineSelection.ts`                                                                                                                                                               | Derive each class's baseline pool and task set from the accumulated per-(student, task) evidence, and expose the shared attempt predicate               | A second raw-data walk, or the aggregation filtering it informs |
-| `dataAnalysis.zod.ts`                                                                                                                                                                       | Validate public analyser input and output                                                                                                               | Heatmap layout decisions                                        |
-| `heatmapAdapter*.ts`                                                                                                                                                                        | Project analyser results and live definitions into heatmap view models                                                                                  | Duplicate accumulation or weighting resolution                  |
-| `metricDisplay/`                                                                                                                                                                            | Shared metric state labels, tones, filtering, and ordering                                                                                              | Feature-specific table layout                                   |
-| `features/taskHeatmap/`                                                                                                                                                                     | Render adapter-provided data, including zero-weight explanation and marker; select the known class-partial `E` while the full read is pending or failed | Infer contribution from a displayed score                       |
+| Layer                                                                                                                                                                                       | Owned responsibility                                                                                                                                                       | Must not own                                                                                                                                |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Assignment-definition partials                                                                                                                                                              | Authoritative live assignment and task weightings                                                                                                                          | Analysis display state                                                                                                                      |
+| `resolveAssignmentDefinition.ts`                                                                                                                                                            | Active production resolver for live assignment/task weighting inputs                                                                                                       | UI metadata or metric-state presentation                                                                                                    |
+| `averagingAnalyser.accumulation.ts` (orchestration facade) plus the extracted `accumulatorRegistry`, `criterionAccumulation`, `metricResolution`, `taskProjection`, and `composite` modules | Resolve definitions via `resolveAssignmentDefinitionData`, build each `TaskWeightingIndex`, and accumulate positive-weight contributions separately                        | React, Ant Design, persistence, or transport                                                                                                |
+| `averagingAnalyser.rows.ts` / `rollupMetric.ts`                                                                                                                                             | Build task, student, and class rows; apply aggregate-state precedence                                                                                                      | Re-resolving assignment-definition data                                                                                                     |
+| `attemptBaselineSelection.ts`                                                                                                                                                               | Derive each class's baseline pool and task set from the accumulated per-(student, task) evidence, and expose the shared attempt predicate                                  | A second raw-data walk, or the aggregation filtering it informs                                                                             |
+| `classSummaryAnalyser.ts` (`DataAnalysisService.classSummaryAnalyser`)                                                                                                                      | Own baseline averages and disjoint top/bottom standings for the metadata summary; compose `AveragingAnalyser`, pin all-tasks to absolute mode and reuse its rollup helpers | A second averaging/rollup implementation, freshness or rolling-history decisions, or a change to `analyse()` / `analyseAssignmentSummary()` |
+| `dataAnalysis.zod.ts`                                                                                                                                                                       | Validate public analyser input and output                                                                                                                                  | Heatmap layout decisions                                                                                                                    |
+| `heatmapAdapter*.ts`                                                                                                                                                                        | Project analyser results and live definitions into heatmap view models                                                                                                     | Duplicate accumulation or weighting resolution                                                                                              |
+| `metricDisplay/`                                                                                                                                                                            | Shared metric state labels, tones, filtering, and ordering                                                                                                                 | Feature-specific table layout                                                                                                               |
+| `features/taskHeatmap/`                                                                                                                                                                     | Render adapter-provided data, including zero-weight explanation and marker; select the known class-partial `E` while the full read is pending or failed                    | Infer contribution from a displayed score                                                                                                   |
 
 ## Effective weighting and dual accumulation
 
@@ -122,6 +123,9 @@ Class-page aggregates rest on. The Class page owns the mode state and hosts the
 shared `AveragesBasisControl` in both averaging table cards (Student Averages
 overview and embedded heatmap); the standalone Heatmaps surface renders no mode
 control and never enters baseline mode, as does the assignment-summary analyser.
+The class-summary analyser is scoped differently: it pins its all-tasks basis to
+absolute mode regardless of the caller's filter and runs one full-class baseline
+analysis to supply the baseline fields (see [Class summary analyser](#class-summary-analyser)).
 Its pipeline placement is fixed:
 
 1. **Accumulation is mode-independent.** Both modes accumulate every observed
@@ -208,6 +212,28 @@ Diagnostics use the existing `logPipelineError` helper with contexts
 normalised message and `classId`/`assignmentId` metadata.
 Its bounded 256-key cache deduplicates identical errors across recomputations and
 remounts while logging distinct errors.
+
+### Class summary analyser
+
+`DataAnalysisService.analyseClassSummary()` serves the metadata-refresh writer. A dedicated
+`ClassSummaryAnalyser`, held in its own `classSummaryAnalyser` field alongside `summaryAnalyser`,
+is the single owner of baseline-average and top/bottom-standing calculation. It composes
+`AveragingAnalyser` and reuses its exported `rollupMetric`, `computeOverallComposite` and
+`convertToBaselineExcluded` helpers; no averaging or rollup maths is added outside the service.
+
+The analyser pins its all-tasks basis to absolute mode regardless of the caller's filter, derives
+one full-class baseline and reuses its task keys for every isolated assignment, and restricts
+standings to students holding a row in every supplied isolated assignment, so each
+`recentAssignmentScores` array aligns by index. The strict, in-memory `ClassSummarySchema` enforces
+disjoint top/bottom lists and score alignment; it is not a wire or persistence shape. Baseline
+unavailability is signalled by a typed `AttemptBaselineUnavailableError`, thrown only for the three
+documented `deriveAttemptBaseline` conditions: the analyser catches only that type, emits null
+baseline fields while still producing the all-tasks fields, and lets every other error propagate.
+
+The writer calls `analyseClassSummary()` once and maps the result through `mergeClassMetadata()`.
+`analyse(input)` and `analyseAssignmentSummary()` keep their existing contracts. The
+full contract is in
+[Frontend Data Analysis Response § Class summary contract](../data-shapes/frontend-data-analysis-response.md#class-summary-contract).
 
 ### Existing heatmap projection
 
@@ -312,13 +338,16 @@ It bypasses query cache, reselects the target and repeats the gate. Missing
 classes fail rather than being recreated. All fresh assignments must resolve
 against the supplied live definition partials before calculation.
 
-The writer recalculates the complete fresh class with standard 40/40/20 weights
-and no display filters, then analyses exactly one target assignment in isolation.
-Instance isolation prevents shared definition keys from merging target evidence.
+The writer makes one `analyseClassSummary()` call with the unchanged analysis input
+and the target plus newest assignments supplied as options. The single-owner
+`ClassSummaryAnalyser` internally composes `AveragingAnalyser`, pins the all-tasks
+basis to absolute, derives one whole-class baseline and reuses its task keys for each
+isolated recent assignment, so instance-level evidence stays separated without a
+second writer call.
 It projects weighted overall directly without rounding, preserving numbers,
 `N`, `E` and `excluded`. Initial null metadata gets complete class averages and
 one recent entry; subsequent writes replace the same instance or append one,
-stably sort newest first and keep three. Equal-time entries retain their positions.
+stably sort newest first and cap at three, with the final count narrowed to the summary's own recent-assignment count when that is smaller. Equal-time entries retain their positions.
 The merged replacement validates through `NonNullableABClassMetadataSchema`, so the
 write path has no nullable-union branch. Source time is copied exactly; the supplied
 summary clock is read only after successful calculations when preparing a changed write.

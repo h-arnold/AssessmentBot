@@ -1,7 +1,6 @@
 import { Plugin } from '@opencode/plugin';
 
 const TOOL_NAME = 'compact_context';
-const IMPLEMENTER_AGENT = 'action-plan-implementer';
 
 const DESCRIPTION = [
   'Compact the current session context to free context-window space.',
@@ -46,10 +45,6 @@ export default Plugin.define({
           };
         },
       });
-    });
-
-    await ctx.session.hook('context', (event) => {
-      if (event.agent !== IMPLEMENTER_AGENT) delete event.tools.compact_context;
     });
   },
 });

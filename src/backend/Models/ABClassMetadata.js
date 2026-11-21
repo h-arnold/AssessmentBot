@@ -1,11 +1,17 @@
 const ABCLASS_METADATA_MAX_SCORE = 5;
 const ABCLASS_METADATA_MAX_RECENT_ASSIGNMENTS = 3;
+const BASELINE_AVERAGES_FIELD = 'baselineAverages';
+const NEW_METADATA_FIELDS = [BASELINE_AVERAGES_FIELD, 'allTaskStandings', 'baselineStandings'];
 
 /**
  * Authoritative validation and ownership boundary for ABClass assessment snapshots.
- * Runtime references to Validate, Assessment and the error class are resolved only when
- * methods run, matching the concatenated Google Apps Script load model: this file sorts
- * before `Models/Assessment.js`.
+ * Runtime references to Validate, Assessment, ABClassMetadataStandings and the error class
+ * are resolved only when methods run, matching the concatenated Google Apps Script load
+ * model: this file sorts before `Models/Assessment.js` and `Models/ABClassMetadataStandings.js`.
+ *
+ * @remarks The legacy two-field shape is accepted on reads without backfill so stored
+ * snapshots stay readable; reads emit the current five-field shape with null placeholders in
+ * memory and never write stored bytes.
  */
 class ABClassMetadata {
   /**
@@ -43,6 +49,18 @@ class ABClassMetadata {
   }
 
   /**
+   * Requires a non-empty, already-trimmed string identifier.
+   * @param {*} value - Candidate identifier.
+   * @param {string} context - Error path.
+   * @private
+   */
+  static _validateIdentifier(value, context) {
+    if (typeof value !== 'string' || value.length === 0 || value.trim() !== value) {
+      ABClassMetadata._fail('must be a non-empty, already-trimmed string', context);
+    }
+  }
+
+  /**
    * Returns the four metadata metrics: the canonical criteria plus the weighted
    * overall score. Derived at call time because this file loads before
    * `Models/Assessment.js` in the concatenated script.
@@ -57,10 +75,11 @@ class ABClassMetadata {
    * Requires an ordinary exact record with all required own properties.
    * @param {*} value - Candidate record.
    * @param {string} context - Error path prefix.
-   * @param {string[]} requiredKeys - Exact permitted property names.
+   * @param {string[]} requiredKeys - Required property names.
+   * @param {string[]} [optionalKeys=[]] - Additional permitted property names.
    * @private
    */
-  static _checkRecord(value, context, requiredKeys) {
+  static _checkRecord(value, context, requiredKeys, optionalKeys = []) {
     if (
       value === null ||
       typeof value !== 'object' ||
@@ -70,16 +89,52 @@ class ABClassMetadata {
       ABClassMetadata._fail('must be a plain record', context);
     }
 
+    const permittedKeys = new Set(requiredKeys);
+    for (const key of optionalKeys) permittedKeys.add(key);
     for (const key of requiredKeys) {
       if (!Object.hasOwn(value, key)) ABClassMetadata._fail('is required', `${context}.${key}`);
     }
     for (const key of Reflect.ownKeys(value)) {
-      if (typeof key !== 'string' || !requiredKeys.includes(key)) {
+      if (typeof key !== 'string' || !permittedKeys.has(key)) {
         ABClassMetadata._fail(
           'contains an unexpected field',
           typeof key === 'string' ? `${context}.${key}` : context
         );
       }
+    }
+  }
+
+  /**
+   * Rejects extra own array properties on an already checked dense-index array.
+   * Owned here so the facade and the nested standings helper share one array strictness rule.
+   * @param {Array} value - Array to inspect.
+   * @param {string} context - Error path prefix for the array.
+   * @returns {void}
+   * @private
+   */
+  static _checkArrayKeys(value, context) {
+    const validKeys = new Set([
+      'length',
+      ...Array.from({ length: value.length }, (_, index) => String(index)),
+    ]);
+    for (const key of Reflect.ownKeys(value)) {
+      if (typeof key !== 'string' || !validKeys.has(key)) {
+        ABClassMetadata._fail('contains an unexpected array property', context);
+      }
+    }
+  }
+
+  /**
+   * Rejects a sparse slot at one array index, preserving the caller's validation order.
+   * @param {Array} value - Array to inspect.
+   * @param {number} index - Index to check.
+   * @param {string} context - Error path prefix for the array.
+   * @returns {void}
+   * @private
+   */
+  static _assertDenseIndex(value, index, context) {
+    if (!Object.hasOwn(value, index)) {
+      ABClassMetadata._fail('must not contain sparse entries', `${context}[${index}]`);
     }
   }
 
@@ -148,27 +203,28 @@ class ABClassMetadata {
     const keys = ['assignmentId', 'assignmentDefinitionKey', 'averages', 'updatedAt'];
     ABClassMetadata._checkRecord(value, context, keys);
     for (const key of ['assignmentId', 'assignmentDefinitionKey']) {
-      const identifier = value[key];
-      if (
-        typeof identifier !== 'string' ||
-        identifier.length === 0 ||
-        identifier.trim() !== identifier
-      ) {
-        ABClassMetadata._fail('must be a non-empty, already-trimmed string', `${context}.${key}`);
-      }
+      ABClassMetadata._validateIdentifier(value[key], `${context}.${key}`);
     }
     ABClassMetadata.validateAverageScores(value.averages, `${context}.averages`);
     ABClassMetadata._validateTimestamp(value.updatedAt, `${context}.updatedAt`);
   }
 
   /**
-   * Validates nullable metadata, complete shape, dense recent entries and newest-first ordering.
+   * Validates nullable metadata, legacy or current shape, dense recent entries and ordering.
+   * The three new fields are either all omitted (legacy shape) or all present (current shape);
+   * when present each may be null or a valid value, a present undefined is rejected and a
+   * partial subset is rejected.
    * @param {*} value - Metadata snapshot or null.
    * @param {string} [context='metadata'] - Error path prefix.
    */
   static validateMetadata(value, context = 'metadata') {
     if (value === null) return;
-    ABClassMetadata._checkRecord(value, context, ['classAverages', 'recentAssignments']);
+    ABClassMetadata._checkRecord(
+      value,
+      context,
+      ['classAverages', 'recentAssignments'],
+      NEW_METADATA_FIELDS
+    );
     ABClassMetadata.validateClassAverages(value.classAverages, `${context}.classAverages`);
     const entries = value.recentAssignments;
     if (!Array.isArray(entries) || entries.length > ABCLASS_METADATA_MAX_RECENT_ASSIGNMENTS) {
@@ -177,27 +233,11 @@ class ABClassMetadata {
         `${context}.recentAssignments`
       );
     }
-    const validArrayKeys = new Set([
-      'length',
-      ...Array.from({ length: entries.length }, (_, i) => String(i)),
-    ]);
-    for (const key of Reflect.ownKeys(entries)) {
-      if (typeof key !== 'string' || !validArrayKeys.has(key)) {
-        ABClassMetadata._fail(
-          'contains an unexpected array property',
-          `${context}.recentAssignments`
-        );
-      }
-    }
+    ABClassMetadata._checkArrayKeys(entries, `${context}.recentAssignments`);
     const assignmentIds = new Set();
     let previousTimestamp = null;
     for (let index = 0; index < entries.length; index += 1) {
-      if (!Object.hasOwn(entries, index)) {
-        ABClassMetadata._fail(
-          'must not contain sparse entries',
-          `${context}.recentAssignments[${index}]`
-        );
-      }
+      ABClassMetadata._assertDenseIndex(entries, index, `${context}.recentAssignments`);
       const entry = entries[index];
       const entryPath = `${context}.recentAssignments[${index}]`;
       ABClassMetadata.validateRecentAssignment(entry, entryPath);
@@ -216,6 +256,37 @@ class ABClassMetadata {
       }
       previousTimestamp = entry.updatedAt;
     }
+    ABClassMetadata._validateNewFields(value, context, entries.length);
+    const presentCount = NEW_METADATA_FIELDS.filter((field) => Object.hasOwn(value, field)).length;
+    if (presentCount !== 0 && presentCount !== NEW_METADATA_FIELDS.length) {
+      ABClassMetadata._fail('must contain all three new fields or none', context);
+    }
+  }
+
+  /**
+   * Validates the three optional current-shape fields once the base shape is known valid.
+   * Nested rules are owned by the sibling ABClassMetadataStandings module; references stay
+   * inside this method body to respect the concatenated GAS load order.
+   * @param {Object} value - Previously validated metadata base shape.
+   * @param {string} context - Error path prefix.
+   * @param {number} recentCount - Number of recent assignments each score array must match.
+   * @returns {void}
+   * @private
+   */
+  static _validateNewFields(value, context, recentCount) {
+    for (const field of NEW_METADATA_FIELDS) {
+      if (!Object.hasOwn(value, field)) continue;
+      const nested = value[field];
+      if (nested === undefined) {
+        ABClassMetadata._fail('must not be undefined', `${context}.${field}`);
+      } else if (nested !== null) {
+        if (field === BASELINE_AVERAGES_FIELD) {
+          ABClassMetadata.validateClassAverages(nested, `${context}.${field}`);
+        } else {
+          ABClassMetadataStandings.validateStandings(nested, `${context}.${field}`, recentCount);
+        }
+      }
+    }
   }
 
   /**
@@ -231,7 +302,9 @@ class ABClassMetadata {
   }
 
   /**
-   * Copies only the canonical fields into plain, independently owned objects.
+   * Copies the five-field shape into plain, independently owned objects.
+   * Omitted legacy fields become null placeholders; nested validators and copy helpers live
+   * in the sibling ABClassMetadataStandings module and are referenced at call time only.
    * @param {Object|null} value - Previously validated metadata.
    * @returns {Object|null} A plain defensive copy.
    * @private
@@ -242,25 +315,25 @@ class ABClassMetadata {
       return {
         assignmentId: entry.assignmentId,
         assignmentDefinitionKey: entry.assignmentDefinitionKey,
-        averages: {
-          completeness: entry.averages.completeness,
-          accuracy: entry.averages.accuracy,
-          spag: entry.averages.spag,
-          overall: entry.averages.overall,
-        },
+        averages: ABClassMetadataStandings.copyScoreSet(entry.averages),
         updatedAt: entry.updatedAt,
       };
     });
-    return {
-      classAverages: {
-        completeness: value.classAverages.completeness,
-        accuracy: value.classAverages.accuracy,
-        spag: value.classAverages.spag,
-        overall: value.classAverages.overall,
-        updatedAt: value.classAverages.updatedAt,
-      },
+    const copy = {
+      classAverages: ABClassMetadataStandings.copyBaselineAverages(value.classAverages),
       recentAssignments,
     };
+    for (const field of NEW_METADATA_FIELDS) {
+      const nested = Object.hasOwn(value, field) ? value[field] : null;
+      if (nested === null) {
+        copy[field] = null;
+      } else if (field === BASELINE_AVERAGES_FIELD) {
+        copy[field] = ABClassMetadataStandings.copyBaselineAverages(nested);
+      } else {
+        copy[field] = ABClassMetadataStandings.copyStandings(nested);
+      }
+    }
+    return copy;
   }
 }
 

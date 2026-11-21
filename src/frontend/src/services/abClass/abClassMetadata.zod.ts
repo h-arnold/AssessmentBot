@@ -9,8 +9,17 @@ const RECENT_ASSIGNMENT_KEYS = [
   'updatedAt',
 ] as const;
 const METADATA_KEYS = ['classAverages', 'recentAssignments'] as const;
+const NEW_METADATA_KEYS = ['baselineAverages', 'allTaskStandings', 'baselineStandings'] as const;
+const STANDINGS_KEYS = ['top', 'bottom'] as const;
+const STUDENT_STANDING_KEYS = [
+  'studentId',
+  'studentName',
+  'scores',
+  'recentAssignmentScores',
+] as const;
 const MAX_SCORE = 5;
-const MAX_RECENT_ASSIGNMENTS = 3;
+/** Maximum entries in a recent-assignment, standing or per-assignment score list. */
+export const MAX_LIST_ENTRIES = 3;
 
 /**
  * Validates the canonical UTC timestamp used by ABClass metadata.
@@ -52,6 +61,9 @@ export const ClassAveragesSchema = z
   .custom<unknown>(isClassAveragesRawRecord)
   .pipe(z.object(classAveragesShape).strict());
 
+/** Validates exact baseline averages, reusing the class-average score and timestamp rules. */
+export const BaselineAveragesSchema = ClassAveragesSchema;
+
 const recentAssignmentShape = {
   assignmentId: z.string().min(1).refine(isTrimmed),
   assignmentDefinitionKey: z.string().min(1).refine(isTrimmed),
@@ -72,10 +84,10 @@ export const RecentAssignmentSchema = z
  * @param {unknown} value - Candidate array.
  * @returns {boolean} Whether the array is dense and has no extra own properties.
  */
-function isRecentAssignmentsRawArray(value: unknown): boolean {
+function isBoundedDenseArray(value: unknown): boolean {
   if (
     !Array.isArray(value) ||
-    value.length > MAX_RECENT_ASSIGNMENTS ||
+    value.length > MAX_LIST_ENTRIES ||
     Reflect.ownKeys(value).length !== value.length + 1
   )
     return false;
@@ -84,37 +96,124 @@ function isRecentAssignmentsRawArray(value: unknown): boolean {
   );
 }
 
-const isMetadataRawRecord = (value: unknown): boolean => isExactRecord(value, METADATA_KEYS);
+const recentAssignmentsSchema = z
+  .custom<unknown>(isBoundedDenseArray)
+  .pipe(z.array(RecentAssignmentSchema).max(MAX_LIST_ENTRIES));
 
-const metadataShape = {
-  classAverages: ClassAveragesSchema,
-  recentAssignments: z
-    .custom<unknown>(isRecentAssignmentsRawArray)
-    .pipe(z.array(RecentAssignmentSchema).max(MAX_RECENT_ASSIGNMENTS)),
+const recentAssignmentScoresSchema = z
+  .custom<unknown>(isBoundedDenseArray)
+  .pipe(z.array(AverageScoresSchema).max(MAX_LIST_ENTRIES));
+
+const studentStandingShape = {
+  studentId: z.string().min(1).refine(isTrimmed),
+  studentName: z.string().min(1).refine(isTrimmed),
+  scores: AverageScoresSchema,
+  recentAssignmentScores: recentAssignmentScoresSchema,
+};
+
+const isStudentStandingRawRecord = (value: unknown): boolean =>
+  isExactRecord(value, STUDENT_STANDING_KEYS);
+
+/** Validates one exact student-standing entry, with no timestamp of its own. */
+export const StudentStandingSchema = z
+  .custom<unknown>(isStudentStandingRawRecord)
+  .pipe(z.object(studentStandingShape).strict());
+
+const standingListSchema = z
+  .custom<unknown>(isBoundedDenseArray)
+  .pipe(z.array(StudentStandingSchema).max(MAX_LIST_ENTRIES));
+
+const standingsShape = {
+  top: standingListSchema,
+  bottom: standingListSchema,
 };
 
 /**
- * Validates a complete non-null ABClass metadata snapshot.
+ * Validates a standings basis.
+ * @remarks Disjointness between `top` and `bottom` is a producer rule owned by the
+ * Section 3 analyser; the persisted-metadata validators on both sides deliberately
+ * allow duplicates so frontend and backend acceptance stay aligned.
+ */
+export const StudentStandingsSchema = z
+  .custom<unknown>((value: unknown): boolean => isExactRecord(value, STANDINGS_KEYS))
+  .pipe(z.object(standingsShape).strict());
+
+const legacyMetadataShape = {
+  classAverages: ClassAveragesSchema,
+  recentAssignments: recentAssignmentsSchema,
+};
+
+const currentMetadataShape = {
+  ...legacyMetadataShape,
+  baselineAverages: BaselineAveragesSchema.nullable(),
+  allTaskStandings: StudentStandingsSchema.nullable(),
+  baselineStandings: StudentStandingsSchema.nullable(),
+};
+
+const currentMetadataKeys = [...METADATA_KEYS, ...NEW_METADATA_KEYS] as const;
+
+/** Exact five-field snapshot shape used as the emitted non-null output contract. */
+const fiveFieldSnapshotSchema = z.object(currentMetadataShape).strict();
+
+const legacySnapshotSchema = z
+  .custom<unknown>((value: unknown): boolean => isExactRecord(value, METADATA_KEYS))
+  .pipe(z.object(legacyMetadataShape).strict());
+
+const currentSnapshotSchema = z
+  .custom<unknown>((value: unknown): boolean => isExactRecord(value, currentMetadataKeys))
+  .pipe(fiveFieldSnapshotSchema);
+
+/** Complete five-field metadata snapshot emitted by the schema. */
+type NonNullableABClassMetadata = z.infer<typeof fiveFieldSnapshotSchema>;
+
+/**
+ * Validates a non-null ABClass metadata snapshot and emits the current five-field shape.
+ * @remarks Legacy two-field input and current five-field input are both accepted. Legacy
+ * input is emitted as the full five-field shape with enumerable null placeholders, mirroring
+ * backend read normalisation so all five fields survive serialisation and cloning.
  * @remarks Used by the metadata merge/write path; the nullable union remains for wire reads and mutation requests.
  */
 export const NonNullableABClassMetadataSchema = z
-  .custom<unknown>(isMetadataRawRecord)
-  .pipe(z.object(metadataShape).strict())
-  .superRefine((metadata, context) => {
-    validateRecentAssignmentOrdering(metadata.recentAssignments, context);
-  });
+  .union([currentSnapshotSchema, legacySnapshotSchema])
+  .superRefine((snapshot, context) => {
+    validateRecentAssignmentOrdering(snapshot.recentAssignments, context);
+    if ('allTaskStandings' in snapshot) {
+      validateSnapshotStandingsScoreAlignment(snapshot, context);
+    }
+  })
+  .transform(emitCurrentFiveFieldShape);
 
 /**
- * Validates a nullable, complete ABClass metadata snapshot.
- * @remarks Required fields and exact plain-record keys are checked before Zod copies input; this mirrors the backend metadata boundary.
+ * Validates a nullable ABClass metadata snapshot.
+ * @remarks The union accepts a legacy two-field input but emits the current five-field
+ * shape with null placeholders, mirroring the backend read normalisation: stored legacy
+ * bytes stay readable without a write, and callers receive one consistent shape.
  */
 export const ABClassMetadataSchema = z.union([z.null(), NonNullableABClassMetadataSchema]);
 
 export type AverageScore = z.infer<typeof AverageScoreSchema>;
 export type AverageScores = z.infer<typeof AverageScoresSchema>;
-export type ClassAverages = z.infer<typeof ClassAveragesSchema>;
 export type RecentAssignment = z.infer<typeof RecentAssignmentSchema>;
+export type StudentStanding = z.infer<typeof StudentStandingSchema>;
+export type StudentStandings = z.infer<typeof StudentStandingsSchema>;
 export type ABClassMetadata = z.infer<typeof ABClassMetadataSchema>;
+
+/**
+ * Emits a five-field snapshot, retaining supplied fields and adding null placeholders.
+ * @param {object} snapshot - Validated current or legacy snapshot.
+ * @returns {NonNullableABClassMetadata} Snapshot exposing all five fields.
+ */
+function emitCurrentFiveFieldShape(
+  snapshot: z.infer<typeof currentSnapshotSchema> | z.infer<typeof legacySnapshotSchema>
+): NonNullableABClassMetadata {
+  return {
+    classAverages: snapshot.classAverages,
+    recentAssignments: snapshot.recentAssignments,
+    baselineAverages: 'baselineAverages' in snapshot ? snapshot.baselineAverages : null,
+    allTaskStandings: 'allTaskStandings' in snapshot ? snapshot.allTaskStandings : null,
+    baselineStandings: 'baselineStandings' in snapshot ? snapshot.baselineStandings : null,
+  };
+}
 
 /**
  * Checks that a candidate has precisely the expected own keys and plain prototype.
@@ -159,7 +258,7 @@ function hasRequiredOwnKeys(value: object, keys: readonly string[]): boolean {
  * @param {string} value - Candidate identifier.
  * @returns {boolean} Whether the string contains no surrounding whitespace.
  */
-function isTrimmed(value: string): boolean {
+export function isTrimmed(value: string): boolean {
   return value.trim() === value;
 }
 
@@ -204,4 +303,56 @@ function validateRecentAssignmentOrdering(
       });
     }
   });
+}
+
+/**
+ * Add an issue for each entry in a standings basis whose score list is not one set
+ * per recent assignment. The top/bottom iteration is shared by both frontend
+ * representations of a standings basis; callers keep their own basis-level loops.
+ * @param {object} standings - Standings basis with top and bottom entry lists.
+ * @param {readonly { recentAssignmentScores: readonly unknown[] }[]} standings.top - Ranked top entries.
+ * @param {readonly { recentAssignmentScores: readonly unknown[] }[]} standings.bottom - Ranked bottom entries.
+ * @param {readonly string[]} path - Path prefix for the diagnostic issues.
+ * @param {number} expected - Required score-list length.
+ * @param {z.RefinementCtx} context - Zod refinement context.
+ * @returns {void} Adds validation issues to the context when needed.
+ */
+export function validateStandingsScoreAlignment(
+  standings: {
+    readonly top: readonly { recentAssignmentScores: readonly unknown[] }[];
+    readonly bottom: readonly { recentAssignmentScores: readonly unknown[] }[];
+  },
+  path: readonly string[],
+  expected: number,
+  context: z.RefinementCtx
+): void {
+  for (const list of ['top', 'bottom'] as const) {
+    standings[list].forEach((entry, index) => {
+      if (entry.recentAssignmentScores.length !== expected) {
+        context.addIssue({
+          code: 'custom',
+          path: [...path, list, index, 'recentAssignmentScores'],
+          message: 'recentAssignmentScores must have one score set per recent assignment',
+        });
+      }
+    });
+  }
+}
+
+/**
+ * Aligns every standing entry's score list with the metadata's recent assignments.
+ * @param {object} snapshot - Parsed current-shape snapshot.
+ * @param {z.RefinementCtx} context - Zod refinement context.
+ * @returns {void} Adds validation issues to the context when needed.
+ */
+function validateSnapshotStandingsScoreAlignment(
+  snapshot: z.infer<typeof currentSnapshotSchema>,
+  context: z.RefinementCtx
+): void {
+  const expected = snapshot.recentAssignments.length;
+  for (const basis of ['allTaskStandings', 'baselineStandings'] as const) {
+    const standings = snapshot[basis];
+    if (standings === null) continue;
+    validateStandingsScoreAlignment(standings, [basis], expected, context);
+  }
 }

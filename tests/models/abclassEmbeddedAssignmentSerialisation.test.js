@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { normalisedMetadataExpectation } from '@synthetic/normalisedMetadataExpectation';
 import { ABClass } from '#backend/Models/ABClass.js';
 import { AssignmentDefinition } from '#backend/Models/AssignmentDefinition.js';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
@@ -63,7 +64,9 @@ describe('ABClass embedded assignment serialization', () => {
           ABClass.fromJSON(JSON.parse(JSON.stringify(output)))
         );
         expect(roundTrip.toJSON()).toStrictEqual(output);
-        expect(roundTrip.toPartialJSON().metadata).toStrictEqual(input.metadata);
+        expect(roundTrip.toPartialJSON().metadata).toStrictEqual(
+          normalisedMetadataExpectation(input.metadata)
+        );
       }
       expect(assignmentCount).toBeGreaterThan(0);
       expect(submissionCount).toBeGreaterThan(0);

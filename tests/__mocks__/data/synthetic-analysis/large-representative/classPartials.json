@@ -81,7 +81,84 @@
             "overall": 3.9
           }
         }
-      ]
+      ],
+      "baselineAverages": {
+        "completeness": "N",
+        "accuracy": "N",
+        "spag": "N",
+        "overall": "N",
+        "updatedAt": "2024-01-03T13:03:00.000Z"
+      },
+      "allTaskStandings": {
+        "top": [
+          {
+            "studentId": "student-5",
+            "studentName": "Student 5",
+            "scores": {
+              "completeness": 4,
+              "accuracy": 3.5,
+              "spag": 4.5,
+              "overall": 3.9
+            },
+            "recentAssignmentScores": [
+              {
+                "completeness": 4,
+                "accuracy": 3.5,
+                "spag": 4.5,
+                "overall": 3.9
+              },
+              {
+                "completeness": 4,
+                "accuracy": 3.5,
+                "spag": 4.5,
+                "overall": 3.9
+              },
+              {
+                "completeness": 4,
+                "accuracy": 3.5,
+                "spag": 4.5,
+                "overall": 3.9
+              }
+            ]
+          }
+        ],
+        "bottom": []
+      },
+      "baselineStandings": {
+        "top": [],
+        "bottom": [
+          {
+            "studentId": "student-6",
+            "studentName": "Student 6",
+            "scores": {
+              "completeness": "N",
+              "accuracy": "N",
+              "spag": "N",
+              "overall": "N"
+            },
+            "recentAssignmentScores": [
+              {
+                "completeness": "N",
+                "accuracy": "N",
+                "spag": "N",
+                "overall": "N"
+              },
+              {
+                "completeness": "N",
+                "accuracy": "N",
+                "spag": "N",
+                "overall": "N"
+              },
+              {
+                "completeness": "N",
+                "accuracy": "N",
+                "spag": "N",
+                "overall": "N"
+              }
+            ]
+          }
+        ]
+      }
     }
   },
   {
@@ -130,7 +207,72 @@
             "overall": 3.5
           }
         }
-      ]
+      ],
+      "baselineAverages": {
+        "completeness": 4,
+        "accuracy": 3.5,
+        "spag": 4.5,
+        "overall": 3.9,
+        "updatedAt": "2024-01-04T13:03:00.000Z"
+      },
+      "allTaskStandings": {
+        "top": [
+          {
+            "studentId": "student-14",
+            "studentName": "Student 14",
+            "scores": {
+              "completeness": 4,
+              "accuracy": 3,
+              "spag": "N",
+              "overall": 3.5
+            },
+            "recentAssignmentScores": [
+              {
+                "completeness": 4,
+                "accuracy": 3,
+                "spag": "N",
+                "overall": 3.5
+              },
+              {
+                "completeness": 4,
+                "accuracy": 3,
+                "spag": "N",
+                "overall": 3.5
+              }
+            ]
+          }
+        ],
+        "bottom": []
+      },
+      "baselineStandings": {
+        "top": [],
+        "bottom": [
+          {
+            "studentId": "student-15",
+            "studentName": "Student 15",
+            "scores": {
+              "completeness": 4,
+              "accuracy": 3.5,
+              "spag": 4.5,
+              "overall": 3.9
+            },
+            "recentAssignmentScores": [
+              {
+                "completeness": 4,
+                "accuracy": 3.5,
+                "spag": 4.5,
+                "overall": 3.9
+              },
+              {
+                "completeness": 4,
+                "accuracy": 3.5,
+                "spag": 4.5,
+                "overall": 3.9
+              }
+            ]
+          }
+        ]
+      }
     }
   },
   {
@@ -172,7 +314,60 @@
             "overall": 3.9
           }
         }
-      ]
+      ],
+      "baselineAverages": {
+        "completeness": "N",
+        "accuracy": "N",
+        "spag": "N",
+        "overall": "N",
+        "updatedAt": "2024-01-05T13:03:00.000Z"
+      },
+      "allTaskStandings": {
+        "top": [
+          {
+            "studentId": "student-15",
+            "studentName": "Student 15",
+            "scores": {
+              "completeness": 4,
+              "accuracy": 3.5,
+              "spag": 4.5,
+              "overall": 3.9
+            },
+            "recentAssignmentScores": [
+              {
+                "completeness": 4,
+                "accuracy": 3.5,
+                "spag": 4.5,
+                "overall": 3.9
+              }
+            ]
+          }
+        ],
+        "bottom": []
+      },
+      "baselineStandings": {
+        "top": [],
+        "bottom": [
+          {
+            "studentId": "student-16",
+            "studentName": "Student 16",
+            "scores": {
+              "completeness": "N",
+              "accuracy": "N",
+              "spag": "N",
+              "overall": "N"
+            },
+            "recentAssignmentScores": [
+              {
+                "completeness": "N",
+                "accuracy": "N",
+                "spag": "N",
+                "overall": "N"
+              }
+            ]
+          }
+        ]
+      }
     }
   }
 ]

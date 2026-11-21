@@ -252,6 +252,14 @@ and [api-layer.md § ABClass metadata helpers](../backend/api-layer.md#abclass-m
 Cross-reference: [Backend Testing](../backend/backend-testing.md) §Backend model-input
 adapter.
 
+**New-field coverage** — every non-null generated snapshot carries `baselineAverages`,
+`allTaskStandings` and `baselineStandings` as deterministic supplied snapshots. The raw
+validator accepts the legacy two-field and current five-field shapes and applies the backend
+and frontend rules to the new nested fields. The three compact profiles were regenerated
+through the CLI; the documented deterministic matrix, legacy `null` cases and byte
+reproducibility still hold. Generation stays within the existing profiles, views and stages at
+their recorded scale.
+
 ### `generateClassMetadata.js` stage
 
 - `scripts/synthetic-test-data/generateClassMetadata.js` runs once inside
@@ -271,6 +279,14 @@ adapter.
   zero-entry variants. Every entry's `assignmentId`, `assignmentDefinitionKey` and `updatedAt`
   come exactly from a real generated assignment of that class, newest first, so summary and entry
   timestamps share the same generated assignments.
+- Every non-null snapshot also emits `baselineAverages` as a supplied snapshot: it rotates the
+  all-task template one step on (`(templateIndex + 1) % 5`) and reuses the class's newest
+  generated assignment `updatedAt`, the same timestamp as `classAverages.updatedAt`.
+- Both standings bases are emitted as `{ top, bottom }` with one deterministic supplied entry
+  each: the all-task entry in `top` and the baseline entry in `bottom`. Identities derive from
+  the class index, template index and a per-basis ordinal. Each entry's `recentAssignmentScores`
+  holds one score set per recent assignment, aligned 1:1. These values consume no clock, Faker
+  value or random draw.
 - Coverage cases are selected deterministically by profile and class index:
 
   | Profile                | Class-index cases (template / recent entries)                       |
@@ -295,6 +311,12 @@ adapter.
 - It enforces strict raw shape and score union, canonical UTC timestamps, dense zero-to-three
   entries, unique assignment IDs, newest-first ordering, assignment/class/definition linkage,
   exact source timestamps and three-way persistence/partial/full parity.
+- It accepts exactly the legacy two-field or current five-field shape; whole `null` is accepted,
+  while partial three- or four-field subsets and extra own keys are rejected.
+- For the current shape it validates `baselineAverages` and both standings bases with the same
+  rules as the backend validator and frontend schema: exact keys, bounded scores, canonical UTC
+  timestamps, dense `top`/`bottom` lists of zero to three entries with trimmed identifiers, and
+  `recentAssignmentScores.length` equal to `recentAssignments.length`.
 - It runs from `validateSyntheticAnalysisGraph()` after validation-context construction, so
   every generator and committed-fixture path checks it. Focused tests additionally validate
   every raw snapshot view through the real `ABClassMetadata.validateMetadata` domain owner,
@@ -302,7 +324,7 @@ adapter.
 
 ### Frontend Zod parity
 
-- `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts` compares the frontend `ABClassMetadataSchema` with the backend `ABClassMetadata.validateMetadata` across the compact profiles and boundary probes. It calls `generateSyntheticAnalysisGraph()` directly, so the generated snapshots stay in memory.
+- `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts` compares the frontend `ABClassMetadataSchema` with the backend `ABClassMetadata.validateMetadata` across all three compact profiles on both the generated five-field snapshots and the legacy two-field input (normalised with three `null` placeholders). It also compares malformed nested five-field probes. It calls `generateSyntheticAnalysisGraph()` directly, so the generated snapshots stay in memory.
 - Frontend Vitest schema coverage selects the committed `small`, `medium` and `large-representative` class-partial views through `src/frontend/src/test/abClass/abClassMetadataFixtures.ts` (raw `?raw` imports plus `cloneMetadata`). Backend imports stay test-local; frontend production code never imports `scripts/` or backend modules.
 - Runner-neutral typed fixture providers use `src/frontend/src/test/abClass/abClassMetadataSharedFixtures.ts`: direct JSON loading, schema validation, freezing and detached cloning own `CANONICAL_NON_NULL_METADATA` / `createCanonicalMetadataFixture()`. The Vitest-only raw selectors re-export those bindings for compatibility; shared browser import chains must not import the raw selector module. `ClassFullFixtureDefaults` owns the focused full-class builders' defaults and preserves explicit `metadata: null`, applying the canonical snapshot only for omitted/undefined metadata. `src/frontend/e2e-tests/helpers/class-metadata-fixtures.ts` serves cloned `small`-profile snapshots to browser scenarios. Supplied values remain snapshots, not calculated-average oracles.
 
@@ -311,6 +333,11 @@ adapter.
 The metadata round-trip bridge exercises the real `callApi`, service schemas and queued
 mutation wrappers; see
 [`syntheticABClassMetadataRoundTrip.test.ts`](../../../tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts).
+
+The suite covers the regenerated five-field fixture: reads retain all five fields, a supplied
+five-field snapshot round-trips through `updateABClass` and `upsertABClass`, and `null` clears
+and whole replacement are asserted for the new shape. Expectations are derived from the raw
+fixture bytes (`?? null` for an absent new field), not pinned literals.
 
 The bridge extension is test-only: it composes the existing `apiHandlerTestUtils`
 controller and transport seams, including class-partial reads and metadata mutation
@@ -345,9 +372,9 @@ assessments and supplied metadata are unchanged:
 
 | Profile                | Class     | Historical target |
 | ---------------------- | --------- | ----------------- |
-| `small`                | `class-2` | `assignment-2-2`  |
-| `medium`               | `class-0` | `assignment-0-4`  |
-| `large-representative` | `class-1` | `assignment-1-3`  |
+| `small`                | `class-2` | `assignment-2-3`  |
+| `medium`               | `class-0` | `assignment-0-5`  |
+| `large-representative` | `class-1` | `assignment-1-4`  |
 
 These are historical-source **boundary probes**, not a new realistic fixture
 profile or a generator extension. Untouched selected-class failure probes retain the
@@ -361,8 +388,9 @@ fixtures pass.
 ### Regeneration and scope
 
 - The metadata stage changes only `classPartials.json` and `classesById.json` for each compact
-  profile; the other four committed views carry no class `metadata` and are rewritten
-  byte-identically by that stage. Other generator changes, such as task counts, rewrite those
+  profile. Regenerating with `npm run fixtures:synthetic` rewrote exactly those six committed
+  files (`small`, `medium` and `large-representative`); the other four views per profile were
+  rewritten byte-identically. Other generator changes, such as task counts, rewrite those
   views too.
 - Regenerate through the existing CLI only; never hand-edit JSON. The same stage covers the
   full graph, and full-stress output is never committed.
@@ -458,16 +486,17 @@ A test that consumes regenerated synthetic data must therefore derive its expect
 
 These owners already derive expectations from corpus data. Reuse or extend one before writing a new derivation.
 
-| Helper                                                                                                                                           | Purpose                                                                                                                                                                                                                      |
-| ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/assignment/assignmentRehydrationCurrentSupport.js`                                                                                        | `KNOWN_TASK_IDS` is derived at load from the canonical `small` `assignment-0-1` definition; `HEAD_TASK_ID` and `SIBLING_TASK_ID` index into it.                                                                              |
-| `tests/assignment/assignmentExtraction.parserFailures.test.js`                                                                                   | Local `alignStoredItemsWithDefinition()` filters each stored submission's item keys to the composed definition's task IDs.                                                                                                   |
-| `tests/assignment/assignmentLegacyReadPreparation.corruption.test.js`, `tests/assignment/assignmentLegacyReadPreparationSupport.js`              | Task pins come from `embeddedTaskIds(restoreLegacy(healthyFullRecord()))`; `embeddedTaskIds()` reads the embedded definition's task IDs.                                                                                     |
-| `src/frontend/src/test/assignmentAssessment/assignmentReadNormalisation.fixtures.ts`                                                             | `twoItemKeys(submission)` returns the first two item keys from the submission itself, throwing with a fixture diagnostic when fewer exist.                                                                                   |
-| `src/frontend/src/services/dataAnalysis/dataAnalysis.mediumBaselineRoundTrip.spec.ts`                                                            | `deriveCorpusBaseline()` is an independent oracle over the raw committed view; `isAttemptItem()` and `collectAttemptedTaskKeys()` apply the item-level attempt predicate, and `collectErrorCodes()` gathers raw error codes. |
-| `src/frontend/src/test/abClass/metadataEvidenceOracle.ts`                                                                                        | `calculateNumericEvidence()` derives numerical expectations from raw assessment evidence and live definitions, never supplied metadata or production projection.                                                             |
-| `src/frontend/src/test/dataAnalysis/legacyAssessmentParityOracle.ts`, `src/frontend/src/test/dataAnalysis/legacyAssessmentParityExpectations.ts` | Observation collection over canonical fixtures plus independent expected-aggregation; expected numbers never restate analyser outputs.                                                                                       |
-| `tests/helpers/llmRunStopHarness.js`, `tests/requestHandlers/llmRunStopHarness.multiTaskCapability.test.js`                                      | Opt-in `selectionMode: 'multi-task'` / `createMultiTaskRunStopAssignment()` selects numeric-healthy TEXT candidates across two or more tasks; the capability test proves the selector works.                                 |
+| Helper                                                                                                                                           | Purpose                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `tests/assignment/assignmentRehydrationCurrentSupport.js`                                                                                        | `KNOWN_TASK_IDS` is derived at load from the canonical `small` `assignment-0-1` definition; `HEAD_TASK_ID` and `SIBLING_TASK_ID` index into it.                                                                                            |
+| `tests/assignment/assignmentExtraction.parserFailures.test.js`                                                                                   | Local `alignStoredItemsWithDefinition()` filters each stored submission's item keys to the composed definition's task IDs.                                                                                                                 |
+| `tests/assignment/assignmentLegacyReadPreparation.corruption.test.js`, `tests/assignment/assignmentLegacyReadPreparationSupport.js`              | Task pins come from `embeddedTaskIds(restoreLegacy(healthyFullRecord()))`; `embeddedTaskIds()` reads the embedded definition's task IDs.                                                                                                   |
+| `src/frontend/src/test/assignmentAssessment/assignmentReadNormalisation.fixtures.ts`                                                             | `twoItemKeys(submission)` returns the first two item keys from the submission itself, throwing with a fixture diagnostic when fewer exist.                                                                                                 |
+| `src/frontend/src/services/dataAnalysis/dataAnalysis.mediumBaselineRoundTrip.spec.ts`                                                            | `deriveCorpusBaseline()` is an independent oracle over the raw committed view; `isAttemptItem()` and `collectAttemptedTaskKeys()` apply the item-level attempt predicate, and `collectErrorCodes()` gathers raw error codes.               |
+| `src/frontend/src/test/abClass/metadataEvidenceOracle.ts`                                                                                        | `calculateNumericEvidence()` derives numerical expectations from raw assessment evidence and live definitions, never supplied metadata or production projection.                                                                           |
+| `src/frontend/src/test/dataAnalysis/legacyAssessmentParityOracle.ts`, `src/frontend/src/test/dataAnalysis/legacyAssessmentParityExpectations.ts` | Observation collection over canonical fixtures plus independent expected-aggregation; expected numbers never restate analyser outputs.                                                                                                     |
+| `tests/helpers/llmRunStopHarness.js`, `tests/requestHandlers/llmRunStopHarness.multiTaskCapability.test.js`                                      | Opt-in `selectionMode: 'multi-task'` / `createMultiTaskRunStopAssignment()` selects numeric-healthy TEXT candidates across two or more tasks; the capability test proves the selector works.                                               |
+| `tests/__mocks__/data/synthetic-analysis/normalisedMetadataExpectation.ts`                                                                       | Derives five-field metadata from raw snapshot: null stays null, absent fields become enumerable null placeholders, supplied values kept, non-object and array inputs fail loudly; imported via `@synthetic/normalisedMetadataExpectation`. |
 
 ### Patterns
 

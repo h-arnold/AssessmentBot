@@ -8,6 +8,7 @@ type Graph = {
   persistence: { classes: Snapshot[] };
   transport: { classPartials: Snapshot[]; classesById: Record<string, Snapshot> };
 };
+type RawRecord = Record<string, any>;
 
 /** Raw metadata record whose field values are deliberately loose probes. */
 type MetadataRecord = Record<string, unknown>;
@@ -70,7 +71,22 @@ describe('frontend ABClass metadata schema parity with backend domain validation
       ];
       for (const { metadata } of snapshots) {
         expect(() => ABClassMetadata.validateMetadata(metadata)).not.toThrow();
+        // Generated snapshots carry the five fields themselves; parse must not invent values.
         expect(ABClassMetadataSchema.parse(metadata)).toEqual(metadata);
+        if (metadata === null) continue;
+        // Legacy two-field input is still accepted and normalised with null placeholders.
+        const base = metadata as Record<string, unknown>;
+        const legacyInput = {
+          classAverages: base.classAverages,
+          recentAssignments: base.recentAssignments,
+        };
+        expect(() => ABClassMetadata.validateMetadata(legacyInput)).not.toThrow();
+        expect(ABClassMetadataSchema.parse(legacyInput)).toEqual({
+          ...legacyInput,
+          baselineAverages: null,
+          allTaskStandings: null,
+          baselineStandings: null,
+        });
       }
     }
   );
@@ -192,6 +208,60 @@ describe('frontend ABClass metadata schema parity with backend domain validation
       },
     ];
     for (const candidate of cases) expectParity(candidate);
+  });
+
+  it('agrees with backend acceptance for malformed nested five-field probes', () => {
+    const scores = { completeness: 0, accuracy: 1.25, spag: 'E', overall: 'excluded' };
+    const recent = [entry('a', CANONICAL_TIMESTAMP)];
+    const standing = (suffix: string): RawRecord => ({
+      studentId: `student-${suffix}`,
+      studentName: `Student ${suffix}`,
+      scores: { ...scores },
+      recentAssignmentScores: recent.map(() => ({ ...scores })),
+    });
+    const validFiveField: RawRecord = {
+      classAverages: { ...scores, updatedAt: CANONICAL_TIMESTAMP },
+      recentAssignments: recent,
+      baselineAverages: { ...scores, updatedAt: CANONICAL_TIMESTAMP },
+      allTaskStandings: { top: [standing('0')], bottom: [] },
+      baselineStandings: { top: [], bottom: [standing('1')] },
+    };
+    expectParity(validFiveField, true);
+    // Root-key omissions are excluded here: the backend deliberately accepts a subset of the
+    // new fields while the frontend requires exactly two or five keys (recorded deferred gap).
+    for (const mutate of [
+      (value: RawRecord) => {
+        value.extra = true;
+      },
+      (value: RawRecord) => {
+        value.baselineAverages = undefined;
+      },
+      (value: RawRecord) => {
+        value.baselineAverages.completeness = 6;
+      },
+      (value: RawRecord) => {
+        value.baselineAverages.updatedAt = '2026-10-19T09:33:28+00:00';
+      },
+      (value: RawRecord) => {
+        value.allTaskStandings.top[0].recentAssignmentScores = [];
+      },
+      (value: RawRecord) => {
+        value.allTaskStandings.top[0].scores.overall = 'n';
+      },
+      (value: RawRecord) => {
+        value.baselineStandings.bottom[0].studentId = ' student-1';
+      },
+      (value: RawRecord) => {
+        value.baselineStandings.bottom = Array(1);
+      },
+      (value: RawRecord) => {
+        Object.setPrototypeOf(value.allTaskStandings, { inherited: true });
+      },
+    ]) {
+      const candidate = structuredClone(validFiveField);
+      mutate(candidate);
+      expectParity(candidate, false);
+    }
   });
 });
 

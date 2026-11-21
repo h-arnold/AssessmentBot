@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { DataAnalysisService } from './dataAnalysisService';
+import { ClassSummarySchema } from './classSummary.zod';
 import {
+  AveragingAnalyserInputSchema,
   DataAnalysisResponseSchema,
   type AveragingAnalyserInput,
   type DataAnalysisResponse,
@@ -163,21 +165,16 @@ describe('DataAnalysisService', () => {
     });
 
     // -----------------------------------------------------------------------
-    // 8) Unregistered analyser key throws typed Error
+    // 8) analyse validates input and output with a single input argument
     // -----------------------------------------------------------------------
-    it('throws a typed Error when an unregistered analyser key is requested', () => {
-      const input = buildInput([
-        {
-          classId: 'c_001',
-          assignments: [],
-        },
-      ]);
+    it('validates input and output when analyse is called with a single input argument', () => {
+      const input = buildSingleStudentInput({ accuracy: { score: 4 } });
 
       const service = new DataAnalysisService();
+      const results = service.analyse(input);
 
-      expect(() => service.analyse(input, 'bogusAnalyser')).toThrow(
-        'Unknown analyser key: bogusAnalyser'
-      );
+      expect(() => AveragingAnalyserInputSchema.parse(input)).not.toThrow();
+      expect(() => DataAnalysisResponseSchema.parse(results)).not.toThrow();
     });
 
     // -----------------------------------------------------------------------
@@ -386,6 +383,51 @@ describe('DataAnalysisService', () => {
 
       // This will FAIL in the Red phase (current schema doesn't have discriminated union)
       expect(() => DataAnalysisResponseSchema.parse(responseWithAllStates)).not.toThrow();
+    });
+  });
+
+  describe('analyseClassSummary', () => {
+    it('exposes a dedicated class summary entry point backed by its own analyser field', () => {
+      const service = new DataAnalysisService();
+      const augmented = service as unknown as {
+        classSummaryAnalyser: unknown;
+        summaryAnalyser: unknown;
+        analyseClassSummary: (
+          input: AveragingAnalyserInput,
+          options: { target: unknown; recentAssignments: unknown[] }
+        ) => unknown;
+      };
+
+      expect(typeof augmented.analyseClassSummary).toBe('function');
+      expect(augmented.classSummaryAnalyser).toBeDefined();
+      expect(augmented.classSummaryAnalyser).not.toBe(augmented.summaryAnalyser);
+
+      const input = buildSingleStudentInput({
+        completeness: { score: 4 },
+        accuracy: { score: 4 },
+      });
+      input.classes[0].assignments[0].updatedAt = '2026-01-01T00:00:00.000Z';
+      const target = input.classes[0].assignments[0];
+      const summary = augmented.analyseClassSummary(input, {
+        target,
+        recentAssignments: [target],
+      });
+
+      expect(() => ClassSummarySchema.parse(summary)).not.toThrow();
+    });
+
+    it('keeps analyse and analyseAssignmentSummary behaviour unchanged', () => {
+      const input = buildSingleStudentInput({ accuracy: { score: 4 } });
+      const service = new DataAnalysisService();
+
+      const results = service.analyse(input);
+      expect(results[0].perClass.accuracy.state).toBe('computed');
+
+      const summary = service.analyseAssignmentSummary(input, 'c_001', 'a_001');
+      expect(summary.classId).toBe('c_001');
+      expect(summary.assignmentId).toBe('a_001');
+      expect(summary.totalStudents).toBe(1);
+      expect(summary.tasks).toHaveLength(1);
     });
   });
 });

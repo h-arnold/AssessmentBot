@@ -135,6 +135,8 @@ For ABClass metadata contract work, keep the same split:
 
 - frontend schema coverage belongs in `src/frontend/src/services/abClass/abClassMetadata.zod.spec.ts`, using the frozen canonical selectors in `src/frontend/src/test/abClass/abClassMetadataFixtures.ts` (clone with `cloneMetadata` before any deliberate mutation)
 - frontend/backend acceptance parity belongs in `tests/synthetic-analysis/syntheticABClassMetadataFrontendParity.test.ts`, which generates the analysis graph directly by profile, imports the real backend `ABClassMetadata.validateMetadata` test-locally, and compares backend and frontend acceptance across generated snapshots plus strict raw-object, score, identifier and timestamp boundary probes. The parity suite does not import the frontend selectors; the two suites cover the same contract independently.
+- generator and raw-validator coverage belongs in `tests/synthetic-analysis/syntheticABClassMetadataGeneratorValidator.test.ts`: deterministic five-field generation plus raw-validator acceptance of legacy and current shapes and rejection of malformed nested fields. The parity suite compares acceptance across both sides; this suite pins the generator and raw validator directly.
+- five-field dispatcher read/write round-trip coverage belongs in `tests/synthetic-analysis/syntheticABClassMetadataRoundTrip.test.ts` (see [Post-analysis metadata browser and Node integration coverage](#post-analysis-metadata-browser-and-node-integration-coverage)). Keep these suites split by responsibility rather than merging them.
 - backend transport coverage belongs in `tests/api/apiHandler/abclassMetadata*.test.js` and `tests/api/abclassMetadataApi.test.js`
 
 Class-read metadata adoption is covered by responsibility:
@@ -160,7 +162,7 @@ not a nested queued wrapper that would deadlock.
 
 ### Metadata refresh task and writer tests
 
-The task/writer coverage is split across seven suites:
+The task/writer coverage is split across eight suites:
 
 - `services/dataAnalysis/postAnalysis/metadataProjection.freshness.spec.ts` and
   `metadataProjection.merge.spec.ts`: timestamp gate, exact score/marker mapping,
@@ -171,6 +173,9 @@ The task/writer coverage is split across seven suites:
   fresh-read ordering/recheck, full standard-weight scope, isolated target,
   request/response validation, interleaved owners, failure identity/lane release
   and independent raw-assessment numeric expectations.
+- `services/abClass/abClassMetadataService.summaryConsumption.spec.ts`: the writer
+  consumes one `ClassSummary`, with target and recent-assignment selection,
+  five-field request mapping, clear-on-null and whole replacement.
 
 Shared support is in `src/test/abClass/metadataRefreshFixtures.ts`,
 `metadataRefreshTransport.ts` and `metadataEvidenceOracle.ts`. Transport support
@@ -179,6 +184,16 @@ real backend dispatcher coverage. The numeric oracle reads assessment evidence
 and live weights independently of production calculation/projection; supplied
 metadata scores are never an oracle. Other scope/projection assertions also use
 the real analyser, so do not present those alone as independent arithmetic proof.
+
+Class-summary analysis and schema coverage sits beside its subject:
+
+- `services/dataAnalysis/classSummaryAnalyser.spec.ts`: composition with `AveragingAnalyser`,
+  absolute-mode all-tasks pinning, disjoint top/bottom ranking, tie-break and per-assignment
+  score alignment.
+- `services/dataAnalysis/classSummaryAnalyser.boundary.spec.ts`: local boundary fixtures,
+  baseline unavailability and error propagation for `AttemptBaselineUnavailableError`.
+- `services/dataAnalysis/classSummary.zod.spec.ts`: the strict in-memory `ClassSummarySchema`,
+  including its disjointness and score-alignment refinements.
 
 Success inputs are **explicit historical-source boundary clones**: the compact
 classes ship a null submission `studentName` in their newest assignment, which
@@ -370,6 +385,8 @@ Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-sc
 - Shared document-order button-name helpers: `src/frontend/src/test/shared/buttonOrderingTestHelpers.ts` — `getAccessibleButtonNames()` and `getAccessibleButtonIndex(name)` read accessible button names in document order, and `expectReRunButtonOrdering()` asserts the re-run navigation-card placement shared by the class-page and heatmap specs. Use these so relative action placement is asserted against the same accessible names in every spec.
 - Data-analysis test fixtures: `src/frontend/src/test/dataAnalysis/fixtures.ts` — the shared-helpers location for data-analysis fixtures.
 - Data-analysis assertion helpers: `src/frontend/src/test/dataAnalysis/averagingAnalyserAssertions.ts` — shared module exporting `expectMetricResult` and `checkMetricInvariant` (extracted from `averagingAnalyser.spec.ts`).
+- Standings projection oracle: `src/frontend/src/test/dataAnalysis/standingsProjectionOracle.ts` — exports `RecentScoreCount` (`number | 'all'`) and `projectMetricStandings(standings, recentScoreCount)`, which projects analyser-native standings into persisted score sets through the exported `projectAverageScores` rather than the private production projector. `recentScoreCount` is explicit with no default: `'all'` keeps every recent score set and a number truncates with `slice(0, count)`. It replaces three duplicated local helpers in `metadataProjection.merge.spec.ts` and `abClassMetadataService.summaryConsumption.spec.ts` (both pass `'all'`) and `abClassMetadataService.calculation.spec.ts` (passes `1`).
+- Class-summary fixtures and derivation helpers: `src/frontend/src/test/dataAnalysis/classSummaryFixtures.ts` — exports `buildMediumInput(analysisMode)`, `buildSummaryOptions(input, recentAssignmentCount)`, `analyseSummary`, `isolatedAbsoluteResult`, `projectMetrics`, `expectedBaselineScores` and the `SummaryOptions` / `MetricScores` types. The two builders take explicit arguments with no defaults: `analysisMode` sets the parsed input filter, and `recentAssignmentCount` truncates the newest-first assignments. It replaces six helpers duplicated in `classSummaryAnalyser.spec.ts` and `classSummaryAnalyser.boundary.spec.ts`; both now import from this single home, so a change to a shared fixture shape shows up in both suites.
 - Synthetic analysis API round-trip adapter: `src/frontend/src/test/syntheticApiRoundTripAdapter.ts` — exports `createSyntheticApiRoundTripRunner(invokeRequest)`, a thin test-only adapter that composes the script-owned synthetic `apiHandler` bridge with `googleScriptRunHarness`. The bridge hands the real `apiHandler` JSON string to the harness, which passes strings through unchanged, so the envelope is serialised once by the backend and parsed once by `apiService`. The adapter also preserves raw failures and per-request callback isolation, and it imports no `scripts/` code. See [Synthetic Test Data](../testing/synthetic-test-data.md).
 - Heatmap table test fixtures: `src/frontend/src/test/taskHeatmapTableTestHelpers.ts` — exports the `buildHeatmapResult(overrides?)` and `buildCell()` composition helpers plus the pinned task-column constants, cell-preview lookups and the rendered-row/cell probes (`getRenderedRowKeys`, `getHeatmapCellByLabel`) shared by the `TaskHeatmapTable.*` and student-name-column specs.
 - Task-preview fixture selection: `src/frontend/src/test/taskHeatmap/previewFixtures.ts` — selects the canonical `small` `class-2` roster and its populated Slides `assignment-2-1` and Sheets `assignment-2-2` records through the frontend raw-JSON import convention, validates every selected full record through `ClassFullSchema` / `AssignmentFullSchema`, and derives and deep-freezes the preview identifiers, labels, metric values and content so the suites assert real record data rather than restated literals. It also exposes clone/build helpers so callers never mutate the shared records.

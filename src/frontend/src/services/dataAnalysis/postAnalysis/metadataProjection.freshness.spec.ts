@@ -56,6 +56,9 @@ describe('getMetadataRefreshDecision assignment-version eligibility', () => {
     classFull.metadata = {
       classAverages: { ...entry.averages, updatedAt: SUMMARY_TIME },
       recentAssignments: [entry],
+      baselineAverages: null,
+      allTaskStandings: null,
+      baselineStandings: null,
     };
     expect(getMetadataRefreshDecision(classFull)).toEqual({
       status: 'skipped',
@@ -73,6 +76,9 @@ describe('getMetadataRefreshDecision assignment-version eligibility', () => {
       classFull.metadata = {
         classAverages: { ...entry.averages, updatedAt: SUMMARY_TIME },
         recentAssignments: [entry],
+        baselineAverages: null,
+        allTaskStandings: null,
+        baselineStandings: null,
       };
       expect(getMetadataRefreshDecision(classFull)).toEqual({
         status: 'skipped',
@@ -88,6 +94,9 @@ describe('getMetadataRefreshDecision assignment-version eligibility', () => {
     classFull.metadata = {
       classAverages: { ...entry.averages, updatedAt: SUMMARY_TIME },
       recentAssignments: [entry],
+      baselineAverages: null,
+      allTaskStandings: null,
+      baselineStandings: null,
     };
     expect(getMetadataRefreshDecision(classFull)).toMatchObject({ status: 'changed' });
   });

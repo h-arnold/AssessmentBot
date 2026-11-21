@@ -10,9 +10,10 @@ import {
 } from '@/test/abClass/metadataRefreshFixtures';
 import { installMetadataRefreshTransport } from '@/test/abClass/metadataRefreshTransport';
 import { refreshABClassMetadata } from '../dataAnalysis/postAnalysis/refreshABClassMetadata';
+import { projectAverageScores } from '../dataAnalysis/postAnalysis/metadataProjection';
 import { calculateNumericEvidence } from '@/test/abClass/metadataEvidenceOracle';
+import { projectMetricStandings } from '@/test/dataAnalysis/standingsProjectionOracle';
 
-const TWO_ANALYSES = 2;
 const MAX_SCORE = 5;
 const INSTANCE_MEAN = 3;
 const NUMERIC_PRECISION = 12;
@@ -75,7 +76,7 @@ describe('ABClass metadata calculation and exact replacement', () => {
       });
       const backend = installMetadataRefreshTransport(context.classFull);
       const before = structuredClone(context);
-      const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyse');
+      const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyseClassSummary');
       const now = vi.fn(() => SUMMARY_TIME);
 
       const result = await refreshABClassMetadata(context, now);
@@ -85,23 +86,31 @@ describe('ABClass metadata calculation and exact replacement', () => {
         confirmedPersistence: true,
         classPartial: { classId: context.classFull.classId },
       });
-      expect(calculate).toHaveBeenCalledTimes(TWO_ANALYSES);
-      const inputs = calculate.mock.calls.map(([input]) => input);
+      expect(calculate).toHaveBeenCalledTimes(1);
+      const [input] = calculate.mock.calls[0];
+      const analyserInput: AveragingAnalyserInput = input;
       expect(
-        inputs.map((input: AveragingAnalyserInput) =>
-          input.classes[0].assignments.map((assignment) => assignment.assignmentId)
-        )
-      ).toEqual([
-        context.classFull.assignments.map((assignment) => assignment.assignmentId),
-        [target.assignmentId],
-      ]);
-      for (const input of inputs) {
-        expect(input.filter).toEqual({
-          classIds: [context.classFull.classId],
-          analysisMode: 'absolute',
-        });
-        expect(input.assignmentDefinitionPartials).toEqual(context.assignmentDefinitionPartials);
-      }
+        analyserInput.classes[0].assignments.map((assignment) => assignment.assignmentId)
+      ).toEqual(context.classFull.assignments.map((assignment) => assignment.assignmentId));
+      expect(analyserInput.filter).toEqual({
+        classIds: [context.classFull.classId],
+        analysisMode: 'absolute',
+      });
+      expect(analyserInput.assignmentDefinitionPartials).toEqual(
+        context.assignmentDefinitionPartials
+      );
+      const summary = calculate.mock.results[0].value;
+      if (!summary.baseline.available || summary.baseline.classAverages === null)
+        throw new Error('Expected baseline-eligible canonical class');
+      const expectedBaselineAverages = {
+        ...projectAverageScores(summary.baseline.classAverages),
+        updatedAt: SUMMARY_TIME,
+      };
+      const expectedAllTaskStandings = projectMetricStandings(summary.allTasks.standings, 1);
+      const expectedBaselineStandings =
+        summary.baseline.standings === null
+          ? null
+          : projectMetricStandings(summary.baseline.standings, 1);
       expect(backend.requests).toEqual([
         { method: 'getABClass', params: { classId: context.classFull.classId } },
         {
@@ -118,6 +127,9 @@ describe('ABClass metadata calculation and exact replacement', () => {
                   updatedAt: target.updatedAt,
                 },
               ],
+              baselineAverages: expectedBaselineAverages,
+              allTaskStandings: expectedAllTaskStandings,
+              baselineStandings: expectedBaselineStandings,
             },
           },
         },
@@ -143,7 +155,7 @@ describe('ABClass metadata calculation and exact replacement', () => {
       },
     })[0];
     const backend = installMetadataRefreshTransport(context.classFull);
-    const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyse');
+    const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyseClassSummary');
 
     await refreshABClassMetadata(context, () => SUMMARY_TIME);
 
@@ -151,15 +163,14 @@ describe('ABClass metadata calculation and exact replacement', () => {
       ...expected,
       updatedAt: SUMMARY_TIME,
     });
+    expect(calculate).toHaveBeenCalledTimes(1);
     expect(calculate.mock.calls[0][0].filter).toEqual({
       classIds: [context.classFull.classId],
       analysisMode: 'absolute',
     });
-    expect(calculate.mock.results[0].value[0].appliedCriterionWeightings).toEqual({
-      completeness: 0.4,
-      accuracy: 0.4,
-      spag: 0.2,
-    });
+    expect(projectAverageScores(calculate.mock.results[0].value.allTasks.classAverages)).toEqual(
+      expected
+    );
   });
 
   it('requires definitions for every fresh assignment, not merely the selected target', async () => {
@@ -175,6 +186,7 @@ describe('ABClass metadata calculation and exact replacement', () => {
     );
     const backend = installMetadataRefreshTransport(context.classFull);
     const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyse');
+    const analyseSummary = vi.spyOn(DataAnalysisService.prototype, 'analyseClassSummary');
     const now = vi.fn(() => SUMMARY_TIME);
 
     await expect(refreshABClassMetadata(context, now)).rejects.toThrow(
@@ -182,6 +194,7 @@ describe('ABClass metadata calculation and exact replacement', () => {
     );
     expect(backend.events).toEqual(['getABClass']);
     expect(calculate).not.toHaveBeenCalled();
+    expect(analyseSummary).not.toHaveBeenCalled();
     expect(now).not.toHaveBeenCalled();
   });
 
@@ -208,7 +221,7 @@ describe('ABClass metadata calculation and exact replacement', () => {
     context.classFull.assignments = [first, second];
     context.classFull.metadata = null;
     const backend = installMetadataRefreshTransport(context.classFull);
-    const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyse');
+    const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyseClassSummary');
 
     await refreshABClassMetadata(context, () => SUMMARY_TIME);
 
@@ -220,7 +233,14 @@ describe('ABClass metadata calculation and exact replacement', () => {
       averages: { completeness: 5, accuracy: 5, spag: 5, overall: 5 },
     });
     expect(saved.classAverages.completeness).toBe(INSTANCE_MEAN);
-    expect(calculate.mock.calls[1][0].classes[0].assignments).toHaveLength(1);
+    expect(calculate).toHaveBeenCalledTimes(1);
+    expect(
+      calculate.mock.calls[0][0].classes[0].assignments.map((entry) => entry.assignmentId)
+    ).toEqual([first.assignmentId, second.assignmentId]);
+    expect(calculate.mock.calls[0][1].target.assignmentId).toBe(second.assignmentId);
+    expect(calculate.mock.calls[0][1].recentAssignments.map((entry) => entry.assignmentId)).toEqual(
+      [second.assignmentId, first.assignmentId]
+    );
   });
 
   it('retains raw canonical evidence precision and weighted overall, not a mean of task displays', async () => {

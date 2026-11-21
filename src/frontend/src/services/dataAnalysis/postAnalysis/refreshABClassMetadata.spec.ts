@@ -28,12 +28,16 @@ describe('refreshABClassMetadata cheap task orchestration', () => {
       context.classFull.metadata = {
         classAverages: { ...entry.averages, updatedAt: SUMMARY_TIME },
         recentAssignments: [entry],
+        baselineAverages: null,
+        allTaskStandings: null,
+        baselineStandings: null,
       };
       if (reason === 'noAssignments') context.classFull.assignments = [];
       else if (reason === 'staleSource') entry.updatedAt = SUMMARY_TIME;
       const backend = installMetadataRefreshTransport(context.classFull);
       const reserve = vi.spyOn(queue, 'runApiQueuedTask');
       const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyse');
+      const analyseSummary = vi.spyOn(DataAnalysisService.prototype, 'analyseClassSummary');
       const now = vi.fn(() => SUMMARY_TIME);
 
       await expect(refreshABClassMetadata(context, now)).resolves.toEqual({
@@ -43,6 +47,7 @@ describe('refreshABClassMetadata cheap task orchestration', () => {
       expect(reserve).not.toHaveBeenCalled();
       expect(backend.dispatched).not.toHaveBeenCalled();
       expect(calculate).not.toHaveBeenCalled();
+      expect(analyseSummary).not.toHaveBeenCalled();
       expect(now).not.toHaveBeenCalled();
     }
   );
@@ -54,6 +59,9 @@ describe('refreshABClassMetadata cheap task orchestration', () => {
     context.classFull.metadata = {
       classAverages: { ...entry.averages, updatedAt: SUMMARY_TIME },
       recentAssignments: [entry],
+      baselineAverages: null,
+      allTaskStandings: null,
+      baselineStandings: null,
     };
     context.assignmentDefinitionPartials.forEach((definition) => {
       definition.assignmentWeighting = 0;
@@ -61,6 +69,7 @@ describe('refreshABClassMetadata cheap task orchestration', () => {
     context.averagingResult.appliedCriterionWeightings = { completeness: 1, accuracy: 0, spag: 0 };
     const backend = installMetadataRefreshTransport(context.classFull);
     const calculate = vi.spyOn(DataAnalysisService.prototype, 'analyse');
+    const analyseSummary = vi.spyOn(DataAnalysisService.prototype, 'analyseClassSummary');
     const now = vi.fn(() => SUMMARY_TIME);
 
     await expect(refreshABClassMetadata(context, now)).resolves.toEqual({
@@ -68,6 +77,7 @@ describe('refreshABClassMetadata cheap task orchestration', () => {
       reason: 'unchanged',
     });
     expect(calculate).not.toHaveBeenCalled();
+    expect(analyseSummary).not.toHaveBeenCalled();
     expect(backend.dispatched).not.toHaveBeenCalled();
     expect(now).not.toHaveBeenCalled();
   });

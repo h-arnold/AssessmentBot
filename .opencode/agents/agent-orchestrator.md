@@ -3,6 +3,10 @@ description: Coordinates subagents to implement changes following a structured i
 mode: all
 model: mistral/mistral-large-4
 steps: 100
+permissions:
+  - action: compact_context
+    resource: '*'
+    effect: allow
 ---
 
 # Agent Orchestrator Instructions

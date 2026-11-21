@@ -271,6 +271,25 @@ module.exports = [
     },
   },
   {
+    // Shared fixture helpers live in the synthetic corpus as TypeScript and are
+    // consumed by Node-side specs. Give them the Node-test baseline and a
+    // TypeScript parser so their type annotations parse correctly.
+    files: ['tests/__mocks__/**/*.ts'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parser: tseslintParser,
+    },
+    plugins: { security },
+    rules: {
+      ...unicodeSecurityRules,
+      'prefer-object-has-own': 'warn',
+      'no-negated-condition': 'warn',
+      'require-unicode-regexp': 'off',
+      'max-lines': ['warn', 500],
+    },
+  },
+  {
     // Synthetic analysis generation tooling is Node ESM, not GAS runtime source.
     // It reuses the canonical Node-tooling rule object shared with the builder.
     files: ['scripts/synthetic-test-data/**/*.js'],

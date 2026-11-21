@@ -13,6 +13,16 @@ import {
   type MetadataCandidateValues,
   type RecordScratchPad,
 } from '@/test/abClass/abClassMetadataTestBuilders';
+import {
+  buildCurrentMetadata,
+  committedLegacyRowWithRecent,
+  probeStanding,
+  type CurrentMetadataCandidate,
+  type ProbeBaselineAverages,
+  type ProbeStanding,
+} from '@/test/abClass/abClassMetadataFixtures';
+
+const NEW_SPARSE_LENGTH = 2;
 
 /**
  * Wraps a raw candidate for schema safeParse, shared by every probe loop.
@@ -255,5 +265,72 @@ describe('ABClass metadata raw-record ownership', () => {
       }
       expect(isAccepted(candidate)).toBe(false);
     }
+  });
+});
+
+describe('ABClass metadata new-field raw-record ownership', () => {
+  it('accepts null-prototype records at baseline averages, standings and standing levels', () => {
+    const current = buildCurrentMetadata(committedLegacyRowWithRecent('small'));
+    const withNullPrototypeAt: Array<(value: CurrentMetadataCandidate) => unknown> = [
+      (value) => {
+        return {
+          ...value,
+          baselineAverages: Object.assign(Object.create(null), value.baselineAverages),
+        };
+      },
+      (value) => {
+        return {
+          ...value,
+          allTaskStandings: Object.assign(Object.create(null), value.allTaskStandings),
+        };
+      },
+      (value) => {
+        return {
+          ...value,
+          allTaskStandings: {
+            ...value.allTaskStandings,
+            top: [Object.assign(Object.create(null), value.allTaskStandings.top[0])],
+          },
+        };
+      },
+    ];
+    for (const buildCandidate of withNullPrototypeAt) {
+      expect(isAccepted(buildCandidate(current))).toBe(true);
+    }
+  });
+
+  it('rejects missing identity keys and extra keys in a standing entry', () => {
+    for (const key of ['studentId', 'studentName'] as const) {
+      const current = buildCurrentMetadata(committedLegacyRowWithRecent('small'));
+      delete asScratchPad(current.allTaskStandings.top[0])[key];
+      expect(isAccepted(current), key).toBe(false);
+    }
+    const extra = buildCurrentMetadata(committedLegacyRowWithRecent('small'));
+    asScratchPad(extra.allTaskStandings.top[0]).nickname = 'extra';
+    expect(isAccepted(extra)).toBe(false);
+  });
+
+  it('rejects extra own keys on each new top-level field record', () => {
+    for (const field of ['baselineAverages', 'allTaskStandings', 'baselineStandings'] as const) {
+      const current = buildCurrentMetadata(committedLegacyRowWithRecent('small'));
+      asScratchPad(current[field]).extra = true;
+      expect(isAccepted(current), field).toBe(false);
+    }
+  });
+
+  it('rejects non-plain and sparse new-field records', () => {
+    const dateAverages = buildCurrentMetadata(committedLegacyRowWithRecent('small'));
+    dateAverages.baselineAverages = Object.assign(
+      new Date(),
+      dateAverages.baselineAverages
+    ) as unknown as ProbeBaselineAverages;
+    expect(isAccepted(dateAverages)).toBe(false);
+
+    const current = buildCurrentMetadata(committedLegacyRowWithRecent('small'));
+    const holes: ProbeStanding[] = [];
+    holes.length = NEW_SPARSE_LENGTH;
+    holes[1] = probeStanding('student-z', 'Zoe', current.recentAssignments.length);
+    current.baselineStandings.bottom = holes;
+    expect(isAccepted(current)).toBe(false);
   });
 });

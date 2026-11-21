@@ -59,11 +59,11 @@ interface ClassBaseline {
  * @param {ReadonlyArray<PerStudentTaskMetric>} perStudentTaskMetrics - The
  *   mode-invariant per-(student, task) metrics.
  * @returns {ClassBaseline | null} The baseline, or `null` in absolute mode.
- * @throws {Error} When the derived baseline task set is empty: the failure
- *   propagates from {@link deriveAttemptBaseline} (data-shape item 3;
- *   docs/developer/frontend/data-analysis-architecture.md § Attempt-baseline
- *   mode), so the descriptive failure names the class and no result is
- *   produced.
+ * @throws {AttemptBaselineUnavailableError} When {@link deriveAttemptBaseline}
+ *   finds the class ineligible (roster below three students or fewer than two
+ *   with at least one attempted task), or when the pooled students share no
+ *   task key in common. The descriptive failure names the class and no result
+ *   is produced.
  */
 function deriveClassBaseline(
   cls: AveragingAnalyserInput['classes'][number],

@@ -28,6 +28,15 @@ const validMetadata = () => ({
   ],
 });
 
+// Legacy corpus snapshots are two-field; reads emit the current five-field shape with
+// null placeholders for the three new fields while leaving the original fields unchanged.
+const emittedMetadata = (value) => ({
+  ...structuredClone(value),
+  baselineAverages: null,
+  allTaskStandings: null,
+  baselineStandings: null,
+});
+
 function findOwnedSnapshot(owner) {
   const visited = new Set();
   const pending = [owner];
@@ -81,7 +90,7 @@ describe('ABClassMetadata ownership boundary', () => {
     const domain = new Type(supplied);
     const first = domain.toJSON();
     const second = domain.toJSON();
-    expect(first).toEqual(supplied);
+    expect(first).toEqual(emittedMetadata(supplied));
     expect(first).not.toBe(supplied);
     expect(first).not.toBe(second);
     expect(first.classAverages).not.toBe(supplied.classAverages);
@@ -101,8 +110,8 @@ describe('ABClassMetadata ownership boundary', () => {
     first.recentAssignments[0].assignmentId = 'changed';
     first.recentAssignments[0].averages.overall = 'invalid';
     first.recentAssignments.push({});
-    expect(second).toEqual(validMetadata());
-    expect(domain.toJSON()).toEqual(validMetadata());
+    expect(second).toEqual(emittedMetadata(validMetadata()));
+    expect(domain.toJSON()).toEqual(emittedMetadata(validMetadata()));
   });
 
   it('copies accepted Array subclasses without trusting their inherited map method', () => {
@@ -168,6 +177,7 @@ describe('ABClassMetadata ownership boundary', () => {
     const paths = [
       'src/backend/Models/ABClass.js',
       'src/backend/Models/ABClassMetadata.js',
+      'src/backend/Models/ABClassMetadataStandings.js',
       'src/backend/Models/Assessment.js',
       'src/backend/Utils/Validate.js',
       'src/backend/Utils/ErrorTypes/ABClassMetadataValidationError.js',

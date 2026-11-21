@@ -59,7 +59,7 @@ function selectedHeatmap(assignmentIds: string[]) {
       },
     ],
   };
-  const analysis = new DataAnalysisService().analyse(scopedInput, 'averaging')[0];
+  const analysis = new DataAnalysisService().analyse(scopedInput)[0];
   return adaptMetricsToMergedHeatmap(
     analysis,
     classFull,

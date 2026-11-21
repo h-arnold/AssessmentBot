@@ -3,6 +3,7 @@ import { z } from 'zod';
 import smallClassesRaw from '@synthetic/small/classesById.json?raw';
 import mediumClassesRaw from '@synthetic/medium/classesById.json?raw';
 import representativeClassesRaw from '@synthetic/large-representative/classesById.json?raw';
+import { normalisedMetadataExpectation } from '@synthetic/normalisedMetadataExpectation';
 import { ApiTransportError } from '@/errors/apiTransportError';
 import {
   METADATA_PROFILES,
@@ -52,8 +53,9 @@ describe.each(METADATA_PROFILES)('class read services with the %s profile', (pro
       expect(callApiMock).toHaveBeenLastCalledWith('getABClass', { classId: partial.classId });
       expect(full).not.toBeNull();
       expect(Object.hasOwn(partial, 'metadata')).toBe(true);
-      expect(full).toHaveProperty('metadata', rows[index].metadata);
-      expect(partial.metadata).toEqual(rows[index].metadata);
+      const expectedMetadata = normalisedMetadataExpectation(rows[index].metadata);
+      expect(full).toHaveProperty('metadata', expectedMetadata);
+      expect(partial.metadata).toEqual(expectedMetadata);
       expect(full?.metadata).toEqual(partial.metadata);
       if (partial.metadata === null) {
         continue;

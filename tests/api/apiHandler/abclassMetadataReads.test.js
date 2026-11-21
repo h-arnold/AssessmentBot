@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { normalisedMetadataExpectation } from '@synthetic/normalisedMetadataExpectation';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 import {
   setupRealAbclassDispatcher,
@@ -53,7 +54,10 @@ describe('ABClass metadata dispatcher read contracts', () => {
     expect(response).toMatchObject({
       ok: true,
       data: [
-        expect.objectContaining({ classId: context.classId, metadata: context.source.metadata }),
+        expect.objectContaining({
+          classId: context.classId,
+          metadata: normalisedMetadataExpectation(context.source.metadata),
+        }),
       ],
     });
     expect(response.data[0]).not.toHaveProperty('_id');
@@ -76,7 +80,7 @@ describe('ABClass metadata dispatcher read contracts', () => {
       ok: true,
       data: expect.objectContaining({
         classId: context.classId,
-        metadata: context.source.metadata,
+        metadata: normalisedMetadataExpectation(context.source.metadata),
       }),
     });
     expect(context.full.findOne).toHaveBeenCalledWith({ classId: context.classId });

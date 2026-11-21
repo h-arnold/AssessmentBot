@@ -5,6 +5,16 @@ const MAX_SCORE = 5;
 const MAX_RECENT_ASSIGNMENTS = 3;
 const MARKERS = new Set(['N', 'E', 'excluded']);
 const CANONICAL_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
+const LEGACY_METADATA_KEYS = ['classAverages', 'recentAssignments'];
+const CURRENT_METADATA_KEYS = [
+  'classAverages',
+  'recentAssignments',
+  'baselineAverages',
+  'allTaskStandings',
+  'baselineStandings',
+];
+const STANDINGS_KEYS = ['top', 'bottom'];
+const STANDING_KEYS = ['studentId', 'studentName', 'scores', 'recentAssignmentScores'];
 
 /** Checks exact own-key shape for a raw metadata object.
  * @param {unknown} value Candidate record.
@@ -23,17 +33,29 @@ function assertKeys(value, expected, path) {
   }
 }
 
+/** Reports whether a value is a record whose own keys are exactly the expected set.
+ * @param {unknown} value Candidate record.
+ * @param {string[]} expected Required and permitted keys.
+ * @returns {boolean} Whether the own keys match exactly.
+ */
+function hasExactKeys(value, expected) {
+  if (!isRecord(value)) return false;
+  const ownKeys = Reflect.ownKeys(value);
+  return ownKeys.length === expected.length && expected.every((key) => Object.hasOwn(value, key));
+}
+
 /** Checks that an array has only its length and dense own indices.
  * @param {unknown[]} values Candidate array.
  * @param {string} path Diagnostic path.
  */
 function assertDenseArray(values, path) {
   const keys = Reflect.ownKeys(values);
+  const keySet = new Set(keys);
   const hasUnexpectedOrMissingKey =
     keys.length !== values.length + 1 ||
-    !keys.includes('length') ||
+    !keySet.has('length') ||
     Array.from({ length: values.length }, (_, index) => String(index)).some(
-      (key) => !keys.includes(key) || !Object.hasOwn(values, key)
+      (key) => !keySet.has(key) || !Object.hasOwn(values, key)
     );
   if (hasUnexpectedOrMissingKey) {
     fail(`${path} must be a dense array with no extra own properties.`);
@@ -91,7 +113,13 @@ function assertScore(score, path) {
  */
 function validateMetadata(metadata, path, classId, assignmentsById, definitionKeys) {
   if (metadata === null) return;
-  assertKeys(metadata, ['classAverages', 'recentAssignments'], path);
+  // Only the legacy two-field and current five-field shapes are accepted: a partial subset
+  // of the new fields is invalid, and a present undefined new field fails its nested check.
+  // assertKeys owns the plain-record, missing-key and extra-key diagnostics; the exact-key
+  // probe only selects which shape owns the three new fields.
+  const isCurrent = hasExactKeys(metadata, CURRENT_METADATA_KEYS);
+  const isLegacy = hasExactKeys(metadata, LEGACY_METADATA_KEYS);
+  assertKeys(metadata, isLegacy ? LEGACY_METADATA_KEYS : CURRENT_METADATA_KEYS, path);
   validateClassAverages(metadata.classAverages, `${path}.classAverages`);
   validateRecentAssignments(
     metadata.recentAssignments,
@@ -100,6 +128,12 @@ function validateMetadata(metadata, path, classId, assignmentsById, definitionKe
     assignmentsById,
     definitionKeys
   );
+  if (isCurrent) {
+    const recentCount = metadata.recentAssignments.length;
+    validateClassAverages(metadata.baselineAverages, `${path}.baselineAverages`);
+    validateStandings(metadata.allTaskStandings, `${path}.allTaskStandings`, recentCount);
+    validateStandings(metadata.baselineStandings, `${path}.baselineStandings`, recentCount);
+  }
 }
 
 /** Validates the required class-average object.
@@ -109,6 +143,67 @@ function validateMetadata(metadata, path, classId, assignmentsById, definitionKe
 function validateClassAverages(averages, path) {
   assertScores(averages, path, true);
   assertTimestamp(averages.updatedAt, `${path}.updatedAt`);
+}
+
+/** Validates a standings basis with exactly a top and a bottom list.
+ * @param {unknown} value Candidate standings basis.
+ * @param {string} path Diagnostic path.
+ * @param {number} recentCount Required number of recent assignment score sets.
+ */
+function validateStandings(value, path, recentCount) {
+  assertKeys(value, STANDINGS_KEYS, path);
+  validateStandingList(value.top, `${path}.top`, recentCount);
+  validateStandingList(value.bottom, `${path}.bottom`, recentCount);
+}
+
+/** Validates a dense zero-to-three list of complete standing entries.
+ * @param {unknown} value Candidate standing list.
+ * @param {string} path Diagnostic path.
+ * @param {number} recentCount Required number of recent assignment score sets.
+ */
+function validateStandingList(value, path, recentCount) {
+  if (!Array.isArray(value) || value.length > MAX_RECENT_ASSIGNMENTS) {
+    fail(`${path} must be an array containing zero to three entries.`);
+  }
+  assertDenseArray(value, path);
+  for (const [index, entry] of value.entries()) {
+    validateStandingEntry(entry, `${path}[${index}]`, recentCount);
+  }
+}
+
+/** Validates one student standing: trimmed identity, score set and aligned recent scores.
+ * @param {unknown} value Candidate standing entry.
+ * @param {string} path Diagnostic path.
+ * @param {number} recentCount Required number of recent assignment score sets.
+ */
+function validateStandingEntry(value, path, recentCount) {
+  assertKeys(value, STANDING_KEYS, path);
+  assertIdentifier(value.studentId, `${path}.studentId`);
+  assertIdentifier(value.studentName, `${path}.studentName`);
+  assertScores(value.scores, `${path}.scores`, false);
+  validateRecentAssignmentScores(
+    value.recentAssignmentScores,
+    `${path}.recentAssignmentScores`,
+    recentCount
+  );
+}
+
+/** Validates a dense score array aligned one-to-one with the recent assignments.
+ * @param {unknown} value Candidate recent-assignment score list.
+ * @param {string} path Diagnostic path.
+ * @param {number} recentCount Required number of score sets.
+ */
+function validateRecentAssignmentScores(value, path, recentCount) {
+  if (!Array.isArray(value) || value.length > MAX_RECENT_ASSIGNMENTS) {
+    fail(`${path} must be an array containing zero to three entries.`);
+  }
+  if (value.length !== recentCount) {
+    fail(`${path} must contain one score set per recent assignment.`);
+  }
+  assertDenseArray(value, path);
+  for (const [index, scores] of value.entries()) {
+    assertScores(scores, `${path}[${index}]`, false);
+  }
 }
 
 /** Validates the recent-assignment collection and its ordering.
