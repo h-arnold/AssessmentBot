@@ -208,10 +208,38 @@ describe('ABClassMetadata legacy tolerance and five-field shape', () => {
       const withUndefined = { ...structuredClone(legacy), [field]: undefined };
       expectTypedFailureAt(() => new ABClassMetadata(withUndefined), `metadata.${field}`);
 
-      const withNull = { ...structuredClone(legacy), [field]: null };
+      const withNull = fiveField(legacy);
+      withNull[field] = null;
       expect(new ABClassMetadata(structuredClone(withNull)).toJSON()[field]).toBeNull();
     }
   );
+
+  it('rejects any proper non-empty subset of the new fields at the metadata path', () => {
+    const legacy = canonicalLegacy('small');
+    const subsets = [
+      [NEW_FIELDS[0]],
+      [NEW_FIELDS[1]],
+      [NEW_FIELDS[2]],
+      [NEW_FIELDS[0], NEW_FIELDS[1]],
+      [NEW_FIELDS[0], NEW_FIELDS[2]],
+      [NEW_FIELDS[1], NEW_FIELDS[2]],
+    ];
+    for (const present of subsets) {
+      const partial = structuredClone(legacy);
+      for (const field of present) partial[field] = null;
+      let error;
+      try {
+        new ABClassMetadata(partial);
+      } catch (caught) {
+        error = caught;
+      }
+      expect(error).toBeInstanceOf(globalThis.ABClassMetadataValidationError);
+      expect(error.fieldPath).toBe('metadata');
+      expect(error.message).toContain('must contain all three new fields or none');
+      expect(error.inputSource).not.toBe('request');
+      expect(error).not.toBeInstanceOf(globalThis.ApiValidationError);
+    }
+  });
 
   it('treats omission of all three new fields as the legacy path', () => {
     const legacy = canonicalLegacy('small');

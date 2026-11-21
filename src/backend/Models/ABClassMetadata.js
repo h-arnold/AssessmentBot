@@ -211,8 +211,9 @@ class ABClassMetadata {
 
   /**
    * Validates nullable metadata, legacy or current shape, dense recent entries and ordering.
-   * The three new fields may be omitted (legacy shape), explicitly null or present with a
-   * valid value; a present undefined is rejected.
+   * The three new fields are either all omitted (legacy shape) or all present (current shape);
+   * when present each may be null or a valid value, a present undefined is rejected and a
+   * partial subset is rejected.
    * @param {*} value - Metadata snapshot or null.
    * @param {string} [context='metadata'] - Error path prefix.
    */
@@ -256,6 +257,10 @@ class ABClassMetadata {
       previousTimestamp = entry.updatedAt;
     }
     ABClassMetadata._validateNewFields(value, context, entries.length);
+    const presentCount = NEW_METADATA_FIELDS.filter((field) => Object.hasOwn(value, field)).length;
+    if (presentCount !== 0 && presentCount !== NEW_METADATA_FIELDS.length) {
+      ABClassMetadata._fail('must contain all three new fields or none', context);
+    }
   }
 
   /**

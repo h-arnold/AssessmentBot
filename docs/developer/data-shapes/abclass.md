@@ -686,7 +686,7 @@ backfill stored bytes.
 | `metadata.recentAssignments[].assignmentDefinitionKey` | `string`                 | Non-empty, already-trimmed; need **not** be unique within the list (definitions are reusable)                              | `z.string()` (plus raw-record pre-check)                                          |                                                                                                                                                                                                                                                                            |
 | `metadata.recentAssignments[].averages`                | `AverageScores`          | Required and complete; the four score fields exactly, with no nesting and no timestamp                                     | `AverageScoresSchema`                                                             | A nested partial object is invalid, not a patch.                                                                                                                                                                                                                           |
 | `metadata.recentAssignments[].updatedAt`               | `string`                 | Exact canonical UTC datetime; supplied as the corresponding Assignment's existing `updatedAt`, not independently generated | `CanonicalMetadataTimestampSchema`                                                | Not compared by the API against the stored Assignment timestamp.                                                                                                                                                                                                           |
-| `metadata.baselineAverages`                            | `BaselineAverages\|null` | Omitted on legacy input and emitted as `null`; when present, four scores plus a canonical `updatedAt`                      | `BaselineAveragesSchema.nullable()`                                               | Validated by `ABClassMetadataStandings.validateBaselineAverages()`. A present `undefined` is invalid.                                                                                                                                                                      |
+| `metadata.baselineAverages`                            | `BaselineAverages\|null` | Omitted on legacy input and emitted as `null`; when present, four scores plus a canonical `updatedAt`                      | `BaselineAveragesSchema.nullable()`                                               | Validated by `ABClassMetadata.validateClassAverages()`. A present `undefined` is invalid.                                                                                                                                                                                  |
 | `metadata.allTaskStandings`                            | `StudentStandings\|null` | Omitted on legacy input and emitted as `null`; when present, exactly `top` and `bottom`, each a dense 0–3 list             | `StudentStandingsSchema.nullable()`                                               | Validated by `ABClassMetadataStandings.validateStandings()`. Each entry's `recentAssignmentScores` has one score set per `recentAssignments` entry.                                                                                                                        |
 | `metadata.baselineStandings`                           | `StudentStandings\|null` | As `allTaskStandings`                                                                                                      | `StudentStandingsSchema.nullable()`                                               | Same validator as `allTaskStandings`; the two bases are independent.                                                                                                                                                                                                       |
 
@@ -712,7 +712,9 @@ The nested baseline-average and standings validators, and their copy helpers, li
 `ABClassMetadataStandings` and reuse the facade's record, score, array and timestamp rules.
 
 - On current-shape input every listed property is required and must be an **own** property. The
-  three new fields may be omitted (legacy shape) or `null`; when present they must be valid.
+  three new fields follow an all-or-nothing rule: either all three are omitted (legacy two-field
+  shape) or all three are present (current five-field shape), each `null` or valid. A partial
+  subset of one or two new fields is rejected, matching the frontend's exact-own-key rule.
   Apart from those three fields and the whole `metadata` value, no metric, `classAverages`,
   entry, `averages`, identifier or timestamp may be `null`. Every emitted snapshot carries all
   five fields, with `null` where a new field was absent.
@@ -942,14 +944,17 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
     `RecentAssignmentSchema`, `StudentStandingSchema`, `StudentStandingsSchema` — strict nested
     metadata records. The two public snapshot schemas emit the current five-field shape from legacy
     input; see [§ Baseline averages and student standings](#baseline-averages-and-student-standings).
-  - `NonNullableABClassMetadataSchema` — complete non-null snapshot; raw exact-record pre-check
-    plus the strict metadata shape. Merge/write path input; parsing with this inner schema
-    narrows the result without a nullable-union branch.
+  - `NonNullableABClassMetadataSchema` — non-null snapshot; raw exact-record pre-check plus the
+    strict metadata shape. Accepts legacy two-field or current five-field input and emits the
+    five-field shape with `null` placeholders for absent new fields, mirroring backend read
+    normalisation. Merge/write path input; parsing with this inner schema narrows the result
+    without a nullable-union branch.
   - `ABClassMetadataSchema` — nullable whole metadata snapshot with unique identifiers and
     newest-first ordering; the wire read/request union wrapped around
     `NonNullableABClassMetadataSchema`.
-  - Inferred types: `AverageScore`, `AverageScores`, `ClassAverages`, `RecentAssignment`,
-    `ABClassMetadata`.
+  - Inferred types: `AverageScore`, `AverageScores`, `ClassAverages`, `BaselineAverages`,
+    `RecentAssignment`, `StudentStanding`, `StudentStandings`, `LegacyABClassMetadata`,
+    `NonNullableABClassMetadata`, `ABClassMetadata`.
   - Both class read schemas require this schema, so successful parsing rejects missing or
     malformed metadata and retains legacy backend `null`.
   - Enforced rules: required fields must be own properties on ordinary or null-prototype
@@ -1368,7 +1373,7 @@ Metadata domain owner:      src/backend/Models/ABClassMetadata.js
   └── private _checkRecord/_checkArrayKeys/_assertDenseIndex/_validateScoreFields/_validateTimestamp/_copyMetadata helpers
 
 Nested validator module:    src/backend/Models/ABClassMetadataStandings.js
-  └── validateBaselineAverages(), validateStandings(), validateStandingList(),
+  └── validateStandings(), validateStandingList(),
       validateStandingEntry(), validateRecentAssignmentScores()
   └── copyBaselineAverages(), copyStandings(), copyStandingEntry(), copyScoreSet()
   └── reuses facade record/score/array/timestamp rules; resolved inside method bodies
@@ -1419,7 +1424,8 @@ Frontend:
   │     → getABClass()
   ├── src/frontend/src/services/abClass/abClassMetadata.zod.ts   (shared by both class read schemas)
   │     → CanonicalMetadataTimestampSchema, AverageScoreSchema, AverageScoresSchema,
-  │       ClassAveragesSchema, RecentAssignmentSchema, NonNullableABClassMetadataSchema,
+  │       ClassAveragesSchema, BaselineAveragesSchema, RecentAssignmentSchema,
+  │       StudentStandingSchema, StudentStandingsSchema, NonNullableABClassMetadataSchema,
   │       ABClassMetadataSchema and inferred types
   ├── src/frontend/src/services/abClass/abClassMutations.zod.ts
   │     → UpsertABClassRequestSchema, UpdateABClassRequestSchema and inferred request types

@@ -216,7 +216,7 @@ Avoid:
 
 #### Backend
 
-- `validateMetadata` accepts the legacy two-field shape or the current five-field shape; `validateBaselineAverages`, `validateStandings` and `validateStandingEntry` enforce the current-shape rules and are owned by `ABClassMetadata` (or its extracted helper module).
+- `validateMetadata` accepts the legacy two-field shape or the current five-field shape; `validateClassAverages`, `validateStandings` and `validateStandingEntry` enforce the current-shape rules and are owned by `ABClassMetadata` (or its extracted helper module).
 - `ABClass.toJSON()` and `ABClass.toPartialJSON()` always emit all five fields via `ABClassMetadata`, with `null` where the input omitted a new field. Legacy stored absence is accepted; present `undefined` for a new field is invalid.
 - Request provenance and error adaptation are unchanged: only a typed request-tagged error becomes `INVALID_REQUEST`.
 
