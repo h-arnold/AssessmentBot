@@ -24,7 +24,7 @@ import {
 import { getYearGroupsQueryOptions } from '@/query/sharedQueries';
 import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
-import { useReferenceDataManagement } from './useReferenceDataManagement';
+import { useReferenceDataManagement } from './useReferenceDataManagement/useReferenceDataManagement';
 
 export type ManageYearGroupsModalProperties = Readonly<{
   open: boolean;

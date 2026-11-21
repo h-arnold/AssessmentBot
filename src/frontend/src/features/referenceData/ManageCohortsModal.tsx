@@ -20,7 +20,7 @@ import { createCohort, deleteCohort, updateCohort } from '@/services/referenceDa
 import { getCohortsQueryOptions } from '@/query/sharedQueries';
 import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
-import { useReferenceDataManagement } from './useReferenceDataManagement';
+import { useReferenceDataManagement } from './useReferenceDataManagement/useReferenceDataManagement';
 
 export type ManageCohortsModalProperties = Readonly<{
   open: boolean;

@@ -14,7 +14,6 @@ import {
   useQuery,
   useQueryClient,
   type QueryKey,
-  type UseQueryOptions,
 } from '@tanstack/react-query';
 import {
   clearPersistedBlockingLoadError,
@@ -26,64 +25,20 @@ import {
   hasRefetchedRequiredReferenceDataQuery,
   setPersistedBlockingLoadError,
   type BlockingLoadErrorState,
-  type ReferenceDataTrustBoundary,
-} from './manageReferenceDataHelpers';
-import type { ReferenceDataFormValues } from './manageReferenceDataDialogs';
-import { ReferenceDataDeleteDialog, ReferenceDataFormDialog } from './manageReferenceDataDialogs';
-
-// ============================================================================
-
-/**
- * Form values for reference data entities.
- */
-
-// ============================================================================
-// Configuration Types
-// ============================================================================
-
-/**
- * Configuration for the useReferenceDataManagement hook.
- */
-export type ReferenceDataManagementConfig<T extends { key: string; name: string }> = Readonly<{
-  entityLabel: string;
-  entityKey: ReferenceDataTrustBoundary;
-  queryOptions: UseQueryOptions<T[]>;
-  createService: (parameters: { record: Omit<T, 'key'> }) => Promise<void>;
-  updateService: (parameters: { key: string; record: Omit<T, 'key'> }) => Promise<void>;
-  deleteService: (parameters: { key: string }) => Promise<void>;
-  supportsToggleActive: boolean;
-  toggleService?: (parameters: { entity: T; active: boolean }) => Promise<void>;
-  formValidationMessage: string;
-  loadFailureCopy: string;
-  refreshStatusCopy: string;
-  // Dialog rendering configuration - these enable default renderers
-  formDialogLabelId: string;
-  deleteDialogLabelId: string;
-  deleteDialogTitle: string;
-  // Optional custom renderers - if not provided, default renderers are used
-  renderFormDialog?: (properties: FormDialogProperties<T>) => ReactElement | null;
-  renderDeleteDialog?: (properties: DeleteDialogProperties<T>) => ReactElement | null;
-}>;
-
-// ============================================================================
-// State Types
-// ============================================================================
-
-/**
- * Form mode type for create/edit states.
- */
-type FormMode = 'create' | 'edit' | null;
-
-/**
- * State for the delete confirmation dialog.
- */
-export type DeleteDialogState<T extends { key: string; name: string }> = Readonly<{
-  open: boolean;
-  entity: T | null;
-  error: string | null;
-  blocked: boolean;
-  submitting: boolean;
-}>;
+} from '../manageReferenceDataHelpers';
+import type { ReferenceDataFormValues } from '../manageReferenceDataDialogs';
+import {
+  DefaultReferenceDataDeleteDialogRenderer,
+  DefaultReferenceDataFormDialogRenderer,
+} from '../manageReferenceDataDialogs';
+import {
+  type DeleteDialogProperties,
+  type DeleteDialogState,
+  type FormDialogProperties,
+  type FormMode,
+  type ReferenceDataManagementConfig,
+  type ReferenceDataManagementResult,
+} from './useReferenceDataManagement.types';
 
 /**
  * Initial state for the delete dialog.
@@ -95,70 +50,6 @@ const INITIAL_DELETE_STATE: DeleteDialogState<never> = {
   blocked: false,
   submitting: false,
 } as const;
-
-// ============================================================================
-// Dialog Props Types
-// ============================================================================
-
-/**
- * Props for rendering the form dialog.
- */
-export type FormDialogProperties<T extends { key: string; name: string }> = Readonly<{
-  editingEntity: T | null;
-  form: ReturnType<typeof Form.useForm<ReferenceDataFormValues>>[0];
-  formDialogTitle: string;
-  formError: string | null;
-  formMode: FormMode;
-  formSubmitting: boolean;
-  onClose: () => void;
-  onFinish: (values: ReferenceDataFormValues) => Promise<void>;
-  onOk: () => void;
-}>;
-
-/**
- * Props for rendering the delete dialog.
- */
-export type DeleteDialogProperties<T extends { key: string; name: string }> = Readonly<{
-  deleteState: DeleteDialogState<T>;
-  onClose: () => void;
-  onConfirm: () => void;
-}>;
-
-// ============================================================================
-// Result Type
-// ============================================================================
-
-/**
- * Result type returned by the useReferenceDataManagement hook.
- */
-export type ReferenceDataManagementResult<T extends { key: string; name: string }> = {
-  // State
-  formMode: FormMode;
-  editingEntity: T | null;
-  form: ReturnType<typeof Form.useForm<ReferenceDataFormValues>>[0];
-  formSubmitting: boolean;
-  formError: string | null;
-  toggleError: string | null;
-  deleteState: DeleteDialogState<T>;
-  loadError: string | null;
-  isInitialLoading: boolean;
-  isRefreshing: boolean;
-  rows: T[];
-
-  // Derived UI elements
-  inlineDialog: ReactElement | null;
-  inlineAlert: ReactElement | null;
-
-  // Handlers
-  openCreateForm: () => void;
-  openEditForm: (entity: T) => void;
-  openDeleteDialog: (entity: T) => void;
-  closeFormDialog: () => void;
-  handleModalClose: () => void;
-  handleFormFinish: (values: ReferenceDataFormValues) => Promise<void>;
-  handleDeleteConfirm: () => Promise<void>;
-  handleToggleActive?: (entity: T, isActive: boolean) => Promise<void>;
-};
 
 // ============================================================================
 // Hook Implementation
@@ -440,23 +331,11 @@ export function useReferenceDataManagement<T extends { key: string; name: string
   // Default form dialog renderer
   const defaultRenderFormDialog = useCallback(
     (properties: FormDialogProperties<T>): ReactElement | null => {
-      if (properties.formMode === null) {
-        return null;
-      }
-
-      return React.createElement(ReferenceDataFormDialog, {
-        formKey: properties.editingEntity?.key ?? 'create',
-        form: properties.form,
-        initialName: properties.editingEntity?.name ?? null,
-        labelId: config.formDialogLabelId,
-        title: properties.formDialogTitle,
-        formError: properties.formError,
-        formSubmitting: properties.formSubmitting,
-        validationMessage: config.formValidationMessage,
-        onClose: properties.onClose,
-        onFinish: properties.onFinish,
-        onOk: properties.onOk,
-      });
+      return DefaultReferenceDataFormDialogRenderer(
+        config.formDialogLabelId,
+        config.formValidationMessage,
+        properties
+      );
     },
     [config.formDialogLabelId, config.formValidationMessage]
   );
@@ -464,21 +343,12 @@ export function useReferenceDataManagement<T extends { key: string; name: string
   // Default delete dialog renderer
   const defaultRenderDeleteDialog = useCallback(
     (properties: DeleteDialogProperties<T>): ReactElement | null => {
-      if (!properties.deleteState.open) {
-        return null;
-      }
-
-      return React.createElement(ReferenceDataDeleteDialog, {
-        blocked: properties.deleteState.blocked,
-        entityLabel: config.entityLabel,
-        entityName: properties.deleteState.entity?.name ?? null,
-        error: properties.deleteState.error,
-        labelId: config.deleteDialogLabelId,
-        submitting: properties.deleteState.submitting,
-        title: config.deleteDialogTitle,
-        onClose: properties.onClose,
-        onConfirm: properties.onConfirm,
-      });
+      return DefaultReferenceDataDeleteDialogRenderer(
+        config.deleteDialogLabelId,
+        config.deleteDialogTitle,
+        config.entityLabel,
+        properties
+      );
     },
     [config.deleteDialogLabelId, config.deleteDialogTitle, config.entityLabel]
   );
@@ -578,5 +448,5 @@ export function useReferenceDataManagement<T extends { key: string; name: string
   };
 }
 
-export type { ReferenceDataFormValues } from './manageReferenceDataDialogs';
-export type { ReferenceDataTrustBoundary } from './manageReferenceDataHelpers';
+export type { ReferenceDataFormValues } from '../manageReferenceDataDialogs';
+export type { ReferenceDataTrustBoundary } from '../manageReferenceDataHelpers';

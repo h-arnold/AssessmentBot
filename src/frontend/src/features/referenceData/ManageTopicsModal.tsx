@@ -42,11 +42,11 @@ import {
   type BlockingLoadErrorState,
 } from './manageReferenceDataHelpers';
 import { InlineDialog } from './InlineDialog';
-import {
-  useReferenceDataManagement,
-  type ReferenceDataManagementConfig,
-  type FormDialogProperties,
-} from './useReferenceDataManagement';
+import { useReferenceDataManagement } from './useReferenceDataManagement/useReferenceDataManagement';
+import type {
+  ReferenceDataManagementConfig,
+  FormDialogProperties,
+} from './useReferenceDataManagement/useReferenceDataManagement.types';
 import { useCallback, useEffect, useMemo } from 'react';
 
 // ============================================================================

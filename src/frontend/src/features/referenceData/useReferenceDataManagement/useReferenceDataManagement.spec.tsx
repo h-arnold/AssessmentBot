@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook } from '@testing-library/react';
 import { useReferenceDataManagement } from './useReferenceDataManagement';
-import type { ReferenceDataManagementConfig } from './useReferenceDataManagement';
+import type { ReferenceDataManagementConfig } from './useReferenceDataManagement.types';
 
 type Entity = { key: string; name: string };
 
