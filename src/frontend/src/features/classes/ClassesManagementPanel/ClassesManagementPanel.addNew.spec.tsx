@@ -6,7 +6,7 @@ import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders'
 import { buildClassesManagementState } from '@/test/classes/classesTestHelpers';
 import { queryKeys } from '@/query/queryKeys';
 import { ClassesManagementPanel } from './ClassesManagementPanel';
-import type { ClassesManagementState } from './useClassesManagement';
+import type { ClassesManagementState } from '../useClassesManagement';
 import type * as ReferenceDataService from '@/services/referenceData/referenceDataService';
 
 const { useClassesManagementMock, useClassesBulkMutationQueueMock, runQueuedBatchMutationMock } =

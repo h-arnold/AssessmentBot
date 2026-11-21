@@ -10,10 +10,10 @@ import {
   createFulfilledClassResult,
   createRejectedClassResult,
 } from '@/test/classes/classesTestHelpers';
-import type { ClassesManagementState } from './useClassesManagement';
-import { useClassesManagement } from './useClassesManagement';
-import { runQueuedBatchMutation } from './bulk/runQueuedBatchMutation';
-import { useClassesBulkMutationQueue } from './useClassesBulkMutationQueue';
+import type { ClassesManagementState } from '../useClassesManagement';
+import { useClassesManagement } from '../useClassesManagement';
+import { runQueuedBatchMutation } from '../bulk/runQueuedBatchMutation';
+import { useClassesBulkMutationQueue } from '../useClassesBulkMutationQueue';
 
 const classesManagementStateMock = vi.mocked(useClassesManagement);
 const runQueuedBatchMutationMock = vi.mocked(runQueuedBatchMutation);

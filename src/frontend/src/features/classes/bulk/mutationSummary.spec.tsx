@@ -191,7 +191,7 @@ function mockClassesManagementState() {
  * @returns {Promise<ReturnType<typeof renderWithFrontendProviders>>} Render result plus query client.
  */
 async function renderPanel() {
-  const { ClassesManagementPanel } = await import('../ClassesManagementPanel');
+  const { ClassesManagementPanel } = await import('../ClassesManagementPanel/ClassesManagementPanel');
   return renderWithFrontendProviders(<ClassesManagementPanel />);
 }
 

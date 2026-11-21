@@ -78,7 +78,7 @@ describe('refetchFailureState', () => {
   it('suppresses stale table rows while the refresh-required summary is shown', async () => {
     classesManagementStateMock.mockReturnValue(buildRefreshFailureState());
 
-    const { ClassesManagementPanel } = await import('../classes/ClassesManagementPanel');
+    const { ClassesManagementPanel } = await import('../classes/ClassesManagementPanel/ClassesManagementPanel');
     renderWithQueryClient(<ClassesManagementPanel />);
 
     expect(screen.getByText('Update succeeded but refresh is required.')).toBeInTheDocument();

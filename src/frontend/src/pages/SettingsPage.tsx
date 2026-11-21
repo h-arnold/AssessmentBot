@@ -1,7 +1,7 @@
 import { Tabs } from 'antd';
 import type { TabsProps } from 'antd';
 import { useMemo, useState } from 'react';
-import { ClassesManagementPanel } from '../features/classes/ClassesManagementPanel';
+import { ClassesManagementPanel } from '../features/classes/ClassesManagementPanel/ClassesManagementPanel';
 import { useApplicationAccessContext } from '../features/auth/ApplicationAccessContext';
 import { BackendSettingsPanel } from '../features/settings/backend/BackendSettingsPanel';
 import { AuthenticationSettingsTab } from '../features/settings/authentication/AuthenticationSettingsTab';

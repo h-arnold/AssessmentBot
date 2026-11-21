@@ -5,9 +5,9 @@ import { createClassesManagementPanelHarness } from '@/test/classes/classesManag
 import type { MutableQueueState } from '@/test/classes/classesManagementPanelHarness';
 import { createFulfilledClassResult } from '@/test/classes/classesTestHelpers';
 
-import { useClassesManagement } from './useClassesManagement';
-import { runQueuedBatchMutation } from './bulk/runQueuedBatchMutation';
-import { useClassesBulkMutationQueue } from './useClassesBulkMutationQueue';
+import { useClassesManagement } from '../useClassesManagement';
+import { runQueuedBatchMutation } from '../bulk/runQueuedBatchMutation';
+import { useClassesBulkMutationQueue } from '../useClassesBulkMutationQueue';
 
 const classesManagementStateMock = vi.mocked(useClassesManagement);
 const runQueuedBatchMutationMock = vi.mocked(runQueuedBatchMutation);
