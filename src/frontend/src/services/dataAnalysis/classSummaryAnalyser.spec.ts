@@ -10,7 +10,7 @@
  *
  * Baseline-unavailability and collaborator-error probes live in the sibling
  * `classSummaryAnalyser.boundary.spec.ts`; the local equal-overall tie-break
- * fixture stays here beside the ranking assertions.
+ * fixture and the baseline fail-fast probes stay here beside the ranking assertions.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -25,6 +25,7 @@ import { rollupMetric } from './analysers/rollupMetric';
 import {
   AveragingAnalyserInputSchema,
   type AveragingAnalyserInput,
+  type AveragingResult,
   type MetricResult,
   type PerStudentTaskMetric,
 } from './dataAnalysis.zod';
@@ -417,5 +418,66 @@ describe('ClassSummaryAnalyser — deterministic ranking tie-break', () => {
     // Descending top and ascending bottom both resolve ties by studentId ascending.
     expect(highTie.map((entry: MetricStanding) => entry.studentId)).toEqual(['s_001', 's_006']);
     expect(lowTie.map((entry: MetricStanding) => entry.studentId)).toEqual(['s_002', 's_005']);
+  });
+});
+
+describe('ClassSummaryAnalyser — baseline fail-fast probes', () => {
+  it('fails fast with the deriveBaselineTaskKeySet error when a baseline result omits its attemptBaseline block', () => {
+    const input = buildMediumInput();
+    const options = buildSummaryOptions(input);
+    const realBaseline = new AveragingAnalyser().analyse({
+      ...input,
+      filter: { ...input.filter, analysisMode: 'topDecileBaseline' },
+    })[0];
+    const malformedBaseline = {
+      ...realBaseline,
+      appliedAnalysisMode: 'topDecileBaseline' as const,
+    };
+    delete malformedBaseline.attemptBaseline;
+
+    const originalAnalyse = AveragingAnalyser.prototype.analyse;
+    vi.spyOn(AveragingAnalyser.prototype, 'analyse').mockImplementation(function (
+      this: AveragingAnalyser,
+      analyseInput: AveragingAnalyserInput
+    ): AveragingResult[] {
+      return analyseInput.filter.analysisMode === 'topDecileBaseline'
+        ? [malformedBaseline]
+        : originalAnalyse.call(this, analyseInput);
+    });
+
+    let thrown: unknown;
+    try {
+      new ClassSummaryAnalyser().analyse(input, options);
+    } catch (error: unknown) {
+      thrown = error;
+    }
+    // The helper's exact message proves the baseline branch ran and did not
+    // silently fall back to all-task scores under the baseline basis.
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe(
+      `ClassSummaryAnalyser: baseline-mode analyser result for class '${MEDIUM_CLASS_ID}' is missing the required attemptBaseline block`
+    );
+  });
+
+  it('fails loudly when an isolated result omits perStudentTaskMetrics instead of emitting excluded scores', () => {
+    const input = buildMediumInput();
+    const options = buildSummaryOptions(input);
+    const originalAnalyse = AveragingAnalyser.prototype.analyse;
+    vi.spyOn(AveragingAnalyser.prototype, 'analyse').mockImplementation(function (
+      this: AveragingAnalyser,
+      analyseInput: AveragingAnalyserInput
+    ): AveragingResult[] {
+      const results = originalAnalyse.call(this, analyseInput);
+      if (analyseInput.filter.analysisMode === 'topDecileBaseline') return results;
+      // A collaborator result that lost the optional metrics must not silently
+      // become excluded-style scores through an empty-array fallback.
+      return results.map((result) => {
+        const withoutMetrics = { ...result };
+        delete withoutMetrics.perStudentTaskMetrics;
+        return withoutMetrics;
+      });
+    });
+
+    expect(() => new ClassSummaryAnalyser().analyse(input, options)).toThrow();
   });
 });

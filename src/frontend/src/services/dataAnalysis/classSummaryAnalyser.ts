@@ -1,5 +1,9 @@
+import { MAX_LIST_ENTRIES } from '../abClass/abClassMetadata.zod';
 import type { AssignmentPartial } from '../googleClassrooms/classDetail/classDetailService.zod';
-import { AttemptBaselineUnavailableError } from './analysers/attemptBaselineSelection';
+import {
+  AttemptBaselineUnavailableError,
+  deriveBaselineTaskKeySet,
+} from './analysers/attemptBaselineSelection';
 import {
   AveragingAnalyser,
   DEFAULT_CRITERION_WEIGHTINGS,
@@ -21,9 +25,6 @@ import type {
   MetricStanding,
   MetricStandings,
 } from './classSummary.zod';
-
-/** Maximum number of entries in either standing list. */
-const MAX_STANDING_ENTRIES = 3;
 
 /** Direction used when ordering rankable students by their overall metric. */
 type RankDirection = 'desc' | 'asc';
@@ -68,31 +69,56 @@ function assignmentIdentity(assignment: AssignmentPartial): {
   };
 }
 
+/** Per-isolated-result indexes shared by ranking and score assembly. */
+interface IsolatedResultIndex {
+  classId: string;
+  studentIds: ReadonlySet<string>;
+  rowByStudent: ReadonlyMap<string, PerStudentRow>;
+  metricsByStudent: ReadonlyMap<string, PerStudentTaskMetric[]> | null;
+}
+
 /**
- * Whether one isolated result carries a row for the given student.
+ * Build the studentId, row and task-metric indexes for one isolated result once.
  *
- * @param {AveragingResult} result - The isolated result to inspect.
- * @param {string} studentId - The student to find.
- * @returns {boolean} True when the student has a row.
+ * @param {AveragingResult} result - The isolated result to index.
+ * @returns {IsolatedResultIndex} The reusable indexes for that result.
  */
-function hasRowForStudent(result: AveragingResult, studentId: string): boolean {
-  return result.perStudent.some((candidate) => candidate.studentId === studentId);
+function buildIsolatedIndex(result: AveragingResult): IsolatedResultIndex {
+  const taskMetrics = result.perStudentTaskMetrics;
+  let metricsByStudent: Map<string, PerStudentTaskMetric[]> | null = null;
+  if (taskMetrics) {
+    metricsByStudent = new Map<string, PerStudentTaskMetric[]>();
+    for (const metric of taskMetrics) {
+      const existing = metricsByStudent.get(metric.studentId);
+      if (existing) {
+        existing.push(metric);
+      } else {
+        metricsByStudent.set(metric.studentId, [metric]);
+      }
+    }
+  }
+  return {
+    classId: result.classId,
+    studentIds: new Set(result.perStudent.map((row) => row.studentId)),
+    rowByStudent: new Map(result.perStudent.map((row) => [row.studentId, row] as const)),
+    metricsByStudent,
+  };
 }
 
 /**
  * Fetch a student's row from one isolated result, failing fast on a missing row.
  *
- * @param {ReadonlyArray<PerStudentRow>} rows - The isolated result's student rows.
+ * @param {ReadonlyMap<string, PerStudentRow>} rows - The isolated result's rows by student id.
  * @param {string} studentId - The student to find.
  * @param {string} context - Caller name prefixed onto the failure message.
  * @returns {PerStudentRow} The student's row.
  */
 function requireStudentRow(
-  rows: ReadonlyArray<PerStudentRow>,
+  rows: ReadonlyMap<string, PerStudentRow>,
   studentId: string,
   context: string
 ): PerStudentRow {
-  const row = rows.find((candidate) => candidate.studentId === studentId);
+  const row = rows.get(studentId);
   if (!row) {
     throw new Error(`${context}: no isolated row for student '${studentId}'`);
   }
@@ -130,9 +156,11 @@ export class ClassSummaryAnalyser {
    * @remarks
    * The all-tasks basis is always computed in absolute mode, regardless of the input's
    * `filter.analysisMode`, so `allTasks` never silently becomes the baseline basis.
-   * Baseline task keys are read only from the full-class baseline result and reused
-   * for every isolated assignment; no isolated analysis runs in baseline mode, so no
-   * second pool or baseline is derived.
+   * Baseline task keys are read only from the full-class baseline result through
+   * `deriveBaselineTaskKeySet`, which fails fast when a baseline-mode result omits its
+   * `attemptBaseline` block rather than silently writing all-task scores under the
+   * baseline basis. The keys are reused for every isolated assignment; no isolated
+   * analysis runs in baseline mode, so no second pool or baseline is derived.
    */
   analyse(input: AveragingAnalyserInput, options: AnalyseClassSummaryOptions): ClassSummary {
     const absoluteInput: AveragingAnalyserInput = {
@@ -143,14 +171,14 @@ export class ClassSummaryAnalyser {
     const baseline = this.analyseBaseline(input);
     const { recentAssignments } = options;
     const isolated = recentAssignments.map((assignment) => this.analyseIsolated(input, assignment));
+    const isolatedIndexes = isolated.map((result) => buildIsolatedIndex(result));
     const targetScores = this.analyseIsolated(input, options.target);
-    const baselineKeys = baseline?.attemptBaseline
-      ? new Set(baseline.attemptBaseline.baselineTaskKeys)
-      : null;
+    const baselineKeys =
+      baseline === null ? null : deriveBaselineTaskKeySet(baseline, 'ClassSummaryAnalyser');
 
-    const allTaskStandings = this.buildStandings(absolute.perStudent, isolated, null);
+    const allTaskStandings = this.buildStandings(absolute.perStudent, isolatedIndexes, null);
     const baselineStandings = baseline
-      ? this.buildStandings(baseline.perStudent, isolated, baselineKeys)
+      ? this.buildStandings(baseline.perStudent, isolatedIndexes, baselineKeys)
       : null;
 
     return {
@@ -183,13 +211,13 @@ export class ClassSummaryAnalyser {
   }
 
   /**
-   * Run the full-class baseline analysis, representing documented unavailability as null.
+   * Run the full-class baseline analysis, representing unavailability as null.
    *
    * @param {AveragingAnalyserInput} input - Validated full-class input; its analysis mode is overridden to baseline internally.
    * @returns {AveragingResult | null} The baseline result, or null when unavailable.
    * @remarks
    * Only {@link AttemptBaselineUnavailableError} is caught. It is the sole signal for
-   * the three documented baseline-unavailability conditions; every other failure is a
+   * the three baseline-unavailability conditions; every other failure is a
    * genuine fault and propagates unchanged without message matching or a broad catch.
    */
   private analyseBaseline(input: AveragingAnalyserInput): AveragingResult | null {
@@ -231,7 +259,7 @@ export class ClassSummaryAnalyser {
    * Build the disjoint, ordered top and bottom standings for one basis.
    *
    * @param {ReadonlyArray<PerStudentRow>} students - The basis's per-student rows.
-   * @param {ReadonlyArray<AveragingResult>} isolated - Per-recent-assignment absolute results.
+   * @param {ReadonlyArray<IsolatedResultIndex>} isolated - Indexes of the per-recent-assignment absolute results.
    * @param {ReadonlySet<string> | null} baselineKeys - Whole-class baseline keys for
    *   the baseline basis; null for the all-task basis.
    * @returns {MetricStandings} The top three and bottom three from remaining students.
@@ -242,24 +270,24 @@ export class ClassSummaryAnalyser {
    */
   private buildStandings(
     students: ReadonlyArray<PerStudentRow>,
-    isolated: ReadonlyArray<AveragingResult>,
+    isolated: ReadonlyArray<IsolatedResultIndex>,
     baselineKeys: ReadonlySet<string> | null
   ): MetricStandings {
     const rankable = students.filter((row) => {
       return (
         row.overall.state === 'computed' &&
         Number.isFinite(row.overall.value) &&
-        isolated.every((result) => hasRowForStudent(result, row.studentId))
+        isolated.every((index) => index.studentIds.has(row.studentId))
       );
     });
     const top = [...rankable]
       .toSorted((a, b) => this.compareByOverall(a, b, 'desc'))
-      .slice(0, MAX_STANDING_ENTRIES);
+      .slice(0, MAX_LIST_ENTRIES);
     const topIds = new Set(top.map((row) => row.studentId));
     const bottom = rankable
       .filter((row) => !topIds.has(row.studentId))
       .toSorted((a, b) => this.compareByOverall(a, b, 'asc'))
-      .slice(0, MAX_STANDING_ENTRIES);
+      .slice(0, MAX_LIST_ENTRIES);
     return {
       top: top.map((row) => this.buildStanding(row, isolated, baselineKeys)),
       bottom: bottom.map((row) => this.buildStanding(row, isolated, baselineKeys)),
@@ -286,30 +314,27 @@ export class ClassSummaryAnalyser {
    * Assemble one standing entry with the aligned per-assignment score array.
    *
    * @param {PerStudentRow} row - The ranked basis row.
-   * @param {ReadonlyArray<AveragingResult>} isolated - Per-recent-assignment absolute results.
+   * @param {ReadonlyArray<IsolatedResultIndex>} isolated - Indexes of the per-recent-assignment absolute results.
    * @param {ReadonlySet<string> | null} baselineKeys - Whole-class baseline keys, or
    *   null for the all-task basis.
    * @returns {MetricStanding} The assembled entry.
    */
   private buildStanding(
     row: PerStudentRow,
-    isolated: ReadonlyArray<AveragingResult>,
+    isolated: ReadonlyArray<IsolatedResultIndex>,
     baselineKeys: ReadonlySet<string> | null
   ): MetricStanding {
-    if (row.studentName === null) {
-      throw new Error(`ClassSummaryAnalyser: null studentName for student '${row.studentId}'`);
-    }
-    const recentAssignmentScores = isolated.map((result) => {
+    const recentAssignmentScores = isolated.map((index) => {
       if (baselineKeys === null) {
         return projectScores(
-          requireStudentRow(result.perStudent, row.studentId, 'ClassSummaryAnalyser')
+          requireStudentRow(index.rowByStudent, row.studentId, 'ClassSummaryAnalyser')
         );
       }
-      return this.baselineScores(result, row.studentId, baselineKeys);
+      return this.baselineScores(index, row.studentId, baselineKeys);
     });
     return {
       studentId: row.studentId,
-      studentName: row.studentName,
+      studentName: row.studentName!,
       scores: projectScores(row),
       recentAssignmentScores,
     };
@@ -318,7 +343,7 @@ export class ClassSummaryAnalyser {
   /**
    * Derive one student's baseline-restricted scores for one isolated assignment.
    *
-   * @param {AveragingResult} isolatedResult - The isolated absolute result.
+   * @param {IsolatedResultIndex} index - Indexes of the isolated absolute result.
    * @param {string} studentId - The ranked student.
    * @param {ReadonlySet<string>} baselineKeys - Whole-class baseline task keys.
    * @returns {MetricScores} The baseline-basis score set.
@@ -331,12 +356,17 @@ export class ClassSummaryAnalyser {
    * `convertToBaselineExcluded` before the overall composite is derived.
    */
   private baselineScores(
-    isolatedResult: AveragingResult,
+    index: IsolatedResultIndex,
     studentId: string,
     baselineKeys: ReadonlySet<string>
   ): MetricScores {
-    const metrics = isolatedResult.perStudentTaskMetrics ?? [];
-    const forStudent = metrics.filter((metric) => metric.studentId === studentId);
+    const { metricsByStudent } = index;
+    if (!metricsByStudent) {
+      throw new Error(
+        `ClassSummaryAnalyser: isolated result for class '${index.classId}' is missing perStudentTaskMetrics`
+      );
+    }
+    const forStudent = metricsByStudent.get(studentId) ?? [];
     const inBaseline = forStudent.filter((metric) => baselineKeys.has(metric.taskKey));
     const source = inBaseline.length > 0 ? inBaseline : forStudent;
     const shouldConvert = inBaseline.length === 0;

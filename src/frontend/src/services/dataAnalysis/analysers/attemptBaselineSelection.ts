@@ -5,7 +5,7 @@ import {
 } from '../dataAnalysis.zod';
 
 /**
- * The documented `deriveAttemptBaseline` unavailability signal.
+ * The `deriveAttemptBaseline` unavailability signal.
  *
  * @remarks
  * Reserved for exactly the three eligibility failures recorded in the attempt-baseline
