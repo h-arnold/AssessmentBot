@@ -998,7 +998,7 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
   - `validateUpsertABClassParameters_()` — validates parameters object and classId.
   - `validateUpdateABClassParameters_()` — validates parameters object, classId, and forbids protected fields (`classOwner`, `teachers`, `students`, `assignments`).
   - `validateDeleteABClassParameters_()` — validates parameters object and classId.
-  - `adaptMetadataRequestError_()` — request-provenance-only adaptation to `ApiValidationError`/`INVALID_REQUEST`; logs `method`/`classId` and rethrows every other failure unchanged.
+  - `adaptMetadataRequestError_()` — request-provenance-only adaptation to `ApiValidationError`/`INVALID_REQUEST`; rethrows every other failure unchanged. It does not log: the single error-level diagnostic is emitted at the `apiHandler` transport boundary with `requestId` correlation.
 - Shared identifier helper: `validateSafeTrimmedIdentifier_` (with `hasControlCharacters_`) is
   defined in `src/backend/z_Api/assignmentDefinition/assignmentDefinitionValidation.js` and is
   consumed by both `abclassRead.js` and `abclassMutations.js`.

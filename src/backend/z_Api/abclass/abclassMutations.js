@@ -1,4 +1,4 @@
-/* global ABClassController, ABClassMetadataValidationError, ABLogger, ApiValidationError, Validate, validateParametersObject_, validateSafeTrimmedIdentifier_ */
+/* global ABClassController, ABClassMetadataValidationError, ApiValidationError, Validate, validateParametersObject_, validateSafeTrimmedIdentifier_ */
 
 /**
  * Factory function that returns a new ABClassController instance.
@@ -15,21 +15,14 @@ function getAbClassController_() {
  * retain their original identity and type.
  *
  * @param {string} methodName - Allowlisted mutation name for diagnostics.
- * @param {Object} parameters - Original request parameters.
  * @param {Function} operation - Controller delegation to invoke.
  * @returns {*} The controller result.
  * @throws {*} The original failure, or an ApiValidationError for request metadata.
  */
-function adaptMetadataRequestError_(methodName, parameters, operation) {
+function adaptMetadataRequestError_(methodName, operation) {
   try {
     return operation();
   } catch (error) {
-    ABLogger.getInstance().error(`${methodName} failed`, {
-      method: methodName,
-      classId: parameters.classId,
-      err: error,
-    });
-
     if (error instanceof ABClassMetadataValidationError && error.inputSource === 'request') {
       throw new ApiValidationError(error.message, { method: methodName });
     }
@@ -132,7 +125,7 @@ function validateDeleteABClassParameters_(parameters) {
  */
 function upsertABClass_(parameters) {
   validateUpsertABClassParameters_(parameters);
-  return adaptMetadataRequestError_('upsertABClass', parameters, () =>
+  return adaptMetadataRequestError_('upsertABClass', () =>
     getAbClassController_().upsertABClass(parameters)
   );
 }
@@ -149,7 +142,7 @@ function upsertABClass_(parameters) {
  */
 function updateABClass_(parameters) {
   validateUpdateABClassParameters_(parameters);
-  return adaptMetadataRequestError_('updateABClass', parameters, () =>
+  return adaptMetadataRequestError_('updateABClass', () =>
     getAbClassController_().updateABClass(parameters)
   );
 }

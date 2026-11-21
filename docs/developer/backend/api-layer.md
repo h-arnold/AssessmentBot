@@ -35,7 +35,7 @@ Transport helpers are trailing-underscore functions in the relevant `z_Api` file
 
 - `validateParametersObject_()` and `validateMutationClassId_()` (`src/backend/z_Api/abclass/`) — request-shape and safe-identifier checks for ABClass transport handlers.
 - `_validateRequestMetadata(parameters)` (`src/backend/y_controllers/ABClassController/ABClassValidation.js`) — metadata request gate for ABClass upsert and update; see [Controller request gate](#controller-request-gate).
-- `adaptMetadataRequestError_(methodName, parameters, operation)` (`src/backend/z_Api/abclass/abclassMutations.js`) — converts request-tagged metadata failures into `ApiValidationError`; see [Transport error adaptation](#transport-error-adaptation).
+- `adaptMetadataRequestError_(methodName, operation)` (`src/backend/z_Api/abclass/abclassMutations.js`) — converts request-tagged metadata failures into `ApiValidationError`; see [Transport error adaptation](#transport-error-adaptation).
 - `ABClassMetadataStandings` (`src/backend/Models/ABClassMetadataStandings.js`) — nested baseline-average and standings validators plus their copy helpers, called from `ABClassMetadata.validateMetadata()` (via `_validateNewFields()`) and `ABClassMetadata._copyMetadata()`. It keeps the facade under the 500-line backend lint gate while `ABClassMetadata` remains the single validation and copy owner, reusing the facade's record, score, array and timestamp rules. See [abclass.md § Baseline averages and student standings](../data-shapes/abclass.md#baseline-averages-and-student-standings).
 - `validateUpsertParameters_()` and `validateReadParameters_()` (`src/backend/z_Api/assignmentDefinition/`) — request validators for definition upsert and read; see [Assignment-definition upsert validation split](#assignment-definition-upsert-validation-split-upsertassignmentdefinition).
 - `toTransportPartialRow_` (`src/backend/z_Api/assignmentDefinitionTransport.js`) — normalises a model or plain object into a transport partial row.
@@ -157,13 +157,14 @@ Transport helpers are trailing-underscore functions in the relevant `z_Api` file
 
 ### Transport error adaptation
 
-- `adaptMetadataRequestError_(methodName, parameters, operation)` in `abclassMutations.js` is the
+- `adaptMetadataRequestError_(methodName, operation)` in `abclassMutations.js` is the
   narrow trailing-underscore adapter shared by `upsertABClass_()` and `updateABClass_()` only. It
-  wraps the controller delegation and logs the raw thrown value through `ABLogger` with `method`
-  and `classId` context, then converts only an `ABClassMetadataValidationError` whose
+  wraps the controller delegation and converts only an `ABClassMetadataValidationError` whose
   `inputSource` is exactly `'request'` into an `ApiValidationError` built from the same
   path-bearing `message` and the `{ method }` option; the `INVALID_REQUEST` envelope code comes
-  from the dispatcher mapping.
+  from the dispatcher mapping. It does not log: the single error-level diagnostic for a failed
+  mutation is emitted at the `apiHandler` transport boundary in `z_apiHandler.js`, with
+  `requestId` correlation.
 - Every other thrown value — model-typed metadata errors, same-message but untagged errors,
   request-tagged generic or wrong-typed errors, and persistence, upstream and wiring failures — is
   rethrown with its original identity and type, so stored/user-data integrity failures keep returning
