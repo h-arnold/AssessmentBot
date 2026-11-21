@@ -12,40 +12,12 @@ import { installMetadataRefreshTransport } from '@/test/abClass/metadataRefreshT
 import { refreshABClassMetadata } from '../dataAnalysis/postAnalysis/refreshABClassMetadata';
 import { projectAverageScores } from '../dataAnalysis/postAnalysis/metadataProjection';
 import { calculateNumericEvidence } from '@/test/abClass/metadataEvidenceOracle';
-import type { MetricStanding, MetricStandings } from '../dataAnalysis/classSummary.zod';
-import type { StudentStanding } from '@/services/abClass/abClassMetadata.zod';
+import { projectMetricStandings } from '@/test/dataAnalysis/standingsProjectionOracle';
 
 const MAX_SCORE = 5;
 const INSTANCE_MEAN = 3;
 const NUMERIC_PRECISION = 12;
 const PERCENT_SCALE = 100;
-const FRESH_HISTORY_LENGTH = 1;
-
-/** Projects one analyser-native standing entry into persisted score sets.
- * @param {MetricStanding} entry - Ranked standing entry.
- * @returns {StudentStanding} Persisted entry carrying only the newest assignment score.
- */
-function projectStanding(entry: MetricStanding): StudentStanding {
-  return {
-    studentId: entry.studentId,
-    studentName: entry.studentName,
-    scores: projectAverageScores(entry.scores),
-    recentAssignmentScores: entry.recentAssignmentScores
-      .slice(0, FRESH_HISTORY_LENGTH)
-      .map((scores) => projectAverageScores(scores)),
-  };
-}
-
-/** Projects both lists of one analyser-native standings basis.
- * @param {MetricStandings} standings - Ranked top and bottom lists.
- * @returns {{ top: StudentStanding[]; bottom: StudentStanding[] }} Mapped standings.
- */
-function projectStandings(standings: MetricStandings) {
-  return {
-    top: standings.top.map((entry) => projectStanding(entry)),
-    bottom: standings.bottom.map((entry) => projectStanding(entry)),
-  };
-}
 
 afterEach(() => {
   vi.resetAllMocks();
@@ -134,9 +106,11 @@ describe('ABClass metadata calculation and exact replacement', () => {
         ...projectAverageScores(summary.baseline.classAverages),
         updatedAt: SUMMARY_TIME,
       };
-      const expectedAllTaskStandings = projectStandings(summary.allTasks.standings);
+      const expectedAllTaskStandings = projectMetricStandings(summary.allTasks.standings, 1);
       const expectedBaselineStandings =
-        summary.baseline.standings === null ? null : projectStandings(summary.baseline.standings);
+        summary.baseline.standings === null
+          ? null
+          : projectMetricStandings(summary.baseline.standings, 1);
       expect(backend.requests).toEqual([
         { method: 'getABClass', params: { classId: context.classFull.classId } },
         {

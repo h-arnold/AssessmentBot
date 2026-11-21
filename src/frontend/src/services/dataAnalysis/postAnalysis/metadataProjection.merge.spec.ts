@@ -23,8 +23,8 @@ import {
   type AverageScore,
   type AverageScores,
   type RecentAssignment,
-  type StudentStanding,
 } from '@/services/abClass/abClassMetadata.zod';
+import { projectMetricStandings } from '@/test/dataAnalysis/standingsProjectionOracle';
 import {
   createMetadataRefreshFixture,
   NEW_SOURCE_TIME,
@@ -195,34 +195,6 @@ function expectAlignedStandings(
       expect(standings[list][0].recentAssignmentScores).toEqual(expectedScores);
     }
   }
-}
-
-/** Maps one list of analyser-native standings to persisted score sets.
- * @param {readonly MetricStanding[]} entries - Ranked standing entries.
- * @returns {StudentStanding[]} Mapped standing entries.
- */
-function projectStandingList(entries: readonly MetricStanding[]): StudentStanding[] {
-  return entries.map((entry) => {
-    return {
-      studentId: entry.studentId,
-      studentName: entry.studentName,
-      scores: projectAverageScores(entry.scores),
-      recentAssignmentScores: entry.recentAssignmentScores.map((scores) =>
-        projectAverageScores(scores)
-      ),
-    };
-  });
-}
-
-/** Maps both standing lists of one basis to the persisted score union.
- * @param {MetricStandings} standings - Analyser-native standings basis.
- * @returns {{ top: StudentStanding[]; bottom: StudentStanding[] }} Mapped standings.
- */
-function projectStandings(standings: MetricStandings) {
-  return {
-    top: projectStandingList(standings.top),
-    bottom: projectStandingList(standings.bottom),
-  };
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -428,12 +400,16 @@ describe('mergeClassMetadata stable rolling history', () => {
       ...projectAverageScores(summary.allTasks.classAverages),
       updatedAt: SUMMARY_TIME,
     });
-    expect(result.allTaskStandings).toEqual(projectStandings(summary.allTasks.standings));
+    expect(result.allTaskStandings).toEqual(
+      projectMetricStandings(summary.allTasks.standings, 'all')
+    );
     expect(result.baselineAverages).toEqual({
       ...projectAverageScores(summary.baseline.classAverages),
       updatedAt: SUMMARY_TIME,
     });
-    expect(result.baselineStandings).toEqual(projectStandings(summary.baseline.standings!));
+    expect(result.baselineStandings).toEqual(
+      projectMetricStandings(summary.baseline.standings!, 'all')
+    );
     expect(ABClassMetadataSchema.parse(result)).toEqual(result);
   });
 

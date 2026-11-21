@@ -18,7 +18,8 @@ import {
   type MetricStanding,
   type MetricStandings,
 } from '../dataAnalysis/classSummary.zod';
-import type { RecentAssignment, StudentStanding } from '@/services/abClass/abClassMetadata.zod';
+import type { RecentAssignment } from '@/services/abClass/abClassMetadata.zod';
+import { projectMetricStandings } from '@/test/dataAnalysis/standingsProjectionOracle';
 import {
   createMetadataRefreshFixture,
   newestAssignment,
@@ -266,34 +267,6 @@ function createControlledSummary(
   });
 }
 
-/** Maps one standing list's analyser-native scores to persisted score sets.
- * @param {readonly MetricStanding[]} entries - Ranked standing entries.
- * @returns {StudentStanding[]} Mapped persisted standing entries.
- */
-function projectStandingList(entries: readonly MetricStanding[]): StudentStanding[] {
-  return entries.map((entry) => {
-    return {
-      studentId: entry.studentId,
-      studentName: entry.studentName,
-      scores: projectAverageScores(entry.scores),
-      recentAssignmentScores: entry.recentAssignmentScores.map((scores) =>
-        projectAverageScores(scores)
-      ),
-    };
-  });
-}
-
-/** Maps both standing lists of one basis to the persisted score union.
- * @param {MetricStandings} standings - Analyser-native standings basis.
- * @returns {{ top: StudentStanding[]; bottom: StudentStanding[] }} Mapped standings.
- */
-function projectStandings(standings: MetricStandings) {
-  return {
-    top: projectStandingList(standings.top),
-    bottom: projectStandingList(standings.bottom),
-  };
-}
-
 afterEach(() => {
   vi.resetAllMocks();
   vi.restoreAllMocks();
@@ -351,12 +324,16 @@ describe('ABClass metadata writer consumes one class summary', () => {
       ...projectAverageScores(summary.allTasks.classAverages),
       updatedAt: SUMMARY_TIME,
     });
-    expect(saved.allTaskStandings).toEqual(projectStandings(summary.allTasks.standings));
+    expect(saved.allTaskStandings).toEqual(
+      projectMetricStandings(summary.allTasks.standings, 'all')
+    );
     expect(saved.baselineAverages).toEqual({
       ...projectAverageScores(summary.baseline.classAverages!),
       updatedAt: SUMMARY_TIME,
     });
-    expect(saved.baselineStandings).toEqual(projectStandings(summary.baseline.standings!));
+    expect(saved.baselineStandings).toEqual(
+      projectMetricStandings(summary.baseline.standings!, 'all')
+    );
     expect(saved.recentAssignments).toEqual([
       {
         assignmentId: target.assignmentId,
@@ -392,7 +369,9 @@ describe('ABClass metadata writer consumes one class summary', () => {
     });
     expect(saved.baselineAverages).toBeNull();
     expect(saved.baselineStandings).toBeNull();
-    expect(saved.allTaskStandings).toEqual(projectStandings(summary.allTasks.standings));
+    expect(saved.allTaskStandings).toEqual(
+      projectMetricStandings(summary.allTasks.standings, 'all')
+    );
     if (saved.allTaskStandings === null) throw new Error('Expected populated all-task standings');
     expect(saved.allTaskStandings.top.length).toBeGreaterThan(0);
     expect(saved.classAverages).toEqual({
