@@ -15,7 +15,7 @@ import type {
   AssignmentPartial,
   ClassFull,
 } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
-import type { PageDatasetState } from '@/hooks/usePageDataset';
+import type { PageDatasetState } from '@/hooks/usePageDataset/usePageDataset';
 import { createElement, type ReactNode } from 'react';
 import { getABClass } from '@/services/googleClassrooms/classDetail/classDetailService';
 import { queryKeys } from '@/query/queryKeys';

@@ -5,7 +5,7 @@ import type { ClassFull } from '../services/googleClassrooms/classDetail/classDe
 import type { AveragingResult } from '../services/dataAnalysis/dataAnalysis.zod';
 import type { AssignmentDefinitionPartialsResponse } from '../services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { ClassPartial } from '../services/googleClassrooms/classPartialsService';
-import type { PageDatasetState } from '../hooks/usePageDataset';
+import type { PageDatasetState } from '../hooks/usePageDataset/usePageDataset';
 import { createMetricResult } from './dataAnalysis/fixtures';
 import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFixtures';
 import {

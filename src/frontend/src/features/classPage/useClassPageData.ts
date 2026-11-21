@@ -40,7 +40,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { getABClassQueryOptions } from '@/query/sharedQueries';
-import { usePageDataset } from '@/hooks/usePageDataset';
+import { usePageDataset } from '@/hooks/usePageDataset/usePageDataset';
 import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
 import { adaptClassPageToViewModel } from './classPageAdapter';
 import { useClassPagePipelineDiagnostics } from './useClassPagePipelineDiagnostics';

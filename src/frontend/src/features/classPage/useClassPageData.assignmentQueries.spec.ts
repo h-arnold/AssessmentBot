@@ -17,7 +17,7 @@ import {
   createPageDatasetReturn,
 } from '@/test/classPage/useClassPageDataTestFixtures';
 import { useQuery } from '@tanstack/react-query';
-import { usePageDataset } from '@/hooks/usePageDataset';
+import { usePageDataset } from '@/hooks/usePageDataset/usePageDataset';
 import { getABClassQueryOptions } from '@/query/sharedQueries';
 import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
 import { adaptClassPageToViewModel } from './classPageAdapter';

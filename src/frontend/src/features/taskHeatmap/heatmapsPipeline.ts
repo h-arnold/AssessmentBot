@@ -27,7 +27,7 @@ import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDet
 import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { logFrontendError } from '@/logging/frontendLogger';
 import { toError } from '@/errors/normaliseUnknownError';
-import type { PageDatasetState } from '@/hooks/usePageDataset';
+import type { PageDatasetState } from '@/hooks/usePageDataset/usePageDataset';
 
 /**
  * Create the module-level `DataAnalysisService` instance.

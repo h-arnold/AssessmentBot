@@ -1,7 +1,7 @@
 import { useQuery, type UseQueryOptions, type UseQueryResult } from '@tanstack/react-query';
-import type { StartupWarmupDatasetKey } from '../query/sharedQueries';
-import { useStartupWarmupState } from '../features/auth/startupWarmupState';
-import { getStartupWarmupQueryOptions } from '../query/sharedQueries';
+import type { StartupWarmupDatasetKey } from '@/query/sharedQueries';
+import { useStartupWarmupState } from '@/features/auth/startupWarmupState';
+import { getStartupWarmupQueryOptions } from '@/query/sharedQueries';
 
 /**
  * Per-dataset derived state with six boolean flags computed from a query result

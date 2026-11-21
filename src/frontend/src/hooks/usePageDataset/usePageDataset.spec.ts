@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { StartupWarmupDatasetKey } from '../query/sharedQueries';
+import type { StartupWarmupDatasetKey } from '@/query/sharedQueries';
 import {
   computePageDatasetState,
   shouldBlockPageSurface,
@@ -39,13 +39,13 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   };
 });
 
-vi.mock('../features/auth/startupWarmupState', () => {
+vi.mock('@/features/auth/startupWarmupState', () => {
   return {
     useStartupWarmupState: mockUseStartupWarmupState,
   };
 });
 
-vi.mock('../query/sharedQueries', async (importOriginal) => {
+vi.mock('@/query/sharedQueries', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,

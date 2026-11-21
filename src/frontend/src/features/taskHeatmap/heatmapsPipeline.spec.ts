@@ -32,7 +32,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runHeatmapsPipeline, shouldRunHeatmapsPipeline } from './heatmapsPipeline';
 import { TaskTitlesUnavailableError } from '@/services/dataAnalysis/heatmapAdapter';
-import type { PageDatasetState } from '@/hooks/usePageDataset';
+import type { PageDatasetState } from '@/hooks/usePageDataset/usePageDataset';
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import type {
   AssignmentDefinitionPartial,

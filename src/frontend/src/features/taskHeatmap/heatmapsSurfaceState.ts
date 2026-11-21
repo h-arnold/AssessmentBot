@@ -17,7 +17,10 @@
  */
 
 import type { ClassFull } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
-import { computeDatasetBlockingReason, type PageDatasetState } from '@/hooks/usePageDataset';
+import {
+  computeDatasetBlockingReason,
+  type PageDatasetState,
+} from '@/hooks/usePageDataset/usePageDataset';
 import { toError } from '@/errors/normaliseUnknownError';
 
 /**

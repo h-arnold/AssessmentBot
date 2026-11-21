@@ -75,7 +75,7 @@ import {
 } from '@tanstack/react-query';
 import { getABClassQueryOptions, getAssignmentQueryOptions } from '@/query/sharedQueries';
 import { queryKeys } from '@/query/queryKeys';
-import { usePageDataset } from '@/hooks/usePageDataset';
+import { usePageDataset } from '@/hooks/usePageDataset/usePageDataset';
 import { toError } from '@/errors/normaliseUnknownError';
 import { usePagePostAnalysisTasks } from '@/hooks/usePagePostAnalysisTasks';
 import type { AveragingResult } from '@/services/dataAnalysis/dataAnalysis.zod';
