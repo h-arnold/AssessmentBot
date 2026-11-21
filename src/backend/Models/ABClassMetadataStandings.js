@@ -12,16 +12,6 @@ const ABCLASS_METADATA_MAX_STANDINGS = 3;
  */
 const ABClassMetadataStandings = {
   /**
-   * Validates a baseline averages snapshot: the four scores plus a canonical timestamp.
-   * @param {*} value - Candidate baseline averages record.
-   * @param {string} context - Error path prefix.
-   * @returns {void}
-   */
-  validateBaselineAverages(value, context) {
-    ABClassMetadata.validateClassAverages(value, context);
-  },
-
-  /**
    * Validates one standings object with exactly a top and a bottom list.
    * @param {*} value - Candidate standings record.
    * @param {string} context - Error path prefix.
@@ -70,8 +60,8 @@ const ABClassMetadataStandings = {
       'scores',
       'recentAssignmentScores',
     ]);
-    ABClassMetadataStandings._validateIdentifier(value.studentId, `${context}.studentId`);
-    ABClassMetadataStandings._validateIdentifier(value.studentName, `${context}.studentName`);
+    ABClassMetadata._validateIdentifier(value.studentId, `${context}.studentId`);
+    ABClassMetadata._validateIdentifier(value.studentName, `${context}.studentName`);
     ABClassMetadata.validateAverageScores(value.scores, `${context}.scores`);
     ABClassMetadataStandings.validateRecentAssignmentScores(
       value.recentAssignmentScores,
@@ -102,27 +92,12 @@ const ABClassMetadataStandings = {
   },
 
   /**
-   * Requires a non-empty, already-trimmed string identifier.
-   * @param {*} value - Candidate identifier.
-   * @param {string} context - Error path prefix.
-   * @returns {void}
-   * @private
-   */
-  _validateIdentifier(value, context) {
-    ABClassMetadata._validateIdentifier(value, context);
-  },
-
-  /**
    * Copies a validated baseline averages snapshot into a detached plain record.
    * @param {Object} value - Validated baseline averages.
    * @returns {Object} An independently owned baseline averages record.
    */
   copyBaselineAverages(value) {
-    const metrics = ABClassMetadata._metrics();
-    const copy = {};
-    for (const metric of metrics) copy[metric] = value[metric];
-    copy.updatedAt = value.updatedAt;
-    return copy;
+    return { ...ABClassMetadataStandings.copyScoreSet(value), updatedAt: value.updatedAt };
   },
 
   /**

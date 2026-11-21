@@ -1,13 +1,7 @@
 const ABCLASS_METADATA_MAX_SCORE = 5;
 const ABCLASS_METADATA_MAX_RECENT_ASSIGNMENTS = 3;
 const BASELINE_AVERAGES_FIELD = 'baselineAverages';
-const ALL_TASK_STANDINGS_FIELD = 'allTaskStandings';
-const BASELINE_STANDINGS_FIELD = 'baselineStandings';
-const NEW_METADATA_FIELDS = [
-  BASELINE_AVERAGES_FIELD,
-  ALL_TASK_STANDINGS_FIELD,
-  BASELINE_STANDINGS_FIELD,
-];
+const NEW_METADATA_FIELDS = [BASELINE_AVERAGES_FIELD, 'allTaskStandings', 'baselineStandings'];
 
 /**
  * Authoritative validation and ownership boundary for ABClass assessment snapshots.
@@ -282,7 +276,7 @@ class ABClassMetadata {
         ABClassMetadata._fail('must not be undefined', `${context}.${field}`);
       } else if (nested !== null) {
         if (field === BASELINE_AVERAGES_FIELD) {
-          ABClassMetadataStandings.validateBaselineAverages(nested, `${context}.${field}`);
+          ABClassMetadata.validateClassAverages(nested, `${context}.${field}`);
         } else {
           ABClassMetadataStandings.validateStandings(nested, `${context}.${field}`, recentCount);
         }
@@ -303,7 +297,7 @@ class ABClassMetadata {
   }
 
   /**
-   * Copies the canonical five-field shape into plain, independently owned objects.
+   * Copies the five-field shape into plain, independently owned objects.
    * Omitted legacy fields become null placeholders; nested validators and copy helpers live
    * in the sibling ABClassMetadataStandings module and are referenced at call time only.
    * @param {Object|null} value - Previously validated metadata.
