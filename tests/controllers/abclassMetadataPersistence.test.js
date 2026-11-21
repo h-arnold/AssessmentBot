@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { normalisedMetadataExpectation } from '@synthetic/normalisedMetadataExpectation';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 import { saveGlobals, restoreGlobals } from '#test-helpers/globalMockManager.js';
 import { expectMetadataNodesDetached } from '../synthetic-analysis/backendModelInputAssertions.js';
@@ -9,18 +10,6 @@ const ABClassValidation = require('#backend/y_controllers/ABClassController/ABCl
 
 const clone = (value) => structuredClone(value);
 
-// Persisted copies keep the five-field shape: supplied new-field values are preserved, a legacy
-// two-field snapshot gains three null placeholders and a whole-metadata null stays null.
-const emitted = (value) => {
-  if (value === null) return null;
-  const raw = clone(value);
-  return {
-    ...raw,
-    baselineAverages: raw.baselineAverages ?? null,
-    allTaskStandings: raw.allTaskStandings ?? null,
-    baselineStandings: raw.baselineStandings ?? null,
-  };
-};
 const mutations = ['insertOne', 'replaceOne', 'updateOne', 'save'];
 let savedGlobals;
 let logger;
@@ -179,8 +168,8 @@ describe('ABClass whole-write preparation', () => {
     const partialPayload = partial.insertOne.mock.calls[0][0];
     expect(fullPayload).not.toBe(caller);
     expect(partialPayload).not.toBe(caller);
-    expect(fullPayload.metadata).toStrictEqual(emitted(expected));
-    expect(partialPayload.metadata).toStrictEqual(emitted(expected));
+    expect(fullPayload.metadata).toStrictEqual(normalisedMetadataExpectation(expected));
+    expect(partialPayload.metadata).toStrictEqual(normalisedMetadataExpectation(expected));
     expect(fullPayload.metadata).not.toBe(partialPayload.metadata);
     expect(caller).toHaveProperty('metadata', expected);
     expect(fullPayload.metadata.classAverages).not.toBe(caller.metadata.classAverages);
@@ -193,7 +182,7 @@ describe('ABClass whole-write preparation', () => {
     );
     expect(caller.toPartialJSON.mock.results[0].value).not.toHaveProperty('metadata');
     fullPayload.metadata.recentAssignments[0].averages.overall = 0;
-    expect(partialPayload.metadata).toStrictEqual(emitted(expected));
+    expect(partialPayload.metadata).toStrictEqual(normalisedMetadataExpectation(expected));
     expect(caller.metadata).toStrictEqual(expected);
   });
 
@@ -235,15 +224,15 @@ describe('ABClass whole-write preparation', () => {
     persistence({ full, partial }).owner.persistClassAndPartial(caller);
     const fullMetadata = full.insertOne.mock.calls[0][0].metadata;
     const partialMetadata = partial.insertOne.mock.calls[0][0].metadata;
-    expect(fullMetadata).toStrictEqual(emitted(expected));
-    expect(partialMetadata).toStrictEqual(emitted(expected));
+    expect(fullMetadata).toStrictEqual(normalisedMetadataExpectation(expected));
+    expect(partialMetadata).toStrictEqual(normalisedMetadataExpectation(expected));
     expectMetadataNodesDetached([fullMetadata, partialMetadata]);
     expectMetadataNodesDetached([fullMetadata, caller.metadata]);
     expectMetadataNodesDetached([partialMetadata, caller.metadata]);
     expectMetadataNodesDetached([fullMetadata, projectionOutput.metadata]);
     expectMetadataNodesDetached([partialMetadata, projectionOutput.metadata]);
     fullMetadata.classAverages.accuracy = 0;
-    expect(partialMetadata).toStrictEqual(emitted(expected));
+    expect(partialMetadata).toStrictEqual(normalisedMetadataExpectation(expected));
     expect(caller.metadata).toStrictEqual(expected);
   });
 

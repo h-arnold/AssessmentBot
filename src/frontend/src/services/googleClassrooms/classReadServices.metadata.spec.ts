@@ -3,6 +3,7 @@ import { z } from 'zod';
 import smallClassesRaw from '@synthetic/small/classesById.json?raw';
 import mediumClassesRaw from '@synthetic/medium/classesById.json?raw';
 import representativeClassesRaw from '@synthetic/large-representative/classesById.json?raw';
+import { normalisedMetadataExpectation } from '@synthetic/normalisedMetadataExpectation';
 import { ApiTransportError } from '@/errors/apiTransportError';
 import {
   METADATA_PROFILES,
@@ -26,27 +27,6 @@ const classesByProfile = deepFreeze({
     Record<string, unknown>
   >,
 });
-
-/**
- * Derives the five-field metadata value emitted by the response parsers from a raw
- * committed snapshot: supplied new-field values are preserved, a legacy two-field snapshot
- * gains three null placeholders and a whole-metadata null stays null.
- * @param {unknown} rawMetadata - Raw metadata from a committed class-partial row.
- * @returns {unknown} The normalised metadata expectation.
- */
-function normalisedMetadataExpectation(rawMetadata: unknown): unknown {
-  if (rawMetadata === null) return null;
-  if (typeof rawMetadata !== 'object' || Array.isArray(rawMetadata)) {
-    throw new TypeError('Expected a null or object metadata snapshot');
-  }
-  const raw = rawMetadata as Record<string, unknown>;
-  return {
-    ...raw,
-    baselineAverages: raw.baselineAverages ?? null,
-    allTaskStandings: raw.allTaskStandings ?? null,
-    baselineStandings: raw.baselineStandings ?? null,
-  };
-}
 
 const callApiMock = vi.mocked(callApi);
 

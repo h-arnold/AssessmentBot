@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { normalisedMetadataExpectation } from '@synthetic/normalisedMetadataExpectation';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 import {
   setupRealAbclassDispatcher,
@@ -11,19 +12,6 @@ const selectedPartial = canonical.classPartials.find(
   (row) => row.classId === selectedClass.classId
 );
 const registryRows = [{ ...selectedPartial, _id: 'partial-row' }];
-
-// Reads emit the current five-field shape: supplied new-field values are preserved, a legacy
-// two-field snapshot gains three null placeholders and a whole-metadata null stays null.
-const emitted = (value) => {
-  if (value === null) return null;
-  const raw = structuredClone(value);
-  return {
-    ...raw,
-    baselineAverages: raw.baselineAverages ?? null,
-    allTaskStandings: raw.allTaskStandings ?? null,
-    baselineStandings: raw.baselineStandings ?? null,
-  };
-};
 
 /**
  * Calls the global `apiHandler` and parses the transport string it returns.
@@ -68,7 +56,7 @@ describe('ABClass metadata dispatcher read contracts', () => {
       data: [
         expect.objectContaining({
           classId: context.classId,
-          metadata: emitted(context.source.metadata),
+          metadata: normalisedMetadataExpectation(context.source.metadata),
         }),
       ],
     });
@@ -92,7 +80,7 @@ describe('ABClass metadata dispatcher read contracts', () => {
       ok: true,
       data: expect.objectContaining({
         classId: context.classId,
-        metadata: emitted(context.source.metadata),
+        metadata: normalisedMetadataExpectation(context.source.metadata),
       }),
     });
     expect(context.full.findOne).toHaveBeenCalledWith({ classId: context.classId });

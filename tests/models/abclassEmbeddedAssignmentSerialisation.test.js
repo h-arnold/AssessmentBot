@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { normalisedMetadataExpectation } from '@synthetic/normalisedMetadataExpectation';
 import { ABClass } from '#backend/Models/ABClass.js';
 import { AssignmentDefinition } from '#backend/Models/AssignmentDefinition.js';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
@@ -11,19 +12,6 @@ import {
 
 const clone = (value) => structuredClone(value);
 const teacherGlobal = { Teacher: () => Teacher };
-
-// Emitted metadata keeps the five-field shape: supplied new-field values are preserved, a legacy
-// two-field snapshot gains three null placeholders and a whole-metadata null stays null.
-const emitted = (value) => {
-  if (value === null) return null;
-  const raw = structuredClone(value);
-  return {
-    ...raw,
-    baselineAverages: raw.baselineAverages ?? null,
-    allTaskStandings: raw.allTaskStandings ?? null,
-    baselineStandings: raw.baselineStandings ?? null,
-  };
-};
 
 function restoredClass(profile, predicate) {
   const input = Object.values(loadBackendModelInputs(profile).classesById).find(predicate);
@@ -76,7 +64,9 @@ describe('ABClass embedded assignment serialization', () => {
           ABClass.fromJSON(JSON.parse(JSON.stringify(output)))
         );
         expect(roundTrip.toJSON()).toStrictEqual(output);
-        expect(roundTrip.toPartialJSON().metadata).toStrictEqual(emitted(input.metadata));
+        expect(roundTrip.toPartialJSON().metadata).toStrictEqual(
+          normalisedMetadataExpectation(input.metadata)
+        );
       }
       expect(assignmentCount).toBeGreaterThan(0);
       expect(submissionCount).toBeGreaterThan(0);

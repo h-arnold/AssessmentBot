@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { normalisedMetadataExpectation } from '@synthetic/normalisedMetadataExpectation';
 import ABClassController from '#backend/y_controllers/ABClassController/index.js';
 import { ABClass } from '#backend/Models/ABClass.js';
 import { Teacher } from '#backend/Models/Teacher.js';
@@ -12,18 +13,6 @@ import {
 const clone = (value) => structuredClone(value);
 const teacherGlobal = { Teacher: () => Teacher };
 
-// Emitted metadata keeps the five-field shape: supplied new-field values are preserved, a legacy
-// two-field snapshot gains three null placeholders and a whole-metadata null stays null.
-const emitted = (value) => {
-  if (value === null) return null;
-  const raw = structuredClone(value);
-  return {
-    ...raw,
-    baselineAverages: raw.baselineAverages ?? null,
-    allTaskStandings: raw.allTaskStandings ?? null,
-    baselineStandings: raw.baselineStandings ?? null,
-  };
-};
 let saved;
 
 afterEach(() => {
@@ -96,8 +85,10 @@ describe('persistAssignmentRun with canonical embedded partials', () => {
         classInput.assignments.map((row) => row.assignmentId)
       );
       const storedPartialPayload = partialCollection.replaceOne.mock.calls[0][1];
-      expect(storedClass.metadata).toStrictEqual(emitted(expectedMetadata));
-      expect(storedPartialPayload.metadata).toStrictEqual(emitted(expectedMetadata));
+      expect(storedClass.metadata).toStrictEqual(normalisedMetadataExpectation(expectedMetadata));
+      expect(storedPartialPayload.metadata).toStrictEqual(
+        normalisedMetadataExpectation(expectedMetadata)
+      );
       expect(storedClass.metadata).toStrictEqual(storedPartialPayload.metadata);
       expect(classInput.metadata).toStrictEqual(expectedMetadata);
       if (expectedMetadata !== null) {

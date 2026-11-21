@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { normalisedMetadataExpectation } from '@synthetic/normalisedMetadataExpectation';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 import {
   setupRealAbclassDispatcher,
@@ -19,19 +20,6 @@ const registryRows = [
 const replacement = Object.values(loadBackendModelInputs('medium').classesById).find(
   (row) => row.metadata
 )?.metadata;
-
-// Writes emit the current five-field shape: supplied new-field values are preserved, a legacy
-// two-field snapshot gains three null placeholders and a whole-metadata null stays null.
-const emitted = (value) => {
-  if (value === null) return null;
-  const raw = structuredClone(value);
-  return {
-    ...raw,
-    baselineAverages: raw.baselineAverages ?? null,
-    allTaskStandings: raw.allTaskStandings ?? null,
-    baselineStandings: raw.baselineStandings ?? null,
-  };
-};
 
 /**
  * Calls the global `apiHandler` and parses the transport string it returns.
@@ -63,12 +51,12 @@ describe('ABClass metadata dispatcher success writes', () => {
     const response = dispatch(context.api, { method: 'updateABClass', params: request });
     expect(response).toMatchObject({
       ok: true,
-      data: { classId: context.classId, metadata: emitted(replacement) },
+      data: { classId: context.classId, metadata: normalisedMetadataExpectation(replacement) },
     });
     expect(context.full.updateOne).toHaveBeenCalledTimes(1);
     expect(context.partial.replaceOne).toHaveBeenCalledTimes(1);
-    expect(context.full.rows()[0].metadata).toEqual(emitted(replacement));
-    expect(context.partial.rows()[0].metadata).toEqual(emitted(replacement));
+    expect(context.full.rows()[0].metadata).toEqual(normalisedMetadataExpectation(replacement));
+    expect(context.partial.rows()[0].metadata).toEqual(normalisedMetadataExpectation(replacement));
     expect(response.data.metadata.classAverages.updatedAt).toEqual(expect.any(String));
     expect(JSON.parse(JSON.stringify(response))).toEqual(response);
   });
@@ -103,12 +91,12 @@ describe('ABClass metadata dispatcher success writes', () => {
       ).toBe(true);
       expect(response).toMatchObject({
         ok: true,
-        data: { classId: context.classId, metadata: emitted(expected) },
+        data: { classId: context.classId, metadata: normalisedMetadataExpectation(expected) },
       });
       expect(context.full.replaceOne).toHaveBeenCalledTimes(1);
       expect(context.partial.replaceOne).toHaveBeenCalledTimes(1);
-      expect(context.full.rows()[0].metadata).toEqual(emitted(expected));
-      expect(context.partial.rows()[0].metadata).toEqual(emitted(expected));
+      expect(context.full.rows()[0].metadata).toEqual(normalisedMetadataExpectation(expected));
+      expect(context.partial.rows()[0].metadata).toEqual(normalisedMetadataExpectation(expected));
       expect(JSON.parse(JSON.stringify(response))).toEqual(response);
     }
   );
@@ -123,7 +111,7 @@ describe('ABClass metadata dispatcher success writes', () => {
       method: 'updateABClass',
       params: { classId: context.classId, active: false },
     });
-    expect(updated.data.metadata).toEqual(emitted(original));
+    expect(updated.data.metadata).toEqual(normalisedMetadataExpectation(original));
     expect(context.full.rows()[0].metadata).toEqual(original);
     const deleted = dispatch(context.api, {
       method: 'deleteABClass',
@@ -204,8 +192,12 @@ describe('ABClass metadata dispatcher success writes', () => {
       expect(response.data.metadata.recentAssignments.map((entry) => entry.assignmentId)).toEqual(
         metadata.recentAssignments.map((entry) => entry.assignmentId)
       );
-      expect(context.full.rows()[0].metadata).toStrictEqual(emitted(metadata));
-      expect(context.partial.rows()[0].metadata).toStrictEqual(emitted(metadata));
+      expect(context.full.rows()[0].metadata).toStrictEqual(
+        normalisedMetadataExpectation(metadata)
+      );
+      expect(context.partial.rows()[0].metadata).toStrictEqual(
+        normalisedMetadataExpectation(metadata)
+      );
     }
   );
 
@@ -229,7 +221,7 @@ describe('ABClass metadata dispatcher success writes', () => {
     };
 
     const upsert = dispatch(context.api, { method: 'upsertABClass', params: request });
-    expect(upsert.data.metadata).toStrictEqual(emitted(untouched));
+    expect(upsert.data.metadata).toStrictEqual(normalisedMetadataExpectation(untouched));
     dispatch(context.api, {
       method: 'updateABClass',
       params: { classId: context.classId, active: false },
@@ -252,8 +244,10 @@ describe('ABClass metadata dispatcher success writes', () => {
     // Both stores already hold the refreshed roster after the upsert and update,
     // so the roster refresh must skip persistence and perform no store writes.
     expect(rosterOrder).toEqual(['partial.findOne']);
-    expect(context.full.rows()[0].metadata).toStrictEqual(emitted(untouched));
-    expect(context.partial.rows()[0].metadata).toStrictEqual(emitted(untouched));
+    expect(context.full.rows()[0].metadata).toStrictEqual(normalisedMetadataExpectation(untouched));
+    expect(context.partial.rows()[0].metadata).toStrictEqual(
+      normalisedMetadataExpectation(untouched)
+    );
     const fullAssignmentInput = Object.values(canonical.assignmentsByKey).find(
       (assignment) => assignment.courseId === context.classId
     );
@@ -266,11 +260,13 @@ describe('ABClass metadata dispatcher success writes', () => {
       params: { classId: context.classId },
     });
     expect(list.data.find((row) => row.classId === context.classId).metadata).toStrictEqual(
-      emitted(untouched)
+      normalisedMetadataExpectation(untouched)
     );
-    expect(fullRead.data.metadata).toStrictEqual(emitted(untouched));
-    expect(context.full.rows()[0].metadata).toStrictEqual(emitted(untouched));
-    expect(context.partial.rows()[0].metadata).toStrictEqual(emitted(untouched));
+    expect(fullRead.data.metadata).toStrictEqual(normalisedMetadataExpectation(untouched));
+    expect(context.full.rows()[0].metadata).toStrictEqual(normalisedMetadataExpectation(untouched));
+    expect(context.partial.rows()[0].metadata).toStrictEqual(
+      normalisedMetadataExpectation(untouched)
+    );
     expect(context.full.rows()[0].assignments.map((row) => row.assignmentId)).toEqual(
       source.assignments.map((row) => row.assignmentId)
     );
@@ -288,9 +284,13 @@ describe('ABClass metadata dispatcher success writes', () => {
       method: 'updateABClass',
       params: { classId: context.classId, metadata: replacement },
     });
-    expect(replaced.data.metadata).toStrictEqual(emitted(replacement));
-    expect(context.full.rows()[0].metadata).toStrictEqual(emitted(replacement));
-    expect(context.partial.rows()[0].metadata).toStrictEqual(emitted(replacement));
+    expect(replaced.data.metadata).toStrictEqual(normalisedMetadataExpectation(replacement));
+    expect(context.full.rows()[0].metadata).toStrictEqual(
+      normalisedMetadataExpectation(replacement)
+    );
+    expect(context.partial.rows()[0].metadata).toStrictEqual(
+      normalisedMetadataExpectation(replacement)
+    );
     const cleared = dispatch(context.api, {
       method: 'updateABClass',
       params: { classId: context.classId, metadata: null },

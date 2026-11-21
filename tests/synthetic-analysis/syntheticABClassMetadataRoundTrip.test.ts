@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { normalisedMetadataExpectation } from '@synthetic/normalisedMetadataExpectation';
 
 import { type GoogleScriptRunApiHandler } from '@/test/googleScriptRunHarness';
 import { createSyntheticApiRoundTripRunner } from '@/test/syntheticApiRoundTripAdapter';
@@ -36,12 +37,7 @@ const rawMetadata = sourcePartial.metadata as Record<string, unknown>;
 const replacement = ABClassMetadataSchema.parse(rawMetadata);
 // Read projections emit all five fields. Derive the expectation from the raw bytes, not from the
 // schema under test: any new field absent from the raw fixture normalises to an enumerable null.
-const normalisedSourceMetadata = {
-  ...rawMetadata,
-  baselineAverages: rawMetadata.baselineAverages ?? null,
-  allTaskStandings: rawMetadata.allTaskStandings ?? null,
-  baselineStandings: rawMetadata.baselineStandings ?? null,
-};
+const normalisedSourceMetadata = normalisedMetadataExpectation(rawMetadata);
 // Raw dispatch bytes omit null-valued properties; derive them from the raw fixture so the
 // expectation follows regeneration instead of pinning the current two-field literal.
 const rawReplacement = Object.fromEntries(

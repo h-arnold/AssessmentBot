@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { normalisedMetadataExpectation } from '@synthetic/normalisedMetadataExpectation';
 import { ABClass } from '#backend/Models/ABClass.js';
 import { loadBackendModelInputs } from '#synthetic-data/toBackendModelInputs.js';
 import { withTemporaryGlobals } from '#test-helpers/globalMockManager.js';
@@ -11,19 +12,6 @@ import {
 const clone = (value) => structuredClone(value);
 const canonicalClasses = (profile) => loadBackendModelInputs(profile).classesById;
 const teacherGlobal = { Teacher: () => Teacher };
-
-// Normalised metadata keeps the five-field shape: supplied new-field values are preserved, a
-// legacy two-field snapshot gains three null placeholders and a whole-metadata null stays null.
-const withNullPlaceholders = (value) => {
-  if (value === null) return null;
-  const raw = clone(value);
-  return {
-    ...raw,
-    baselineAverages: raw.baselineAverages ?? null,
-    allTaskStandings: raw.allTaskStandings ?? null,
-    baselineStandings: raw.baselineStandings ?? null,
-  };
-};
 
 function invalidMetadata(canonicalMetadata) {
   const invalid = clone(canonicalMetadata);
@@ -40,16 +28,18 @@ describe('ABClass metadata construction and serialization boundaries', () => {
           classId: input.classId,
           metadata: clone(input.metadata),
         });
-        expect(constructed.toJSON().metadata).toStrictEqual(withNullPlaceholders(input.metadata));
+        expect(constructed.toJSON().metadata).toStrictEqual(
+          normalisedMetadataExpectation(input.metadata)
+        );
         expect(constructed.toPartialJSON().metadata).toStrictEqual(
-          withNullPlaceholders(input.metadata)
+          normalisedMetadataExpectation(input.metadata)
         );
 
         const restored = withTemporaryGlobals(teacherGlobal, () => ABClass.fromJSON(clone(input)));
         expect(Object.hasOwn(restored, 'metadata')).toBe(true);
-        expect(restored.metadata).toStrictEqual(withNullPlaceholders(input.metadata));
+        expect(restored.metadata).toStrictEqual(normalisedMetadataExpectation(input.metadata));
         expect(restored.toPartialJSON().metadata).toStrictEqual(
-          withNullPlaceholders(input.metadata)
+          normalisedMetadataExpectation(input.metadata)
         );
 
         // Isolate metadata full serialisation: all class-embedded definitions are
@@ -61,9 +51,11 @@ describe('ABClass metadata construction and serialization boundaries', () => {
         const jsonRoundTrip = withTemporaryGlobals(teacherGlobal, () =>
           ABClass.fromJSON(JSON.parse(JSON.stringify(fullJson)))
         );
-        expect(jsonRoundTrip.toJSON().metadata).toStrictEqual(withNullPlaceholders(input.metadata));
+        expect(jsonRoundTrip.toJSON().metadata).toStrictEqual(
+          normalisedMetadataExpectation(input.metadata)
+        );
         expect(jsonRoundTrip.toPartialJSON().metadata).toStrictEqual(
-          withNullPlaceholders(input.metadata)
+          normalisedMetadataExpectation(input.metadata)
         );
 
         const partialJson = restored.toPartialJSON();
@@ -71,7 +63,7 @@ describe('ABClass metadata construction and serialization boundaries', () => {
           ABClass.fromJSON(JSON.parse(JSON.stringify(partialJson)))
         );
         expect(partialRoundTrip.toPartialJSON().metadata).toStrictEqual(
-          withNullPlaceholders(input.metadata)
+          normalisedMetadataExpectation(input.metadata)
         );
       }
     }
@@ -157,9 +149,11 @@ describe('ABClass metadata construction and serialization boundaries', () => {
     );
     for (const replacement of [null, ...variants.filter(Boolean)]) {
       instance.setMetadata(clone(replacement));
-      expect(instance.metadata).toStrictEqual(withNullPlaceholders(replacement));
-      expect(instance.toJSON().metadata).toStrictEqual(withNullPlaceholders(replacement));
-      expect(instance.toPartialJSON().metadata).toStrictEqual(withNullPlaceholders(replacement));
+      expect(instance.metadata).toStrictEqual(normalisedMetadataExpectation(replacement));
+      expect(instance.toJSON().metadata).toStrictEqual(normalisedMetadataExpectation(replacement));
+      expect(instance.toPartialJSON().metadata).toStrictEqual(
+        normalisedMetadataExpectation(replacement)
+      );
     }
     expect(() => instance.setMetadata(undefined)).toThrow(
       globalThis.ABClassMetadataValidationError
@@ -184,7 +178,7 @@ describe('ABClass metadata construction and serialization boundaries', () => {
       inputMetadata.recentAssignments.push(clone(inputMetadata.recentAssignments[0]));
       inputMetadata.recentAssignments[0].assignmentId = 'mutated';
       inputMetadata.recentAssignments[0].averages.accuracy = 99;
-      expect(model.metadata).toStrictEqual(withNullPlaceholders(canonical.metadata));
+      expect(model.metadata).toStrictEqual(normalisedMetadataExpectation(canonical.metadata));
     }
 
     const instance = new ABClass({ classId: canonical.classId });
@@ -194,7 +188,7 @@ describe('ABClass metadata construction and serialization boundaries', () => {
     replacement.recentAssignments.push(clone(replacement.recentAssignments[0]));
     replacement.recentAssignments[0].assignmentId = 'replacement-input-mutated';
     replacement.recentAssignments[1].averages.spag = 99;
-    expect(instance.metadata).toStrictEqual(withNullPlaceholders(canonical.metadata));
+    expect(instance.metadata).toStrictEqual(normalisedMetadataExpectation(canonical.metadata));
   });
 
   it('returns independent full, partial, repeated, and restored snapshots at every nested node', () => {
@@ -230,13 +224,17 @@ describe('ABClass metadata construction and serialization boundaries', () => {
     partial.metadata.classAverages.spag = 1;
     partial.metadata.recentAssignments[1].assignmentDefinitionKey = 'partial-output-mutated';
     partial.metadata.recentAssignments[1].averages.overall = 1;
-    expect(model.metadata).toStrictEqual(withNullPlaceholders(canonical.metadata));
-    expect(repeatedFull.metadata).toStrictEqual(withNullPlaceholders(canonical.metadata));
-    expect(repeatedPartial.metadata).toStrictEqual(withNullPlaceholders(canonical.metadata));
+    expect(model.metadata).toStrictEqual(normalisedMetadataExpectation(canonical.metadata));
+    expect(repeatedFull.metadata).toStrictEqual(normalisedMetadataExpectation(canonical.metadata));
+    expect(repeatedPartial.metadata).toStrictEqual(
+      normalisedMetadataExpectation(canonical.metadata)
+    );
     expect(repeatedFull.metadata.recentAssignments).toHaveLength(2);
     expect(repeatedPartial.metadata.recentAssignments).toHaveLength(2);
-    expect(fullRoundTrip.metadata).toStrictEqual(withNullPlaceholders(canonical.metadata));
-    expect(partialRoundTrip.metadata).toStrictEqual(withNullPlaceholders(canonical.metadata));
+    expect(fullRoundTrip.metadata).toStrictEqual(normalisedMetadataExpectation(canonical.metadata));
+    expect(partialRoundTrip.metadata).toStrictEqual(
+      normalisedMetadataExpectation(canonical.metadata)
+    );
   });
 
   it('revalidates direct mutations on both serializers and preserves valid supplied ordering', () => {
@@ -253,8 +251,10 @@ describe('ABClass metadata construction and serialization boundaries', () => {
     validMutation.recentAssignments[1].assignmentDefinitionKey =
       validMutation.recentAssignments[0].assignmentDefinitionKey;
     instance.metadata = validMutation;
-    expect(instance.toJSON().metadata).toStrictEqual(withNullPlaceholders(validMutation));
-    expect(instance.toPartialJSON().metadata).toStrictEqual(withNullPlaceholders(validMutation));
+    expect(instance.toJSON().metadata).toStrictEqual(normalisedMetadataExpectation(validMutation));
+    expect(instance.toPartialJSON().metadata).toStrictEqual(
+      normalisedMetadataExpectation(validMutation)
+    );
     expect(instance.toJSON().metadata.recentAssignments.map((entry) => entry.assignmentId)).toEqual(
       validMutation.recentAssignments.map((entry) => entry.assignmentId)
     );
