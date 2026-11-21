@@ -15,7 +15,7 @@ const MIXED_TEMPLATE_INDEX = 4;
 const ONE_ENTRY = 1;
 const TWO_ENTRIES = 2;
 const THREE_ENTRIES = 3;
-// The baseline basis rotates one template on from the all-task basis; a fixed, documented
+// The baseline basis rotates one template on from the all-task basis; a fixed
 // rule with no averaging or cross-metric relationship.
 const BASELINE_TEMPLATE_OFFSET = 1;
 // Standing identity sequences are derived only from the class index, template index and a

@@ -50,11 +50,12 @@ function hasExactKeys(value, expected) {
  */
 function assertDenseArray(values, path) {
   const keys = Reflect.ownKeys(values);
+  const keySet = new Set(keys);
   const hasUnexpectedOrMissingKey =
     keys.length !== values.length + 1 ||
-    !keys.includes('length') ||
+    !keySet.has('length') ||
     Array.from({ length: values.length }, (_, index) => String(index)).some(
-      (key) => !keys.includes(key) || !Object.hasOwn(values, key)
+      (key) => !keySet.has(key) || !Object.hasOwn(values, key)
     );
   if (hasUnexpectedOrMissingKey) {
     fail(`${path} must be a dense array with no extra own properties.`);
@@ -129,7 +130,7 @@ function validateMetadata(metadata, path, classId, assignmentsById, definitionKe
   );
   if (isCurrent) {
     const recentCount = metadata.recentAssignments.length;
-    validateBaselineAverages(metadata.baselineAverages, `${path}.baselineAverages`);
+    validateClassAverages(metadata.baselineAverages, `${path}.baselineAverages`);
     validateStandings(metadata.allTaskStandings, `${path}.allTaskStandings`, recentCount);
     validateStandings(metadata.baselineStandings, `${path}.baselineStandings`, recentCount);
   }
@@ -142,14 +143,6 @@ function validateMetadata(metadata, path, classId, assignmentsById, definitionKe
 function validateClassAverages(averages, path) {
   assertScores(averages, path, true);
   assertTimestamp(averages.updatedAt, `${path}.updatedAt`);
-}
-
-/** Validates a baseline averages snapshot: four scores plus a canonical timestamp.
- * @param {unknown} value Candidate baseline averages.
- * @param {string} path Diagnostic path.
- */
-function validateBaselineAverages(value, path) {
-  validateClassAverages(value, path);
 }
 
 /** Validates a standings basis with exactly a top and a bottom list.
