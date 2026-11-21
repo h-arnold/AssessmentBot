@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
-import { createReadyStartupWarmupState } from '../test/assignmentDefinition/wizardTestHelpers';
+import { createReadyStartupWarmupState } from '../test/startupWarmupFixtures';
 import {
   mockTopics,
   mockYearGroups,

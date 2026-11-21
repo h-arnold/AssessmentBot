@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '@/errors/apiTransportError';
+import { createReadyStartupWarmupState } from '@/test/startupWarmupFixtures';
 import { useClassesManagement } from './useClassesManagement';
 
 const { useQueryMock, useStartupWarmupStateMock } = vi.hoisted(() => {
@@ -23,30 +24,6 @@ vi.mock('../auth/startupWarmupState', () => {
     useStartupWarmupState: useStartupWarmupStateMock,
   };
 });
-
-/**
- * Creates a startup warmup state where all datasets are ready and trustworthy.
- *
- * @returns {object} Startup warmup state with trusted datasets marked ready.
- */
-function createReadyStartupWarmupState() {
-  return {
-    isFailed: false,
-    isLoading: false,
-    isReady: true,
-    warmupState: 'ready',
-    isDatasetReady: () => true,
-    isDatasetFailed: () => false,
-    snapshot: {
-      datasets: {
-        classPartials: { status: 'ready', isTrustworthy: true },
-        cohorts: { status: 'ready', isTrustworthy: true },
-        yearGroups: { status: 'ready', isTrustworthy: true },
-        assignmentDefinitionPartials: { status: 'ready', isTrustworthy: true },
-      },
-    },
-  };
-}
 
 describe('useClassesManagement', () => {
   beforeEach(() => {

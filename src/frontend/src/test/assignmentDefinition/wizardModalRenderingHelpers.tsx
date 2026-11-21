@@ -5,10 +5,6 @@ import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
 import type { FrontendProvidersOptions } from '../renderWithFrontendProviders';
 import type { QueryClient } from '@tanstack/react-query';
 import React from 'react';
-import {
-  createMockInvalidateQueries,
-  type TestRenderResult,
-} from './wizardTestHelpers';
 import { mockTopics, mockYearGroups } from './sharedTestFixtures';
 import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
 
@@ -18,6 +14,27 @@ import type { AssignmentDefinition } from '@/services/assignmentDefinition/assig
  * Provides shared utilities specifically for testing AssignmentDefinitionWizardModal.
  * Use these helpers to reduce duplication in wizard modal test files.
  */
+
+// ============================================================================
+// Render Result and Mock Helpers
+// ============================================================================
+
+/**
+ * Render result with additional test utilities.
+ */
+export interface TestRenderResult {
+  queryClient: QueryClient;
+  mockInvalidateQueries: ReturnType<typeof vi.fn>;
+}
+
+/**
+ * Creates a mock invalidateQueries function that tracks calls.
+ *
+ * @returns {unknown} Mock invalidateQueries function.
+ */
+export function createMockInvalidateQueries() {
+  return vi.fn().mockImplementation(() => Promise.resolve());
+}
 
 // ============================================================================
 // Modal Rendering Helpers

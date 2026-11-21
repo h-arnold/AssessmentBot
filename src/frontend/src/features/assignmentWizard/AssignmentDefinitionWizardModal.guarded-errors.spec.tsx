@@ -6,10 +6,8 @@ import {
   mockCohorts,
 } from '@/test/assignmentDefinition/sharedTestFixtures';
 import { mockFullAssignmentDefinition } from '@/test/assignmentDefinition/assignmentDefinitionTestFixtures';
-import {
-  createStartupWarmupState,
-  setTextboxValue,
-} from '@/test/assignmentDefinition/wizardTestHelpers';
+import { setTextboxValue } from '@/test/assignmentDefinition/wizardTestHelpers';
+import { createStartupWarmupState } from '@/test/startupWarmupFixtures';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {

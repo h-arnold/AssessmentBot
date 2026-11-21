@@ -40,10 +40,8 @@ import {
   renderWizardModal,
   type RenderWizardModalOptions,
 } from '@/test/assignmentDefinition/wizardModalRenderingHelpers';
-import {
-  createStartupWarmupState,
-  setTextboxValue,
-} from '@/test/assignmentDefinition/wizardTestHelpers';
+import { setTextboxValue } from '@/test/assignmentDefinition/wizardTestHelpers';
+import { createStartupWarmupState } from '@/test/startupWarmupFixtures';
 import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json?raw';
 
 import {

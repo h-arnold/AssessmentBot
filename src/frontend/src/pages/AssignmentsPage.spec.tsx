@@ -7,7 +7,7 @@ import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders
 import {
   createStartupWarmupState,
   createReadyStartupWarmupState,
-} from '../test/assignmentDefinition/wizardTestHelpers';
+} from '../test/startupWarmupFixtures';
 import type { AssignmentDefinitionPartialRow } from '../test/assignmentDefinition/assignmentDefinitionTestFixtures';
 import {
   mockTopics,
