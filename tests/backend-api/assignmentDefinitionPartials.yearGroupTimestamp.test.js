@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe } from 'vitest';
+import { afterEach, beforeEach, describe, it } from 'vitest';
 import {
   createAssignmentDefinitionControllerHooks,
   loadAssignmentDefinitionValidationModule,
-  runValidationCases,
+  makeValidationTest,
 } from '../helpers/assignmentDefinitionPartialsTestHelpers.js';
 
 const yk = 'yearGroupKey';
@@ -42,15 +42,17 @@ describe('validateYearGroupKeyedFields_', () => {
     rowIndex: 0,
   }));
 
-  runValidationCases({
-    testCases,
-    method: 'getAssignmentDefinitionPartials',
-    expectDetails: true,
-    invoke: ({ yearGroupKey, yearGroupLabel, rowIndex }) => {
-      const { validateYearGroupKeyedFields_ } = loadAssignmentDefinitionValidationModule();
-      return () => validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex);
-    },
-  });
+  it.each(testCases)(
+    'handles $description correctly',
+    makeValidationTest({
+      method: 'getAssignmentDefinitionPartials',
+      expectDetails: true,
+      invoke: ({ yearGroupKey, yearGroupLabel, rowIndex }) => {
+        const { validateYearGroupKeyedFields_ } = loadAssignmentDefinitionValidationModule();
+        return () => validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex);
+      },
+    })
+  );
 });
 
 describe('validateTimestamp_', () => {
@@ -77,15 +79,17 @@ describe('validateTimestamp_', () => {
     rowIndex,
   }));
 
-  runValidationCases({
-    testCases,
-    method: 'getAssignmentDefinitionPartials',
-    expectDetails: true,
-    invoke: ({ value, fieldName, rowIndex }) => {
-      const { validateTimestamp_ } = loadAssignmentDefinitionValidationModule();
-      return () => validateTimestamp_(value, fieldName, rowIndex);
-    },
-  });
+  it.each(testCases)(
+    'handles $description correctly',
+    makeValidationTest({
+      method: 'getAssignmentDefinitionPartials',
+      expectDetails: true,
+      invoke: ({ value, fieldName, rowIndex }) => {
+        const { validateTimestamp_ } = loadAssignmentDefinitionValidationModule();
+        return () => validateTimestamp_(value, fieldName, rowIndex);
+      },
+    })
+  );
 });
 
 describe('validateRequiredYearGroupKey_', () => {
@@ -113,12 +117,14 @@ describe('validateRequiredYearGroupKey_', () => {
     parameters,
   }));
 
-  runValidationCases({
-    testCases,
-    method: 'upsertAssignmentDefinition',
-    invoke: ({ parameters }) => {
-      const { validateRequiredYearGroupKey_ } = loadAssignmentDefinitionValidationModule();
-      return () => validateRequiredYearGroupKey_(parameters);
-    },
-  });
+  it.each(testCases)(
+    'handles $description correctly',
+    makeValidationTest({
+      method: 'upsertAssignmentDefinition',
+      invoke: ({ parameters }) => {
+        const { validateRequiredYearGroupKey_ } = loadAssignmentDefinitionValidationModule();
+        return () => validateRequiredYearGroupKey_(parameters);
+      },
+    })
+  );
 });

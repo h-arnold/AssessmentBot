@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, describe } from 'vitest';
+import { afterEach, beforeEach, describe, it } from 'vitest';
 import {
   createAssignmentDefinitionControllerHooks,
   installAssignmentDefinitionControllerStub,
   loadAssignmentDefinitionValidationModule,
-  runBinaryCases,
-  runValidationCases,
+  makeBinaryTest,
+  makeValidationTest,
 } from '../helpers/assignmentDefinitionPartialsTestHelpers.js';
 
 describe('hasControlCharacters_', () => {
@@ -34,11 +34,13 @@ describe('hasControlCharacters_', () => {
     ['string with unicode control character U+2028', 'test\u2028value', false],
   ].map(([description, value, expected]) => ({ description, value, expected }));
 
-  runBinaryCases({
-    testCases,
-    setup: () => installAssignmentDefinitionControllerStub([]),
-    invoke: (value) => loadAssignmentDefinitionValidationModule().hasControlCharacters_(value),
-  });
+  it.each(testCases)(
+    'returns $expected for $description',
+    makeBinaryTest({
+      setup: () => installAssignmentDefinitionControllerStub([]),
+      invoke: (value) => loadAssignmentDefinitionValidationModule().hasControlCharacters_(value),
+    })
+  );
 });
 
 describe('isIsoDateTimeString_', () => {
@@ -89,11 +91,13 @@ describe('isIsoDateTimeString_', () => {
     ['invalid date (Feb 29 in non-leap year 2026)', '2026-02-29T12:00:00.000Z', false],
   ].map(([description, value, expected]) => ({ description, value, expected }));
 
-  runBinaryCases({
-    testCases,
-    setup: () => installAssignmentDefinitionControllerStub([]),
-    invoke: (value) => loadAssignmentDefinitionValidationModule().isIsoDateTimeString_(value),
-  });
+  it.each(testCases)(
+    'returns $expected for $description',
+    makeBinaryTest({
+      setup: () => installAssignmentDefinitionControllerStub([]),
+      invoke: (value) => loadAssignmentDefinitionValidationModule().isIsoDateTimeString_(value),
+    })
+  );
 });
 
 describe('validateSafeTrimmedIdentifier_', () => {
@@ -133,16 +137,18 @@ describe('validateSafeTrimmedIdentifier_', () => {
     expectedField,
   }));
 
-  runValidationCases({
-    testCases,
-    method: 'getAssignmentDefinitionPartials',
-    invoke: (params) => {
-      const module = loadAssignmentDefinitionValidationModule();
-      return () =>
-        module.validateSafeTrimmedIdentifier_(params.value, {
-          ...baseOptions,
-          throwValidationError: module.throwValidationError_,
-        });
-    },
-  });
+  it.each(testCases)(
+    'handles $description correctly',
+    makeValidationTest({
+      method: 'getAssignmentDefinitionPartials',
+      invoke: (params) => {
+        const module = loadAssignmentDefinitionValidationModule();
+        return () =>
+          module.validateSafeTrimmedIdentifier_(params.value, {
+            ...baseOptions,
+            throwValidationError: module.throwValidationError_,
+          });
+      },
+    })
+  );
 });

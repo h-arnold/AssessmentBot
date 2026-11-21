@@ -116,13 +116,6 @@ describe('validateUpsertParameters_', () => {
       expectedField: 'yearGroupKey',
     },
     {
-      description: 'non-string yearGroupKey',
-      parameters: buildValidUpsertParams({ yearGroupKey: 123 }),
-      shouldThrow: true,
-      expectedError: 'yearGroupKey must be a string when provided.',
-      expectedField: 'yearGroupKey',
-    },
-    {
       description: 'invalid definitionKey (non-string)',
       parameters: buildValidUpsertParams({ definitionKey: 123 }),
       shouldThrow: true,

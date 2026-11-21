@@ -3,7 +3,7 @@
  * Used by the split transport and validation suites to avoid duplicated setup.
  */
 
-import { expect, it, vi } from 'vitest';
+import { expect, vi } from 'vitest';
 import path from 'node:path';
 
 const transportModulePath = '../../src/backend/z_Api/assignmentDefinitionTransport.js';
@@ -269,69 +269,63 @@ export function buildValidPartial(overrides = {}) {
 }
 
 /**
- * Generates boolean-result cases; invoke(value) returns the result for one value.
- * @param {Object} options - Runner options
- * @param {Array} options.testCases - Cases with description, value and expected
+ * Creates a test callback for boolean-result cases; invoke(value) returns the
+ * result for one value.
+ * @param {Object} options - Test factory options
  * @param {Function} options.invoke - Returns the boolean result for a value
  * @param {Function} [options.setup] - Optional per-test setup
- * @returns {void}
+ * @returns {Function} Callback accepting { value, expected }
  */
-export function runBinaryCases({ testCases, invoke, setup }) {
-  testCases.forEach(({ description, value, expected }) => {
-    it(`returns ${expected} for ${description}`, () => {
-      setup?.();
-      expect(invoke(value)).toBe(expected);
-    });
-  });
+export function makeBinaryTest({ invoke, setup }) {
+  return ({ value, expected }) => {
+    setup?.();
+    expect(invoke(value)).toBe(expected);
+  };
 }
 
 /**
- * Generates validation cases; invoke(params) returns a zero-argument thunk for
- * the function under test, so module loading stays inside each test.
- * @param {Object} options - Runner options
- * @param {Array} options.testCases - Cases with description, shouldThrow, expectedError,
- *   expectedField and the parameters passed to invoke
+ * Creates a test callback for validation cases; invoke(params) returns a
+ * zero-argument thunk for the function under test, so module loading stays
+ * inside each test.
+ * @param {Object} options - Test factory options
  * @param {Function} options.invoke - Returns a zero-argument thunk calling the function under test
  * @param {string} options.method - Method name expected on thrown errors
  * @param {boolean} [options.expectDetails] - Whether to assert rowIndex details
  * @param {Function} [options.onSuccess] - Receives the result and params for non-throwing cases
  * @param {Function} [options.setup] - Per-test setup; defaults to the controller stub
- * @returns {void}
+ * @returns {Function} Callback accepting { shouldThrow, expectedError, expectedField, ...params }
  */
-export function runValidationCases({
-  testCases,
+export function makeValidationTest({
   invoke,
   setup = () => installAssignmentDefinitionControllerStub([]),
   method,
   expectDetails = false,
   onSuccess,
 }) {
-  testCases.forEach(({ description, shouldThrow, expectedError, expectedField, ...params }) => {
-    it(`handles ${description} correctly`, () => {
-      setup();
-      const call = invoke(params);
+  return ({ shouldThrow, expectedError, expectedField, ...params }) => {
+    setup();
+    const call = invoke(params);
 
-      if (shouldThrow) {
-        expect(call).toThrow(ApiValidationError);
-        expect(call).toThrow(expectedError);
-        try {
-          call();
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe(method);
-          if (expectDetails) {
-            expect(err.details).toBe(`rowIndex=${params.rowIndex}`);
-          }
+    if (shouldThrow) {
+      expect(call).toThrow(ApiValidationError);
+      expect(call).toThrow(expectedError);
+      try {
+        call();
+      } catch (err) {
+        expect(err.fieldName).toBe(expectedField);
+        expect(err.method).toBe(method);
+        if (expectDetails) {
+          expect(err.details).toBe(`rowIndex=${params.rowIndex}`);
         }
-      } else {
-        const result = call();
-        if (onSuccess) {
-          onSuccess(result, params);
-        }
-        expect(call).not.toThrow();
       }
-    });
-  });
+    } else {
+      const result = call();
+      if (onSuccess) {
+        onSuccess(result, params);
+      }
+      expect(call).not.toThrow();
+    }
+  };
 }
 
 /**

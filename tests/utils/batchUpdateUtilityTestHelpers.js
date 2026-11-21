@@ -3,11 +3,22 @@ import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 // Shared setup for the BatchUpdateUtility companion suites. Each suite calls
 // useBatchUpdateUtilityMocks() inside its own describe so the hooks register
-// against that file. The exported mocks are live bindings, refreshed in
-// beforeEach, which keeps the moved test bodies unchanged.
+// against that file. The mocks are shared const objects whose methods are reset
+// in beforeEach, which keeps the moved test bodies unchanged.
 
-export let mockProgressTracker;
-export let mockSheets;
+export const mockProgressTracker = {
+  logError: vi.fn(),
+  logAndThrowError: vi.fn((message, context) => {
+    const error = new Error(message);
+    throw error;
+  }),
+};
+
+export const mockSheets = {
+  Spreadsheets: {
+    batchUpdate: vi.fn(),
+  },
+};
 
 let restoreBatchUtilityGlobals;
 const originalConsole = { ...console };
@@ -23,21 +34,15 @@ export function useBatchUpdateUtilityMocks() {
     // Replace console.log with a spy
     console.log = vi.fn();
 
-    // Create mock ProgressTracker
-    mockProgressTracker = {
-      logError: vi.fn(),
-      logAndThrowError: vi.fn((message, context) => {
-        const error = new Error(message);
-        throw error;
-      }),
-    };
+    // Reset mock ProgressTracker methods
+    mockProgressTracker.logError = vi.fn();
+    mockProgressTracker.logAndThrowError = vi.fn((message, context) => {
+      const error = new Error(message);
+      throw error;
+    });
 
-    // Create mock Sheets service
-    mockSheets = {
-      Spreadsheets: {
-        batchUpdate: vi.fn(),
-      },
-    };
+    // Reset mock Sheets service methods
+    mockSheets.Spreadsheets.batchUpdate = vi.fn();
 
     // Setup global mocks - saves originals and installs mocks
     const mockContext = withGlobalMocks({

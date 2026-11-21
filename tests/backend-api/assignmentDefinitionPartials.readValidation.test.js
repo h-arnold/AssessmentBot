@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   createAssignmentDefinitionControllerHooks,
   loadAssignmentDefinitionValidationModule,
-  runValidationCases,
+  makeValidationTest,
 } from '../helpers/assignmentDefinitionPartialsTestHelpers.js';
 
 // Error code -> [expectedError, expectedField] for each validation message family.
@@ -90,15 +90,17 @@ describe('validateReadParameters_', () => {
     }),
   ];
 
-  runValidationCases({
-    testCases,
-    invoke: (params) => {
-      const { validateReadParameters_ } = loadAssignmentDefinitionValidationModule();
-      return () => validateReadParameters_(params.parameters);
-    },
-    method: 'getAssignmentDefinition',
-    onSuccess: (result, params) => expect(result).toBe(params.parameters.definitionKey),
-  });
+  it.each(testCases)(
+    'handles $description correctly',
+    makeValidationTest({
+      invoke: (params) => {
+        const { validateReadParameters_ } = loadAssignmentDefinitionValidationModule();
+        return () => validateReadParameters_(params.parameters);
+      },
+      method: 'getAssignmentDefinition',
+      onSuccess: (result, params) => expect(result).toBe(params.parameters.definitionKey),
+    })
+  );
 });
 
 describe('validateDefinitionKey_', () => {
@@ -119,15 +121,17 @@ describe('validateDefinitionKey_', () => {
     keyCase('untrimmed definitionKey (trailing spaces)', 'valid-key  ', 10, 'trimmed'),
   ];
 
-  runValidationCases({
-    testCases,
-    invoke: (params) => {
-      const { validateDefinitionKey_ } = loadAssignmentDefinitionValidationModule();
-      return () => validateDefinitionKey_(params.definitionKey, params.rowIndex);
-    },
-    method: 'getAssignmentDefinitionPartials',
-    expectDetails: true,
-  });
+  it.each(testCases)(
+    'handles $description correctly',
+    makeValidationTest({
+      invoke: (params) => {
+        const { validateDefinitionKey_ } = loadAssignmentDefinitionValidationModule();
+        return () => validateDefinitionKey_(params.definitionKey, params.rowIndex);
+      },
+      method: 'getAssignmentDefinitionPartials',
+      expectDetails: true,
+    })
+  );
 });
 
 describe('validatePrimaryTopicKey_', () => {
@@ -146,13 +150,15 @@ describe('validatePrimaryTopicKey_', () => {
     topicCase('untrimmed primaryTopicKey (trailing spaces)', 'valid-topic-key  ', 5, 'trimmed'),
   ];
 
-  runValidationCases({
-    testCases,
-    invoke: (params) => {
-      const { validatePrimaryTopicKey_ } = loadAssignmentDefinitionValidationModule();
-      return () => validatePrimaryTopicKey_(params.primaryTopicKey, params.rowIndex);
-    },
-    method: 'getAssignmentDefinitionPartials',
-    expectDetails: true,
-  });
+  it.each(testCases)(
+    'handles $description correctly',
+    makeValidationTest({
+      invoke: (params) => {
+        const { validatePrimaryTopicKey_ } = loadAssignmentDefinitionValidationModule();
+        return () => validatePrimaryTopicKey_(params.primaryTopicKey, params.rowIndex);
+      },
+      method: 'getAssignmentDefinitionPartials',
+      expectDetails: true,
+    })
+  );
 });
