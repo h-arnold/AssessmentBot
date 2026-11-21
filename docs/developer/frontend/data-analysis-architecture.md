@@ -347,7 +347,7 @@ second writer call.
 It projects weighted overall directly without rounding, preserving numbers,
 `N`, `E` and `excluded`. Initial null metadata gets complete class averages and
 one recent entry; subsequent writes replace the same instance or append one,
-stably sort newest first and keep three. Equal-time entries retain their positions.
+stably sort newest first and cap at three, with the final count narrowed to the summary's own recent-assignment count when that is smaller. Equal-time entries retain their positions.
 The merged replacement validates through `NonNullableABClassMetadataSchema`, so the
 write path has no nullable-union branch. Source time is copied exactly; the supplied
 summary clock is read only after successful calculations when preparing a changed write.
