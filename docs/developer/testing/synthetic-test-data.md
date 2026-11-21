@@ -372,9 +372,9 @@ assessments and supplied metadata are unchanged:
 
 | Profile                | Class     | Historical target |
 | ---------------------- | --------- | ----------------- |
-| `small`                | `class-2` | `assignment-2-2`  |
-| `medium`               | `class-0` | `assignment-0-4`  |
-| `large-representative` | `class-1` | `assignment-1-3`  |
+| `small`                | `class-2` | `assignment-2-3`  |
+| `medium`               | `class-0` | `assignment-0-5`  |
+| `large-representative` | `class-1` | `assignment-1-4`  |
 
 These are historical-source **boundary probes**, not a new realistic fixture
 profile or a generator extension. Untouched selected-class failure probes retain the
