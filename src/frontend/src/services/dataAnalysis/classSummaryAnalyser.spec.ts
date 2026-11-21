@@ -8,28 +8,25 @@
  * a null `studentName` (a documented historical-source boundary that isolated
  * analysis rejects), so successful cases omit only that assignment.
  *
+ * The parsed input, summary options and score-derivation helpers live in the
+ * shared `test/dataAnalysis/classSummaryFixtures.ts` module, which the sibling
+ * `classSummaryAnalyser.boundary.spec.ts` also imports; a change to those
+ * fixture shapes is visible in both suites.
+ *
  * Baseline-unavailability and collaborator-error probes live in the sibling
  * `classSummaryAnalyser.boundary.spec.ts`; the local equal-overall tie-break
  * fixture and the baseline fail-fast probes stay here beside the ranking assertions.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import mediumClassesByIdRaw from '@synthetic/medium/classesById.json?raw';
-import mediumPartialsRaw from '@synthetic/medium/assignmentDefinitionPartials.json?raw';
 import { ClassSummaryAnalyser } from './classSummaryAnalyser';
-import { ClassSummarySchema, type ClassSummary } from './classSummary.zod';
-import { AveragingAnalyser, DEFAULT_CRITERION_WEIGHTINGS } from './analysers/averagingAnalyser';
-import { computeOverallComposite } from './analysers/averagingAnalyser.composite';
-import { convertToBaselineExcluded } from './analysers/averagingAnalyser.rows';
-import { rollupMetric } from './analysers/rollupMetric';
+import type { ClassSummary } from './classSummary.zod';
+import { AveragingAnalyser } from './analysers/averagingAnalyser';
 import {
   AveragingAnalyserInputSchema,
   type AveragingAnalyserInput,
   type AveragingResult,
-  type MetricResult,
-  type PerStudentTaskMetric,
 } from './dataAnalysis.zod';
-import type { AssignmentPartial } from '../googleClassrooms/classDetail/classDetailService.zod';
 import {
   buildInput,
   createAssignmentPartial,
@@ -37,18 +34,23 @@ import {
   createSubmissionItem,
   createTaskPartial,
 } from '@/test/dataAnalysis/fixtures';
+import {
+  analyseSummary,
+  buildMediumInput,
+  buildSummaryOptions,
+  expectedBaselineScores,
+  isolatedAbsoluteResult,
+  projectMetrics,
+} from '@/test/dataAnalysis/classSummaryFixtures';
 
 /** Canonical profile class analysed in depth by this suite. */
 const MEDIUM_CLASS_ID = 'class-0';
 
-/** Index of the committed final assignment with the null-studentName boundary. */
-const FINAL_ASSIGNMENT_INDEX = -1;
-
 /** Maximum number of entries in each standing list. */
 const MAX_STANDING_ENTRIES = 3;
 
-/** Default number of recent assignments supplied to the analyser. */
-const DEFAULT_RECENT_ASSIGNMENT_COUNT = 3;
+/** Number of recent assignments passed to the multi-assignment derivation cases. */
+const RECENT_ASSIGNMENT_COUNT = 3;
 
 /** Score shared by the highest equal-overall tie band. */
 const HIGH_TIE_SCORE = 5;
@@ -68,146 +70,8 @@ const LOW_TIE_IDS = new Set(['s_005', 's_002']);
 /** Number of students in each equal-overall tie band. */
 const TIE_BAND_SIZE = 2;
 
-/** Narrow metric-score set derived from the public summary shape. */
-type MetricScores = ClassSummary['allTasks']['classAverages'];
-
 /** One standing entry derived from the public summary shape. */
 type MetricStanding = ClassSummary['allTasks']['standings']['top'][number];
-
-/** Options passed to the summary entry point. */
-interface SummaryOptions {
-  target: AssignmentPartial;
-  recentAssignments: AssignmentPartial[];
-}
-
-/**
- * Build the validated medium input over the historical-source class slice.
- *
- * @returns {AveragingAnalyserInput} The parsed analysis input.
- */
-function buildMediumInput(): AveragingAnalyserInput {
-  const classesById = JSON.parse(mediumClassesByIdRaw) as Record<
-    string,
-    { assignments: unknown[] }
-  >;
-  const classRecord = classesById[MEDIUM_CLASS_ID];
-  // The committed final assignment holds the null-studentName boundary.
-  const historicalSourceClass = {
-    ...classRecord,
-    assignments: classRecord.assignments.slice(0, FINAL_ASSIGNMENT_INDEX),
-  };
-  return AveragingAnalyserInputSchema.parse({
-    filter: { classIds: [MEDIUM_CLASS_ID], analysisMode: 'absolute' },
-    classes: [historicalSourceClass],
-    assignmentDefinitionPartials: JSON.parse(mediumPartialsRaw),
-  });
-}
-
-/**
- * Build summary options from an input's newest assignments, newest first.
- *
- * @param {AveragingAnalyserInput} input - The validated analysis input.
- * @param {number} [count=3] - Number of recent assignments to supply.
- * @returns {SummaryOptions} The target and newest-first recent assignments.
- */
-function buildSummaryOptions(
-  input: AveragingAnalyserInput,
-  count = DEFAULT_RECENT_ASSIGNMENT_COUNT
-): SummaryOptions {
-  const assignments = input.classes[0].assignments.toReversed().slice(0, count);
-  const target = assignments[0];
-  if (!target) throw new Error('classSummaryAnalyser spec: no target assignment available');
-  return { target, recentAssignments: assignments };
-}
-
-/**
- * Run the summary analyser and validate its output through ClassSummarySchema.
- *
- * @param {AveragingAnalyserInput} input - The validated analysis input.
- * @param {SummaryOptions} options - Target and recent assignments.
- * @returns {ClassSummary} The validated summary.
- */
-function analyseSummary(input: AveragingAnalyserInput, options: SummaryOptions): ClassSummary {
-  return ClassSummarySchema.parse(new ClassSummaryAnalyser().analyse(input, options));
-}
-
-/**
- * Run an absolute-mode AveragingAnalyser over a single assignment instance.
- *
- * @param {AveragingAnalyserInput} input - The full validated input.
- * @param {AssignmentPartial} assignment - The assignment to isolate.
- * @returns {ReturnType<AveragingAnalyser['analyse']>[number]} The isolated result.
- */
-function isolatedAbsoluteResult(input: AveragingAnalyserInput, assignment: AssignmentPartial) {
-  const isolatedInput: AveragingAnalyserInput = {
-    ...input,
-    classes: [{ ...input.classes[0], assignments: [assignment] }],
-  };
-  return new AveragingAnalyser().analyse(isolatedInput)[0];
-}
-
-/**
- * Project one aggregate row onto the four-metric summary score set.
- *
- * @param {object} metrics - The four aggregate metrics.
- * @param {MetricResult} metrics.completeness - Completeness result.
- * @param {MetricResult} metrics.accuracy - Accuracy result.
- * @param {MetricResult} metrics.spag - SPaG result.
- * @param {MetricResult} metrics.overall - Overall composite result.
- * @returns {MetricScores} The projected score set.
- */
-function projectMetrics(metrics: {
-  completeness: MetricResult;
-  accuracy: MetricResult;
-  spag: MetricResult;
-  overall: MetricResult;
-}): MetricScores {
-  return {
-    completeness: metrics.completeness,
-    accuracy: metrics.accuracy,
-    spag: metrics.spag,
-    overall: metrics.overall,
-  };
-}
-
-/**
- * Independently derive one student's baseline-restricted score set for one
- * isolated assignment, reusing the production rollup helpers named in the spec.
- *
- * @param {AveragingAnalyserInput} input - The full validated input.
- * @param {ReadonlySet<string>} baselineTaskKeys - Whole-class baseline task keys.
- * @param {AssignmentPartial} assignment - The isolated assignment.
- * @param {string} studentId - The ranked student.
- * @returns {MetricScores} The expected baseline score set.
- */
-function expectedBaselineScores(
-  input: AveragingAnalyserInput,
-  baselineTaskKeys: ReadonlySet<string>,
-  assignment: AssignmentPartial,
-  studentId: string
-): MetricScores {
-  const isolatedMetrics = isolatedAbsoluteResult(input, assignment).perStudentTaskMetrics ?? [];
-  const forStudent = isolatedMetrics.filter((metric) => metric.studentId === studentId);
-  const inBaseline = forStudent.filter((metric) => baselineTaskKeys.has(metric.taskKey));
-  const source = inBaseline.length > 0 ? inBaseline : forStudent;
-  const shouldConvert = inBaseline.length === 0;
-  const rollupFor = (criterion: 'completeness' | 'accuracy' | 'spag'): MetricResult => {
-    const rolled = rollupMetric(
-      source.map((metric: PerStudentTaskMetric) => metric[criterion]),
-      criterion
-    );
-    return shouldConvert ? convertToBaselineExcluded(rolled) : rolled;
-  };
-  const completeness = rollupFor('completeness');
-  const accuracy = rollupFor('accuracy');
-  const spag = rollupFor('spag');
-  return {
-    completeness,
-    accuracy,
-    spag,
-    overall: computeOverallComposite(completeness, accuracy, spag, DEFAULT_CRITERION_WEIGHTINGS),
-  };
-}
 
 /**
  * Assert the comparator invariants of one standings basis.
@@ -301,8 +165,8 @@ afterEach(() => {
 
 describe('ClassSummaryAnalyser — canonical medium derivation', () => {
   it('reports full-class averages equal to the corresponding AveragingAnalyser perClass results', () => {
-    const input = buildMediumInput();
-    const summary = analyseSummary(input, buildSummaryOptions(input));
+    const input = buildMediumInput('absolute');
+    const summary = analyseSummary(input, buildSummaryOptions(input, RECENT_ASSIGNMENT_COUNT));
 
     const absolute = new AveragingAnalyser().analyse(input)[0];
     const baselineInput: AveragingAnalyserInput = {
@@ -317,8 +181,8 @@ describe('ClassSummaryAnalyser — canonical medium derivation', () => {
   });
 
   it('ranks only finite numeric overall metrics with disjoint 0–3 top and bottom lists', () => {
-    const input = buildMediumInput();
-    const summary = analyseSummary(input, buildSummaryOptions(input));
+    const input = buildMediumInput('absolute');
+    const summary = analyseSummary(input, buildSummaryOptions(input, RECENT_ASSIGNMENT_COUNT));
 
     expectValidStandings(summary.allTasks.standings);
     if (!summary.baseline.standings) {
@@ -328,8 +192,8 @@ describe('ClassSummaryAnalyser — canonical medium derivation', () => {
   });
 
   it('uses the whole-class baseline keys for isolated scores and excludes students without baseline metrics', () => {
-    const input = buildMediumInput();
-    const options = buildSummaryOptions(input);
+    const input = buildMediumInput('absolute');
+    const options = buildSummaryOptions(input, RECENT_ASSIGNMENT_COUNT);
     const summary = analyseSummary(input, options);
 
     const baselineInput: AveragingAnalyserInput = {
@@ -358,8 +222,8 @@ describe('ClassSummaryAnalyser — canonical medium derivation', () => {
   });
 
   it('aligns recentAssignmentScores by index with newest-first recentAssignments', () => {
-    const input = buildMediumInput();
-    const options = buildSummaryOptions(input);
+    const input = buildMediumInput('absolute');
+    const options = buildSummaryOptions(input, RECENT_ASSIGNMENT_COUNT);
     const summary = analyseSummary(input, options);
 
     const times = options.recentAssignments.map((assignment) => assignment.updatedAt ?? '');
@@ -388,7 +252,7 @@ describe('ClassSummaryAnalyser — canonical medium derivation', () => {
   });
 
   it('shortens score arrays only when fewer assignments are supplied', () => {
-    const input = buildMediumInput();
+    const input = buildMediumInput('absolute');
     const summary = analyseSummary(input, buildSummaryOptions(input, 1));
 
     expect(summary.recentAssignments).toHaveLength(1);
@@ -423,8 +287,8 @@ describe('ClassSummaryAnalyser — deterministic ranking tie-break', () => {
 
 describe('ClassSummaryAnalyser — baseline fail-fast probes', () => {
   it('fails fast with the deriveBaselineTaskKeySet error when a baseline result omits its attemptBaseline block', () => {
-    const input = buildMediumInput();
-    const options = buildSummaryOptions(input);
+    const input = buildMediumInput('absolute');
+    const options = buildSummaryOptions(input, RECENT_ASSIGNMENT_COUNT);
     const realBaseline = new AveragingAnalyser().analyse({
       ...input,
       filter: { ...input.filter, analysisMode: 'topDecileBaseline' },
@@ -460,8 +324,8 @@ describe('ClassSummaryAnalyser — baseline fail-fast probes', () => {
   });
 
   it('fails loudly when an isolated result omits perStudentTaskMetrics instead of emitting excluded scores', () => {
-    const input = buildMediumInput();
-    const options = buildSummaryOptions(input);
+    const input = buildMediumInput('absolute');
+    const options = buildSummaryOptions(input, RECENT_ASSIGNMENT_COUNT);
     const originalAnalyse = AveragingAnalyser.prototype.analyse;
     vi.spyOn(AveragingAnalyser.prototype, 'analyse').mockImplementation(function (
       this: AveragingAnalyser,
