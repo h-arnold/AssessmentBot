@@ -164,7 +164,7 @@ const currentSnapshotSchema = z
   .pipe(fiveFieldSnapshotSchema);
 
 /** Complete five-field metadata snapshot emitted by the schema. */
-export type NonNullableABClassMetadata = z.infer<typeof fiveFieldSnapshotSchema>;
+type NonNullableABClassMetadata = z.infer<typeof fiveFieldSnapshotSchema>;
 
 /**
  * Validates a non-null ABClass metadata snapshot and emits the current five-field shape.
@@ -193,13 +193,9 @@ export const ABClassMetadataSchema = z.union([z.null(), NonNullableABClassMetada
 
 export type AverageScore = z.infer<typeof AverageScoreSchema>;
 export type AverageScores = z.infer<typeof AverageScoresSchema>;
-export type ClassAverages = z.infer<typeof ClassAveragesSchema>;
-export type BaselineAverages = z.infer<typeof BaselineAveragesSchema>;
 export type RecentAssignment = z.infer<typeof RecentAssignmentSchema>;
 export type StudentStanding = z.infer<typeof StudentStandingSchema>;
 export type StudentStandings = z.infer<typeof StudentStandingsSchema>;
-/** Legacy two-field snapshot still accepted on read and write paths. */
-export type LegacyABClassMetadata = z.infer<typeof legacySnapshotSchema>;
 export type ABClassMetadata = z.infer<typeof ABClassMetadataSchema>;
 
 /**

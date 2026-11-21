@@ -952,9 +952,8 @@ contract for StudentSubmission is documented in [Contract: Assignment](assignmen
   - `ABClassMetadataSchema` — nullable whole metadata snapshot with unique identifiers and
     newest-first ordering; the wire read/request union wrapped around
     `NonNullableABClassMetadataSchema`.
-  - Inferred types: `AverageScore`, `AverageScores`, `ClassAverages`, `BaselineAverages`,
-    `RecentAssignment`, `StudentStanding`, `StudentStandings`, `LegacyABClassMetadata`,
-    `NonNullableABClassMetadata`, `ABClassMetadata`.
+  - Inferred types: `AverageScore`, `AverageScores`, `RecentAssignment`, `StudentStanding`,
+    `StudentStandings`, `ABClassMetadata`.
   - Both class read schemas require this schema, so successful parsing rejects missing or
     malformed metadata and retains legacy backend `null`.
   - Enforced rules: required fields must be own properties on ordinary or null-prototype
