@@ -80,9 +80,6 @@ function buildYearGroupColumns(options: Readonly<{
 }
 
 /**
- * Renders the year-group form dialog.
- *
-/**
  * Renders the Manage Year Groups modal workflow.
  *
  * @param {ManageYearGroupsModalProperties} properties Component properties.

@@ -3,7 +3,7 @@
  * modal workflows.
  *
  * Extracted here to avoid duplicating the same form and delete confirmation
- * markup across both modal modules. Keep this file local to the classes feature.
+ * markup across both modal modules. Keep this file local to the reference-data feature.
  */
 
 import { createElement, type ReactElement } from 'react';

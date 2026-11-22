@@ -101,9 +101,6 @@ function buildCohortColumns(options: Readonly<{
 }
 
 /**
- * Renders the cohort form dialog.
- *
-/**
  * Renders the Manage Cohorts modal workflow.
  *
  * @param {ManageCohortsModalProperties} properties Component properties.
