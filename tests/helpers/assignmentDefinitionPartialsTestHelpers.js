@@ -1,6 +1,6 @@
 /**
- * Shared test helpers for assignmentDefinitionPartials.unit.test.js
- * Reduces duplication across Section 5 API layer refactoring tests
+ * Shared fixtures and helpers for the assignmentDefinitionPartials.<concern>.test.js suites.
+ * Used by the split transport and validation suites to avoid duplicated setup.
  */
 
 import { expect, vi } from 'vitest';
@@ -16,6 +16,27 @@ const upsertValidationModulePath =
 const partialRowValidationModulePath =
   '../../src/backend/z_Api/assignmentDefinition/assignmentDefinitionPartialRowValidation.js';
 const ApiValidationError = require('#backend/Utils/ErrorTypes/ApiValidationError.js');
+
+// Test URLs similar to but not exactly the same as the example:
+// https://docs.google.com/presentation/d/1udlgDTkZlHB6Xh4GKlOk6I0zJI-dvAF4iFAun09yW0k/edit
+export const VALID_GOOGLE_URLS = {
+  SLIDES: {
+    basic: 'https://docs.google.com/presentation/d/1aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+    withQuery:
+      'https://docs.google.com/presentation/d/2aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit?usp=sharing',
+    withHash: 'https://docs.google.com/presentation/d/3aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit#slide=id.p1',
+    withQueryAndHash:
+      'https://docs.google.com/presentation/d/4aBcDeFgHiJkLmNoPqRsTuVwXyZ/view?usp=sharing#slide=id.p1',
+    viewMode: 'https://docs.google.com/presentation/d/5aBcDeFgHiJkLmNoPqRsTuVwXyZ/view',
+    mixedCaseHost: 'https://DOCS.GOOGLE.COM/presentation/d/6aBcDeFgHiJkLmNoPqRsTuVwXyZ/edit',
+  },
+  SHEETS: {
+    basic: 'https://docs.google.com/spreadsheets/d/1xYzAbCdEfGhIjKlMnOpQrStUvWx/edit',
+    withQuery:
+      'https://docs.google.com/spreadsheets/d/2xYzAbCdEfGhIjKlMnOpQrStUvWx/edit?usp=sharing',
+    gsheetPrefix: 'https://docs.google.com/spreadsheets/d/3xYzAbCdEfGhIjKlMnOpQrStUvWx/edit#gid=0',
+  },
+};
 
 /**
  * Creates a mock AssignmentDefinitionController and installs it globally.
@@ -137,25 +158,6 @@ export function createAssignmentDefinitionControllerHooks() {
 }
 
 /**
- * Creates a complete describe block wrapper for AssignmentDefinitionController tests.
- * This provides a cleaner way to define test suites with consistent setup/teardown.
- *
- * @param {string} title - The describe block title
- * @param {Function} testFn - Function that receives hooks and defines tests
- * @returns {void}
- */
-export function describeWithAssignmentDefinitionController(title, testFn) {
-  describe(title, () => {
-    const { beforeEachHandler, afterEachHandler } = createAssignmentDefinitionControllerHooks();
-
-    beforeEach(beforeEachHandler);
-    afterEach(afterEachHandler);
-
-    testFn();
-  });
-}
-
-/**
  * Helper to verify a function name does NOT exist in the source file.
  * Used in Section 5 tests to verify helper functions were removed.
  * @param {string} functionName - The function name to check for
@@ -266,124 +268,64 @@ export function buildValidPartial(overrides = {}) {
   };
 }
 
-// ============================================================================
-// Generic Test Utilities for Validation Functions
-// ============================================================================
-
 /**
- * Generic test runner for binary functions (returning true/false).
- * Reduces duplication for functions like hasControlCharacters_, isIsoDateTimeString_.
- *
- * @param {Object} options - Test configuration
- * @param {string} options.functionName - Name of function to test
- * @param {string} options.modulePath - Path to module (default: modulePath)
- * @param {Array} options.testCases - Array of test case objects with description, value, expected
- * @returns {void}
+ * Creates a test callback for boolean-result cases; invoke(value) returns the
+ * result for one value.
+ * @param {Object} options - Test factory options
+ * @param {Function} options.invoke - Returns the boolean result for a value
+ * @param {Function} [options.setup] - Optional per-test setup
+ * @returns {Function} Callback accepting { value, expected }
  */
-export function runBinaryFunctionTest({ functionName, testCases }) {
-  installAssignmentDefinitionControllerStub([]);
-  const module = loadAssignmentDefinitionPartialsModule();
-  const func = module[functionName];
-
-  testCases.forEach(({ description, value, expected }) => {
-    it(`returns ${expected} for ${description}`, () => {
-      expect(func(value)).toBe(expected);
-    });
-  });
+export function makeBinaryTest({ invoke, setup }) {
+  return ({ value, expected }) => {
+    setup?.();
+    expect(invoke(value)).toBe(expected);
+  };
 }
 
 /**
- * Generic test runner for validation functions that throw ApiValidationError.
- * Handles the common pattern: expect(() => func()).toThrow(ApiValidationError)
- *
- * @param {Object} options - Test configuration
- * @param {Function} options.setup - Setup function called before each test
- * @param {Function} options.func - Function under test
- * @param {Array} options.testCases - Array of test case objects
- * @param {string} options.method - Method name for error assertion
- * @param {boolean} options.expectDetails - Whether to expect details field in error
- * @returns {void}
+ * Creates a test callback for validation cases; invoke(params) returns a
+ * zero-argument thunk for the function under test, so module loading stays
+ * inside each test.
+ * @param {Object} options - Test factory options
+ * @param {Function} options.invoke - Returns a zero-argument thunk calling the function under test
+ * @param {string} options.method - Method name expected on thrown errors
+ * @param {boolean} [options.expectDetails] - Whether to assert rowIndex details
+ * @param {Function} [options.onSuccess] - Receives the result and params for non-throwing cases
+ * @param {Function} [options.setup] - Per-test setup; defaults to the controller stub
+ * @returns {Function} Callback accepting { shouldThrow, expectedError, expectedField, ...params }
  */
-export function runThrowingValidationTest({
-  setup,
-  func,
-  testCases,
+export function makeValidationTest({
+  invoke,
+  setup = () => installAssignmentDefinitionControllerStub([]),
   method,
   expectDetails = false,
+  onSuccess,
 }) {
-  testCases.forEach(({ description, shouldThrow, expectedError, expectedField, ...params }) => {
-    const paramValues = Object.values(params);
-    const paramNames = Object.keys(params);
+  return ({ shouldThrow, expectedError, expectedField, ...params }) => {
+    setup();
+    const call = invoke(params);
 
-    it(`handles ${description} correctly`, () => {
-      setup();
-
-      if (shouldThrow) {
-        expect(() => func(...paramValues)).toThrow(ApiValidationError);
-        expect(() => func(...paramValues)).toThrow(expectedError);
-        try {
-          func(...paramValues);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe(method);
-          if (expectDetails && err.details !== undefined) {
-            const rowIndex = paramNames.includes('rowIndex') ? params.rowIndex : undefined;
-            if (rowIndex !== undefined) {
-              expect(err.details).toBe(`rowIndex=${rowIndex}`);
-            }
-          }
+    if (shouldThrow) {
+      expect(call).toThrow(ApiValidationError);
+      expect(call).toThrow(expectedError);
+      try {
+        call();
+      } catch (err) {
+        expect(err.fieldName).toBe(expectedField);
+        expect(err.method).toBe(method);
+        if (expectDetails) {
+          expect(err.details).toBe(`rowIndex=${params.rowIndex}`);
         }
-      } else {
-        expect(() => func(...paramValues)).not.toThrow();
       }
-    });
-  });
-}
-
-/**
- * Generic test runner for simple validation functions with single parameter.
- * Common pattern for functions like validateDefinitionKey_, validatePrimaryTopicKey_.
- *
- * @param {Object} options - Test configuration
- * @param {string} options.functionName - Name of function to test
- * @param {Array} options.testCases - Array of test case objects
- * @param {string} options.method - Method name for error assertion
- * @param {boolean} options.hasRowIndex - Whether function takes rowIndex parameter
- * @param {boolean} options.hasFieldName - Whether function takes fieldName parameter
- * @returns {void}
- */
-export function runSimpleValidationTest({
-  functionName,
-  testCases,
-  method,
-  hasRowIndex = true,
-  hasFieldName = false,
-}) {
-  installAssignmentDefinitionControllerStub([]);
-  const module = loadAssignmentDefinitionPartialsModule();
-  const func = module[functionName];
-
-  testCases.forEach(({ description, shouldThrow, expectedError, expectedField, ...params }) => {
-    const paramValues = Object.values(params);
-
-    it(`handles ${description} correctly`, () => {
-      if (shouldThrow) {
-        expect(() => func(...paramValues)).toThrow(ApiValidationError);
-        expect(() => func(...paramValues)).toThrow(expectedError);
-        try {
-          func(...paramValues);
-        } catch (err) {
-          expect(err.fieldName).toBe(expectedField);
-          expect(err.method).toBe(method);
-          if (hasRowIndex && params.rowIndex !== undefined) {
-            expect(err.details).toBe(`rowIndex=${params.rowIndex}`);
-          }
-        }
-      } else {
-        expect(() => func(...paramValues)).not.toThrow();
+    } else {
+      const result = call();
+      if (onSuccess) {
+        onSuccess(result, params);
       }
-    });
-  });
+      expect(call).not.toThrow();
+    }
+  };
 }
 
 /**

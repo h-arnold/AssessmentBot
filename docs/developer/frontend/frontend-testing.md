@@ -129,7 +129,7 @@ For assignment-definition transport work, keep the same split:
 
 - frontend service validation and `callApi` usage belong in `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartialsService.spec.ts`
 - frontend schema-contract coverage belongs in `src/frontend/src/services/assignmentDefinition/assignmentDefinitionPartials.zod.spec.ts`
-- dedicated backend transport coverage belongs in `tests/backend-api/assignmentDefinitionPartials.unit.test.js` and `tests/api/assignmentDefinitionDeleteApi.test.js`
+- dedicated backend transport coverage belongs in `tests/backend-api/assignmentDefinitionPartials.transport.test.js` and `tests/api/assignmentDefinitionDeleteApi.test.js`
 
 For ABClass metadata contract work, keep the same split:
 

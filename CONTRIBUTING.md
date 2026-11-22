@@ -85,22 +85,9 @@ npm run build:frontend    # frontend TypeScript build and Vite bundle
 npm run builder:compile   # builder TypeScript compile
 ```
 
-The backend CI job uses `npm run lint:backend:errors-only`. This intentionally allows the
-following ten existing `max-lines` warnings while still failing on every ESLint error:
-
-- `src/backend/DocumentParsers/SlidesParser.js`
-- `src/backend/GoogleDriveManager/DriveManager.js`
-- `tests/assignment/assignmentFactory.test.js`
-- `tests/backend-api/assignmentDefinitionPartials.unit.test.js`
-- `tests/controllers/abclassController.readClass.test.js`
-- `tests/controllers/assignmentController.hydration.test.js`
-- `tests/controllers/referenceDataController.test.js`
-- `tests/dbManager/dbManager.test.js`
-- `tests/googleClassroom/classroomApiClient.test.js`
-- `tests/utils/batchUpdateUtility.test.js`
-
-This temporary errors-only check remains in place until these ten large files have been
-refactored and the warnings can be removed without creating false positives.
+The backend CI job uses `npm run lint:backend:errors-only`, which fails on every ESLint error.
+The `npm run lint:backend:check` variant also fails on warnings (`--max-warnings 0`) and
+currently passes with zero warnings.
 
 ### Full Check Suite
 
