@@ -28,7 +28,7 @@ export default defineConfig({
     include: ['src/**/*.spec.{ts,tsx}'],
     setupFiles: './src/test/setup.ts',
     // Keep happy-dom + Ant Design suites below the default worker fan-out to avoid
-    // intermittent App.spec.tsx timeouts caused by worker contention.
+    // intermittent App spec timeouts caused by worker contention.
     maxWorkers: 2,
     testTimeout: 15_000,
     // Cache transformed modules on disk so repeated runs skip the transform step.

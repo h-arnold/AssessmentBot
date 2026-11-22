@@ -84,9 +84,9 @@ Default decision:
 
 ### 3.3 Reference-data workflow modals
 
-- `src/frontend/src/features/referenceData/ManageCohortsModal.tsx`
+- `src/frontend/src/features/referenceData/ManageCohortsModal/ManageCohortsModal.tsx`
 - `src/frontend/src/features/referenceData/ManageYearGroupsModal.tsx`
-- `src/frontend/src/features/referenceData/ManageTopicsModal.tsx`
+- `src/frontend/src/features/referenceData/ManageTopicsModal/ManageTopicsModal.tsx`
 - Extracted scaffold: `src/frontend/src/features/referenceData/ReferenceDataManagementModalScaffold.tsx`
 - Shared helpers:
   - `src/frontend/src/features/referenceData/InlineDialog.tsx`
@@ -119,7 +119,7 @@ Default decision:
 - do not replace this family with a generic app-wide CRUD modal abstraction
 - reuse the extracted `ReferenceDataManagementModalScaffold` for the shared outer modal shell, shared close wiring, create-action presentation, and slot placement
 - reuse `InlineDialog.tsx`, `manageReferenceDataDialogs.tsx`, and `manageReferenceDataHelpers.ts` for this family, and use `ReferenceDataManagementModalScaffold.tsx` for modal shell composition
-- the scaffold is the feature-scoped shared shell for the reference-data modal family; its callers include `ManageTopicsModal.tsx`
+- the scaffold is the feature-scoped shared shell for the reference-data modal family; its callers include `ManageTopicsModal/ManageTopicsModal.tsx`
 
 ### 3.4 Assignment definition create/update wizard modal
 

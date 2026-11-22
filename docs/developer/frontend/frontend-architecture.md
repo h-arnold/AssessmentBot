@@ -10,24 +10,24 @@ This is the canonical home for frontend structural conventions. `src/frontend/AG
 - Test naming, co-location, and shared test helpers: `frontend-testing.md`
 - Feature-surface data and analysis architecture: `data-analysis-architecture.md`
 
-## 2. Service domain folder organisation
+## 2. Domain folder organisation
 
-When two or more service files in `src/frontend/src/services/` share a common domain prefix, group them into a subfolder named after that prefix.
+When two or more files in a folder under `src/frontend/src/**` share a common domain prefix, group them into a subfolder named after that prefix. This applies to every folder — `services/`, `features/`, `hooks/`, `components/` and `utils/` alike.
 
 The domain prefix is the leading camelCase segment before the first capital letter or separator. For example, `assignmentDefinition` groups `assignmentDefinitionService.ts`, `assignmentDefinition.zod.ts`, `assignmentDefinitionPartialsService.ts`, `assignmentDefinitionPartials.zod.ts`, and all their `.spec.ts` companions.
 
 ### 2.1 Rules
 
 - Create a subfolder when **at least two files** share a common domain prefix.
-- Keep single-file services flat in `services/`. Do not create folders for them.
+- Keep single files flat in their current folder. Do not create a subfolder for a lone file.
 - Keep `.spec.ts` files co-located with their source file inside the subfolder.
-- Do not move files outside `services/` — only reorganise within it.
+- Group files within the folder that owns them; place the new subfolder beside the files it groups.
 - When moving files, update all cross-file imports within `src/frontend/src/` to reflect the new subfolder paths.
 - Import decomposed frontend modules directly from their owners. Do not add a facade or barrel solely to preserve the original import path after decomposition.
 
 ### 2.2 Current layout
 
-The current service layout is discoverable under `src/frontend/src/services/`; the filesystem is the source of truth.
+The current layout is discoverable under `src/frontend/src/`; the filesystem is the source of truth.
 
 ## 3. Feature directory layout
 
@@ -66,10 +66,10 @@ For test mock fidelity rules, see `frontend-testing.md`.
 
 ## 6. Frontend utils folder convention
 
-The `src/frontend/src/utils/` folder holds pure formatting and utility functions shared across the frontend. It is a separate convention from the service-folder rules in Section 2, which govern only `services/` subfolder organisation.
+The `src/frontend/src/utils/` folder holds pure formatting and utility functions shared across the frontend. It follows the domain-folder rule in Section 2 like other frontend folders; the pure-function constraint below is specific to `utils/`.
 
 ### 6.1 Rules
 
 - **Pure functions only.** Files in `utils/` must have no React, Ant Design, I/O, or state dependencies. They are plain TypeScript modules exporting typed pure functions.
-- **No service-folder governance.** The subfolder-by-domain-prefix rule in Section 2 applies only to `services/`. The `utils/` folder is a flat namespace; files are named by the domain they format (for example `dateFormatting.ts`). A subfolder reorganisation may be considered if the folder exceeds 5–6 files, but no barrel exports (`index.ts`) are created; consumers import directly.
+- **Flat namespace today.** Files are named by the domain they format (for example `dateFormatting.ts`). The domain-prefix rule in Section 2 applies here too: if two or more `utils/` files share a domain prefix, group them into a subfolder. Do not add barrel exports (`index.ts`); consumers import directly.
 - **First entry:** `dateFormatting.ts` — exports `formatUpdatedAtLabel(updatedAt: string | null): string` (`en-GB`, date-only, rendered in UTC; em-dash fallback for null or unparseable input). The Class page adapter deliberately does not use the fallback: it throws upstream on null or unparseable input.

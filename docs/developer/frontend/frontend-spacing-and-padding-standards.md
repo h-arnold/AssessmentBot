@@ -234,7 +234,7 @@ variables. The remaining non-token values below are deliberate:
 - `padding: '4px 8px'` in `AssignmentDefinitionsTable.tsx` filter dropdowns — the 4px vertical is
   the permitted half-unit exception; the 8px horizontal maps to `var(--app-spacing-sm)`.
 - `padding: '2px 4px'` in `MetricPill.tsx` compact mode — see §5.2.
-- `APP_GAP_COMPACT` (12px) Flex gaps such as those in `ClassesManagementPanel.tsx` and
+- `APP_GAP_COMPACT` (12px) Flex gaps such as those in `src/frontend/src/features/classes/ClassesManagementPanel/ClassesManagementPanel.tsx` and
   `AssignmentsManagementSurface.tsx` — a deliberate 8 + 4 half-step between the 8px grid steps,
   permitted for Flex `gap` where a tighter visual grouping needs it.
 - `CLASSES_CARD_HORIZONTAL_PADDING_FACTOR = 2` in `ClassesPage.tsx` — a scaling factor, not a

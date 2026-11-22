@@ -36,8 +36,8 @@ Do not create a new helper only to move code out of a large file.
 
 ### 3.1a Hooks and derivation helpers
 
-- Page dataset-state hook: `src/frontend/src/hooks/usePageDataset.ts`.
-- Shared neutral blocking-reason resolver: `computeDatasetBlockingReason` / `DatasetBlockingReason`, also in `usePageDataset.ts`. The discriminated reason (`none` | `failed` | `untrustworthy` | `queryError`) lets `classPage` (`useClassPageData.helpers`) and the standalone Heatmaps surface (`heatmapsSurfaceState`) derive feature-specific blocking errors from one precedence decision.
+- Page dataset-state hook: `src/frontend/src/hooks/usePageDataset/usePageDataset.ts`.
+- Shared neutral blocking-reason resolver: `computeDatasetBlockingReason` / `DatasetBlockingReason`, also in `usePageDataset/usePageDataset.ts`. The discriminated reason (`none` | `failed` | `untrustworthy` | `queryError`) lets `classPage` (`useClassPageData.helpers`) and the standalone Heatmaps surface (`heatmapsSurfaceState`) derive feature-specific blocking errors from one precedence decision.
 - Once-only conditional callback hook (React 19 StrictMode-safe): `src/frontend/src/hooks/useLogOnce.ts`.
 - Shared post-analysis extension point: `src/frontend/src/hooks/usePostAnalysisTasks.ts` owns the generic context/outcome lifecycle; schemas and the ordered runner live under `services/dataAnalysis/postAnalysis/`.
 - Page eligibility wrapper: `src/frontend/src/hooks/usePagePostAnalysisTasks.ts` builds a memoised context only when the surface is `ready` with complete class, live definitions and a successful averaging result, creates the descriptor list once per mount and forwards the committed selected class ID. Both averaging surfaces call it directly. Register future tasks once in `createPostAnalysisTaskDescriptors` and import actual owners directly, without a facade or barrel. See [lifecycle and registration rules](data-analysis-architecture.md#shared-post-analysis-lifecycle-and-extension).
@@ -188,7 +188,7 @@ Reject these patterns during implementation and review:
 - Keep feature-specific helpers inside the owning feature folder.
 - Name helpers by the contract they provide, not by where they were extracted from.
 - Prefer explicit function exports and typed return contracts.
-- Folder conventions, including service-folder grouping and the `utils/` layout: `docs/developer/frontend/frontend-architecture.md`.
+- Folder conventions, including domain-folder grouping and the `utils/` layout: `docs/developer/frontend/frontend-architecture.md`.
 
 ## 7. Review and PR checks
 
