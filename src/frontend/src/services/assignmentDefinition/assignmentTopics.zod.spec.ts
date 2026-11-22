@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { asParserSchema } from '@/test/assignmentDefinition/assignmentDefinitionTestFixtures';
 
 const validAssignmentTopics = [
   { key: 'topic-algebra', name: 'Algebra' },
@@ -12,16 +13,6 @@ const validAssignmentTopics = [
  */
 async function loadAssignmentTopicsSchemas(): Promise<Record<string, unknown>> {
   return import('./assignmentTopics.zod');
-}
-
-/**
- * Casts an unknown export to a parser-compatible schema facade.
- *
- * @param {unknown} schemaExport Schema export under test.
- * @returns {{ parse: (input: unknown) => unknown }} Parser facade.
- */
-function asParserSchema(schemaExport: unknown): { parse: (input: unknown) => unknown } {
-  return schemaExport as { parse: (input: unknown) => unknown };
 }
 
 describe('assignmentTopics.zod schemas', () => {

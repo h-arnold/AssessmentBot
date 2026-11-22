@@ -38,10 +38,10 @@ vi.mock(
   () => mocks.BULK_PANEL_COMPONENT_MOCKS.bulkSetCourseLength
 );
 vi.mock(
-  '@/features/classes/referenceData/ManageCohortsModal',
+  '@/features/referenceData/ManageCohortsModal/ManageCohortsModal',
   () => mocks.BULK_PANEL_COMPONENT_MOCKS.manageCohorts
 );
 vi.mock(
-  '@/features/classes/referenceData/ManageYearGroupsModal',
+  '@/features/referenceData/ManageYearGroupsModal',
   () => mocks.BULK_PANEL_COMPONENT_MOCKS.manageYearGroups
 );

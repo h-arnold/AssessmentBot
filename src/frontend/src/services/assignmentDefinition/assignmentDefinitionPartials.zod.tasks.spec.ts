@@ -129,7 +129,7 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
     });
   });
 
-  describe('nullable document ID fields (red-phase: canonical schema must support null)', () => {
+  describe('nullable document ID fields', () => {
     it('accepts a partial with referenceDocumentId set to null', async () => {
       const schemas = await loadAssignmentDefinitionPartialsSchemas();
       const assignmentDefinitionPartialSchema = asParserSchema(
