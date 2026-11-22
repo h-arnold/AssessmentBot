@@ -4,10 +4,12 @@ import { getMethodCalls, installRuntimeMock } from './shared/endToEndRuntimeMock
 import {
   algebraHomeworkEntry,
   createLinkableScenario,
+} from './helpers/classes-page-end-to-end-helpers';
+import {
   openAssessTaskModal,
   pickLinkableDefinitionE2E,
   selectAssignmentAndStart,
-} from './helpers/classes-page-end-to-end-helpers';
+} from './helpers/classes-assess-task-journeys';
 
 test('linking an existing definition shows the shared success surface exactly once', async ({
   page,

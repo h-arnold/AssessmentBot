@@ -1,6 +1,5 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import type { ResponseItem, RuntimeScenario } from '../shared/endToEndRuntimeMocks';
-import { installRuntimeMock, selectVisibleOption } from '../shared/endToEndRuntimeMocks';
 import {
   CLASS_PARTIALS_FOR_EMPTY_PANEL,
   MIXED_ORDER_CLASS_PARTIALS,
@@ -36,7 +35,7 @@ export function algebraHomeworkEntry(): ResponseItem {
 // Navigation and UI Constants
 // ============================================================================
 
-export const BREADCRUMB_NAVIGATION_NAME = 'Breadcrumb' as const;
+const BREADCRUMB_NAVIGATION_NAME = 'Breadcrumb' as const;
 export const PRIMARY_NAVIGATION_LABEL = 'Primary navigation' as const;
 export const CLASSES_LABEL = 'Classes' as const;
 export const EXPECTED_MENU_ITEM_COUNT = 5;
@@ -84,7 +83,7 @@ export const CARD_INDEX_THIRD = 2;
  * in development. Each entry returns the same assignment data so the modal
  * stabilises to the ready state regardless of effect replay count.
  */
-export const MOCK_COURSEWORK_ASSIGNMENTS: ReadonlyArray<ResponseItem> = [
+const MOCK_COURSEWORK_ASSIGNMENTS: ReadonlyArray<ResponseItem> = [
   {
     kind: 'success',
     data: [
@@ -302,26 +301,6 @@ export function createLinkableScenario(
   };
 }
 
-/**
- * Installs a linkable runtime scenario and opens the Assess Task modal.
- *
- * Convenience helper that combines {@link installRuntimeMock} and
- * {@link openAssessTaskModal} for the link-picker flow preamble.
- * The caller is responsible for calling `selectAssignmentAndStart`
- * after this function returns.
- *
- * @param {Page} page - The Playwright page under test.
- * @param {RuntimeScenario} [scenario] - Optional scenario. Defaults to `createLinkableScenario()`.
- * @returns {Promise<ReturnType<typeof page.getByRole>>} The visible dialog locator.
- */
-export async function setupLinkableDialog(
-  page: Page,
-  scenario?: RuntimeScenario
-): Promise<ReturnType<typeof page.getByRole>> {
-  await installRuntimeMock(page, scenario ?? createLinkableScenario());
-  return openAssessTaskModal(page);
-}
-
 // ============================================================================
 // Navigation and Setup Helpers
 // ============================================================================
@@ -351,192 +330,6 @@ export async function expectBreadcrumbLabels(page: Page, labels: string[]): Prom
   for (const label of labels) {
     await expect(breadcrumb).toContainText(label);
   }
-}
-
-// ============================================================================
-// Assess Task Modal Helpers
-// ============================================================================
-
-/**
- * Navigates to the Classes page and opens the first Assess Task modal.
- *
- * Handles the common test preamble: goto → menu click → panel visibility
- * check → Assess Task button click → dialog visibility check.
- *
- * @param {Page} page - The Playwright page under test.
- * @returns {Promise<ReturnType<typeof page.getByRole>>} The visible dialog locator.
- */
-export async function openAssessTaskModal(page: Page): Promise<ReturnType<typeof page.getByRole>> {
-  await page.goto('/');
-  await page.getByRole('menuitem', { name: CLASSES_LABEL }).click();
-  await expect(page.locator('#panel-content-year-group-9')).toBeVisible();
-  await page.getByRole('heading', { level: 3, name: 'Year 10' }).click();
-  await expect(page.locator('#panel-content-year-group-10')).toBeVisible();
-  await page.getByRole('heading', { level: 3, name: 'Year 9' }).click();
-  await expect(page.locator('#panel-content-year-group-9')).not.toBeVisible();
-
-  await page
-    .locator('#panel-content-year-group-10')
-    .getByRole('button', { name: 'Assess Task' })
-    .first()
-    .click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
-
-  return dialog;
-}
-
-/**
- * Selects an assignment from the combobox and clicks Start Assessment.
- *
- * @param {Locator} dialog - The modal dialog locator.
- * @param {Page} page - The Playwright page.
- * @param {string} [title] - The visible text of the assignment option to select.
- * @returns {Promise<void>}
- */
-export async function selectAssignmentAndStart(
-  dialog: Locator,
-  page: Page,
-  title: string = 'Algebra Homework'
-): Promise<void> {
-  await dialog.getByTestId('assignment-select').click();
-  await selectVisibleOption(page, title);
-  await dialog.getByRole('button', { name: 'Start Assessment' }).click();
-}
-
-/**
- * Selects the default assignment, starts the assessment, clicks
- * "Create New Definition" in the choice prompt, then asserts the
- * wizard dialog is visible.  Returns the wizard dialog locator.
- *
- * Callers must already have installed a runtime mock and opened the
- * Assess Task modal before calling this helper.
- *
- * @param {Locator} dialog - The Assess Task modal dialog locator.
- * @param {Page} page - The Playwright page under test.
- * @returns {Promise<ReturnType<typeof page.getByRole>>} The visible wizard dialog locator.
- */
-
-/**
- * Opens the linkable-definition Select dropdown and selects the option matching
- * the given primary title.
- *
- * @param {Locator} dialog The Assess Task modal dialog locator.
- * @param {Page} page The Playwright page under test.
- * @param {string} title The primary title of the option to select.
- * @returns {Promise<void>}
- */
-export async function pickLinkableDefinitionE2E(
-  dialog: Locator,
-  page: Page,
-  title: string
-): Promise<void> {
-  await dialog.getByTestId('linkable-definition-select').click();
-  await selectVisibleOption(page, title);
-}
-
-/**
- * Opens the assignment Select dropdown and selects the option matching
- * the given title.
- *
- * @param {Locator} dialog The Assess Task modal dialog locator.
- * @param {Page} page The Playwright page under test.
- * @param {string} [title] The visible text of the assignment option to select.
- * @returns {Promise<void>}
- */
-export async function pickAssignmentE2E(
-  dialog: Locator,
-  page: Page,
-  title: string = 'Algebra Homework'
-): Promise<void> {
-  await dialog.getByTestId('assignment-select').click();
-  await selectVisibleOption(page, title);
-}
-
-/**
- * Selects the default assignment, starts the assessment, clicks
- * "Create New Definition" in the choice prompt, then asserts the
- * wizard dialog is visible.
- *
- * @param {Locator} dialog The Assess Task modal dialog locator.
- * @param {Page} page The Playwright page under test.
- * @returns {Promise<ReturnType<typeof page.getByRole>>} The visible wizard dialog locator.
- */
-export async function openWizardFromChoicePrompt(
-  dialog: Locator,
-  page: Page
-): Promise<ReturnType<typeof page.getByRole>> {
-  await selectAssignmentAndStart(dialog, page);
-  await dialog.getByRole('button', { name: 'Create New Definition' }).click();
-
-  const wizardDialog = page.getByRole('dialog', { name: /create assignment/i });
-  await expect(wizardDialog).toBeVisible();
-
-  return wizardDialog;
-}
-
-/**
- * Sets up the Assess Task modal with an Algebra Homework scenario, opens the
- * wizard from the choice prompt, and returns both dialog locators.
- *
- * Replaces the common preamble shared by wizard cancellation tests.
- *
- * @param {{ page: Page; getGoogleClassroomAssignments?: ReadonlyArray<ResponseItem> }} options
- *   Page and optional assignment queue override (defaults to two algebra entries).
- * @returns {Promise<{ dialog: Locator; wizardDialog: Locator }>} The Assess Task
- *   dialog and the wizard dialog locators.
- */
-export async function setupWizardDialog({
-  page,
-  getGoogleClassroomAssignments,
-}: {
-  page: Page;
-  getGoogleClassroomAssignments?: ReadonlyArray<ResponseItem>;
-}): Promise<{ dialog: Locator; wizardDialog: Locator }> {
-  const scenario = createAssessTaskScenario({
-    getGoogleClassroomAssignments: getGoogleClassroomAssignments ?? [
-      algebraHomeworkEntry(),
-      algebraHomeworkEntry(),
-    ],
-  });
-  await installRuntimeMock(page, scenario);
-  const dialog = await openAssessTaskModal(page);
-  const wizardDialog = await openWizardFromChoicePrompt(dialog, page);
-  return { dialog, wizardDialog };
-}
-
-/**
- * Sets up a linkable dialog with three linkable partials, opens the link picker
- * dropdown, and returns the search input locator.
- *
- * Replaces the common preamble shared by link-picker search tests.
- *
- * @param {{ page: Page; linkablePartialsEntry: ResponseItem }} options
- *   Page and the linkable partials entry containing the definitions to populate
- *   the picker.
- * @returns {Promise<{ searchInput: Locator }>} The combobox search input locator.
- */
-export async function openLinkPickerDropdown({
-  page,
-  linkablePartialsEntry,
-}: {
-  page: Page;
-  linkablePartialsEntry: ResponseItem;
-}): Promise<{ searchInput: Locator }> {
-  const dialog = await setupLinkableDialog(
-    page,
-    createLinkableScenario({
-      getGoogleClassroomAssignments: [algebraHomeworkEntry(), algebraHomeworkEntry()],
-      linkablePartialsEntry,
-    })
-  );
-
-  await selectAssignmentAndStart(dialog, page);
-  await dialog.getByRole('button', { name: 'Link to Existing Definition' }).click();
-  await dialog.getByTestId('linkable-definition-select').click();
-
-  const searchInput = page.getByTestId('linkable-definition-select').getByRole('combobox');
-  return { searchInput };
 }
 
 // ============================================================================
@@ -618,18 +411,3 @@ export function getYearGroupCollapseHeader(
 ): ReturnType<typeof page.locator> {
   return page.locator('.ant-collapse-header').filter({ hasText: yearGroupName });
 }
-
-// ============================================================================
-// Re-exports from canonical test helpers
-// ============================================================================
-
-export {
-  ALPHABETICAL_ORDER_CLASS_PARTIALS,
-  TIE_BREAK_CLASS_PARTIALS,
-  CLASS_PARTIALS_FOR_EMPTY_PANEL,
-  MIXED_ORDER_CLASS_PARTIALS,
-  MIXED_ORDER_YEAR_GROUPS,
-  SINGLE_YEAR_GROUP,
-  YEAR_GROUPS_WITH_EMPTY,
-  toPlainClassPartials,
-} from '@/test/classes/classesPageTestHelpers';
