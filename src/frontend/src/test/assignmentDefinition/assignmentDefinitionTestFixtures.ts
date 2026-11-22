@@ -12,6 +12,125 @@ import type { AssignmentTopic, YearGroup } from '@/services/referenceData/refere
 import { mockTopics, mockYearGroups, mockFullAssignmentDefinition } from './sharedTestFixtures';
 
 // ============================================================================
+// Zod schema canonical payloads and loaders
+// ============================================================================
+
+/**
+ * Task entry within an assignment-definition partial row.
+ */
+type TaskPartialFixture = {
+  taskId: string;
+  taskWeighting: number;
+  taskTitle?: string | null;
+};
+
+/**
+ * Row shape accepted by the assignment-definition partial schemas.
+ */
+export type AssignmentDefinitionPartialFixture = {
+  primaryTitle: string;
+  primaryTopicKey: string;
+  primaryTopic: string;
+  yearGroupKey: string;
+  yearGroupLabel: string;
+  alternateTitles: string[];
+  alternateTopics: string[];
+  documentType: string;
+  referenceDocumentId: string | null;
+  templateDocumentId: string | null;
+  assignmentWeighting: number | null;
+  definitionKey: string;
+  tasks: TaskPartialFixture[];
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+/**
+ * Canonical full-definition payload shared by the assignmentDefinition zod suites.
+ */
+export const validFullDefinition = {
+  definitionKey: 'algebra-baseline',
+  primaryTitle: 'Algebra Baseline',
+  primaryTopicKey: 'topic-algebra',
+  primaryTopic: 'Algebra',
+  yearGroupKey: 'year-10',
+  yearGroupLabel: 'Year 10',
+  alternateTitles: ['Algebra Starter'],
+  alternateTopics: ['Linear Equations'],
+  documentType: 'SLIDES',
+  referenceDocumentId: 'reference-doc-id',
+  templateDocumentId: 'template-doc-id',
+  assignmentWeighting: 1,
+  tasks: [
+    {
+      taskId: 'task-001',
+      taskTitle: 'Solve equations',
+      taskWeighting: 1,
+    },
+  ],
+  createdAt: '2026-01-05T10:00:00.000Z',
+  updatedAt: '2026-01-05T10:10:00.000Z',
+};
+
+/**
+ * Canonical partial-row payload shared by the assignmentDefinitionPartials zod suites.
+ */
+export const validAssignmentDefinitionPartialRow: AssignmentDefinitionPartialFixture = {
+  primaryTitle: 'Algebra Baseline',
+  primaryTopicKey: 'topic-algebra',
+  primaryTopic: 'Algebra',
+  yearGroupKey: 'year-group-10',
+  yearGroupLabel: 'Year 10',
+  alternateTitles: ['Algebra Starter'],
+  alternateTopics: ['Linear Equations'],
+  documentType: 'SLIDES',
+  referenceDocumentId: 'ref-doc-001',
+  templateDocumentId: 'tpl-doc-001',
+  assignmentWeighting: null,
+  definitionKey: 'algebra-baseline',
+  tasks: [],
+  createdAt: '2026-01-05T10:00:00.000Z',
+  updatedAt: null,
+};
+
+/**
+ * Loads the assignment-definition schema module under test.
+ *
+ * @returns {Promise<Record<string, unknown>>} The imported module.
+ */
+export async function loadAssignmentDefinitionSchemas(): Promise<Record<string, unknown>> {
+  return import('@/services/assignmentDefinition/assignmentDefinition.zod');
+}
+
+/**
+ * Loads the assignment-definition partial schemas under test.
+ *
+ * @returns {Promise<Record<string, unknown>>} The imported schema module.
+ */
+export async function loadAssignmentDefinitionPartialsSchemas(): Promise<Record<string, unknown>> {
+  return import('@/services/assignmentDefinition/assignmentDefinitionPartials.zod');
+}
+
+/**
+ * Creates a mutable row fixture for malformed-payload cases.
+ *
+ * @returns {AssignmentDefinitionPartialFixture} A cloned valid row fixture.
+ */
+export function createMutableRowFixture(): AssignmentDefinitionPartialFixture {
+  return { ...validAssignmentDefinitionPartialRow };
+}
+
+/**
+ * Casts an unknown schema export to a parser-compatible facade.
+ *
+ * @param {unknown} schemaExport Schema export under test.
+ * @returns {{ parse: (input: unknown) => unknown }} Parser facade.
+ */
+export function asParserSchema(schemaExport: unknown): { parse: (input: unknown) => unknown } {
+  return schemaExport as { parse: (input: unknown) => unknown };
+}
+
+// ============================================================================
 // Topic Fixtures
 // ============================================================================
 
