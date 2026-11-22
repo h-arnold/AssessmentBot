@@ -5,6 +5,7 @@ import {
   algebraHomeworkEntry,
   CLASSES_LABEL,
   createLinkableScenario,
+  DEFAULT_LINKABLE_PARTIAL,
 } from './classes-page-end-to-end-helpers';
 
 // ============================================================================
@@ -22,21 +23,8 @@ import {
 export const LINK_PICKER_INFO_TEXT = 'Choose the Assignment you want to link this one to:' as const;
 
 export const ALGEBRA_HW_PARTIAL = {
+  ...DEFAULT_LINKABLE_PARTIAL,
   definitionKey: 'algebra-hw-key',
-  primaryTitle: 'Algebra HW',
-  primaryTopicKey: 'topic-algebra',
-  primaryTopic: 'Algebra',
-  yearGroupKey: 'year-group-10',
-  yearGroupLabel: 'Year 10',
-  alternateTitles: [],
-  alternateTopics: [],
-  documentType: 'SLIDES',
-  referenceDocumentId: 'ref-123',
-  templateDocumentId: 'tpl-456',
-  assignmentWeighting: 5,
-  tasks: [],
-  createdAt: '2025-01-01T00:00:00.000Z',
-  updatedAt: '2025-03-01T00:00:00.000Z',
 };
 
 export const POETRY_ANALYSIS_PARTIAL = {

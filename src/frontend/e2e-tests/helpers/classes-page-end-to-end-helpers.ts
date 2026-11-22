@@ -209,7 +209,7 @@ export function createAssessTaskScenario(
  * Represents an assignment definition partial that can be linked to
  * when the user clicks "Link to Existing Definition" in the choice prompt.
  */
-const DEFAULT_LINKABLE_PARTIAL = {
+export const DEFAULT_LINKABLE_PARTIAL = {
   definitionKey: 'default-linkable-key',
   primaryTitle: 'Algebra HW',
   primaryTopicKey: 'topic-algebra',
