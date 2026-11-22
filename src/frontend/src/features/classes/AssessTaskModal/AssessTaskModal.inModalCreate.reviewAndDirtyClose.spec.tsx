@@ -17,12 +17,17 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { QueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import '@/test/classes/AssessTaskModal.mockSetup';
 import { queryKeys } from '@/query/queryKeys';
 import { ApiTransportError } from '@/errors/apiTransportError';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import { upsertAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
+import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
+import { getCohorts, getYearGroups } from '@/services/referenceData/referenceDataService';
 import {
+  MOCK_CLASS_ID,
   clickCreateNewDefinition,
   clickStartAssessment,
-  MOCK_CLASS_ID,
   selectAssignment,
   expectAssessmentSuccessSurface,
 } from '@/test/classes/AssessTaskModal.test-utilities';
@@ -32,66 +37,6 @@ import { mockTopics, mockYearGroups } from '@/test/assignmentDefinition/sharedTe
 import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
 import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
 import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json?raw';
-
-const {
-  getGoogleClassroomAssignmentsMock,
-  startAssessmentRunMock,
-  upsertAssignmentDefinitionMock,
-  getAssignmentDefinitionMock,
-  getAssignmentTopicsMock,
-  getCohortsMock,
-  getYearGroupsMock,
-  findMatchingDefinitionMock,
-} = vi.hoisted(() => {
-  return {
-    getGoogleClassroomAssignmentsMock: vi.fn(),
-    startAssessmentRunMock: vi.fn(),
-    upsertAssignmentDefinitionMock: vi.fn(),
-    getAssignmentDefinitionMock: vi.fn(),
-    getAssignmentTopicsMock: vi.fn(),
-    getCohortsMock: vi.fn(),
-    getYearGroupsMock: vi.fn(),
-    findMatchingDefinitionMock: vi.fn(),
-  };
-});
-
-vi.mock('@/services/googleClassrooms/googleClassroomAssignmentsService', () => {
-  return {
-    getGoogleClassroomAssignments: getGoogleClassroomAssignmentsMock,
-  };
-});
-
-vi.mock('@/services/assignmentAssessment/assignmentAssessmentService', () => {
-  return {
-    startAssessmentRun: startAssessmentRunMock,
-  };
-});
-
-vi.mock('@/services/assignmentDefinition/assignmentDefinitionService', () => {
-  return {
-    upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
-    getAssignmentDefinition: getAssignmentDefinitionMock,
-  };
-});
-
-vi.mock('@/services/assignmentDefinition/assignmentTopicsService', () => {
-  return {
-    getAssignmentTopics: getAssignmentTopicsMock,
-  };
-});
-
-vi.mock('@/services/referenceData/referenceDataService', () => {
-  return {
-    getCohorts: getCohortsMock,
-    getYearGroups: getYearGroupsMock,
-  };
-});
-
-vi.mock('./matchDefinitionForAssignment', () => {
-  return {
-    findMatchingDefinition: findMatchingDefinitionMock,
-  };
-});
 
 /**
  * Approved shared modal-width exception token applied while wizard content is active.
@@ -224,7 +169,7 @@ function buildCreateUpsertResponse(): AssignmentDefinition {
  * @returns {Promise<void>} Resolves when the task weightings table is visible in-modal.
  */
 async function parseStageOne(dialog: HTMLElement): Promise<void> {
-  upsertAssignmentDefinitionMock.mockResolvedValueOnce(buildCreateUpsertResponse());
+  vi.mocked(upsertAssignmentDefinition).mockResolvedValueOnce(buildCreateUpsertResponse());
 
   await user.click(within(dialog).getByRole('button', { name: PARSE_BUTTON_PATTERN }));
 
@@ -268,10 +213,10 @@ describe('AssessTaskModal in-modal create path', () => {
   beforeEach(() => {
     user = userEvent.setup();
     vi.clearAllMocks();
-    getAssignmentTopicsMock.mockResolvedValue(mockTopics);
-    getYearGroupsMock.mockResolvedValue(mockYearGroups);
-    getCohortsMock.mockResolvedValue([]);
-    startAssessmentRunMock.mockResolvedValue(null);
+    vi.mocked(getAssignmentTopics).mockResolvedValue(mockTopics);
+    vi.mocked(getYearGroups).mockResolvedValue(mockYearGroups);
+    vi.mocked(getCohorts).mockResolvedValue([]);
+    vi.mocked(startAssessmentRun).mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -424,19 +369,19 @@ describe('AssessTaskModal in-modal create path', () => {
 
     let wasWizardContentMounted: boolean | null = null;
     let dialogCountAtStartCall: number | null = null;
-    startAssessmentRunMock.mockImplementation(() => {
+    vi.mocked(startAssessmentRun).mockImplementation(() => {
       wasWizardContentMounted = screen.queryByRole('table', { name: TASK_TABLE_PATTERN }) !== null;
       dialogCountAtStartCall = screen.queryAllByRole('dialog').length;
       return Promise.resolve(null);
     });
-    upsertAssignmentDefinitionMock.mockResolvedValueOnce(buildCreateUpsertResponse());
+    vi.mocked(upsertAssignmentDefinition).mockResolvedValueOnce(buildCreateUpsertResponse());
 
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
-      expect(startAssessmentRunMock).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(startAssessmentRun)).toHaveBeenCalledTimes(1);
     });
-    expect(startAssessmentRunMock).toHaveBeenCalledWith({
+    expect(vi.mocked(startAssessmentRun)).toHaveBeenCalledWith({
       definitionKey: CREATED_DEFINITION_KEY,
       assignmentId: 'a1',
       courseId: MOCK_CLASS_ID,
@@ -459,13 +404,13 @@ describe('AssessTaskModal in-modal create path', () => {
       requestId: 'request-parse-failure',
       error: { code: 'DEFINITION_PARSE_FAILED', message: 'raw parse failure' },
     });
-    upsertAssignmentDefinitionMock.mockRejectedValueOnce(parseFailure);
+    vi.mocked(upsertAssignmentDefinition).mockRejectedValueOnce(parseFailure);
 
     await user.click(within(dialog).getByRole('button', { name: PARSE_BUTTON_PATTERN }));
 
     const alert = await within(dialog).findByRole('alert');
     expect(alert).toHaveTextContent(DEFINITION_PARSE_FAILED_MESSAGE);
     expect(within(dialog).queryByRole('table', { name: TASK_TABLE_PATTERN })).toBeNull();
-    expect(startAssessmentRunMock).not.toHaveBeenCalled();
+    expect(vi.mocked(startAssessmentRun)).not.toHaveBeenCalled();
   });
 });
