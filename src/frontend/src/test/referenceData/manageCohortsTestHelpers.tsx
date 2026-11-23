@@ -99,13 +99,13 @@ export function findManageCohortsModalDialog() {
  * @param {'Cancel' | 'close icon' | 'mask' | 'Escape'} options.closeMethod How to close the modal.
  * @param {HTMLElement} options.dialog The modal dialog element.
  * @param {string} options.modalTitle Modal title for finding the dialog.
- * @returns {Promise<void>}
+ * @returns {void}
  */
-async function closeModalViaMethod(options: {
+function closeModalViaMethod(options: {
   closeMethod: 'Cancel' | 'close icon' | 'mask' | 'Escape';
   dialog: HTMLElement;
   modalTitle: string;
-}): Promise<void> {
+}): void {
   const { closeMethod, dialog, modalTitle } = options;
 
   switch (closeMethod) {
@@ -184,7 +184,7 @@ export async function assertTransientStateReset(options: {
   await screen.findByRole('dialog', { name: /create cohort/i });
 
   // Close via specified method
-  await closeModalViaMethod({ closeMethod, dialog, modalTitle });
+  closeModalViaMethod({ closeMethod, dialog, modalTitle });
   expect(onCloseMock).toHaveBeenCalledOnce();
 
   // Reopen modal

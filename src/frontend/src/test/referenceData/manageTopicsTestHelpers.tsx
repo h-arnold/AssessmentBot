@@ -227,7 +227,7 @@ async function closeViaMask(dialog: HTMLElement) {
     throw new Error('Modal wrap not found');
   }
 
-  await act(async () => {
+  await act(() => {
     wrap.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     wrap.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     wrap.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -331,7 +331,7 @@ export async function assertTransientStateReset(
  * @param {Error} error - The error to reject with.
  * @returns {Promise<HTMLElement>} The modal dialog element.
  */
-export async function setupQueryFailureBeforeDataLoad(
+export function setupQueryFailureBeforeDataLoad(
   queryType: 'topics' | 'yearGroups',
   error: Error
 ): Promise<HTMLElement> {

@@ -277,7 +277,7 @@ export function renderApp(queryClient = createAppQueryClient()) {
  * @returns {Promise<void>} A promise that resolves after the shell render has settled.
  */
 export async function renderReadyApp() {
-  await act(async () => {
+  await act(() => {
     renderApp();
   });
   await screen.findByRole('navigation', { name: primaryNavigationLabel });

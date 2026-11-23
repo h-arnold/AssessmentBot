@@ -88,7 +88,7 @@ export function setupQueryClientWithAssignmentsData(
  *
  * @returns {Promise<HTMLElement>} The table element.
  */
-export async function getAssignmentsTable(): Promise<HTMLElement> {
+export function getAssignmentsTable(): Promise<HTMLElement> {
   return screen.findByRole('table', { name: 'Assignment definitions table' });
 }
 
