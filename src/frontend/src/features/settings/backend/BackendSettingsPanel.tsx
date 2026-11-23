@@ -18,7 +18,7 @@ import {
   type BackendSettingsFieldDescriptor,
   type BackendSettingsFieldName,
 } from './backendSettingsFieldDescriptors';
-import { useBackendSettings } from './useBackendSettings';
+import { useBackendSettings } from './useBackendSettings/useBackendSettings';
 import { APP_GAP_LG } from '@/theme/spacing';
 
 const { Text, Title } = Typography;

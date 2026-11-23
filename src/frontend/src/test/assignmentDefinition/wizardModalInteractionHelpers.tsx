@@ -1,5 +1,5 @@
-import { act, within } from '@testing-library/react';
-import { chooseSelectOption, setTextboxValue } from './wizardTestHelpers';
+import { act, fireEvent, screen, within } from '@testing-library/react';
+import { setTextboxValue } from './wizardTestHelpers';
 
 /**
  * Accessible name of the Ant Design modal's own close control.
@@ -233,6 +233,31 @@ export async function dismissModalByMaskClick(dialog: HTMLElement): Promise<void
 // ============================================================================
 // Form Interaction Helpers
 // ============================================================================
+
+/**
+ * Opens a named selector and chooses one option by visible label.
+ *
+ * @param {string} fieldLabel Accessible form label.
+ * @param {string | RegExp} optionLabel Option label to select.
+ * @param {HTMLElement} [container] Optional container to search within (defaults to document).
+ * @returns {Promise<void>} Completion signal.
+ */
+async function chooseSelectOption(
+  fieldLabel: string,
+  optionLabel: string | RegExp,
+  container: HTMLElement = document.body
+): Promise<void> {
+  // Open the dropdown by clicking on the combobox
+  const normalisedFieldLabel = fieldLabel.trim().toLowerCase();
+  const combobox = within(container).getByRole('combobox', {
+    name: (accessibleName) => accessibleName.trim().toLowerCase() === normalisedFieldLabel,
+  });
+  fireEvent.mouseDown(combobox);
+
+  // Find and click the option by its visible text
+  const option = await screen.findByText(optionLabel);
+  fireEvent.click(option);
+}
 
 /**
  * Options for filling required fields in the wizard form.

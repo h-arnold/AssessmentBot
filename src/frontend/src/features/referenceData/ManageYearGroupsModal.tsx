@@ -24,7 +24,7 @@ import {
 import { getYearGroupsQueryOptions } from '@/query/sharedQueries';
 import { ReferenceDataInitialLoadingState } from './ReferenceDataInitialLoadingState';
 import { ReferenceDataManagementModalScaffold } from './ReferenceDataManagementModalScaffold';
-import { useReferenceDataManagement } from './useReferenceDataManagement';
+import { useReferenceDataManagement } from './useReferenceDataManagement/useReferenceDataManagement';
 
 export type ManageYearGroupsModalProperties = Readonly<{
   open: boolean;
@@ -79,9 +79,6 @@ function buildYearGroupColumns(options: Readonly<{
   ];
 }
 
-/**
- * Renders the year-group form dialog.
- *
 /**
  * Renders the Manage Year Groups modal workflow.
  *

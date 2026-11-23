@@ -252,7 +252,7 @@ describe('ClassesTableColumns', () => {
       onSelectedRowKeysChange: vi.fn(),
     });
 
-    const { ClassesManagementPanel } = await import('../ClassesManagementPanel');
+    const { ClassesManagementPanel } = await import('../ClassesManagementPanel/ClassesManagementPanel');
 
     renderWithQueryClient(<ClassesManagementPanel />);
 
@@ -280,7 +280,7 @@ describe('ClassesTableColumns', () => {
       onSelectedRowKeysChange: vi.fn(),
     });
 
-    const { ClassesManagementPanel } = await import('../ClassesManagementPanel');
+    const { ClassesManagementPanel } = await import('../ClassesManagementPanel/ClassesManagementPanel');
 
     renderWithQueryClient(<ClassesManagementPanel />);
 

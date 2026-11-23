@@ -35,7 +35,7 @@ export function createClassesManagementPanelHarness(
     },
     async renderPanel() {
       const { ClassesManagementPanel } =
-        await import('@/features/classes/ClassesManagementPanel');
+        await import('@/features/classes/ClassesManagementPanel/ClassesManagementPanel');
       return renderWithFrontendProviders(<ClassesManagementPanel />);
     },
     reset() {

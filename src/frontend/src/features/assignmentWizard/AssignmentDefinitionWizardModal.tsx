@@ -2,7 +2,7 @@ import { useCallback, useState, type JSX } from 'react';
 import { useAssignmentDefinitionWizard } from './useAssignmentDefinitionWizard';
 import { AssignmentDiscardConfirm } from './AssignmentDiscardConfirm';
 import { AssignmentDefinitionWizardModalShell } from './AssignmentDefinitionWizardModalShell';
-import { ManageTopicsModal } from '../referenceData/ManageTopicsModal';
+import { ManageTopicsModal } from '../referenceData/ManageTopicsModal/ManageTopicsModal';
 import { ManageYearGroupsModal } from '../referenceData/ManageYearGroupsModal';
 import { type AssignmentDefinitionWizardModalProperties } from './useAssignmentDefinitionWizard';
 

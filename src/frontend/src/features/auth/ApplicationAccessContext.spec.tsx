@@ -8,7 +8,7 @@ import {
   grantedAdminAccess,
 } from '@/test/auth/appAuthGateTestHelpers';
 import { useApplicationAccessContext } from './ApplicationAccessContext';
-import { AppAuthGate } from './AppAuthGate';
+import { AppAuthGate } from './AppAuthGate/AppAuthGate';
 import {
   getApplicationAccess,
   hasScriptAuthorisation,

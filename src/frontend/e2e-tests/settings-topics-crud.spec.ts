@@ -6,8 +6,9 @@
  * - Opening the management modal and viewing the topics list
  * - Mask close behavior (explicit coverage for skipped unit test)
  *
- * Note: This complements the unit tests in ManageTopicsModal.spec.tsx which skip
- * mask click tests due to JSDOM/HappyDOM limitations.
+ * Note: This complements the unit tests in the `ManageTopicsModal` spec suite under
+ * `features/referenceData/ManageTopicsModal/` which skip mask click tests due to
+ * JSDOM/HappyDOM limitations.
  */
 
 import { expect, test, type Page } from '@playwright/test';

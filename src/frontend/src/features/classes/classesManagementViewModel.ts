@@ -1,5 +1,7 @@
 import type { ClassPartial } from '@/services/googleClassrooms/classPartialsService';
 import type { GoogleClassroom } from '@/services/googleClassrooms/googleClassroomsService';
+import type { BatchProgressSnapshot } from './bulk/runQueuedBatchMutation';
+import type { BulkCreateOptions } from './bulk/bulkCreateFlow';
 
 export type ClassesManagementStatus = 'active' | 'inactive' | 'notCreated' | 'orphaned';
 
@@ -20,6 +22,84 @@ export interface BuildClassesManagementRowsInput {
   classPartials: ClassPartial[];
   cohortLabelsByKey: Readonly<Record<string, string>>;
   yearGroupLabelsByKey: Readonly<Record<string, string>>;
+}
+
+// ---------------------------------------------------------------------------
+// Panel view-model types
+// ---------------------------------------------------------------------------
+
+type SelectOption = Readonly<{ label: string; value: string }>;
+
+/** Rows and reference-data presentation values used by the workflow content. */
+export interface ClassesWorkflowDataView {
+  rows: ClassesManagementRow[];
+  selectedRows: ClassesManagementRow[];
+  selectedRowKeys: string[];
+  onSelectedRowKeysChange: (selectedRowKeys: string[]) => void;
+  cohortOptions: SelectOption[];
+  yearGroupOptions: SelectOption[];
+  pendingCreatedCohortKey?: string;
+  pendingCreatedYearGroupKey?: string;
+}
+
+/** Busy and submitting flags that drive workflow accessibility and loading. */
+export interface ClassesWorkflowBusyView {
+  isRefreshing: boolean;
+  isMutationBoundaryActive: boolean;
+  createSubmitting: boolean;
+  deleteSubmitting: boolean;
+  setActiveSubmitting: boolean;
+  setInactiveSubmitting: boolean;
+}
+
+/** One modal surface: its open state and the setter that controls it. */
+export interface ClassesWorkflowSurface {
+  isOpen: boolean;
+  setOpen: (isOpen: boolean) => void;
+}
+
+/** Modal surfaces owned by the panel shell. */
+export interface ClassesWorkflowSurfacesView {
+  create: ClassesWorkflowSurface;
+  delete: ClassesWorkflowSurface;
+  setCohort: ClassesWorkflowSurface;
+  setYearGroup: ClassesWorkflowSurface;
+  setCourseLength: ClassesWorkflowSurface;
+  manageCohorts: ClassesWorkflowSurface;
+  manageYearGroups: ClassesWorkflowSurface;
+}
+
+/** Queued-mutation progress modal state and actions. */
+export interface ClassesWorkflowProgressView {
+  isProgressModalOpen: boolean;
+  progress: BatchProgressSnapshot;
+  verb: string;
+  onCancelQueue: () => void;
+  onDismissProgressModal: () => void;
+}
+
+/** Mutation and reference-data handlers wired by the panel shell. */
+export interface ClassesWorkflowActions {
+  onBulkCreate: (options: BulkCreateOptions) => Promise<void>;
+  onBulkDelete: () => Promise<void>;
+  onSetActive: () => void;
+  onSetInactive: () => void;
+  onSetCohort: (cohortKey: string) => Promise<void>;
+  onSetYearGroup: (yearGroupKey: string) => Promise<void>;
+  onSetCourseLength: (courseLength: number) => Promise<void>;
+  onCohortAddNew: () => void;
+  onYearGroupAddNew: () => void;
+  onCohortEntityCreated: (entity: { key: string }) => void;
+  onYearGroupEntityCreated: (entity: { key: string }) => void;
+}
+
+export interface ClassesManagementWorkflowContentProperties {
+  shouldSuppressStaleTableData: boolean;
+  data: ClassesWorkflowDataView;
+  busy: ClassesWorkflowBusyView;
+  surfaces: ClassesWorkflowSurfacesView;
+  progress: ClassesWorkflowProgressView;
+  actions: ClassesWorkflowActions;
 }
 
 export const STATUS_ORDER: Readonly<Record<ClassesManagementStatus, number>> = {

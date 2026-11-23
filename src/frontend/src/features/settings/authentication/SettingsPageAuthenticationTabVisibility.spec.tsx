@@ -5,8 +5,8 @@
  * in SettingsPage: it consumes the application access context to decide whether
  * the Authentication tab is shown (admin sees it, non-admin does not). The gate is
  * deliberately NOT inside the tab component, so this spec is kept separate from the
- * mounted-content behaviour tests in `AuthenticationSettingsTab.spec.tsx` and never
- * forces the tab component to self-gate.
+ * mounted-content behaviour tests in the `AuthenticationSettingsTab/` spec suite under
+ * `features/settings/authentication/` and never forces the tab component to self-gate.
  */
 
 import { screen } from '@testing-library/react';

@@ -228,7 +228,7 @@ planning-artefact names in filenames, titles, headings or body content.
 │   │   │
 │   │   ├── frontend/
 │   │   │   ├── data-analysis-architecture.md            # Canonical: analyser pipeline and heatmap projection architecture
-│   │   │   ├── frontend-architecture.md                 # Canonical: service-folder, feature-directory, file-splitting, and transport-boundary conventions
+│   │   │   ├── frontend-architecture.md                 # Canonical: domain-folder, feature-directory, file-splitting, and transport-boundary conventions
 │   │   │   ├── frontend-loading-and-width-standards.md    # Canonical: Loading states, width-token system, accessibility-semantics rules
 │   │   │   ├── frontend-logging-and-error-handling.md  # Canonical: Environment-specific logging, Ant Design feedback, error mapping, React patterns
 │   │   │   ├── frontend-modal-patterns.md               # Modal component patterns

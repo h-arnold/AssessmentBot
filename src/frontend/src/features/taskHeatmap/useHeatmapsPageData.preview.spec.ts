@@ -51,7 +51,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return { ...actual, useQuery: mockUseQuery, useQueries: mockUseQueries };
 });
 
-vi.mock('@/hooks/usePageDataset', async (importOriginal) => {
+vi.mock('@/hooks/usePageDataset/usePageDataset', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return { ...actual, usePageDataset: mockUsePageDataset };
 });

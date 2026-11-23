@@ -1,23 +1,8 @@
 import { describe, expect, it } from 'vitest';
-
-/**
- * Loads the assignment-definition schema module under test.
- *
- * @returns {Promise<Record<string, unknown>>} The imported module.
- */
-async function loadAssignmentDefinitionSchemas(): Promise<Record<string, unknown>> {
-  return import('./assignmentDefinition.zod');
-}
-
-/**
- * Casts an unknown schema export to a parser-compatible facade.
- *
- * @param {unknown} schemaExport Schema export under test.
- * @returns {{ parse: (input: unknown) => unknown }} Parser facade.
- */
-function asParserSchema(schemaExport: unknown): { parse: (input: unknown) => unknown } {
-  return schemaExport as { parse: (input: unknown) => unknown };
-}
+import {
+  asParserSchema,
+  loadAssignmentDefinitionSchemas,
+} from '@/test/assignmentDefinition/assignmentDefinitionTestFixtures';
 
 describe('UpsertAssignmentDefinitionRequestSchema stale recovery fields', () => {
   const recoveryBase = {

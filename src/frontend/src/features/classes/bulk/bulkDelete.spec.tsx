@@ -113,7 +113,7 @@ describe('BulkDeleteModal', () => {
  * @returns {Promise<void>} Completion signal.
  */
 async function renderPanel() {
-  const { ClassesManagementPanel } = await import('../ClassesManagementPanel');
+  const { ClassesManagementPanel } = await import('../ClassesManagementPanel/ClassesManagementPanel');
   return renderWithFrontendProviders(<ClassesManagementPanel />);
 }
 

@@ -5,7 +5,7 @@ import { BackendSettingsPanel } from './BackendSettingsPanel';
 import type { BackendSettingsForm } from './backendSettingsForm.zod';
 import type * as BackendSettingsFieldDescriptors from './backendSettingsFieldDescriptors';
 import { BackendSettingsFormSchema } from './backendSettingsForm.zod';
-import type { useBackendSettings } from './useBackendSettings';
+import type { useBackendSettings } from './useBackendSettings/useBackendSettings';
 
 type BackendSettingsPanelHookState = ReturnType<typeof useBackendSettings>;
 
@@ -61,7 +61,7 @@ const { bypassBackendSettingsFieldValidation } = vi.hoisted(() => {
 const slowPanelInteractionTimeoutMs = 30_000;
 const NON_STRING_PATH_SEGMENT = 7;
 
-vi.mock('./useBackendSettings', () => {
+vi.mock('./useBackendSettings/useBackendSettings', () => {
   return {
     useBackendSettings: useBackendSettingsMock,
   };

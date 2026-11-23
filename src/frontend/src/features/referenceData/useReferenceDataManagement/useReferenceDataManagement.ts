@@ -1,0 +1,452 @@
+/**
+ * Shared hook for reference-data management modal orchestration.
+ *
+ * Extracts duplicated state management, handler factories, query orchestration,
+ * and dialog rendering logic from ManageCohortsModal and ManageYearGroupsModal.
+ *
+ * This hook is generic over T extends { key: string; name: string } to support any reference-data
+ * entity type (Cohort, YearGroup, etc.) while preserving type safety.
+ */
+
+import React, { useEffect, useState, useCallback, useMemo, type ReactElement } from 'react';
+import { Alert, Form } from 'antd';
+import {
+  useQuery,
+  useQueryClient,
+  type QueryKey,
+} from '@tanstack/react-query';
+import {
+  clearPersistedBlockingLoadError,
+  getDeleteErrorMessage,
+  getPersistedBlockingLoadError,
+  getReferenceDataBlockingLoadErrorQueryKey,
+  getReferenceDataLoadError,
+  isInUseError,
+  hasRefetchedRequiredReferenceDataQuery,
+  setPersistedBlockingLoadError,
+  type BlockingLoadErrorState,
+} from '../manageReferenceDataHelpers';
+import type { ReferenceDataFormValues } from '../manageReferenceDataDialogs';
+import {
+  DefaultReferenceDataDeleteDialogRenderer,
+  DefaultReferenceDataFormDialogRenderer,
+} from '../manageReferenceDataDialogs';
+import {
+  type DeleteDialogProperties,
+  type DeleteDialogState,
+  type FormDialogProperties,
+  type FormMode,
+  type ReferenceDataManagementConfig,
+  type ReferenceDataManagementResult,
+} from './useReferenceDataManagement.types';
+
+/**
+ * Initial state for the delete dialog.
+ */
+const INITIAL_DELETE_STATE: DeleteDialogState<never> = {
+  open: false,
+  entity: null,
+  error: null,
+  blocked: false,
+  submitting: false,
+} as const;
+
+// ============================================================================
+// Hook Implementation
+// ============================================================================
+
+/**
+ * Hook for managing reference-data CRUD operations with shared orchestration logic.
+ *
+ * This hook extracts all duplicated state management, handler factories, query orchestration,
+ * and dialog rendering from ManageCohortsModal and ManageYearGroupsModal.
+ *
+ * @param {ReferenceDataManagementConfig<T>} config Configuration object for the hook.
+ * @returns {ReferenceDataManagementResult<T>} ReferenceDataManagementResult containing state, derived UI elements, and handlers.
+ */
+export function useReferenceDataManagement<T extends { key: string; name: string }>(
+  config: ReferenceDataManagementConfig<T>
+): ReferenceDataManagementResult<T> {
+  const queryClient = useQueryClient();
+
+  // Primary query for fetching the reference data entities
+  const entitiesQuery = useQuery<T[]>({ ...config.queryOptions });
+  // Extract queryKey from the query for use in refetch operations
+  // We use a type assertion to preserve the specific query key type
+  const queryKeyForRefetch = config.queryOptions.queryKey as QueryKey;
+  const entities = entitiesQuery.data ?? [];
+  const isInitialLoading = entitiesQuery.isPending && entitiesQuery.data === undefined;
+  const dataUpdatedAt = entitiesQuery.dataUpdatedAt;
+
+  // Blocking load error query (fail-closed safety mechanism)
+  const blockingLoadErrorQuery = useQuery({
+    enabled: false,
+    queryFn: () => getPersistedBlockingLoadError(queryClient, config.entityKey),
+    queryKey: getReferenceDataBlockingLoadErrorQueryKey(config.entityKey),
+  });
+  const blockingLoadError = blockingLoadErrorQuery.data ?? null;
+  const isRefreshing = !isInitialLoading && entitiesQuery.isFetching;
+
+  // Blocking load error cleanup useEffect
+  // Clears persisted blocking errors when fresh data is available
+  useEffect(() => {
+    if (blockingLoadError === null || dataUpdatedAt <= blockingLoadError.dataUpdatedAt) {
+      return;
+    }
+
+    clearPersistedBlockingLoadError(queryClient, config.entityKey);
+  }, [blockingLoadError, dataUpdatedAt, queryClient, config.entityKey]);
+
+  // State management
+  const [form] = Form.useForm<ReferenceDataFormValues>();
+  const [formMode, setFormMode] = useState<FormMode>(null);
+  const [editingEntity, setEditingEntity] = useState<T | null>(null);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [toggleError, setToggleError] = useState<string | null>(null);
+  const [deleteState, setDeleteState] = useState<DeleteDialogState<T>>(INITIAL_DELETE_STATE);
+
+  // Derived load error state
+  const loadError = getReferenceDataLoadError(
+    entitiesQuery,
+    blockingLoadError,
+    dataUpdatedAt,
+    config.loadFailureCopy
+  );
+
+  // ---------------------------------------------------------------------------
+  // Form Dialog Title
+  // ---------------------------------------------------------------------------
+
+  const formDialogTitle = useMemo((): string => {
+    if (formMode === null) {
+      return '';
+    }
+    return formMode === 'create' ? `Create ${config.entityLabel}` : `Edit ${config.entityLabel}`;
+  }, [formMode, config.entityLabel]);
+
+  // ---------------------------------------------------------------------------
+  // Handler Factories
+  // ---------------------------------------------------------------------------
+
+  const closeFormDialog = useCallback((): void => {
+    const wasFormOpen = formMode !== null;
+
+    setFormMode(null);
+    setEditingEntity(null);
+    setFormError(null);
+    setFormSubmitting(false);
+
+    if (wasFormOpen) {
+      form.resetFields();
+    }
+  }, [form, formMode]);
+
+  const openCreateForm = useCallback((): void => {
+    closeFormDialog();
+    setDeleteState(INITIAL_DELETE_STATE);
+    setEditingEntity(null);
+    setFormError(null);
+    // Standardised behaviour: always reset form fields on openCreateForm
+    form.resetFields();
+    setFormMode('create');
+  }, [closeFormDialog, form]);
+
+  const openEditForm = useCallback(
+    (entity: T): void => {
+      closeFormDialog();
+      setDeleteState(INITIAL_DELETE_STATE);
+      setEditingEntity(entity);
+      setFormError(null);
+      setFormMode('edit');
+    },
+    [closeFormDialog]
+  );
+
+  const handleModalClose = useCallback((): void => {
+    closeFormDialog();
+    setDeleteState(INITIAL_DELETE_STATE);
+    setToggleError(null);
+  }, [closeFormDialog]);
+
+  const handleRequiredRefreshFailure = useCallback((): void => {
+    closeFormDialog();
+    setDeleteState(INITIAL_DELETE_STATE);
+    setToggleError(null);
+
+    const nextBlockingLoadError: BlockingLoadErrorState = {
+      dataUpdatedAt,
+      message: config.loadFailureCopy,
+    };
+
+    setPersistedBlockingLoadError(queryClient, config.entityKey, nextBlockingLoadError);
+  }, [closeFormDialog, dataUpdatedAt, queryClient, config.entityKey, config.loadFailureCopy]);
+
+  // Form finish handler
+  const handleFormFinish = useCallback(
+    async (values: ReferenceDataFormValues): Promise<void> => {
+      setFormSubmitting(true);
+      setFormError(null);
+
+      try {
+        if (formMode === 'create') {
+          // Create new entity - values contains form data, we need to construct the record
+          // The form values only contain 'name', but the entity may have other fields
+          // We spread the values and let the service handle the conversion
+          await config.createService({ record: values as unknown as Omit<T, 'key'> });
+        } else {
+          if (editingEntity === null) {
+            throw new Error(`Unable to save the ${config.entityLabel}.`);
+          }
+
+          // Update existing entity - preserve all fields from existing entity
+          // and merge with form values
+          const { key, ...entityWithoutKey } = editingEntity;
+          const updatedRecord: Omit<T, 'key'> = {
+            ...entityWithoutKey,
+            ...(values as unknown as Partial<T>),
+          };
+
+          await config.updateService({
+            key,
+            record: updatedRecord,
+          });
+        }
+
+        const hasRefreshSucceeded = await hasRefetchedRequiredReferenceDataQuery(
+          queryClient,
+          queryKeyForRefetch
+        );
+
+        if (!hasRefreshSucceeded) {
+          handleRequiredRefreshFailure();
+          return;
+        }
+
+        closeFormDialog();
+      } catch (error: unknown) {
+        setFormError(
+          error instanceof Error ? error.message : `Unable to save the ${config.entityLabel}.`
+        );
+      } finally {
+        setFormSubmitting(false);
+      }
+    },
+    [
+      formMode,
+      editingEntity,
+      config,
+      queryClient,
+      queryKeyForRefetch,
+      handleRequiredRefreshFailure,
+      closeFormDialog,
+    ]
+  );
+
+  // Delete confirm handler
+  const handleDeleteConfirm = useCallback(async (): Promise<void> => {
+    if (deleteState.entity === null) {
+      return;
+    }
+
+    setDeleteState((previous) => ({ ...previous, submitting: true, error: null }));
+
+    try {
+      await config.deleteService({ key: deleteState.entity.key });
+      const hasRefreshSucceeded = await hasRefetchedRequiredReferenceDataQuery(
+        queryClient,
+        queryKeyForRefetch
+      );
+
+      if (!hasRefreshSucceeded) {
+        handleRequiredRefreshFailure();
+        return;
+      }
+
+      setDeleteState(INITIAL_DELETE_STATE);
+    } catch (error: unknown) {
+      const isBlocked = isInUseError(error);
+
+      setDeleteState((previous) => {
+        return {
+          ...previous,
+          submitting: false,
+          error: getDeleteErrorMessage(error, isBlocked, config.entityLabel),
+          blocked: isBlocked,
+        };
+      });
+    }
+  }, [deleteState.entity, config, queryClient, queryKeyForRefetch, handleRequiredRefreshFailure]);
+
+  // Delete dialog handler
+  const openDeleteDialog = useCallback(
+    (entity: T): void => {
+      closeFormDialog();
+      setDeleteState({
+        open: true,
+        entity,
+        error: null,
+        blocked: false,
+        submitting: false,
+      });
+    },
+    [closeFormDialog]
+  );
+
+  // Toggle active handler (optional, only when supportsToggleActive is true)
+  const handleToggleActive = useCallback(
+    async (entity: T, isActive: boolean): Promise<void> => {
+      if (!config.supportsToggleActive || !config.toggleService) {
+        return;
+      }
+
+      setToggleError(null);
+
+      try {
+        await config.toggleService({ entity, active: isActive });
+        const hasRefreshSucceeded = await hasRefetchedRequiredReferenceDataQuery(
+          queryClient,
+          queryKeyForRefetch
+        );
+
+        if (!hasRefreshSucceeded) {
+          handleRequiredRefreshFailure();
+          return;
+        }
+      } catch (error: unknown) {
+        setToggleError(
+          error instanceof Error
+            ? error.message
+            : `Unable to update the ${config.entityLabel} active state.`
+        );
+      }
+    },
+    [config, queryClient, queryKeyForRefetch, handleRequiredRefreshFailure]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Default Dialog Renderers
+  // ---------------------------------------------------------------------------
+
+  // Default form dialog renderer
+  const defaultRenderFormDialog = useCallback(
+    (properties: FormDialogProperties<T>): ReactElement | null => {
+      return DefaultReferenceDataFormDialogRenderer(
+        config.formDialogLabelId,
+        config.formValidationMessage,
+        properties
+      );
+    },
+    [config.formDialogLabelId, config.formValidationMessage]
+  );
+
+  // Default delete dialog renderer
+  const defaultRenderDeleteDialog = useCallback(
+    (properties: DeleteDialogProperties<T>): ReactElement | null => {
+      return DefaultReferenceDataDeleteDialogRenderer(
+        config.deleteDialogLabelId,
+        config.deleteDialogTitle,
+        config.entityLabel,
+        properties
+      );
+    },
+    [config.deleteDialogLabelId, config.deleteDialogTitle, config.entityLabel]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Dialog Rendering
+  // ---------------------------------------------------------------------------
+
+  const inlineDialog = useMemo((): ReactElement | null => {
+    // Use custom renderers if provided, otherwise use defaults
+    const renderFormDialogFunction = config.renderFormDialog ?? defaultRenderFormDialog;
+    const renderDeleteDialogFunction = config.renderDeleteDialog ?? defaultRenderDeleteDialog;
+
+    const formDialog = renderFormDialogFunction({
+      editingEntity,
+      form,
+      formDialogTitle,
+      formError,
+      formMode,
+      formSubmitting,
+      onClose: closeFormDialog,
+      onFinish: handleFormFinish,
+      onOk: () => {
+        form.submit();
+      },
+    });
+
+    // Form dialog takes precedence over delete dialog
+    if (formDialog !== null) {
+      return formDialog;
+    }
+    return renderDeleteDialogFunction({
+      deleteState,
+      onClose: () => {
+        setDeleteState(INITIAL_DELETE_STATE);
+      },
+      onConfirm: handleDeleteConfirm,
+    });
+  }, [
+    config,
+    editingEntity,
+    form,
+    formDialogTitle,
+    formError,
+    formMode,
+    formSubmitting,
+    closeFormDialog,
+    handleFormFinish,
+    deleteState,
+    handleDeleteConfirm,
+    defaultRenderFormDialog,
+    defaultRenderDeleteDialog,
+  ]);
+
+  const inlineAlert = useMemo((): ReactElement | null => {
+    if (toggleError === null) {
+      return null;
+    }
+    // React 19 reserves the `type` prop on JSX elements; use createElement to avoid the conflict
+    const alertType = 'error' as const;
+    const properties = { description: toggleError, type: alertType, showIcon: true } as const;
+    return React.createElement(Alert, properties);
+  }, [toggleError]);
+
+  // ---------------------------------------------------------------------------
+  // Return result
+  // ---------------------------------------------------------------------------
+
+  return {
+    // State
+    formMode,
+    editingEntity,
+    form,
+    formSubmitting,
+    formError,
+    toggleError,
+    deleteState,
+    loadError,
+    isInitialLoading,
+    isRefreshing,
+    rows: entities,
+
+    // Derived UI elements
+    inlineDialog,
+    inlineAlert,
+
+    // Handlers
+    openCreateForm,
+    openEditForm,
+    openDeleteDialog,
+    closeFormDialog,
+    handleModalClose,
+    handleFormFinish,
+    handleDeleteConfirm,
+    // Only include handleToggleActive if toggle is supported
+    ...(config.supportsToggleActive && { handleToggleActive }),
+  };
+}
+
+export type { ReferenceDataFormValues } from '../manageReferenceDataDialogs';
+export type { ReferenceDataTrustBoundary } from '../manageReferenceDataHelpers';

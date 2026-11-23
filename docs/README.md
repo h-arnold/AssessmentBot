@@ -49,7 +49,7 @@ Technical documentation for developers contributing to the Assessment Bot codeba
 
 ### Frontend
 
-- [**Frontend Architecture**](./developer/frontend/frontend-architecture.md) – Service-folder, feature-directory, file-splitting, and transport-boundary conventions
+- [**Frontend Architecture**](./developer/frontend/frontend-architecture.md) – Domain-folder, feature-directory, file-splitting, and transport-boundary conventions
 - [**Data Analysis Architecture**](./developer/frontend/data-analysis-architecture.md) – Analyser pipeline and heatmap projection architecture
 - [**Frontend Testing**](./developer/frontend/frontend-testing.md) – Guide to frontend unit and E2E testing
 - [**Frontend Logging and Error Handling**](./developer/frontend/frontend-logging-and-error-handling.md) – Canonical standards for frontend diagnostics, error mapping, and user-facing feedback

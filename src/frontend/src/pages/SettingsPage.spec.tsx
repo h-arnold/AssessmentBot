@@ -43,7 +43,7 @@ const { useBackendSettingsMock } = vi.hoisted(() => {
   };
 });
 
-vi.mock('../features/classes/ClassesManagementPanel', () => {
+vi.mock('../features/classes/ClassesManagementPanel/ClassesManagementPanel', () => {
   return {
     ClassesManagementPanel() {
       const [selectedRows, setSelectedRows] = React.useState(0);
@@ -75,7 +75,7 @@ vi.mock('../features/classes/ClassesManagementPanel', () => {
   };
 });
 
-vi.mock('../features/settings/backend/useBackendSettings', () => {
+vi.mock('../features/settings/backend/useBackendSettings/useBackendSettings', () => {
   return {
     useBackendSettings: useBackendSettingsMock,
   };

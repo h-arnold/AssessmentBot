@@ -7,7 +7,7 @@ import {
 } from '@/theme/spacing';
 import { AssignmentDiscardConfirm } from '@/features/assignmentWizard/AssignmentDiscardConfirm';
 import { AssignmentDefinitionWizardReviewContent } from '@/features/assignmentWizard/AssignmentDefinitionWizardReviewContent';
-import { ManageTopicsModal } from '@/features/referenceData/ManageTopicsModal';
+import { ManageTopicsModal } from '@/features/referenceData/ManageTopicsModal/ManageTopicsModal';
 import { ManageYearGroupsModal } from '@/features/referenceData/ManageYearGroupsModal';
 import { RecoveryReviewSkeleton } from './RecoveryReviewSkeleton';
 import {

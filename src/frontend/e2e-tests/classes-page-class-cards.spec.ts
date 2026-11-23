@@ -2,6 +2,10 @@ import { expect, test } from '@playwright/test';
 import { installRuntimeMock } from './shared/endToEndRuntimeMocks';
 import {
   ALPHABETICAL_ORDER_CLASS_PARTIALS,
+  TIE_BREAK_CLASS_PARTIALS,
+  toPlainClassPartials,
+} from '@/test/classes/classesPageTestHelpers';
+import {
   CARD_INDEX_FIRST,
   CARD_INDEX_SECOND,
   CARD_INDEX_THIRD,
@@ -10,11 +14,9 @@ import {
   EXPECTED_BUTTONS_PER_CARD,
   EXPECTED_TIE_BREAK_CARDS_COUNT,
   EXPECTED_TOTAL_CARDS_COUNT,
-  TIE_BREAK_CLASS_PARTIALS,
   assertCardButtonStates,
   createClassesOrderScenario,
   createClassesScenario,
-  toPlainClassPartials,
 } from './helpers/classes-page-end-to-end-helpers';
 import { navigateAndExpandAllPanels } from './helpers/classes-page-viewport-layout';
 

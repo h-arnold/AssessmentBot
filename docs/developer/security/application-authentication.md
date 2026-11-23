@@ -318,7 +318,7 @@ secrets in log output and mandates `ABLogger` for all backend code — see
 
 ## Frontend auth surfaces
 
-`AppAuthGate` (`src/frontend/src/features/auth/AppAuthGate.tsx`) is a blocking, fail-closed gate
+`AppAuthGate` (`src/frontend/src/features/auth/AppAuthGate/AppAuthGate.tsx`) is a blocking, fail-closed gate
 that resolves access in three ordered stages before rendering its protected children (the
 dashboard, including `AuthStatusCard`). The first-admin bootstrap claim fires through the
 gate-exempt `getApplicationAccess` path, distinct from the OAuth-only `hasScriptAuthorisation`
@@ -353,11 +353,11 @@ provider but does not fail the shell closed or block admission.
   service call in `src/frontend/src/services/authService/authService.ts`) and does not observe
   `FORBIDDEN` — the group/user-denial case is owned by the application-access gate.
 - **Role delivery.** `getApplicationAccess` returns the caller's `role`. `AppAuthGate` lifts it
-  into an `ApplicationAccessContext` (`src/frontend/src/features/auth/AppAuthGate.tsx`) so
+  into an `ApplicationAccessContext` (`src/frontend/src/features/auth/AppAuthGate/AppAuthGate.tsx`) so
   descendants — most notably `SettingsPage` — can gate admin-only surfaces on `role: 'admin'`.
   `SettingsPage` renders the **Authentication tab** only for admins.
 - **`AuthenticationSettingsTab`**
-  (`src/frontend/src/features/settings/authentication/AuthenticationSettingsTab.tsx`) is the
+  (`src/frontend/src/features/settings/authentication/AuthenticationSettingsTab/AuthenticationSettingsTab.tsx`) is the
   admin-only management UI. It shows a provider card (mode `Select` plus, for Google Groups,
   the compulsory-once-set group email and a membership note) and, for the Script Properties
   provider, a staged user table with add/remove and role changes. A single atomic Save carries

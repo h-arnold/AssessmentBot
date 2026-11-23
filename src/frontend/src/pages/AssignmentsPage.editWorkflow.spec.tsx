@@ -3,11 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '../query/queryKeys';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
+import { setTextboxValue } from '../test/assignmentDefinition/wizardTestHelpers';
 import {
-  setTextboxValue,
   createStartupWarmupState,
   createReadyStartupWarmupState,
-} from '../test/assignmentDefinition/wizardTestHelpers';
+} from '../test/startupWarmupFixtures';
 import {
   mockTopics,
   mockYearGroups,
@@ -16,7 +16,7 @@ import {
   readyAssignmentPartialRows,
 } from '../test/assignmentDefinition/assignmentDefinitionTestFixtures';
 import type { AssignmentDefinitionPartialRow } from '../test/assignmentDefinition/assignmentDefinitionTestFixtures';
-import { openUpdateAssignmentModal } from '../test/assignmentDefinition/assignmentsPageTestHelpers';
+import { openUpdateAssignmentModal } from '../test/assignmentDefinition/assignmentsPageModalHelpers';
 import { AssignmentsPage } from './AssignmentsPage';
 
 const {

@@ -1,7 +1,7 @@
 import { act, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
-import { createStartupWarmupState } from '@/test/assignmentDefinition/wizardTestHelpers';
+import { createStartupWarmupState } from '@/test/startupWarmupFixtures';
 import {
   mockTopics,
   mockYearGroups,

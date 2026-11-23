@@ -3,11 +3,16 @@
  * modal workflows.
  *
  * Extracted here to avoid duplicating the same form and delete confirmation
- * markup across both modal modules. Keep this file local to the classes feature.
+ * markup across both modal modules. Keep this file local to the reference-data feature.
  */
 
+import { createElement, type ReactElement } from 'react';
 import { Alert, Button, Form, Input, Space } from 'antd';
 import { InlineDialog } from './InlineDialog';
+import type {
+  DeleteDialogProperties,
+  FormDialogProperties,
+} from './useReferenceDataManagement/useReferenceDataManagement.types';
 
 /**
  * Form values for reference data entities.
@@ -121,4 +126,68 @@ export function ReferenceDataDeleteDialog(properties: ReferenceDataDeleteDialogP
       </Space>
     </InlineDialog>
   );
+}
+
+/**
+ * Renders the default create/edit inline dialog from the management hook's form-dialog properties.
+ *
+ * @param {string} labelId Accessible label id for the inline dialog.
+ * @param {string} validationMessage Validation message for the required name field.
+ * @param {FormDialogProperties<T>} properties Form dialog state and callbacks from the management hook.
+ * @returns {ReactElement | null} The inline form dialog, or null when no form is open.
+ */
+export function DefaultReferenceDataFormDialogRenderer<T extends { key: string; name: string }>(
+  labelId: string,
+  validationMessage: string,
+  properties: FormDialogProperties<T>
+): ReactElement | null {
+  if (properties.formMode === null) {
+    return null;
+  }
+
+  return createElement(ReferenceDataFormDialog, {
+    formKey: properties.editingEntity?.key ?? 'create',
+    form: properties.form,
+    initialName: properties.editingEntity?.name ?? null,
+    labelId,
+    title: properties.formDialogTitle,
+    formError: properties.formError,
+    formSubmitting: properties.formSubmitting,
+    validationMessage,
+    onClose: properties.onClose,
+    onFinish: properties.onFinish,
+    onOk: properties.onOk,
+  });
+}
+
+/**
+ * Renders the default delete confirmation inline dialog from the management hook's delete state.
+ *
+ * @param {string} labelId Accessible label id for the inline dialog.
+ * @param {string} title Title for the delete confirmation dialog.
+ * @param {string} entityLabel Singular lower-case label for the entity being deleted.
+ * @param {DeleteDialogProperties<T>} properties Delete dialog state and callbacks from the management hook.
+ * @returns {ReactElement | null} The inline delete dialog, or null when it is closed.
+ */
+export function DefaultReferenceDataDeleteDialogRenderer<T extends { key: string; name: string }>(
+  labelId: string,
+  title: string,
+  entityLabel: string,
+  properties: DeleteDialogProperties<T>
+): ReactElement | null {
+  if (!properties.deleteState.open) {
+    return null;
+  }
+
+  return createElement(ReferenceDataDeleteDialog, {
+    blocked: properties.deleteState.blocked,
+    entityLabel,
+    entityName: properties.deleteState.entity?.name ?? null,
+    error: properties.deleteState.error,
+    labelId,
+    submitting: properties.deleteState.submitting,
+    title,
+    onClose: properties.onClose,
+    onConfirm: properties.onConfirm,
+  });
 }

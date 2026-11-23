@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client';
-import App from './App';
-import { AppAuthGate } from './features/auth/AppAuthGate';
+import App from './App/App';
+import { AppAuthGate } from './features/auth/AppAuthGate/AppAuthGate';
 import { StrictMode } from './StrictMode';
 import './index.css';
 import { AppQueryProvider } from './query/AppQueryProvider';

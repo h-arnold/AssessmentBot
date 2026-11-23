@@ -10,7 +10,7 @@ import {
   isPageSurfaceBusy,
   usePageDataset,
   type PageDatasetState,
-} from '@/hooks/usePageDataset';
+} from '@/hooks/usePageDataset/usePageDataset';
 import { logFrontendError } from '@/logging/frontendLogger';
 import { queryKeys } from '@/query/queryKeys';
 import { refetchAfterStaleInvalidate } from '@/query/queryInvalidationHelpers';
