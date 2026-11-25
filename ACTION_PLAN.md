@@ -183,6 +183,11 @@ follow-up` subsection.
   29,634 edges and rewrote the tracked `graphify-out/` artifacts (`graph.json`, `graph.html`,
   `GRAPH_REPORT.md`, `manifest.json`, `.graphify_labels.json`). Local build caches and the dated
   backup directory remain untracked; they are not committed.
+- **Commit record:** `32a81015` — `feat(backend): add request-scoped correlation ID to assessment
+runs` — on branch `feat/progress-tracker-api-polling`, pushed successfully to
+  `origin/feat/progress-tracker-api-polling` (`b814ab1d..32a81015`). Earlier branch commit
+  `b814ab1d` (graphify viewer) was already pushed by the user and is retained in history.
+  Pre-commit hooks (Prettier, backend lint, `typecheck:all`) passed.
 - **Deviations from plan:** Validation and propagation are conditional on `requestId !== undefined`
   so untouched direct-call tests and legacy non-run call sites keep working with the unkeyed key.
   On the real dispatch path the value is always supplied and validated. GREEN reviewer classified
