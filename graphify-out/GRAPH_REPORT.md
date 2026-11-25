@@ -1,17 +1,17 @@
 # Graph Report - clever-comet  (2026-11-25)
 
 ## Corpus Check
-- 1694 files · ~1,779,356 words
+- 1694 files · ~1,779,758 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 15 file(s) not represented in the graph (top: (none) 9, .css 3, .jsonc 1)
 
 ## Summary
-- 11967 nodes · 29740 edges · 603 communities (322 shown, 281 thin omitted)
+- 11967 nodes · 29742 edges · 603 communities (322 shown, 281 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 872 edges (avg confidence: 0.86)
 - Token cost: 900 input · 1,200 output
 
 ## Graph Freshness
-- Built from commit: `c0a071ab`
+- Built from commit: `8fb68abb`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1959,11 +1959,11 @@ _Questions this graph is uniquely positioned to answer:_
   _457 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `abclassMetadataFiveFieldShape.test.js` be split into smaller, more focused modules?**
   _Cohesion score 0.08064516129032258 - nodes in this community are weakly interconnected._
-- **Why does `antd` connect `antd` to `Topic Cohort Management`, `AssessTaskModal.test-utilities.tsx`, `TaskHeatmapPage.tsx`, `useBackendSettings.ts`, `Assess Task Flow Hooks`, `@tanstack/react-query`, `BackendSettingsPanel.tsx`, `useClassesManagement.ts`, `Post Analysis Feedback Tasks`, `ClassesPage.tsx`, `TaskHeatmapPage.tsx`, `HeatmapSelectionBar.selectAllHeader.spec.tsx`, `taskHeatmapTableTestHelpers.ts`, `react`, `Classes Table`, `Classes Toolbar`, `ClassesManagementWorkflowContent.tsx`, `Frontend Devdependencies`, `antd`, `sharedQueries.ts`, `classPageAdapter.zod.ts`, `@testing-library/react`, `postAnalysisFeedbackTestSupport.tsx`, `createComputedMetricResult`, `AppThemeShell.tsx`, `Classes Management Panel`, `AssignmentsManagementSurface.tsx`, `Backend Settings`?**
+- **Why does `@testing-library/react` connect `@testing-library/react` to `Topic Cohort Management`, `fixtures.ts`, `AssessTaskModal.test-utilities.tsx`, `appSpecHarness.ts`, `TaskHeatmapPage.tsx`, `AssignmentDefinitionWizardModal.test-harness.ts`, `antd`, `Assess Task Flow Hooks`, `useHeatmapsPageData.ts`, `ClassesPage.refresh.spec.tsx`, `@tanstack/react-query`, `useClassesManagement.ts`, `Class Page Data Hooks`, `Post Analysis Feedback Tasks`, `TaskHeatmapPage.tsx`, `Classes Management View`, `Section1 Cli Contract`, `classesPageTestHelpers.ts`, `useHeatmapsPageData.deferredSelection.spec.ts`, `HeatmapSelectionBar.selectAllHeader.spec.tsx`, `taskHeatmapTableTestHelpers.ts`, `react`, `Classes Table`, `ClassesManagementPanel.bulkMetadataFailure.spec.tsx`, `Classes Toolbar`, `ClassesManagementWorkflowContent.tsx`, `Frontend Devdependencies`, `Mutation Summary`, `antd`, `sharedQueries.ts`, `classPageAdapter.zod.ts`, `postAnalysisFeedbackTestSupport.tsx`, `createComputedMetricResult`, `AppThemeShell.tsx`, `Classes Management Panel`, `Query Foundation Query`, `metadataRefreshFixtures.ts`, `dataAnalysis.zod.ts`, `BackendSettingsPanel.spec.tsx`, `AssignmentsManagementSurface.tsx`, `Backend Settings`?**
   _High betweenness centrality (0.011) - this node is a cross-community bridge._
 - **Should `task-preview-source-link-fixtures.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.03004337247434677 - nodes in this community are weakly interconnected._
-- **Why does `Assignment` connect `Assignment` to `Assignment Controller`, `assignmentRehydrationCurrentSupport.js`, `LLM Request Manager Tests`, `ABClass Persistence Controller`, `AssignmentDefinition`, `generateSyntheticAnalysisGraph`, `currentAssignmentJson`, `assignmentLegacyReadPreparationSupport.js`, `loadBackendModelInputs`?**
-  _High betweenness centrality (0.010) - this node is a cross-community bridge._
 - **Should `ref_vitest` be split into smaller, more focused modules?**
   _Cohesion score 0.019807858376511226 - nodes in this community are weakly interconnected._
+- **Should `Topic Cohort Management` be split into smaller, more focused modules?**
+  _Cohesion score 0.03427293064876957 - nodes in this community are weakly interconnected._

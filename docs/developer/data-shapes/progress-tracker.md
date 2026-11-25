@@ -159,16 +159,16 @@ see [assignment.md § `startAssessmentRun`](assignment.md#startassessmentrun-wri
 
 ## Shared helpers
 
-| Helper                                                                          | Decision | Owning path                                      | Rationale                                                                    | Status         |
-| ------------------------------------------------------------------------------- | -------- | ------------------------------------------------ | ---------------------------------------------------------------------------- | -------------- |
-| Keyed property access (`readAll`, `write`, `delete`, `parse`)                   | `new`    | `src/backend/Utils/01_ProgressTrackerStore.js`   | Isolates key derivation, serialisation and prefix-only key filtering.        | `Implemented`  |
-| Cleanup coordinator (`schedule`, `sweep`, `rearm`)                              | `new`    | `src/backend/Utils/02_ProgressTrackerCleanup.js` | Owns cache/marker dedupe and terminal-only deletion.                         | `Implemented`  |
-| `ApiRequestContext` (`set`, `get`, `resetForTests`)                             | `new`    | `src/backend/z_Api/z_apiHandler.js`              | Exposes the dispatch ID to handlers without changing all handler signatures. | `Implemented`  |
-| `CacheManager` with supplied cache + `remove(key)`                              | `extend` | `src/backend/RequestHandlers/CacheManager.js`    | Supports user cache and clears the pending-cleanup flag after each run.      | `Implemented`  |
-| `GASPropertiesUtils`                                                            | `reuse`  | `src/backend/Utils/00_GASPropertiesUtils.js`     | Canonical PropertiesService entry point.                                     | Already exists |
-| `LockService.getUserLock()`                                                     | `reuse`  | GAS service                                      | Same dedupe pattern as `requestStore.js`.                                    | Already exists |
-| `TriggerController.createTimeBasedTrigger()` with `skipTooManyTriggersRecovery` | `extend` | `src/backend/Triggers/TriggerController.js`      | Prevents quota recovery from deleting assessment triggers.                   | `Implemented`  |
-| `TriggerController.storeTriggerContext()`                                       | `reuse`  | `src/backend/Triggers/TriggerController.js`      | Stores cleanup trigger context like assessment triggers.                     | Already exists |
+| Helper                                                                          | Decision | Owning path                                      | Rationale                                                                               | Status         |
+| ------------------------------------------------------------------------------- | -------- | ------------------------------------------------ | --------------------------------------------------------------------------------------- | -------------- |
+| Keyed property access (`readAll`, `write`, `delete`, `parse`)                   | `new`    | `src/backend/Utils/01_ProgressTrackerStore.js`   | Isolates key derivation, serialisation and prefix-only key filtering.                   | `Implemented`  |
+| Cleanup coordinator (`schedule`, `sweep`, `rearm`)                              | `new`    | `src/backend/Utils/02_ProgressTrackerCleanup.js` | Owns cache/marker dedupe and terminal-only deletion.                                    | `Implemented`  |
+| `ApiRequestContext` (`set`, `get`, `resetForTests`)                             | `new`    | `src/backend/z_Api/z_apiHandler.js`              | Exposes the dispatch ID to handlers without changing all handler signatures.            | `Implemented`  |
+| `CacheManager` with supplied cache + `remove(key)`                              | `extend` | `src/backend/RequestHandlers/CacheManager.js`    | Supports user cache and clears the pending-cleanup flag after each run.                 | `Implemented`  |
+| `GASPropertiesUtils`                                                            | `reuse`  | `src/backend/Utils/00_GASPropertiesUtils.js`     | Supplies the User Property store to the facade, cleanup coordinator and `getProgress_`. | Already exists |
+| `LockService.getUserLock()`                                                     | `reuse`  | GAS service                                      | Same dedupe pattern as `requestStore.js`.                                               | Already exists |
+| `TriggerController.createTimeBasedTrigger()` with `skipTooManyTriggersRecovery` | `extend` | `src/backend/Triggers/TriggerController.js`      | Prevents quota recovery from deleting assessment triggers.                              | `Implemented`  |
+| `TriggerController.storeTriggerContext()`                                       | `reuse`  | `src/backend/Triggers/TriggerController.js`      | Stores cleanup trigger context like assessment triggers.                                | Already exists |
 
 ---
 

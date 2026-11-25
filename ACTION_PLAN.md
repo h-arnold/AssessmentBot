@@ -2,10 +2,11 @@
 
 ## Delivery status
 
-- Current section: Section 5 — Frontend API surface (complete, pending gate and commit).
-- Current phase: Section 5 docs sync + plan compaction in parallel; RED and GREEN loops both PASSED
-  review with no findings. Section 4 is complete, compacted, gated, committed (`2acfae65`,
-  `e52fdd99`) and pushed.
+- Current section: Section 9 — Deferred nitpicks (complete, pending gate and commit). Sections 1-8
+  are complete, compacted, gated, committed and pushed (latest: `8fb68abb`).
+- Current phase: Section 9 delivery and review PASSED with no findings; docs sync is inherent to
+  the section (items 1-5 are the doc fixes); plan compaction applied. Next: regression gate,
+  graphify refresh, commit.
 - Branch: `feat/progress-tracker-api-polling`.
 - Regression session ID: `progresstracker-api-polling`.
 - Baseline gate: PASSED — 2026-11-25T10:23:32.661Z, `baseline/baseline.txt`, Overall Status GREEN,
@@ -835,40 +836,68 @@ keyed records` — on branch `feat/progress-tracker-api-polling`, pushed success
 
 ## Section 9 — Deferred nitpicks
 
-### Objective
+### Outcome (compacted)
 
-Fix the six user-approved deferred nitpicks recorded in
-`.opencode/scratchpad/progresstrackerrefactor-deferred-findings.md`.
+All six user-approved deferred nitpicks are closed; the review PASSED with no findings
+(evidence recorded in the Implementation notes below) and the nitpick dispositions in the
+deferred-findings ledger were updated. Closed as follows:
 
-### Constraints
+1. The validation wording in `docs/developer/data-shapes/assignment.md` and
+   `docs/developer/backend/api-layer.md` now describes the actual plain-object +
+   per-field `validateNonEmptyString` checks; no `requireParams` claim remains.
+2. The stale "(Not implemented)" Transport heading marker in
+   `docs/developer/data-shapes/progress-tracker.md` was already gone — the Section 8
+   rewrite removed it — so this item required no fix.
+3. The `GASPropertiesUtils` shared-helper row rationale in `docs/developer/data-shapes/progress-tracker.md` was replaced with plain wording.
+4. `getProgress()` was added to the File Index in `docs/developer/data-shapes/assignment.md`.
+5. The CacheManager bullet in `docs/developer/backend/singletons.md` now covers
+   `remove(key)` (logged, non-throwing) and the constructor-supplied cache client.
+6. The bare `delete globalThis.*` cleanup in
+   `tests/controllers/assignmentController.startAssessmentRun.test.js` was replaced with
+   the established `globalMockManager` save/restore pattern, with no assertion weakened.
 
-- Documentation items prefer minimal edits to the existing document; no new pages.
-- The test-harness fix must not weaken any assertion.
+Section checks passed: `npm run lint:backend:check` exit 0; focused vitest on the touched
+test file 5/5; `prettier --check` clean on all five touched files (four documentation files
+plus the touched test file). The section regression gate and the commit record are still to
+come and belong in the Implementation notes below.
 
-### Items
+### Retained for future work
 
-1. `docs/developer/data-shapes/assignment.md:399` and `docs/developer/backend/api-layer.md:596`:
-   align the validation description with the actual per-field `validateNonEmptyString` checks.
-2. `docs/developer/data-shapes/progress-tracker.md` Transport section: remove the stale
-   "(Not implemented)" heading marker around the startAssessmentRun response change.
-3. `docs/developer/data-shapes/progress-tracker.md` shared-helper row: replace the filler
-   rationale "Canonical PropertiesService entry point" with plain wording (note: Section 8's
-   docs sync rewrites this table row for `KEY_PREFIX`; apply this item after/rebased on it).
-4. `docs/developer/data-shapes/assignment.md` File Index: add the `getProgress()` entry.
-5. `docs/developer/backend/singletons.md:413-416`: extend the CacheManager bullet with
-   `remove(key)` and the constructor-supplied cache option.
-6. `tests/controllers/assignmentController.startAssessmentRun.test.js:119-129`: replace the bare
-   `delete globalThis.*` cleanup with the established save/restore or `globalMockManager`
-   pattern.
+This is the final delivery section, so almost nothing carries forward. The nitpicks ledger,
+`.opencode/scratchpad/progresstrackerrefactor-deferred-findings.md`, gained three
+out-of-scope observations during Section 9, all with disposition `disregarded`:
 
-### Required checks
+- `assignment.md:13` — the CacheManager header line omits `remove(key)`.
+- `singletons.md` — the "Auth and cache singletons" section structure and its TOC placement.
+- `assignmentController.startAssessmentRun.test.js:13-14` — the header comment about
+  controller validation.
 
-Backend lint (`lint:backend:check`), focused affected suites (the touched test file), and
-`typecheck:all` at the gate. Docs-only items need Prettier only.
+In addition, the controller-layer `requireParams` claim at `AssessmentFlow.md:83` was
+verified accurate (it describes a different layer from the transport handler), so it was
+left alone and is not a deferred finding.
 
 ### Implementation notes / deviations / follow-up
 
-- (recorded during delivery)
+- **Implementation notes:** All six user-approved nitpicks were closed as summarised above.
+  The review PASSED with no findings; evidence is at
+  `.opencode/scratchpad/review-section9-deferred-nitpicks.md`, and the ledger dispositions
+  for all six items were updated to resolved. Section checks passed: `npm run
+lint:backend:check` exit 0; focused vitest on the touched test file (5/5 passing);
+  `prettier --check` clean on all five touched files (four documentation files plus the
+  touched test file). Docs sync is inherent to this section — items 1-5 are the
+  documentation fixes themselves (minimal edits, no new pages), and the item 6 test-harness
+  change alters no documented behaviour — so no separate docs pass was needed.
+- **Deviations from plan:** none. Item 2 required no edit — its marker was already gone
+  after the Section 8 rewrite (verified during review) — and the `AssessmentFlow.md:83`
+  controller-layer `requireParams` claim was verified accurate for its layer and left
+  alone.
+- **Open record slots:** commit record is to be appended below by the orchestrator.
+- **Section regression gate:** PASSED — run at 2026-11-25 (session `progresstracker-api-polling`),
+  Overall Status GREEN, 8/8 checks passing, 0 regressions, 0 new failures, 0 fixes; report under
+  `.ts-regression-checker/reports/session-progresstracker-api-polling/`.
+- **Graphify refresh (§2.75):** `graphify update .` ran after the gate. Tracked `graphify-out/`
+  artifacts are committed with the section; untracked build caches remain uncommitted.
+- **Commit record:** record to follow.
 
 ---
 

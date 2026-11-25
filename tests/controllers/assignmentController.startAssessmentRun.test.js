@@ -15,6 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { saveGlobals, restoreGlobals } from '../helpers/globalMockManager.js';
 
 const DefinitionStaleError = require('#backend/Utils/ErrorTypes/DefinitionStaleError.js');
 
@@ -109,8 +110,18 @@ function loadAssignmentController() {
 
 describe('AssignmentController.startAssessmentRun', () => {
   let controller;
+  let savedGlobals;
 
   beforeEach(() => {
+    savedGlobals = saveGlobals([
+      'ABLogger',
+      'ProgressTracker',
+      'AssignmentDefinitionController',
+      'DriveManager',
+      'ABClassController',
+      'GASPropertiesUtils',
+      'TriggerController',
+    ]);
     setupStandardMocks();
     const AssignmentCtrl = loadAssignmentController();
     controller = new AssignmentCtrl();
@@ -118,14 +129,7 @@ describe('AssignmentController.startAssessmentRun', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    // Clean up globally installed mocks
-    delete globalThis.ABLogger;
-    delete globalThis.ProgressTracker;
-    delete globalThis.AssignmentDefinitionController;
-    delete globalThis.DriveManager;
-    delete globalThis.ABClassController;
-    delete globalThis.GASPropertiesUtils;
-    delete globalThis.TriggerController;
+    restoreGlobals(savedGlobals);
   });
 
   // ========================================================================

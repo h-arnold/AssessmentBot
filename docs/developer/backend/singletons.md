@@ -413,4 +413,4 @@ const apiKey = config.getApiKey();
 ### CacheManager generic methods
 
 - Owning path: `src/backend/RequestHandlers/CacheManager.js`
-- Exposes generic `get(key)` and `put(key, value, ttlSeconds)` methods. Generic methods handle JSON serialisation/deserialisation internally; `put()` requires an explicit TTL (no default — the AuthService passes its 6-hour TTL at the call site). Logging uses `ABLogger`.
+- Exposes generic `get(key)`, `put(key, value, ttlSeconds)` and `remove(key)` methods. Generic methods handle JSON serialisation/deserialisation internally; `put()` requires an explicit TTL (no default — the AuthService passes its 6-hour TTL at the call site). Removal failures are logged and `remove(key)` does not throw, like every other method. The constructor takes the cache client it wraps, defaulting to the script cache. Logging uses `ABLogger`.

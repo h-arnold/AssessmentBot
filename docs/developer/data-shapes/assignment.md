@@ -396,7 +396,6 @@ contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set 
     - Catches `AssignmentNotFoundError` and returns `null`.
   - `startAssessmentRun_()`:
     - Validates parameters is a plain object.
-    - `Validate.requireParams({ definitionKey, assignmentId, courseId }, 'startAssessmentRun')` — all required.
     - `Validate.validateNonEmptyString(...)` for each field.
     - When the dispatcher supplies a `requestId`, validates it with `Validate.validateNonEmptyString('requestId', requestId)`; a direct helper call with no ID takes the legacy controller path.
   - `throwAssignmentValidationError_()` — shared error factory for assignment validation failures.
@@ -509,7 +508,7 @@ Frontend:
   │       StartAssessmentRunResponseSchema, AssignmentDefinitionSchema,
   │       TaskDefinitionSchema (re-exports the component shapes below)
   ├── src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts
-  │     → getAssignment(), startAssessmentRun()
+  │     → getAssignment(), getProgress(), startAssessmentRun()
   └── src/frontend/src/services/googleClassrooms/classDetail/classDetailService.zod.ts
         → AssignmentPartialSchema, ClassFullSchema, ClassFullResponseSchema
 ```
