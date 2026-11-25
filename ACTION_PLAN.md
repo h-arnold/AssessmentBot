@@ -2,11 +2,9 @@
 
 ## Delivery status
 
-- Current section: Section 9 — Deferred nitpicks (complete, pending gate and commit). Sections 1-8
-  are complete, compacted, gated, committed and pushed (latest: `8fb68abb`).
-- Current phase: Section 9 delivery and review PASSED with no findings; docs sync is inherent to
-  the section (items 1-5 are the doc fixes); plan compaction applied. Next: regression gate,
-  graphify refresh, commit.
+- Current section: Section 9 — Deferred nitpicks (complete, gated, committed `c913d6b7`, pushed).
+  Sections 1-8 are complete, compacted, gated, committed and pushed (latest prior: `8fb68abb`).
+- Current phase: plan complete. All nine sections delivered; pending the final output record only.
 - Branch: `feat/progress-tracker-api-polling`.
 - Regression session ID: `progresstracker-api-polling`.
 - Baseline gate: PASSED — 2026-11-25T10:23:32.661Z, `baseline/baseline.txt`, Overall Status GREEN,
@@ -897,7 +895,11 @@ lint:backend:check` exit 0; focused vitest on the touched test file (5/5 passing
   `.ts-regression-checker/reports/session-progresstracker-api-polling/`.
 - **Graphify refresh (§2.75):** `graphify update .` ran after the gate. Tracked `graphify-out/`
   artifacts are committed with the section; untracked build caches remain uncommitted.
-- **Commit record:** record to follow.
+- **Commit record:** `c913d6b7` — `docs: close approved deferred nitpicks (Section 9)` — on
+  branch `feat/progress-tracker-api-polling`, pushed successfully to
+  `origin/feat/progress-tracker-api-polling` (`8fb68abb..c913d6b7`). Pre-commit hooks (Prettier,
+  backend lint, `typecheck:all`) passed. Includes the four docs, the touched test file, the
+  compacted plan, and the regenerated tracked `graphify-out/` artifacts.
 
 ---
 
