@@ -230,6 +230,7 @@ planning-artefact names in filenames, titles, headings or body content.
 │   │   │   ├── google-classrooms.md                   # Contract: GoogleClassrooms (upstream API passthrough)
 │   │   │   ├── reference-data.md                      # Contract: Reference Data (cohorts, year groups, assignment topics)
 │   │   │   ├── request-store.md                       # Contract: RequestStore (internal backend API request tracking)
+│   │   │   ├── progress-tracker.md                  # Contract: ProgressTracker (keyed progress records, getProgress transport, deferred cleanup)
 │   │   │   ├── trigger-context.md                     # Contract: TriggerContext (Script Properties trigger context)
 │   │   │   ├── frontend-data-analysis-response.md     # Contract: derived in-memory DataAnalysisResponse, averaging shapes and preview view models
 │   │   │   ├── student-submission.md                  # Component shape: StudentSubmission (+ StudentSubmissionItem)

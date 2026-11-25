@@ -603,13 +603,14 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
 
 - `getProgress` — returns the current keyed progress records for frontend-driven assessment runs.
   Source: `src/backend/z_Api/progressTracker.js`, via the `getProgress_()` helper called from
-  `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_apiHandler.js`.
+  `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.
   Parameters: none.
   Handler behaviour: reads all keyed progress User Properties through
-  `ProgressTrackerStore.readAll()`. Only keyed records are returned; the legacy unkeyed
-  `ProgressTracker` record has no `requestId` for the frontend to correlate and is excluded.
-  Malformed keyed values are logged at warning level and skipped; a property-store read failure
-  propagates to the `apiHandler` error boundary.
+  `ProgressTrackerStore.readAll()` and parses each value with the shared
+  `ProgressTrackerStore.parse()` helper before its own field checks. Only keyed records are
+  returned; the legacy unkeyed `ProgressTracker` record has no `requestId` for the frontend to
+  correlate and is excluded. Malformed keyed values are logged at warning level and skipped; a
+  property-store read failure propagates to the `apiHandler` error boundary.
   Response data: `{ tasks: ProgressRecord[] }` inside the standard success envelope, sorted by
   `timestamp` ascending with `requestId` ascending as tie-break, or `{ tasks: [] }` when no keyed
   records exist. See [Contract: ProgressTracker § Transport](../data-shapes/progress-tracker.md#transport).
