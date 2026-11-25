@@ -278,6 +278,11 @@ Key contract notes:
 - The method returns `null` (no payload) on success.
 - Frontend schema uses `z.void().nullable()` to accept the `undefined → null` coercion in the envelope.
 
+> **Planned change (`Not implemented`):** the response `data` becomes `{ requestId: string }`,
+> carrying the dispatcher-generated correlation ID, and
+> `StartAssessmentRunResponseSchema` becomes a non-nullable object schema. The trigger context
+> params gain the same `requestId`. See [progress-tracker.md](progress-tracker.md).
+
 ---
 
 ## Sub-entities
