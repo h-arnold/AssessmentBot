@@ -38,11 +38,17 @@ class AssignmentController {
    * @param {string} assignmentId - The ID of the assignment to be processed
    * @param {string} definitionKey - The key of the assignment definition to use
    * @param {string} courseId - Classroom course ID used for downstream processing.
+   * @param {string} [requestId] - Correlation ID stored in trigger context for progress keying.
    * @throws {Error} If trigger creation fails or if storing the trigger context fails
    */
-  startProcessing(assignmentId, definitionKey, courseId) {
+  startProcessing(assignmentId, definitionKey, courseId, requestId) {
     Validate.requireParams(
-      { assignmentId, definitionKey, courseId },
+      {
+        assignmentId,
+        definitionKey,
+        courseId,
+        ...(requestId !== undefined && { requestId }),
+      },
       'AssignmentController.startProcessing'
     );
 
@@ -62,7 +68,7 @@ class AssignmentController {
     try {
       triggerController.storeTriggerContext(triggerId, {
         method: 'processSelectedAssignment',
-        params: { assignmentId, definitionKey, courseId },
+        params: { assignmentId, definitionKey, courseId, requestId },
       });
       ABLogger.getInstance().info('Trigger context stored for processing.');
     } catch (error) {
@@ -92,6 +98,7 @@ class AssignmentController {
    * @param {string} params.assignmentId - The Google Classroom coursework ID.
    * @param {string} params.definitionKey - The key of the assignment definition to use.
    * @param {string} params.courseId - The Google Classroom course ID.
+   * @param {string} [params.requestId] - Correlation ID binding progress writes to this run.
    * @throws {Error} If required parameters are missing or if processing fails
    * @returns {void}
    *
@@ -108,11 +115,15 @@ class AssignmentController {
    * - Relies on controllers: definitionController, abClassController, progressTracker
    * - Integrates with: Assignment, StudentSubmission, ABClass
    */
-  processSelectedAssignment({ assignmentId, definitionKey, courseId }) {
+  processSelectedAssignment({ assignmentId, definitionKey, courseId, requestId }) {
     // Validate required task params — triggerHandler dispatches with a validated params object
     Validate.requireParams({ assignmentId, definitionKey, courseId }, 'processSelectedAssignment');
 
-    this.progressTracker.startTracking();
+    if (requestId !== undefined) {
+      Validate.validateNonEmptyString('requestId', requestId);
+    }
+
+    this.progressTracker.startTracking(requestId);
     this.progressTracker.updateProgress('Assessment run starting.');
 
     const definitionController = new AssignmentDefinitionController();
@@ -213,11 +224,12 @@ class AssignmentController {
    * @param {string} params.definitionKey - The key of the existing AssignmentDefinition.
    * @param {string} params.assignmentId - The Google Classroom coursework ID.
    * @param {string} params.courseId - The Google Classroom course ID.
+   * @param {string} [params.requestId] - Correlation ID forwarded to the trigger context.
    * @returns {null} Null on success (no payload).
    * @throws {Error} If the definition is not found in the registry.
    * @throws {DefinitionStaleError} If reference or template documents have changed.
    */
-  startAssessmentRun({ definitionKey, assignmentId, courseId }) {
+  startAssessmentRun({ definitionKey, assignmentId, courseId, requestId }) {
     // Defence-in-depth: domain invariant validation (transport layer validates shape)
     Validate.requireParams({ definitionKey, assignmentId, courseId }, 'startAssessmentRun');
 
@@ -232,7 +244,7 @@ class AssignmentController {
     this._validateDefinitionFreshness(definition);
 
     // Delegate to startProcessing for trigger creation
-    this.startProcessing(assignmentId, definitionKey, courseId);
+    this.startProcessing(assignmentId, definitionKey, courseId, requestId);
 
     // Return null (no payload)
     return null;

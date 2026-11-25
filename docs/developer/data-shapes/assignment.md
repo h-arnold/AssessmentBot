@@ -256,7 +256,7 @@ by creating a time-based trigger.
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | Backend handler  | `src/backend/z_Api/assignmentAssessment.js` → `startAssessmentRun_()`                                                                     |
 | Controller       | `AssignmentController.startAssessmentRun()`                                                                                               |
-| Response mapper  | — (returns `null`)                                                                                                                        |
+| Response mapper  | `{ requestId }` read from the dispatcher accessor; the controller returns `null`                                                          |
 | Frontend Zod     | `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `StartAssessmentRunResponseSchema` (`z.void().nullable()`) |
 | Frontend service | `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts` → `startAssessmentRun()`                                  |
 
@@ -268,20 +268,22 @@ by creating a time-based trigger.
 | `assignmentId`  | `string` | yes      | Must be non-empty string |
 | `courseId`      | `string` | yes      | Must be non-empty string |
 
-**Response:** `null`
+**Response:** `{ requestId: string }`
 
 Key contract notes:
 
-- The handler validates the parameters object shape, then delegates to `AssignmentController.startAssessmentRun()`.
+- The handler validates the parameters object shape, then reads the dispatcher-generated correlation
+  ID from `ApiRequestContext` and delegates to `AssignmentController.startAssessmentRun()` with it.
 - The controller fetches the full definition via `AssignmentDefinitionController.getDefinitionByKey()`, validates definition freshness (reference and template documents checked against Drive timestamps), then creates a time-based trigger via `TriggerController`.
 - If the definition is stale (reference or template documents modified since definition was created), throws `DefinitionStaleError` — see [transport envelope](transport-envelope.md#error-envelope) for the `DEFINITION_STALE` error shape with details.
-- The method returns `null` (no payload) on success.
-- Frontend schema uses `z.void().nullable()` to accept the `undefined → null` coercion in the envelope.
+- `AssignmentController.startAssessmentRun()` still returns `null`. The transport handler returns
+  `{ requestId }`, so the payload ID equals the envelope `requestId`. The ID is forwarded into
+  trigger params; see [Contract: TriggerContext](trigger-context.md).
+- Frontend schema still uses `z.void().nullable()` to accept the `undefined → null` coercion in the envelope.
 
-> **Planned change (`Not implemented`):** the response `data` becomes `{ requestId: string }`,
-> carrying the dispatcher-generated correlation ID, and
-> `StartAssessmentRunResponseSchema` becomes a non-nullable object schema. The trigger context
-> params gain the same `requestId`. See [progress-tracker.md](progress-tracker.md).
+> **Planned change (`Not implemented`):** `StartAssessmentRunResponseSchema` becomes a non-nullable
+> object schema with `requestId: z.string().min(1)`; it currently accepts only `null`/`undefined`.
+> See [progress-tracker.md](progress-tracker.md).
 
 ---
 
@@ -398,6 +400,7 @@ contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set 
     - Validates parameters is a plain object.
     - `Validate.requireParams({ definitionKey, assignmentId, courseId }, 'startAssessmentRun')` — all required.
     - `Validate.validateNonEmptyString(...)` for each field.
+    - When the dispatcher supplies a `requestId`, validates it with `Validate.validateNonEmptyString('requestId', requestId)`; a direct helper call with no ID takes the legacy controller path.
   - `throwAssignmentValidationError_()` — shared error factory for assignment validation failures.
 
 **Key domain validation rules** (controller-level business logic not visible from schemas):
@@ -422,8 +425,12 @@ contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set 
 3. **`AssignmentFullResponseSchema` is `AssignmentFullSchema.nullable()`.**
    Backend `getAssignment_()` returns `null` when no persisted document exists. The frontend schema expects this.
 
-4. **`startAssessmentRun` returns `null` and the frontend schema uses `z.void().nullable()`.**
-   Backend returns `null` (no payload on success). The frontend `StartAssessmentRunResponseSchema` is `z.void().nullable()` which accepts both `undefined` (from the envelope's `data ?? null` coercion) and `null`.
+4. **The `startAssessmentRun` controller returns `null` while the transport returns `{ requestId }`.**
+   `AssignmentController.startAssessmentRun()` keeps its `null` return. The transport handler reads
+   the dispatcher-generated correlation ID and returns it as `{ requestId }`, equal to the envelope
+   `requestId`. The frontend `StartAssessmentRunResponseSchema` still uses `z.void().nullable()`,
+   which accepts `undefined` (from the envelope's `data ?? null` coercion) and `null` but not the
+   new object payload; that schema update is planned.
 
 5. **Legacy records are retained as ordinary instance state and both read paths prepare them at read time.**
    `Assignment._baseFromJSON()` does not catch, reconstruct or drop non-marker-1 records: it keeps the stored submission records in `inst.submissions`, the exact stored marker value in `inst.assessmentContractVersion` and its presence in `inst._legacyMarkerPresent`, and does not run the marker-1 submission rehydration. `AssignmentRehydration._rehydrateSubmission()` handles marker-1 records only — it delegates each one to `AssignmentCurrentRestoration._rehydrateCurrentSubmission()` — so non-marker-1 records never reach it. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that state through their normal paths (an ordinary save never marks a stored result as current), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` prepare read submissions through `AssignmentRehydration.prepareLegacyReadSubmissions()` and emit `'legacy'` on the wire entry. Both read services validate the resulting entries. Completed-write preflight/gates are enforced at the write boundary.

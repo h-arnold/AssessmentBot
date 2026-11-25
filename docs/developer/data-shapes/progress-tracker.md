@@ -92,10 +92,10 @@ The response uses the shared success envelope unchanged (`ok`, `requestId`, `dat
 sorted by `timestamp` ascending with `requestId` ascending as tie-break. The legacy unkeyed record
 is excluded. An empty store returns `{ tasks: [] }`.
 
-### `startAssessmentRun` response change (Not implemented)
+### `startAssessmentRun` response change
 
-`data` changes from `null` to `{ requestId: string }`, carrying the same value as the envelope
-`requestId`. See [assignment.md § `startAssessmentRun`](assignment.md#startassessmentrun-write).
+`data` is `{ requestId: string }`, carrying the same value as the envelope `requestId`. See
+[assignment.md § `startAssessmentRun`](assignment.md#startassessmentrun-write).
 
 ---
 
@@ -119,7 +119,7 @@ Frontend schemas require non-empty `requestId`, finite `step`, string `message`,
 | ------------------------------------------------------------------------------- | -------- | ------------------------------------------------ | ---------------------------------------------------------------------------- | ----------------- |
 | Keyed property access (`readAll`, `write`, `delete`)                            | `new`    | `src/backend/Utils/01_ProgressTrackerStore.js`   | Isolates key derivation, parsing and legacy fallback filtering.              | `Not implemented` |
 | Cleanup coordinator (`schedule`, `sweep`, `rearm`)                              | `new`    | `src/backend/Utils/02_ProgressTrackerCleanup.js` | Owns cache/marker dedupe and terminal-only deletion.                         | `Not implemented` |
-| `ApiRequestContext` (`set`, `get`, `resetForTests`)                             | `new`    | `src/backend/z_Api/z_apiHandler.js`              | Exposes the dispatch ID to handlers without changing all handler signatures. | `Not implemented` |
+| `ApiRequestContext` (`set`, `get`, `resetForTests`)                             | `new`    | `src/backend/z_Api/z_apiHandler.js`              | Exposes the dispatch ID to handlers without changing all handler signatures. | `Implemented`     |
 | `CacheManager` with supplied cache + `remove(key)`                              | `extend` | `src/backend/RequestHandlers/CacheManager.js`    | Supports user cache and clears the pending-cleanup flag after each run.      | `Not implemented` |
 | `GASPropertiesUtils`                                                            | `reuse`  | `src/backend/Utils/00_GASPropertiesUtils.js`     | Canonical PropertiesService entry point.                                     | Already exists    |
 | `LockService.getUserLock()`                                                     | `reuse`  | GAS service                                      | Same dedupe pattern as `requestStore.js`.                                    | Already exists    |

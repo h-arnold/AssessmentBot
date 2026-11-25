@@ -262,4 +262,39 @@ describe('AssignmentController.processSelectedAssignment - direct params contrac
       })
     ).toThrow(/is required/);
   });
+
+  /**
+   * Test 4: requestId is a required, non-empty string. An empty value must fail
+   * via the shared validator before any progress record is bound, so a run can
+   * never fall back to the legacy unkeyed record.
+   */
+  it('rejects an empty requestId via validateNonEmptyString', () => {
+    const validateSpy = vi.spyOn(globalThis.Validate, 'validateNonEmptyString');
+
+    expect(() =>
+      controller.processSelectedAssignment({
+        assignmentId: 'assignment-456',
+        definitionKey: 'Essay_1_defKey',
+        courseId: 'course-123',
+        requestId: '   ',
+      })
+    ).toThrow('requestId must be a non-empty string.');
+
+    expect(validateSpy).toHaveBeenCalledWith('requestId', '   ');
+    expect(mockProgressTracker.startTracking).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Test 5: a valid requestId binds the active progress record to that run.
+   */
+  it('passes a valid requestId to progressTracker.startTracking', () => {
+    controller.processSelectedAssignment({
+      assignmentId: 'assignment-456',
+      definitionKey: 'Essay_1_defKey',
+      courseId: 'course-123',
+      requestId: 'req-correlation-001',
+    });
+
+    expect(mockProgressTracker.startTracking).toHaveBeenCalledWith('req-correlation-001');
+  });
 });

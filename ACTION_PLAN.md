@@ -1,5 +1,14 @@
 # Feature Delivery Plan (TDD-First) — ProgressTracker API Polling
 
+## Delivery status
+
+- Current section: Section 1 complete; next up is Section 2 — Keyed ProgressTracker store and active run context.
+- Current phase: Section 2 Red loop (tests) — not started.
+- Branch: `feat/progress-tracker-api-polling`.
+- Regression session ID: `progresstracker-api-polling`.
+- Baseline gate: PASSED — 2026-11-25T10:23:32.661Z, `baseline/baseline.txt`, Overall Status GREEN,
+  8/8 checks passing, 0 regressions, 0 new failures, 0 existing failures.
+
 ## Read-First Context
 
 Before writing or executing this plan:
@@ -87,139 +96,100 @@ are migrated opportunistically where they already mock `ProgressTracker`.
 
 ## Section 1 — Request-scoped request ID and start response contract
 
-### Objective
+### Outcome (compacted)
 
-Make the dispatcher-generated `requestId` available to `startAssessmentRun`, carry it through
-trigger context into `processSelectedAssignment`, and return it in the `startAssessmentRun`
-response data.
-
-### Constraints
-
-- `ApiDispatcher.handle()` generates the ID before the auth gate; the accessor is set immediately
-  after generation and overwritten on each call. No positional handler signature change.
-- `ApiRequestContext` exposes `set(requestId)`, `get()` and `resetForTests()` from
-  `z_apiHandler.js`; it must not become a public GAS function. Add it to the guarded
-  `module.exports` block so Node tests can reset it.
-- Signature decision: `AssignmentController.startAssessmentRun({ definitionKey, assignmentId,
-courseId, requestId })` destructures the new field and calls
-  `startProcessing(assignmentId, definitionKey, courseId, requestId)` — a fourth positional
-  argument, matching the existing positional style. The controller still returns `null`; the
-  transport handler returns `{ requestId }` read from `ApiRequestContext`. Envelope shape is
-  unchanged.
-- `startProcessing()` stores `requestId` in `trigger:<uid>:params`.
-- `processSelectedAssignment()` validates `requestId` with `Validate.validateNonEmptyString()` and
-  calls `progressTracker.startTracking(requestId)`.
-- `ApiRequestContext` is added to the guarded `module.exports` of `z_apiHandler.js`; tests resolve
-  the same object that GAS handlers use.
-- LOC: `z_apiHandler.js` 457 → ~475; `assignmentAssessment.js` 147 → ~152;
-  `AssignmentController.js` 486 → ~496. All stay below the 500-line planning threshold and the
-  550-line hard trigger; keep additions concise. If `AssignmentController.js` would cross 500,
-  extract the completion-feedback block into `y_controllers/AssignmentController/` before
-  continuing.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- @SPEC.md
-- @docs/developer/backend/backend-testing.md
-- @tests/api/apiHandler/shared.js
-- @tests/api/apiHandler/dispatcher-core.test.js
-- @tests/controllers/assignmentController.startAssessmentRun.test.js
-- @tests/controllers/assignmentController/assignmentController.processSelectedAssignmentParams.test.js
-- @tests/controllers/assignmentController/assignmentController.startProcessingTriggerIntegration.test.js
-
-Implementation mandatory docs:
-
-- @SPEC.md
-- @docs/developer/backend/api-layer.md
-- @docs/developer/data-shapes/assignment.md
-- @docs/developer/data-shapes/trigger-context.md
-- @src/backend/z_Api/z_apiHandler.js
-- @src/backend/z_Api/assignmentAssessment.js
-- @src/backend/y_controllers/AssignmentController.js
-
-Code Reviewer mandatory docs:
-
-- @SPEC.md
-- @docs/developer/backend/api-layer.md
-
-### Shared helper plan
-
-1. Helper: `ApiRequestContext` (`set`, `get`, `resetForTests`)
-   - Decision: `new`
-   - Owning module/path: `src/backend/z_Api/z_apiHandler.js`
-   - Call-site rationale: exposes the dispatch ID to `startAssessmentRun_` without changing every
-     handler signature.
-   - Canonical doc target: `docs/developer/data-shapes/progress-tracker.md`
-   - Planned doc status: `Not implemented`
-
-### Data-shape plan
-
-- Update `docs/developer/data-shapes/assignment.md`: `startAssessmentRun` response becomes
-  `{ requestId: string }`; remove its `Not implemented` marker.
-- Update `docs/developer/data-shapes/trigger-context.md`: params gain `requestId`; remove marker.
-- `transport-envelope.md` needs no shape change; remove the planned-endpoint marker when
-  `getProgress` lands in Section 3.
-- Reference: @docs/developer/data-shapes/assignment.md @docs/developer/data-shapes/trigger-context.md
-
-### Acceptance criteria
-
-- `ApiDispatcher.handle()` exposes the generated ID before dispatch and overwrites it on each call.
-- `startAssessmentRun` response `data` is `{ requestId }` and equals the envelope `requestId`.
-- Trigger context params include a non-empty `requestId`.
-- `processSelectedAssignment` rejects an empty `requestId` with `Validate.validateNonEmptyString()`
-  and passes a valid one to `startTracking(requestId)`.
-- `AssignmentController.startAssessmentRun()` still returns `null`; only the transport response
-  data becomes `{ requestId }`. Exact-argument assertions for `startProcessing()` (three positional
-  args) and exact trigger `params` assertions (three fields) are updated to include `requestId`.
-
-### Required test cases (Red first)
-
-Backend dispatcher tests:
-
-1. `ApiRequestContext.get()` returns the generated ID during a successful handler call.
-2. A second `handle()` call replaces the stored ID; `resetForTests()` clears it.
-3. `startAssessmentRun` response data contains the correlation ID equal to the envelope ID.
-
-Backend controller tests:
-
-1. `startProcessing()` stores `requestId` in trigger context params.
-2. `processSelectedAssignment()` throws on empty `requestId` via `validateNonEmptyString`.
-3. A valid `requestId` reaches `progressTracker.startTracking(requestId)`.
-4. The existing exact-argument assertion for `startProcessing()` is updated to four arguments.
-5. The existing exact trigger `params` assertion includes `requestId`.
-
-### Section checks
-
-- `npm run test:backend -- tests/api/apiHandler tests/controllers/assignmentController.startAssessmentRun.test.js tests/controllers/assignmentController/`
-- `npm run lint:backend:check`
-- Mandatory-read evidence gate passed for all delegated handoffs.
-- Planned helper entry added with `Not implemented` before implementation.
-- Docs sync outcome recorded in `Implementation notes`.
-- Completed section compacted into **Retained for later sections** below.
-
-### Docs delegation reads (when sub-agents are used)
-
-- @docs/developer/data-shapes/assignment.md
-- @docs/developer/data-shapes/trigger-context.md
+Delivered the request-scoped correlation ID path end to end: `ApiDispatcher.handle()` sets
+`ApiRequestContext` before the auth gate and overwrites it on every dispatch; `startAssessmentRun_`
+returns `{ requestId }` sourced from that accessor while `AssignmentController.startAssessmentRun()`
+still returns `null`; the ID is stored in trigger context and validated into
+`progressTracker.startTracking(requestId)` by `processSelectedAssignment`. Focused section checks
+passed: the backend run covering `tests/api/apiHandler`,
+`assignmentController.startAssessmentRun.test.js` and `tests/controllers/assignmentController/`
+(20 files / 219 tests) and `npm run lint:backend:check` clean. Contracts, decisions and outstanding
+records are retained below; the authoritative evidence and deviations are in the preserved
+`Implementation notes / deviations / follow-up` subsection.
 
 ### Retained for later sections
 
-- `AssignmentController.startAssessmentRun()` returns `null`; the transport handler owns the
-  `{ requestId }` response.
-- `ApiRequestContext` is exported from `z_apiHandler.js` for Node tests.
-- Trigger params for `processSelectedAssignment` now include a validated `requestId`.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Document why the accessor is request-scoped and why handler signatures were not changed.
+- **Controller contract:** `AssignmentController.startAssessmentRun({ definitionKey, assignmentId,
+courseId, requestId })` destructures `requestId`, passes it as a fourth positional argument to
+  `startProcessing(assignmentId, definitionKey, courseId, requestId)` and returns `null`. The
+  transport handler — not the controller — owns the `{ requestId }` response data.
+  `startProcessing()` stores `requestId` in `trigger:<uid>:params` for `processSelectedAssignment`.
+- **Accessor contract:** `ApiRequestContext` (`set(requestId)`, `get()`, `resetForTests()`) is an
+  object literal in `src/backend/z_Api/z_apiHandler.js` (not a public GAS function), exported from
+  that module's guarded `module.exports`. `handle()` calls `set()` immediately after
+  `_resolveRequestId()`, before the auth gate, and every dispatch overwrites the value; tests reset
+  it between cases.
+- **Explicit second argument:** the allowlist entry is
+  `startAssessmentRun: (parameters) => startAssessmentRun_(parameters, ApiRequestContext.get())`.
+  The value is passed explicitly because `assignmentAssessment.js` is loaded separately in Node
+  tests and cannot resolve the script-scope accessor as a global. `startAssessmentRun_` validates it
+  with `Validate.validateNonEmptyString('requestId', requestId)` and returns `{ requestId }`.
+- **Trigger path:** trigger params for `processSelectedAssignment` include `requestId`; the method
+  validates it with `Validate.validateNonEmptyString()` before calling
+  `progressTracker.startTracking(requestId)`. Section 2 consumes this bound ID; Section 3 aggregates
+  the resulting keyed records.
+- **Transport and data shapes:** `startAssessmentRun` response `data` is `{ requestId: string }`
+  equal to the envelope `requestId`; the shared envelope shape is unchanged, so
+  `transport-envelope.md` needs no shape change (its planned-endpoint marker is removed when
+  `getProgress` lands in Section 3). Trigger context params gain `requestId`; the planned markers in
+  `assignment.md` and `trigger-context.md` are owned by this section's doc-sync slot below.
+- **Legacy fallback decision:** validation and propagation are conditional on
+  `requestId !== undefined`, so direct calls and legacy non-run call sites keep the unkeyed key while
+  the real dispatch path always supplies and validates the ID. The conditional-on-undefined
+  deviation and its rationale are recorded in the preserved `Implementation notes / deviations /
+follow-up` subsection.
+- **Export-key pin:** `tests/api/apiHandler/dispatcher-integration.test.js` asserts
+  `Object.keys(sandbox.module.exports)` equals `['apiHandler', 'ApiDispatcher',
+'ALLOWLISTED_METHOD_HANDLERS', 'ApiRequestContext']`; any new export must update that assertion.
+- **Shared-helper reconciliation:** the `ApiRequestContext` helper entry (previously planned
+  `Not implemented` in the Section 1 shared-helper plan) is delivered; its canonical doc target is
+  `docs/developer/data-shapes/progress-tracker.md`, reconciled in the final Documentation and
+  rollout notes section. Shared-helper entries for future sections remain `Not implemented` and
+  unchanged.
+- **`@remarks` JSDoc commitments fulfilled:** `z_apiHandler.js` documents why the accessor is an
+  object literal (global-exposure guard) and that the value is overwritten per dispatch;
+  `assignmentAssessment.js` documents why the dispatcher passes the accessor value explicitly (the
+  module is loaded separately in Node tests) and that the controller still returns `null`.
+- **Open record slots:** the preserved `Implementation notes / deviations / follow-up` subsection
+  still needs its doc-sync outcome, regression gate record and commit record filled in. No new
+  record is created here.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** ...
-- **Deviations from plan:** ...
-- **Follow-up implications for later sections:** ...
+- **Implementation notes:** RED review PASSED after one in-scope header correction; GREEN review
+  PASSED with no in-scope findings. Focused section tests: 20 files / 219 tests passing;
+  `lint:backend:check` clean. Out-of-scope nitpick (bare `delete globalThis.*` in
+  `assignmentController.startAssessmentRun.test.js:119-129`) logged as `disregarded` in
+  `.opencode/scratchpad/progresstrackerrefactor-deferred-findings.md`. Docs sync updated
+  `docs/developer/data-shapes/assignment.md`, `trigger-context.md`, `progress-tracker.md`,
+  `docs/developer/backend/api-layer.md` and `AssessmentFlow.md`; no new pages created. It removed
+  Section-1-owned markers, left later-section markers intact, and reported pre-existing drift
+  (validation descriptions in `assignment.md:399` / `api-layer.md:596`; `progress-tracker.md`
+  absent from `mkdocs.yml` nav and `docs/README.md`) — logged as minor out-of-scope nitpicks in
+  the deferred-findings log. No code files changed in docs sync, so no extra lint/type run needed.
+  User-directed changes: the graphify commit `b814ab1d` ("chore(graphify): add self-contained
+  offline graph viewer") is already on this branch and pushed to origin; it is part of this
+  section's commit history. `.opencode/agents/action-plan-implementer.md` was updated per the
+  user's request to run `graphify update .` at the end of every section before context compaction,
+  with regenerated graph outputs committed and pushed with the section (new §2.75, exit criteria,
+  quick reference).
+- **Section regression gate:** PASSED — 2026-11-25T11:12:15.204Z,
+  `.ts-regression-checker/reports/session-progresstracker-api-polling/runs/2026-11-25T11-12-15.204Z/comparison.txt`,
+  Overall Status GREEN, 8/8 checks passing, 0 regressions, 0 new failures, 0 fixes; no pre-existing
+  failures (baseline was fully green).
+- **Graphify refresh (§2.75):** `graphify update .` ran after the gate; it rebuilt 11,885 nodes /
+  29,634 edges and rewrote the tracked `graphify-out/` artifacts (`graph.json`, `graph.html`,
+  `GRAPH_REPORT.md`, `manifest.json`, `.graphify_labels.json`). Local build caches and the dated
+  backup directory remain untracked; they are not committed.
+- **Deviations from plan:** Validation and propagation are conditional on `requestId !== undefined`
+  so untouched direct-call tests and legacy non-run call sites keep working with the unkeyed key.
+  On the real dispatch path the value is always supplied and validated. GREEN reviewer classified
+  this as acceptable; SPEC's literal "missing fails loudly" wording conflicts with its legacy
+  fallback decision — recorded as a follow-up, not a behaviour change. Line counts: 483 / 159 / 498.
+- **Follow-up implications for later sections:** Section 2 starts tracking with the validated ID;
+  Section 3 aggregates keyed records. Docs sync and regression gate records to be added here.
 
 ---
 

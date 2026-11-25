@@ -2,7 +2,7 @@
  * AssignmentController.startAssessmentRun Tests
  *
  * Tests for the startAssessmentRun controller method that:
- * - Accepts { definitionKey, assignmentId, courseId }
+ * - Accepts { definitionKey, assignmentId, courseId, requestId }
  * - Fetches definition via AssignmentDefinitionController
  * - Checks freshness of reference/template documents
  * - Resolves ABClass via ABClassController.loadClass
@@ -25,6 +25,7 @@ const VALID_PARAMS = Object.freeze({
   definitionKey: 'def-algebra-baseline',
   assignmentId: 'assign-001',
   courseId: 'course-001',
+  requestId: 'req-start-001',
 });
 
 const MOCK_DEFINITION = Object.freeze({
@@ -164,7 +165,8 @@ describe('AssignmentController.startAssessmentRun', () => {
       expect(mockStartProcessing).toHaveBeenCalledWith(
         VALID_PARAMS.assignmentId,
         VALID_PARAMS.definitionKey,
-        VALID_PARAMS.courseId
+        VALID_PARAMS.courseId,
+        VALID_PARAMS.requestId
       );
     });
   });

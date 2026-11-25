@@ -595,7 +595,9 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Required request fields: `definitionKey`, `assignmentId`, `courseId` (all non-empty strings).
   Validation: transport enforces `params` object shape, required field presence, and non-empty string checks using `Validate.requireParams` and `Validate.validateNonEmptyString`; controller owns per-document freshness checks via `DateUtils.isNewer`, definition lookup, and ABClass resolution.
   Controller behaviour: fetches the full definition by key, checks that neither the reference nor template document has been modified since the definition was created (throwing `DefinitionStaleError` if stale), resolves the ABClass via `loadClass(courseId)` (which throws if the class does not exist), and delegates to `startProcessing()` to create the time-based trigger with context stored in Script Properties (keyed by triggerUid) via `TriggerController.storeTriggerContext()` — see [Contract: TriggerContext](../data-shapes/trigger-context.md).
-  Response data: `null` on success (no data payload; wrapped in standard success envelope).
+  Response data: `{ requestId: string }` on success, equal to the envelope `requestId`. The
+  `startAssessmentRun_()` helper reads the dispatcher's `ApiRequestContext` accessor; the
+  controller still returns `null` and forwards the ID into trigger context params.
   Error codes: `DEFINITION_STALE` (non-retriable, with `details` block), `INVALID_REQUEST` (transport validation failure), `INTERNAL_ERROR` (definition not found, ABClass not found, or other domain errors).
 
 - `getAssignment` — reads a single fully-hydrated assignment by course and assignment id.

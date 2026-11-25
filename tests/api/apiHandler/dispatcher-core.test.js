@@ -198,4 +198,84 @@ describe('Api/apiHandler dispatcher — core dispatch, validation and request ID
       }
     }
   });
+
+  it('exposes the generated requestId to handlers through ApiRequestContext', () => {
+    const { ApiDispatcher, ApiRequestContext } = loadApiHandlerModule();
+    expect(
+      ApiRequestContext,
+      'ApiRequestContext must be exported from z_apiHandler.js for Node tests'
+    ).toBeDefined();
+    ApiRequestContext.resetForTests();
+
+    // The handler reads the accessor while dispatch is in flight, so the success
+    // payload proves the ID was available before the handler was invoked.
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => ApiRequestContext.get());
+
+    const response = ApiDispatcher.getInstance().handle({
+      method: 'hasScriptAuthorisation',
+    });
+
+    expect(response.ok).toBe(true);
+    expect(response.data).toBe(response.requestId);
+    expect(ApiRequestContext.get()).toBe(response.requestId);
+  });
+
+  it('overwrites the stored requestId on each dispatch and clears it on resetForTests', () => {
+    const { ApiDispatcher, ApiRequestContext } = loadApiHandlerModule();
+    expect(
+      ApiRequestContext,
+      'ApiRequestContext must be exported from z_apiHandler.js for Node tests'
+    ).toBeDefined();
+    ApiRequestContext.resetForTests();
+    expect(ApiRequestContext.get()).toBeFalsy();
+
+    const getUuidSpy = vi
+      .spyOn(globalThis.Utilities, 'getUuid')
+      .mockReturnValueOnce('req-context-first')
+      .mockReturnValueOnce('req-context-second');
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const firstResponse = dispatcher.handle({ method: 'hasScriptAuthorisation' });
+    expect(firstResponse.requestId).toBe('req-context-first');
+    expect(ApiRequestContext.get()).toBe(firstResponse.requestId);
+
+    const secondResponse = dispatcher.handle({ method: 'hasScriptAuthorisation' });
+    expect(secondResponse.requestId).toBe('req-context-second');
+    expect(ApiRequestContext.get()).toBe(secondResponse.requestId);
+    expect(getUuidSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns the correlation requestId in startAssessmentRun response data', () => {
+    const { ApiDispatcher } = loadApiHandlerModule();
+
+    // The controller still returns null; only the transport response carries the ID.
+    const startAssessmentRun = vi.fn(() => null);
+    const originalAssignmentController = globalThis.AssignmentController;
+    globalThis.AssignmentController = vi.fn(function AssignmentControllerMock() {
+      return { startAssessmentRun };
+    });
+
+    try {
+      vi.spyOn(globalThis.Utilities, 'getUuid').mockReturnValueOnce('req-start-001');
+
+      const response = ApiDispatcher.getInstance().handle({
+        method: 'startAssessmentRun',
+        params: {
+          definitionKey: 'def-algebra-baseline',
+          assignmentId: 'assign-001',
+          courseId: 'course-001',
+        },
+      });
+
+      expect(response.ok).toBe(true);
+      expect(response.requestId).toBe('req-start-001');
+      expect(response.data).toEqual({ requestId: response.requestId });
+    } finally {
+      if (originalAssignmentController === undefined) {
+        delete globalThis.AssignmentController;
+      } else {
+        globalThis.AssignmentController = originalAssignmentController;
+      }
+    }
+  });
 });

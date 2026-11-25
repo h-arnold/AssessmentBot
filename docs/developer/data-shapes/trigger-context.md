@@ -31,10 +31,10 @@ The store is a pair of Script Properties keys per triggerUid. Each key embeds th
 `TriggerController.createTimeBasedTrigger()`) and equal to the GAS `event.triggerUid` at fire
 time — so concurrent triggers never collide.
 
-| Key                    | Type     | Value                                                                                               | Notes                                                                                   |
-| ---------------------- | -------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `trigger:<uid>:method` | `string` | Trigger method name (e.g. `'processSelectedAssignment'`)                                            | Written by `storeTriggerContext()`; read by `triggerHandler()` for validation and auth. |
-| `trigger:<uid>:params` | `string` | JSON-serialised params object, e.g. `{"assignmentId":"...","definitionKey":"...","courseId":"..."}` | Written by `storeTriggerContext()`; passed to the registered handler on dispatch.       |
+| Key                    | Type     | Value                                                                                                                 | Notes                                                                                   |
+| ---------------------- | -------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `trigger:<uid>:method` | `string` | Trigger method name (e.g. `'processSelectedAssignment'`)                                                              | Written by `storeTriggerContext()`; read by `triggerHandler()` for validation and auth. |
+| `trigger:<uid>:params` | `string` | JSON-serialised params object, e.g. `{"assignmentId":"...","definitionKey":"...","courseId":"...","requestId":"..."}` | Written by `storeTriggerContext()`; passed to the registered handler on dispatch.       |
 
 ### Record lifecycle
 
@@ -45,7 +45,8 @@ The store is managed by three instance methods on `TriggerController`
 1. **`storeTriggerContext(triggerUid, { method, params })`** — Writes
    `trigger:<uid>:method` and `trigger:<uid>:params` to Script Properties via
    `GASPropertiesUtils`. Called by `AssignmentController.startProcessing()` at trigger
-   creation time.
+   creation time; for `processSelectedAssignment` the params carry the dispatcher-generated
+   `requestId`.
 
 2. **`getTriggerContext(triggerUid)`** — Reads both keys directly from
    `GASPropertiesUtils.getScriptProperties()` (there is no single-key getter wrapper on
@@ -70,10 +71,8 @@ The store is managed by three instance methods on `TriggerController`
   trigger cleanup).
 - The `params` value is a JSON string because Script Properties only stores strings.
 
-> **Planned change (`Not implemented`):** `processSelectedAssignment` params gain a non-empty
-> `requestId` field so the trigger execution can key its progress writes. A new
-> `cleanupProgress` trigger method will use an empty params object. See
-> [progress-tracker.md](progress-tracker.md).
+> **Planned change (`Not implemented`):** a new `cleanupProgress` trigger method will use an
+> empty params object. See [progress-tracker.md](progress-tracker.md).
 
 ---
 
@@ -111,6 +110,9 @@ None — TriggerContext is a pair of flat key-value properties with no embedded 
 - The method name read from `trigger:<uid>:method` is resolved during input validation in
   `triggerHandler()`, so it is available for the audit log and the fail-closed auth check
   (`AuthService.checkAccess({ bypassCache: true, neverClaim: true })`).
+- `processSelectedAssignment` validates a supplied `requestId` with
+  `Validate.validateNonEmptyString()` before starting progress tracking, so an empty or blank ID
+  fails loudly. A trigger context with no `requestId` keeps the legacy unkeyed progress path.
 - Malformed input (missing event, unknown triggerUid, unknown method) surfaces via
   fail-loud logging only — GAS discards trigger return values, so no error envelope is
   produced.

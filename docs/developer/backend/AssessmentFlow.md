@@ -61,8 +61,8 @@ before domain validation. See [api-layer.md § Response envelope](api-layer.md#r
   2. Fetches the full definition via `AssignmentDefinitionController.getDefinitionByKey`
   3. Checks per-document freshness via `_validateDefinitionFreshness()` using `DriveManager.getFileModifiedTime` and `DateUtils.isNewer` — throws `DefinitionStaleError` if either document has changed
   4. Resolves the ABClass via `ABClassController.loadClass(courseId)` — throws if no stored class exists
-  5. Delegates to `startProcessing(assignmentId, definitionKey, courseId)`, which creates the time-based trigger and stores the run context in Script Properties
-  6. Returns `null` (no data payload)
+  5. Delegates to `startProcessing(assignmentId, definitionKey, courseId, requestId)`, which creates the time-based trigger and stores the run context in Script Properties
+  6. The controller returns `null`; the transport returns `{ requestId }` from the dispatcher accessor
 - **Error Handling**:
   - Transport validation failures throw `ApiValidationError` → mapped to `INVALID_REQUEST`
   - Stale definition throws `DefinitionStaleError` → mapped to `DEFINITION_STALE` with `details` block
@@ -76,13 +76,13 @@ Definitions are created and updated by a separate flow: the frontend upserts via
 
 #### Create time-based trigger
 
-**Method**: `AssignmentController.startProcessing(assignmentId, definitionKey, courseId)`
+**Method**: `AssignmentController.startProcessing(assignmentId, definitionKey, courseId, requestId)`
 
 - **Location**: `src/backend/y_controllers/AssignmentController.js`
 - **Process**:
-  1. Validates the three required strings (`Validate.requireParams`).
+  1. Validates the three required strings (`Validate.requireParams`) and includes `requestId` when supplied.
   2. Creates a five-second time-based trigger for `triggerHandler` via `TriggerController.createTimeBasedTrigger()`.
-  3. Stores the run context in Script Properties via `TriggerController.storeTriggerContext(triggerUid, { method: 'processSelectedAssignment', params: { assignmentId, definitionKey, courseId } })` — see [Contract: TriggerContext](../data-shapes/trigger-context.md).
+  3. Stores the run context in Script Properties via `TriggerController.storeTriggerContext(triggerUid, { method: 'processSelectedAssignment', params: { assignmentId, definitionKey, courseId, requestId } })` — see [Contract: TriggerContext](../data-shapes/trigger-context.md).
 - **Failures**: trigger-creation or context-storage failures throw via `ProgressTracker.logAndThrowError`.
 
 **Class**: `TriggerController` (`src/backend/Triggers/TriggerController.js`)
@@ -112,12 +112,12 @@ Definitions are created and updated by a separate flow: the frontend upserts via
 
 #### Process selected assignment (orchestrator)
 
-**Method**: `AssignmentController.processSelectedAssignment({ assignmentId, definitionKey, courseId })`
+**Method**: `AssignmentController.processSelectedAssignment({ assignmentId, definitionKey, courseId, requestId })`
 
 - **Location**: `src/backend/y_controllers/AssignmentController.js`
 - **Purpose**: Main orchestrator for the entire assessment pipeline. Receives the dispatched params directly; it does not read User Properties, and trigger cleanup is owned by `triggerHandler`.
 - **Process Flow**:
-  1. Validates params; starts progress tracking ("Assessment run starting.").
+  1. Validates params (a supplied `requestId` must be non-empty) and passes it to `startTracking()` before reporting "Assessment run starting."
   2. Loads the full definition via `AssignmentDefinitionController.getDefinitionByKey(definitionKey, { form: 'full' })`; throws if missing.
   3. Loads the ABClass via `ABClassController.loadClass(courseId)` — refreshes the Classroom roster and persists it only when it changed; throws `ClassNotFoundError` when no stored class exists.
   4. Creates the assignment instance (see [Create assignment instance](#create-assignment-instance)).
