@@ -515,6 +515,10 @@ follow-ups are retained below; authoritative records are in the preserved
   29,668 edges / 610 communities and rewrote the tracked `graphify-out/` artifacts (`graph.json`,
   `graph.html`, `GRAPH_REPORT.md`, `manifest.json`, `.graphify_labels.json`). Local build caches and
   the dated backup directory remain untracked; they are not committed.
+- **Commit record:** `2acfae65` — `feat(backend): add deferred cleanup coordinator with
+terminal-only sweep` — on branch `feat/progress-tracker-api-polling`, pushed successfully to
+  `origin/feat/progress-tracker-api-polling` (`beeee68d..2acfae65`). Pre-commit hooks (Prettier,
+  backend lint, `typecheck:all`) passed.
 
 ---
 
