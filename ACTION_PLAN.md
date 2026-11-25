@@ -675,8 +675,11 @@ triggers` 21 files / 257 tests passed; (2) `test:frontend -- assignmentAssessmen
   `.ts-regression-checker/reports/session-progresstracker-api-polling/`.
 - **Graphify refresh (§2.75):** `graphify update .` ran after the gate; this section changed no
   source files, so the tracked `graphify-out/` artifacts were already current from the Section 5
-  commit and were not rewritten. Record to follow with the commit.
-- **Commit record:** record to follow.
+  commit and only `manifest.json` was rewritten (no topology changes). It is committed with the
+  section bookkeeping commit below; untracked build caches remain uncommitted.
+- **Commit record:** `570a3ec1` — `docs(plan): record hardening-section checks, gate and graphify
+refresh` — on branch `feat/progress-tracker-api-polling`, pushed successfully to
+  `origin/feat/progress-tracker-api-polling` (`0f739f77..570a3ec1`). Pre-commit hooks passed.
 
 ---
 
