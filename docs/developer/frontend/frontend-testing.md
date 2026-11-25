@@ -475,8 +475,11 @@ The factory serialises object success values with `JSON.stringify`. `JSON.string
 strips `undefined` values from objects, so `{ data: undefined }` becomes `{}` after serialisation.
 
 The backend `_success()` contract converts `undefined → null` via `data: data ?? null`. Therefore,
-mock responses for void backend methods (for example deletes, start-assessment-run) **must always
+mock responses for void backend methods (for example `deleteAssignmentDefinition`) **must always
 use `data: null`** in the response entry — never omit `data` or use `data: undefined`.
+`startAssessmentRun` is not void: it returns `{ requestId: string }`, validated by
+`StartAssessmentRunResponseSchema`, so its mocks must use that payload rather than `null` (see
+[ProgressTracker](../data-shapes/progress-tracker.md)).
 
 ```typescript
 // ✅ Correct — matches backend contract and survives JSON.stringify

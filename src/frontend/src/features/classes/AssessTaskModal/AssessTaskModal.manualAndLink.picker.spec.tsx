@@ -7,6 +7,7 @@ import { waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@/test/classes/AssessTaskModal.mockSetup';
 import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import { upsertAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { createDefinitionPartial } from '@/test/classes/matchDefinitionForAssignment.test-utilities';
@@ -26,6 +27,9 @@ import { renderWithNoMatchCache } from '@/test/classes/AssessTaskModal.link-flow
 
 const MATCHED_DEFINITION_KEY = 'matched-definition';
 
+/** Minimal valid response used by the assessment-start mocks. */
+const START_ASSESSMENT_RUN_RESPONSE: StartAssessmentRunResponse = { requestId: 'test-run-id' };
+
 beforeEach(() => {
   vi.mocked(findMatchingDefinition).mockImplementation(() => {
     return {
@@ -33,7 +37,9 @@ beforeEach(() => {
       definition: createDefinitionPartial({ definitionKey: MATCHED_DEFINITION_KEY }),
     };
   });
-  vi.mocked(startAssessmentRun).mockImplementation(() => Promise.resolve(null));
+  vi.mocked(startAssessmentRun).mockImplementation(() =>
+    Promise.resolve(START_ASSESSMENT_RUN_RESPONSE)
+  );
   vi.mocked(upsertAssignmentDefinition).mockImplementation(() =>
     Promise.resolve(DEFAULT_UPSERT_RESULT)
   );

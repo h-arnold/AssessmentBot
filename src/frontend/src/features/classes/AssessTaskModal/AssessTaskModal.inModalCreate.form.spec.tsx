@@ -6,6 +6,7 @@ import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAs
 import { queryKeys } from '@/query/queryKeys';
 import type { AssignmentTopic } from '@/services/referenceData/referenceData.zod';
 import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
+import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import {
   type RenderWithCacheOptions,
   MOCK_CLASS_ID,
@@ -83,6 +84,9 @@ const CREATE_PATH_UPSERT_RESULT = {
   tasks: [{ taskId: 'task-1', taskTitle: 'Solve equations', taskWeighting: 1 }],
 };
 
+/** Minimal valid response used by the assessment-start mocks. */
+const START_ASSESSMENT_RUN_RESPONSE: StartAssessmentRunResponse = { requestId: 'test-run-id' };
+
 /**
  * Fills the stage-one document URLs in the in-modal create form and submits a parse.
  *
@@ -119,7 +123,13 @@ describe('No-match resolution — creating state and in-modal create path', () =
   it('renders the stage-one in-modal create form and pre-populates the assignment title when topicId matches cache', async () => {
     const { dialog, queryClient } = await setupWizardTest({
       assignments: [
-        { assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: 'Writing', topicId: 'topic-writing' },
+        {
+          assignmentId: 'a1',
+          title: 'Essay',
+          creationTime: '2024-09-02T08:30:00.000Z',
+          topicName: 'Writing',
+          topicId: 'topic-writing',
+        },
       ],
     });
 
@@ -132,17 +142,25 @@ describe('No-match resolution — creating state and in-modal create path', () =
 
     // The single owning dialog renders the stage-one create form in-modal.
     expect(screen.queryAllByRole('dialog')).toHaveLength(1);
-    expect(within(dialog).getByRole('textbox', { name: /assignment title/i })).toHaveValue(
-      'Essay'
-    );
-    expect(within(dialog).getByRole('textbox', { name: /reference document url/i })).toBeInTheDocument();
-    expect(within(dialog).getByRole('textbox', { name: /template document url/i })).toBeInTheDocument();
+    expect(within(dialog).getByRole('textbox', { name: /assignment title/i })).toHaveValue('Essay');
+    expect(
+      within(dialog).getByRole('textbox', { name: /reference document url/i })
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('textbox', { name: /template document url/i })
+    ).toBeInTheDocument();
   });
 
   it('leaves the topic field empty when topicId is not in the assignmentTopics cache', async () => {
     const { dialog, queryClient } = await setupWizardTest({
       assignments: [
-        { assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: 'Writing', topicId: 'unknown-topic' },
+        {
+          assignmentId: 'a1',
+          title: 'Essay',
+          creationTime: '2024-09-02T08:30:00.000Z',
+          topicName: 'Writing',
+          topicId: 'unknown-topic',
+        },
       ],
     });
 
@@ -155,16 +173,22 @@ describe('No-match resolution — creating state and in-modal create path', () =
     await clickCreateNewDefinition(dialog);
 
     // Topic should remain blank because it is not found in the cache.
-    expect(within(dialog).getByRole('textbox', { name: /assignment title/i })).toHaveValue(
-      'Essay'
-    );
+    expect(within(dialog).getByRole('textbox', { name: /assignment title/i })).toHaveValue('Essay');
     expect(within(dialog).getByText('Select topic')).toBeInTheDocument();
     expect(within(dialog).queryByText('Writing')).toBeNull();
   });
 
   it('leaves the topic field empty when topicId is null', async () => {
     const { dialog, queryClient } = await setupWizardTest({
-      assignments: [{ assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: 'Writing', topicId: null }],
+      assignments: [
+        {
+          assignmentId: 'a1',
+          title: 'Essay',
+          creationTime: '2024-09-02T08:30:00.000Z',
+          topicName: 'Writing',
+          topicId: null,
+        },
+      ],
     });
 
     // Populate assignmentTopics cache so the test validates the correct code path
@@ -176,9 +200,7 @@ describe('No-match resolution — creating state and in-modal create path', () =
     await clickCreateNewDefinition(dialog);
 
     // Topic should remain blank because the assignment has no topicId.
-    expect(within(dialog).getByRole('textbox', { name: /assignment title/i })).toHaveValue(
-      'Essay'
-    );
+    expect(within(dialog).getByRole('textbox', { name: /assignment title/i })).toHaveValue('Essay');
     expect(within(dialog).getByText('Select topic')).toBeInTheDocument();
     expect(within(dialog).queryByText('Writing')).toBeNull();
   });
@@ -186,7 +208,7 @@ describe('No-match resolution — creating state and in-modal create path', () =
   it('calls startAssessmentRun and shows the success state when the in-modal create form saves successfully', async () => {
     const { dialog, queryClient } = await setupWizardTest({
       assignments: CREATE_PATH_ASSIGNMENTS,
-      startRunResult: null,
+      startRunResult: START_ASSESSMENT_RUN_RESPONSE,
       startRunType: 'resolve',
       upsertResult: CREATE_PATH_UPSERT_RESULT,
       upsertType: 'resolve',
@@ -276,7 +298,8 @@ describe('No-match resolution — creating state and in-modal create path', () =
   });
 
   it('shows correct UI during auto-assessment loading and final state after resolution', async () => {
-    const { promise: pendingRun, resolve: resolveRun } = Promise.withResolvers<null>();
+    const { promise: pendingRun, resolve: resolveRun } =
+      Promise.withResolvers<StartAssessmentRunResponse>();
     vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
 
     const { dialog, queryClient } = await setupWizardTest({
@@ -304,7 +327,7 @@ describe('No-match resolution — creating state and in-modal create path', () =
 
     // Resolve the API call
     await act(async () => {
-      resolveRun(null);
+      resolveRun(START_ASSESSMENT_RUN_RESPONSE);
     });
 
     // After resolution: success state shown
@@ -323,7 +346,7 @@ describe('No-match resolution — creating state and in-modal create path', () =
     const onClose = vi.fn();
 
     // Mock startAssessmentRun with a pending promise so auto-assessment stays loading
-    const pendingRun = new Promise<null>(() => {});
+    const pendingRun = new Promise<StartAssessmentRunResponse>(() => {});
     vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
 
     const { dialog, queryClient } = await setupWizardTest({

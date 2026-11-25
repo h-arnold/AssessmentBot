@@ -2,6 +2,7 @@ import { act, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import '@/test/classes/AssessTaskModal.mockSetup';
 import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import { queryKeys } from '@/query/queryKeys';
 import { ApiTransportError } from '@/errors/apiTransportError';
 import { createFixtureClassPartial } from '@/test/classes/classesPageTestHelpers';
@@ -16,6 +17,9 @@ import { createDefinitionPartial } from '@/test/classes/matchDefinitionForAssign
 import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
 import { getYearGroups } from '@/services/referenceData/referenceDataService';
 
+/** Minimal valid response used by the assessment-start mocks. */
+const START_ASSESSMENT_RUN_RESPONSE: StartAssessmentRunResponse = { requestId: 'test-run-id' };
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getAssignmentTopics).mockResolvedValue([]);
@@ -25,7 +29,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.resetAllMocks();
 });
-
 
 // ---------------------------------------------------------------------------
 // Assessment Run Interaction
@@ -92,7 +95,15 @@ describe('Assessment run interaction', () => {
       definitionPartials: [createDefinitionPartial()],
       // findMatchResult is intentionally omitted: the component returns early
       // before findMatchingDefinition is called because topicName is null.
-      assignments: [{ assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: null, topicId: null }],
+      assignments: [
+        {
+          assignmentId: 'a1',
+          title: 'Essay',
+          creationTime: '2024-09-02T08:30:00.000Z',
+          topicName: null,
+          topicId: null,
+        },
+      ],
     });
 
     await selectAssignment(dialog);
@@ -152,7 +163,7 @@ describe('Assessment run interaction', () => {
       ],
       definitionPartials: [matchedDefinition],
       findMatchResult: { kind: 'matched', definition: matchedDefinition },
-      startRunResult: null,
+      startRunResult: START_ASSESSMENT_RUN_RESPONSE,
       startRunType: 'resolve',
     });
 
@@ -266,7 +277,8 @@ describe('Assessment run interaction', () => {
 
   it('shows loading on Start Assessment button during API call, reverts on completion', async () => {
     const matchedDefinition = createDefinitionPartial();
-    const { promise: pendingRun, resolve: resolveRun } = Promise.withResolvers<null>();
+    const { promise: pendingRun, resolve: resolveRun } =
+      Promise.withResolvers<StartAssessmentRunResponse>();
     vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
 
     const { dialog } = renderWithCache({
@@ -287,7 +299,7 @@ describe('Assessment run interaction', () => {
 
     // Resolve the API call
     await act(async () => {
-      resolveRun(null);
+      resolveRun(START_ASSESSMENT_RUN_RESPONSE);
     });
 
     // After completion, loading should be gone (success state shown)

@@ -613,7 +613,11 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Response data: `{ tasks: ProgressRecord[] }` inside the standard success envelope, sorted by
   `timestamp` ascending with `requestId` ascending as tie-break, or `{ tasks: [] }` when no keyed
   records exist. See [Contract: ProgressTracker § Transport](../data-shapes/progress-tracker.md#transport).
-  The frontend service wrapper and response schema remain planned.
+  Frontend wrapper: `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts`
+  (`getProgress()`), with response validation in
+  `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts`
+  (`GetProgressResponseSchema`). See
+  [Contract: ProgressTracker § Validation](../data-shapes/progress-tracker.md#validation).
 
 - `getAssignment` — reads a single fully-hydrated assignment by course and assignment id.
   Source: `src/backend/z_Api/assignmentAssessment.js`, via the `getAssignment_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.readRehydrateAssignment()` in `src/backend/y_controllers/ABClassController/index.js`.

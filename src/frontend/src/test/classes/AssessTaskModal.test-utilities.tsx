@@ -16,6 +16,7 @@ import { createAppQueryClient } from '@/query/queryClient';
 import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
 import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { UpsertAssignmentDefinitionResponse } from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import type { QueryClient } from '@tanstack/react-query';
 import { createFixtureClassPartial } from './classesPageTestHelpers';
 
@@ -221,7 +222,7 @@ export function renderWithCache(options: RenderWithCacheOptions = {}): {
   if (startRunType === 'reject') {
     vi.mocked(startAssessmentRun).mockRejectedValue(startRunResult);
   } else if (startRunResult !== undefined) {
-    vi.mocked(startAssessmentRun).mockResolvedValue(startRunResult as null);
+    vi.mocked(startAssessmentRun).mockResolvedValue(startRunResult as StartAssessmentRunResponse);
   }
 
   if (upsertType === 'reject') {

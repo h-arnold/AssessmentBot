@@ -15,6 +15,7 @@ import { createFixtureClassPartial } from '@/test/classes/classesPageTestHelpers
 import { createDefinitionPartial } from '@/test/classes/matchDefinitionForAssignment.test-utilities';
 import { createDeferredPromise } from '@/test/shared/testDeferredPromise';
 import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
+import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import {
   MOCK_ASSIGNMENTS,
   MOCK_CLASS_ID,
@@ -62,27 +63,42 @@ afterEach(() => {
 
 // Two selectable assignments for the selection-change guard test.
 const TWO_ASSIGNMENTS: GoogleClassroomAssignmentsResponse = [
-  { assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: 'Writing', topicId: null },
-  { assignmentId: 'a2', title: 'Report', creationTime: '2024-09-03T08:30:00.000Z', topicName: 'Writing', topicId: null },
+  {
+    assignmentId: 'a1',
+    title: 'Essay',
+    creationTime: '2024-09-02T08:30:00.000Z',
+    topicName: 'Writing',
+    topicId: null,
+  },
+  {
+    assignmentId: 'a2',
+    title: 'Report',
+    creationTime: '2024-09-03T08:30:00.000Z',
+    topicName: 'Writing',
+    topicId: null,
+  },
 ];
 const TWO_ASSIGNMENT_COUNT = TWO_ASSIGNMENTS.length;
+
+/** Minimal valid response used by the assessment-start mocks. */
+const START_ASSESSMENT_RUN_RESPONSE: StartAssessmentRunResponse = { requestId: 'test-run-id' };
 
 /**
  * A deferred assessment-start promise controllable by the calling test.
  */
 type DeferredStart = {
-  pendingRun: Promise<null>;
-  resolveRun: (value: null) => void;
+  pendingRun: Promise<StartAssessmentRunResponse>;
+  resolveRun: (value: StartAssessmentRunResponse) => void;
   rejectRun: (reason: unknown) => void;
 };
 
 /**
  * Creates a React Query wrapper for direct assessment-flow hook assertions.
  *
+ * @param {QueryClient} [queryClient] Query client to provide; a fresh client is used when omitted.
  * @returns {(properties: Readonly<PropsWithChildren>) => JSX.Element} A query client wrapper.
  */
-function createOrchestrationWrapper() {
-  const queryClient = createAppQueryClient();
+function createOrchestrationWrapper(queryClient: QueryClient = createAppQueryClient()) {
   return function OrchestrationWrapper({ children }: Readonly<PropsWithChildren>) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
@@ -94,7 +110,7 @@ function createOrchestrationWrapper() {
  * @returns {DeferredStart} The pending promise and its resolver.
  */
 function createDeferredStart(): DeferredStart {
-  const deferred = createDeferredPromise<null>();
+  const deferred = createDeferredPromise<StartAssessmentRunResponse>();
   return {
     pendingRun: deferred.promise,
     resolveRun: deferred.resolvePromise,
@@ -109,7 +125,7 @@ type MatchedModalWithDeferredStart = {
   dialog: HTMLElement;
   queryClient: QueryClient;
   rerender: ReturnType<typeof render>['rerender'];
-  resolveRun: (value: null) => void;
+  resolveRun: (value: StartAssessmentRunResponse) => void;
   rejectRun: (reason: unknown) => void;
 };
 
@@ -161,10 +177,9 @@ function renderMatchedModalWithDeferredStart(
 describe('obsolete assessment completion guard', () => {
   it('accepts explicit modal context and does not expose a test-only stale transition handler', async () => {
     vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(MOCK_ASSIGNMENTS);
-    const { result } = renderHook(
-      () => useAssessTaskFlow({ open: true, classId: MOCK_CLASS_ID }),
-      { wrapper: createOrchestrationWrapper() }
-    );
+    const { result } = renderHook(() => useAssessTaskFlow({ open: true, classId: MOCK_CLASS_ID }), {
+      wrapper: createOrchestrationWrapper(),
+    });
     await act(async () => {
       await Promise.resolve();
     });
@@ -235,7 +250,7 @@ describe('obsolete assessment completion guard', () => {
     await user.click(await screen.findByText('Report'));
 
     await act(async () => {
-      resolveRun(null);
+      resolveRun(START_ASSESSMENT_RUN_RESPONSE);
     });
 
     // The obsolete Essay completion must not start an assessment once the
@@ -255,8 +270,9 @@ describe('obsolete assessment completion guard', () => {
     seedAssessmentFlowQueryData(queryClient, definition);
     const { result, rerender } = renderHook(
       ({ open }) => useAssessTaskFlow({ open, classId: MOCK_CLASS_ID }),
-      { initialProps: { open: true },
-      wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+      {
+        initialProps: { open: true },
+        wrapper: createOrchestrationWrapper(queryClient),
       }
     );
 
@@ -294,7 +310,7 @@ describe('obsolete assessment completion guard', () => {
     const definition = createDefinitionPartial();
     seedAssessmentFlowQueryData(queryClient, definition);
     const { result } = renderHook(() => useAssessTaskFlow({ open: true, classId: MOCK_CLASS_ID }), {
-      wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+      wrapper: createOrchestrationWrapper(queryClient),
     });
 
     await waitFor(() => expect(result.current.assignments).toHaveLength(TWO_ASSIGNMENT_COUNT));
@@ -329,7 +345,7 @@ describe('obsolete assessment completion guard', () => {
     const definition = createDefinitionPartial();
     seedAssessmentFlowQueryData(queryClient, definition);
     const { result } = renderHook(() => useAssessTaskFlow({ open: true, classId: MOCK_CLASS_ID }), {
-      wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+      wrapper: createOrchestrationWrapper(queryClient),
     });
 
     await waitFor(() => expect(result.current.assignments).toHaveLength(TWO_ASSIGNMENT_COUNT));
@@ -346,7 +362,7 @@ describe('obsolete assessment completion guard', () => {
     });
     act(() => result.current.handleAssignmentChange('a2'));
     await act(async () => {
-      deferred.resolveRun(null);
+      deferred.resolveRun(START_ASSESSMENT_RUN_RESPONSE);
       await Promise.resolve();
     });
 
@@ -361,8 +377,9 @@ describe('obsolete assessment completion guard', () => {
     const queryClient = createAppQueryClient();
     const { result, rerender } = renderHook(
       ({ open }) => useAssessTaskFlow({ open, classId: MOCK_CLASS_ID }),
-      { initialProps: { open: true },
-      wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+      {
+        initialProps: { open: true },
+        wrapper: createOrchestrationWrapper(queryClient),
       }
     );
 
@@ -388,7 +405,7 @@ describe('obsolete assessment completion guard', () => {
     vi.mocked(startAssessmentRun).mockReturnValue(deferred.pendingRun);
     const queryClient = createAppQueryClient();
     const { result } = renderHook(() => useAssessTaskFlow({ open: true, classId: MOCK_CLASS_ID }), {
-      wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+      wrapper: createOrchestrationWrapper(queryClient),
     });
 
     await waitFor(() => expect(result.current.assignments).toHaveLength(TWO_ASSIGNMENT_COUNT));

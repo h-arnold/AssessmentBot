@@ -57,8 +57,8 @@ const PARSE_FAILED_ENTRY: ResponseItem = {
   message: 'The assignment documents could not be parsed.',
 };
 
-/** Successful void assessment-start result. */
-const START_SUCCESS: ResponseItem = { kind: 'success', data: null };
+/** Successful start-assessment-run result carrying the correlation requestId. */
+const START_SUCCESS: ResponseItem = { kind: 'success', data: { requestId: 'e2e-run-id' } };
 
 /** Successful upsert result carrying the canonical definition. */
 const DEFINITION_SUCCESS: ResponseItem = {

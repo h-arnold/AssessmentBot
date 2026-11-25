@@ -339,7 +339,11 @@ test.describe('Embedded heatmap — legacy reassessment rerun', () => {
   });
 
   test('removes the tag only after a successful rerun and the class refresh', async ({ page }) => {
-    await openLegacyHeatmap(page, [{ kind: 'success', data: null }], rerunClassQueue());
+    await openLegacyHeatmap(
+      page,
+      [{ kind: 'success', data: { requestId: 'e2e-run-id' } }],
+      rerunClassQueue()
+    );
     await expect(reassessmentTag(page)).toHaveCount(1);
 
     await page.getByRole('button', { name: RE_RUN_LABEL }).click();

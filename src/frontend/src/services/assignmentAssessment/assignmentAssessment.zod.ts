@@ -11,9 +11,51 @@ export const StartAssessmentRunRequestSchema = z
 
 export type StartAssessmentRunRequest = z.infer<typeof StartAssessmentRunRequestSchema>;
 
-export const StartAssessmentRunResponseSchema = z.void().nullable();
+/**
+ * Response schema for `startAssessmentRun`, carrying the correlation ID.
+ *
+ * @remarks
+ * The backend returns the dispatch `requestId` in the response data, so this
+ * schema is non-nullable. The frontend uses the value to correlate later
+ * `getProgress` records with the run it started.
+ */
+export const StartAssessmentRunResponseSchema = z.object({
+  requestId: z.string().min(1),
+});
 
 export type StartAssessmentRunResponse = z.infer<typeof StartAssessmentRunResponseSchema>;
+
+/**
+ * Schema for a single keyed progress record returned by `getProgress`.
+ *
+ * @remarks
+ * Mirrors the keyed `ProgressTracker` record shape. `timestamp` uses
+ * `z.iso.datetime()` (the non-deprecated Zod 4 API) and expects the canonical
+ * UTC `Z` form emitted by the backend's `toISOString()`. Zod 4's `z.number()`
+ * rejects non-finite `step` values natively.
+ */
+export const ProgressRecordSchema = z.object({
+  requestId: z.string().min(1),
+  step: z.number(),
+  message: z.string(),
+  completed: z.boolean(),
+  error: z.string().nullable(),
+  timestamp: z.iso.datetime(),
+});
+
+export type ProgressRecord = z.infer<typeof ProgressRecordSchema>;
+
+/**
+ * Response schema for `getProgress`.
+ *
+ * @remarks
+ * An empty `tasks` array is valid when the backend has no keyed records.
+ */
+export const GetProgressResponseSchema = z.object({
+  tasks: z.array(ProgressRecordSchema),
+});
+
+export type GetProgressResponse = z.infer<typeof GetProgressResponseSchema>;
 
 /**
  * Schema for an assessment, matching `Assessment.toJSON()` in

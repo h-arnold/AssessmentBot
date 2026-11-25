@@ -208,7 +208,10 @@ test.describe('Assess Task modal', () => {
 
     test('loading state during link shows spinner and disabled Link button', async ({ page }) => {
       const UPSERT_DEFERRED = { kind: 'deferredSuccess' as const, data: ALGEBRA_HW_PARTIAL };
-      const RUN_DEFERRED = { kind: 'deferredSuccess' as const, data: null };
+      const RUN_DEFERRED = {
+        kind: 'deferredSuccess' as const,
+        data: { requestId: 'e2e-run-id' },
+      };
 
       const dialog = await setupLinkableDialog(
         page,

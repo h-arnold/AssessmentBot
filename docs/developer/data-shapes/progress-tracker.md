@@ -1,8 +1,7 @@
 # Contract: ProgressTracker
 
-Keyed User Property records, the `ProgressTracker` facade, the `getProgress` transport and the
-deferred cleanup coordinator are implemented. Frontend validation remains planned and is marked
-`Not implemented` below.
+Keyed User Property records, the `ProgressTracker` facade, the `getProgress` transport, the deferred
+cleanup coordinator and the frontend service and validation schemas are implemented.
 
 Internal progress state for frontend-driven assessment runs. Progress records are persisted as
 separate GAS User Properties keyed by the `requestId` generated for the `startAssessmentRun`
@@ -118,7 +117,8 @@ property-store read failure to the `apiHandler` error boundary. Records are sort
 ascending with `requestId` ascending as tie-break. An empty set of keyed records returns
 `{ tasks: [] }`.
 
-The frontend service and `GetProgressResponseSchema` remain planned (`Not implemented`).
+The frontend wrapper `getProgress()` lives in the `assignmentAssessment` service domain and takes no
+parameters.
 
 ### `startAssessmentRun` response change
 
@@ -139,8 +139,12 @@ None. Each progress record is a flat object.
 the other record fields at the transport boundary. Domain invariants stay in `ProgressTracker` and
 `AssignmentController`.
 
-Frontend schemas (`Not implemented`) require non-empty `requestId`, finite `step`, string
-`message`, boolean `completed`, nullable `error` and ISO 8601 `timestamp`.
+The frontend validates responses at the service boundary. `ProgressRecordSchema` requires a non-empty
+`requestId`, a finite `step`, a string `message`, a boolean `completed`, a nullable string `error` and
+a `z.iso.datetime()` timestamp in canonical UTC `Z` form (the non-deprecated Zod 4 API).
+`GetProgressResponseSchema` requires `{ tasks: ProgressRecord[] }` and accepts an empty array.
+`StartAssessmentRunResponseSchema` is non-nullable and requires `{ requestId: z.string().min(1) }`;
+see [assignment.md § `startAssessmentRun`](assignment.md#startassessmentrun-write).
 
 ---
 
@@ -169,10 +173,6 @@ src/backend/Utils/02_ProgressTrackerCleanup.js
 src/backend/Utils/ProgressTracker.js
 src/backend/Triggers/triggerMethodHandlers.js (cleanupProgress)
 src/backend/z_Api/progressTracker.js
-```
-
-Planned:
-
-```text
-src/frontend/src/services/assignmentAssessment/*
+src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts
+src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts
 ```

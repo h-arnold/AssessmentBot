@@ -252,13 +252,13 @@ This transformation is performed by `ABClassResponseMapper._toReadView()` — it
 Initiates the assessment workflow for a given assignment and definition
 by creating a time-based trigger.
 
-| Aspect           | Detail                                                                                                                                    |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Backend handler  | `src/backend/z_Api/assignmentAssessment.js` → `startAssessmentRun_()`                                                                     |
-| Controller       | `AssignmentController.startAssessmentRun()`                                                                                               |
-| Response mapper  | `{ requestId }` read from the dispatcher accessor; the controller returns `null`                                                          |
-| Frontend Zod     | `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `StartAssessmentRunResponseSchema` (`z.void().nullable()`) |
-| Frontend service | `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts` → `startAssessmentRun()`                                  |
+| Aspect           | Detail                                                                                                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend handler  | `src/backend/z_Api/assignmentAssessment.js` → `startAssessmentRun_()`                                                                                               |
+| Controller       | `AssignmentController.startAssessmentRun()`                                                                                                                         |
+| Response mapper  | `{ requestId }` read from the dispatcher accessor; the controller returns `null`                                                                                    |
+| Frontend Zod     | `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `StartAssessmentRunResponseSchema` (non-nullable `{ requestId: z.string().min(1) }`) |
+| Frontend service | `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts` → `startAssessmentRun()`                                                            |
 
 **Request:**
 
@@ -279,11 +279,9 @@ Key contract notes:
 - `AssignmentController.startAssessmentRun()` still returns `null`. The transport handler returns
   `{ requestId }`, so the payload ID equals the envelope `requestId`. The ID is forwarded into
   trigger params; see [Contract: TriggerContext](trigger-context.md).
-- Frontend schema still uses `z.void().nullable()` to accept the `undefined → null` coercion in the envelope.
-
-> **Planned change (`Not implemented`):** `StartAssessmentRunResponseSchema` becomes a non-nullable
-> object schema with `requestId: z.string().min(1)`; it currently accepts only `null`/`undefined`.
-> See [progress-tracker.md](progress-tracker.md).
+- The frontend `StartAssessmentRunResponseSchema` is a non-nullable object requiring
+  `requestId: z.string().min(1)`, so `startAssessmentRun()` resolves the typed correlation ID.
+  See [progress-tracker.md](progress-tracker.md#validation).
 
 ---
 
@@ -365,7 +363,7 @@ contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set 
   - `AssignmentFullResponseSchema` — `AssignmentFullSchema.nullable()`, handles not-found.
   - `GetAssignmentRequestSchema` (`.strict()`) — validates `getAssignment` request parameters.
   - `StartAssessmentRunRequestSchema` (`.strict()`) — validates `startAssessmentRun` request parameters.
-  - `StartAssessmentRunResponseSchema` — `z.void().nullable()`, accepts `null` from backend envelope.
+  - `StartAssessmentRunResponseSchema` — non-nullable `{ requestId: z.string().min(1) }`.
   - `AssignmentDefinitionSchema` — validates full definition shape (cross-ref to AssignmentDefinition contract).
   - `TaskDefinitionSchema` — validates full task definition shape (cross-ref to AssignmentDefinition contract).
   - `StudentSubmissionSchema`, `StudentSubmissionItemSchema`, `AssessmentSchema` and `BaseTaskArtifactSchema` are re-exported/consumed here; their authoritative documentation lives in the component-shape files.
@@ -428,9 +426,8 @@ contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set 
 4. **The `startAssessmentRun` controller returns `null` while the transport returns `{ requestId }`.**
    `AssignmentController.startAssessmentRun()` keeps its `null` return. The transport handler reads
    the dispatcher-generated correlation ID and returns it as `{ requestId }`, equal to the envelope
-   `requestId`. The frontend `StartAssessmentRunResponseSchema` still uses `z.void().nullable()`,
-   which accepts `undefined` (from the envelope's `data ?? null` coercion) and `null` but not the
-   new object payload; that schema update is planned.
+   `requestId`. The frontend `StartAssessmentRunResponseSchema` accepts that object payload as a
+   non-nullable `{ requestId: z.string().min(1) }`.
 
 5. **Legacy records are retained as ordinary instance state and both read paths prepare them at read time.**
    `Assignment._baseFromJSON()` does not catch, reconstruct or drop non-marker-1 records: it keeps the stored submission records in `inst.submissions`, the exact stored marker value in `inst.assessmentContractVersion` and its presence in `inst._legacyMarkerPresent`, and does not run the marker-1 submission rehydration. `AssignmentRehydration._rehydrateSubmission()` handles marker-1 records only — it delegates each one to `AssignmentCurrentRestoration._rehydrateCurrentSubmission()` — so non-marker-1 records never reach it. `AssignmentSerialisation.toJSON()` / `toPartialJSON()` re-emit that state through their normal paths (an ordinary save never marks a stored result as current), while `toReadJSON()` and `ABClassResponseMapper._toReadView()` prepare read submissions through `AssignmentRehydration.prepareLegacyReadSubmissions()` and emit `'legacy'` on the wire entry. Both read services validate the resulting entries. Completed-write preflight/gates are enforced at the write boundary.

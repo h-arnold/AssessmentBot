@@ -5,6 +5,7 @@ import '@/test/classes/AssessTaskModal.mockSetup';
 import { AssessTaskModal } from './AssessTaskModal';
 import { getGoogleClassroomAssignments } from '@/services/googleClassrooms/googleClassroomAssignmentsService';
 import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import { upsertAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
 import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
 import {
@@ -20,6 +21,9 @@ import { renderWithNoMatchCache } from '@/test/classes/AssessTaskModal.link-flow
 import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
 import { getYearGroups } from '@/services/referenceData/referenceDataService';
 
+/** Minimal valid response used by the assessment-start mocks. */
+const START_ASSESSMENT_RUN_RESPONSE: StartAssessmentRunResponse = { requestId: 'test-run-id' };
+
 let user: ReturnType<typeof userEvent.setup>;
 
 beforeEach(() => {
@@ -32,7 +36,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.resetAllMocks();
 });
-
 
 // ---------------------------------------------------------------------------
 // Footer: Buttons in Non-Success States
@@ -100,7 +103,7 @@ describe('Inline event handler stability', () => {
     const { dialog } = renderWithNoMatchCache({
       upsertResult: DEFAULT_UPSERT_RESULT,
       upsertType: 'resolve',
-      startRunResult: null,
+      startRunResult: START_ASSESSMENT_RUN_RESPONSE,
       startRunType: 'resolve',
     });
 

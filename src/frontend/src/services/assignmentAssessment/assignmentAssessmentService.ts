@@ -4,29 +4,60 @@ import { logFrontendError } from '@/logging/frontendLogger';
 import {
   StartAssessmentRunRequestSchema,
   StartAssessmentRunResponseSchema,
+  GetProgressResponseSchema,
   GetAssignmentRequestSchema,
   AssignmentFullResponseSchema,
   type StartAssessmentRunRequest,
+  type StartAssessmentRunResponse,
+  type GetProgressResponse,
   type GetAssignmentRequest,
   type AssignmentFullResponse,
 } from './assignmentAssessment.zod';
 
 const START_ASSESSMENT_RUN_METHOD = 'startAssessmentRun';
+const GET_PROGRESS_METHOD = 'getProgress';
 const GET_ASSIGNMENT_METHOD = 'getAssignment';
 
 /**
  * Starts an assessment run for the given definition, assignment, and course.
  *
+ * @remarks
+ * The response carries the dispatch `requestId` in its data even though the
+ * transport envelope also has one: `callApi` resolves the envelope's `data`
+ * only and discards the envelope `requestId`, so this data payload is the
+ * frontend's correlation source for later `getProgress` calls.
+ *
  * @param {StartAssessmentRunRequest} input Request payload with definitionKey, assignmentId, and courseId.
- * @returns {Promise<null>} Promise resolving to null on success.
+ * @returns {Promise<StartAssessmentRunResponse>} Promise resolving to the correlated request ID.
  */
-export async function startAssessmentRun(input: StartAssessmentRunRequest): Promise<null> {
+export async function startAssessmentRun(
+  input: StartAssessmentRunRequest
+): Promise<StartAssessmentRunResponse> {
   const parsedInput = StartAssessmentRunRequestSchema.parse(input);
   return parseApiResponse(
     StartAssessmentRunResponseSchema,
     START_ASSESSMENT_RUN_METHOD,
     await callApi(START_ASSESSMENT_RUN_METHOD, parsedInput)
-  ) as null;
+  );
+}
+
+/**
+ * Fetches the current keyed progress records for all assessment runs.
+ *
+ * @remarks
+ * Takes no parameters: the backend reads all keyed `ProgressTracker` records
+ * and returns them sorted. Records are validated at this boundary so callers
+ * can safely match a record's `requestId` to the value returned by
+ * `startAssessmentRun()`.
+ *
+ * @returns {Promise<GetProgressResponse>} Promise resolving to the progress records.
+ */
+export async function getProgress(): Promise<GetProgressResponse> {
+  return parseApiResponse(
+    GetProgressResponseSchema,
+    GET_PROGRESS_METHOD,
+    await callApi(GET_PROGRESS_METHOD)
+  );
 }
 
 /**

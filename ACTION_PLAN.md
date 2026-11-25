@@ -2,10 +2,10 @@
 
 ## Delivery status
 
-- Current section: Section 4 — Deferred cleanup trigger (complete, pending gate and commit).
-- Current phase: Section 4 docs sync + plan compaction in parallel; RED and GREEN loops both PASSED
-  review with no findings. Section 3 is complete, compacted, gated, committed (`5ce30ff9`,
-  `beeee68d`) and pushed.
+- Current section: Section 5 — Frontend API surface (complete, pending gate and commit).
+- Current phase: Section 5 docs sync + plan compaction in parallel; RED and GREEN loops both PASSED
+  review with no findings. Section 4 is complete, compacted, gated, committed (`2acfae65`,
+  `e52fdd99`) and pushed.
 - Branch: `feat/progress-tracker-api-polling`.
 - Regression session ID: `progresstracker-api-polling`.
 - Baseline gate: PASSED — 2026-11-25T10:23:32.661Z, `baseline/baseline.txt`, Overall Status GREEN,
@@ -524,104 +524,103 @@ terminal-only sweep` — on branch `feat/progress-tracker-api-polling`, pushed s
 
 ## Section 5 — Frontend API surface
 
-### Objective
+### Outcome (compacted)
 
-Add typed frontend wrappers for `getProgress` and update `startAssessmentRun` to expose the
-correlation ID. No polling hook or UI is added.
-
-### Constraints
-
-- All calls go through `callApi`; no direct `google.script.run`.
-- `StartAssessmentRunResponseSchema` is a non-nullable object with `requestId: z.string().min(1)`.
-- `startAssessmentRun()` signature becomes `Promise<StartAssessmentRunResponse>` with no `as null`
-  cast.
-- `getProgress()` needs a response schema only; it takes no parameters.
-- `ProgressRecordSchema.timestamp` uses `z.iso.datetime()` (the non-deprecated Zod 4 API).
-- LOC: `assignmentAssessment.zod.ts` 211 → ~245; `assignmentAssessmentService.ts` 58 → ~80.
-  Both below 500. If either crosses 500, split schemas into a dedicated `progressTracker.zod.ts`
-  in the same `assignmentAssessment` folder.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- @SPEC.md
-- @docs/developer/frontend/frontend-testing.md
-- @src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.spec.ts
-
-Implementation mandatory docs:
-
-- @SPEC.md
-- @docs/developer/frontend/frontend-architecture.md
-- @docs/developer/data-shapes/progress-tracker.md
-- @src/frontend/src/services/apiService.ts
-- @src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts
-- @src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts
-
-Code Reviewer mandatory docs:
-
-- @SPEC.md
-- @docs/developer/frontend/frontend-architecture.md
-
-### Shared helper plan
-
-- Helper: `callApi` and `parseApiResponse`
-  - Decision: `reuse`
-  - Owning module/path: `src/frontend/src/services/apiService.ts`
-  - Rationale: sole transport and envelope choke point.
-
-### Data-shape plan
-
-- Confirm frontend schemas match `docs/developer/data-shapes/progress-tracker.md` and the updated
-  `startAssessmentRun` shape in `assignment.md`; remove remaining markers owned by this section.
-- Reference: @docs/developer/data-shapes/progress-tracker.md @docs/developer/data-shapes/assignment.md
-
-### Acceptance criteria
-
-- `startAssessmentRun()` resolves to `{ requestId }` with no cast.
-- `getProgress()` resolves to `{ tasks }`, including the empty-array case.
-- Invalid record shapes fail Zod validation at the service boundary.
-- No polling loop, hook or UI component is introduced.
-
-### Required test cases (Red first)
-
-Frontend tests:
-
-1. `getProgress()` returns parsed tasks and accepts an empty array.
-2. A record with a malformed timestamp is rejected by `ProgressRecordSchema`.
-3. `startAssessmentRun()` returns the request ID from response data.
-4. Existing specs asserting `null` are updated.
-
-### Section checks
-
-- `npm run test:frontend -- assignmentAssessmentService.spec.ts`
-- `npm run lint:frontend:check`
-- `npm run typecheck:all`
-- Mandatory-read evidence gate passed.
-- Canonical-fixture note: local typed fixtures; no corpus change.
-- Docs sync outcome recorded.
-- Completed section compacted into **Retained for later sections** below.
-
-### Docs delegation reads (when sub-agents are used)
-
-- @docs/developer/data-shapes/progress-tracker.md
-- @docs/developer/data-shapes/assignment.md
+Delivered the typed frontend API surface: `startAssessmentRun()` resolves to `{ requestId }` with
+no cast and `getProgress()` is a parameterless wrapper returning `{ tasks }`, both validated at
+the service boundary. RED and GREEN loops both PASSED review with no findings. Section checks
+passed: focused service spec 18/18, combined service+zod 59/59, `test:frontend -- AssessTaskModal`
+19 files / 173 tests, `test:frontend -- AssessTaskRecoveryFlow` 5 tests, full frontend coverage
+362 files / 3300 tests (the `assignmentAssessment` folder at 100% lines/functions),
+`lint:frontend:check` exit 0, `typecheck:all` clean (frontend `tsc -b` 0 errors) and Prettier
+clean. Mandatory-read evidence gate passed; `callApi`/`parseApiResponse` were reused and the
+canonical-fixture note was respected (local typed fixtures, no corpus change). Contracts,
+patterns and outstanding records are retained below; authoritative evidence and records are in
+the preserved `Implementation notes / deviations / follow-up` subsection.
 
 ### Retained for later sections
 
-- `startAssessmentRun()` returns `Promise<StartAssessmentRunResponse>` with no `as null` cast.
-- `getProgress()` is a parameterless service call returning `{ tasks }`.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Document why the start response now carries the correlation ID despite the envelope already
-  having one.
+- **Start-run response contract:** `StartAssessmentRunResponseSchema` is the non-nullable
+  `z.object({ requestId: z.string().min(1) })`; `startAssessmentRun()` returns
+  `Promise<StartAssessmentRunResponse>` with no `as null` cast. The `StartAssessmentRunResponse`
+  type name was preserved so migrated specs needed only mechanical typing changes.
+- **Progress schemas:** `ProgressRecordSchema` and `GetProgressResponseSchema` live in
+  `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` (253 lines).
+  `ProgressRecordSchema` requires `requestId: z.string().min(1)`, `step: z.number()`,
+  `message: z.string()`, `completed: z.boolean()`, `error: z.string().nullable()` and
+  `timestamp: z.iso.datetime()` (the non-deprecated Zod 4 API); Zod 4's `z.number()` rejects
+  non-finite `step` values. `GetProgressResponseSchema` is `{ tasks: ProgressRecord[] }` and
+  accepts an empty array. No split into `progressTracker.zod.ts` was needed because both files
+  stayed under 500 lines.
+- **Service interface:** `getProgress()` is a parameterless function (not an arrow constant) in
+  `assignmentAssessmentService.ts` (89 lines). `GET_PROGRESS_METHOD = 'getProgress'` matches
+  `ALLOWLISTED_METHOD_HANDLERS`; it calls `callApi(method)` with no parameters and
+  `parseApiResponse`, so invalid record shapes fail at the service boundary.
+- **`@remarks` commitment:** the JSDoc on `startAssessmentRun` explains why the start response
+  carries the correlation ID despite the envelope having one: `callApi` discards the envelope
+  `requestId`, so the data payload is the frontend's source for correlating later `getProgress`
+  records. This fulfils the plan's optional follow-through; the plan wording was ambiguous about
+  placement, so the note sits on `startAssessmentRun`.
+- **Mock migrations:** 12 files — the 8 AssessTaskModal/recovery specs, `test-utilities.tsx`,
+  `recovery-helpers.ts` and the two service specs — migrated `Promise<null>`,
+  `mockResolvedValue(null)`, `withResolvers<null>` and `as null` to the new contract with a
+  `{ requestId: 'test-run-id' }` constant; all 134 assertions and titles were verified unchanged.
+  `linkFlow.spec.tsx` also dropped a pre-existing `as any` plus disable directive (now typed
+  `UpsertAssignmentDefinitionResponse`) and 14 blank lines to stay under 500.
+- **Shared-helper reconciliation:** Section 5 reused `callApi` and `parseApiResponse` from
+  `src/frontend/src/services/apiService.ts` (decision `reuse`); no new helper was added, so the
+  shared-helper entry is unchanged.
+- **Constraints honoured:** no polling loop, hook or UI component was introduced and all calls
+  still go through `callApi`, not `google.script.run`. The five `useAssessTask*Flow` hooks ignore
+  the resolved start-run value, so the `null`→object change needed no production edits beyond the
+  service file.
+- **Open record slots:** docs-sync outcome, regression report and commit record remain to be
+  filled by the orchestrator after this compaction. No new record is created here.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** ...
-- **Deviations from plan:** ...
-- **Follow-up implications for later sections:** later UI work can poll using the returned ID.
+- **Implementation notes:** RED and GREEN reviews passed with no outstanding findings. Section
+  checks passed: focused service spec 18/18, combined service+zod 59/59,
+  `test:frontend -- AssessTaskModal` 19 files / 173 tests,
+  `test:frontend -- AssessTaskRecoveryFlow` 5 tests, full frontend coverage 362 files / 3300 tests
+  (assignmentAssessment folder 100% lines/functions), `lint:frontend:check` exit 0,
+  `typecheck:all` clean (frontend `tsc -b` 0 errors), Prettier clean, mandatory-read evidence gate
+  passed.
+- **Deviations from plan:** none in production code. The `@remarks` was placed on
+  `startAssessmentRun` because the plan wording was ambiguous about placement. The service file is
+  89 lines against the ~80 guidance and the zod file 253 against ~245; both are under 500, so no
+  `progressTracker.zod.ts` split was required.
+- **Follow-up implications for later sections:** none. All five feature sections are delivered;
+  the remaining passes are the regression-hardening and documentation sections. Later UI work can
+  poll using the returned ID.
+- **Docs sync (including the gate-found additions):** updated
+  `docs/developer/data-shapes/progress-tracker.md`, `data-shapes/assignment.md`,
+  `backend/api-layer.md` and the ProgressTracker contract description in
+  `.opencode/agents/code-reviewer.md`; no pages created. Removed all four Section-5-owned planned
+  markers plus the `Planned change (Not implemented)` callout in `assignment.md`, so no
+  `Not implemented` marker remains for any delivered ProgressTracker shape. After the first gate
+  run, the docs agent also corrected two stale testing-doc lines that cited `startAssessmentRun`
+  as a void method (`frontend-testing.md`, `frontend-playwright-e2e.md`). No source JSDoc was
+  edited, so no scoped lint re-run was needed. Two new pre-existing doc nitpicks (`assignment.md`
+  File Index omits `getProgress()`; `api-layer.md:606` path typo) logged as `disregarded` in
+  `.opencode/scratchpad/progresstrackerrefactor-deferred-findings.md`.
+- **E2E regression fix (found by the first gate run):** the gate failed with 13 genuine E2E
+  failures (`flaky 0, unexpected 13`): the runtime-mock entries for `startAssessmentRun` still
+  returned `data: null`, which the new non-nullable schema rejects at the service boundary. The
+  Playwright agent updated every start-run mock entry (8 sites across 7 files, one found by
+  re-grep) to `{ requestId: 'e2e-run-id' }` with no assertion or scenario change, corrected one
+  stale JSDoc line, and the full E2E suite passed 356 / 0 failed / 0 flaky. Code review of the
+  fix: PASSED with zero findings.
+- **Section regression gate:** PASSED — 2026-11-25T18:06:42.883Z,
+  `.ts-regression-checker/reports/session-progresstracker-api-polling/runs/2026-11-25T18-06-42.883Z/comparison.txt`,
+  Overall Status GREEN, 8/8 checks passing, 0 regressions, 0 new failures, 0 fixes; no pre-existing
+  failures (baseline fully green). The first gate attempt failed with the 13 E2E failures recorded
+  above; this run is the section-completion gate against the fixed tree and supersedes it.
+- **Graphify refresh (§2.75):** `graphify update .` ran after the gate; it rebuilt 11,959 nodes /
+  29,712 edges / 631 communities and rewrote the tracked `graphify-out/` artifacts (`graph.json`,
+  `graph.html`, `GRAPH_REPORT.md`, `manifest.json`, `.graphify_labels.json`). Local build caches and
+  the dated backup directory remain untracked; they are not committed.
+- **Commit record:** record to follow.
 
 ---
 

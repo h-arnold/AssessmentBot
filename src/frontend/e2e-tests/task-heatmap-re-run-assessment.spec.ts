@@ -203,7 +203,7 @@ test.describe('Re-run Assessment from the assignment heatmap', () => {
     page,
   }) => {
     const scenario = createReRunHeatmapScenario({
-      startAssessmentRun: [{ kind: 'deferredSuccess', data: null }],
+      startAssessmentRun: [{ kind: 'deferredSuccess', data: { requestId: 'e2e-run-id' } }],
     });
     await installRuntimeMock(page, scenario);
     await installRequestRecorder(page);
@@ -246,7 +246,7 @@ test.describe('Re-run Assessment from the assignment heatmap', () => {
     const scenario = createReRunHeatmapScenario({
       startAssessmentRun: [
         { kind: 'failureEnvelope', code: 'INTERNAL_ERROR', message: 'Assessment run rejected' },
-        { kind: 'success', data: null },
+        { kind: 'success', data: { requestId: 'e2e-run-id' } },
       ],
     });
     await installRuntimeMock(page, scenario);
