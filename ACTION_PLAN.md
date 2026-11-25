@@ -741,7 +741,11 @@ Align canonical docs with the delivered code and remove planned-only markers.
   source files, so the tracked `graphify-out/` artifacts were already current and only
   `manifest.json` was rewritten (no topology changes). Committed with the section bookkeeping
   commit below; untracked build caches remain uncommitted.
-- **Commit record:** record to follow.
+- **Commit record:** `b276aa6e` — `docs(plan): record documentation-section verification, gate and
+graphify refresh` — on branch `feat/progress-tracker-api-polling`, pushed successfully to
+  `origin/feat/progress-tracker-api-polling` (`53a091f8..b276aa6e`). Pre-commit hooks (Prettier,
+  `typecheck:all`) passed. The pre-existing uncommitted `model:` edits in five
+  `.opencode/agents/*.md` files remain unstaged and are not part of any commit by this plan.
 
 ---
 
