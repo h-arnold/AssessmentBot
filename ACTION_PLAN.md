@@ -659,8 +659,24 @@ Verify backend, frontend and transport contracts after all sections land.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** ...
-- **Deviations from plan:** ...
+- **Implementation notes:** verification-only section; no code, test or documentation file was
+  changed. All five required checks green: (1) `test:backend -- progressTracker/apiHandler/
+triggers` 21 files / 257 tests passed; (2) `test:frontend -- assignmentAssessmentService.spec.ts`
+  1 file / 18 tests passed; (3) `lint:check` exit 0; (4) `typecheck:all` exit 0; (5)
+  `build:production` exit 0 (132 files materialised, determinism checksums printed). Acceptance
+  criterion "no `Not implemented` marker remains for delivered shapes" verified by grep: the only
+  occurrence in `docs/developer/` is the convention description at `api-layer.md:25` (policy text,
+  not a marker). Docs sync skipped: the section changed no documented behaviour; the following
+  Documentation section owns doc reconciliation. Plan compaction: no reduction needed — the
+  section records outcomes directly and has no delivery history to remove.
+- **Deviations from plan:** none.
+- **Section regression gate:** PASSED — run `2026-11-25` (session `progresstracker-api-polling`),
+  Overall Status GREEN, 8/8 checks passing, 0 regressions, 0 new failures, 0 fixes; report under
+  `.ts-regression-checker/reports/session-progresstracker-api-polling/`.
+- **Graphify refresh (§2.75):** `graphify update .` ran after the gate; this section changed no
+  source files, so the tracked `graphify-out/` artifacts were already current from the Section 5
+  commit and were not rewritten. Record to follow with the commit.
+- **Commit record:** record to follow.
 
 ---
 
