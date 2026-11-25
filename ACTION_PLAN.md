@@ -388,6 +388,10 @@ preserved `Implementation notes / deviations / follow-up` subsection.
   29,644 edges / 609 communities and rewrote the tracked `graphify-out/` artifacts (`graph.json`,
   `graph.html`, `GRAPH_REPORT.md`, `manifest.json`, `.graphify_labels.json`). Local build caches and
   the dated backup directory remain untracked; they are not committed.
+- **Commit record:** `5ce30ff9` — `feat(backend): add getProgress transport handler and registration`
+  — on branch `feat/progress-tracker-api-polling`, pushed successfully to
+  `origin/feat/progress-tracker-api-polling` (`42400598..5ce30ff9`). Pre-commit hooks (Prettier,
+  backend lint, `typecheck:all`) passed.
 
 ---
 
