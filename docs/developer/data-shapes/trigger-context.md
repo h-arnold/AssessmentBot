@@ -71,8 +71,9 @@ The store is managed by three instance methods on `TriggerController`
   trigger cleanup).
 - The `params` value is a JSON string because Script Properties only stores strings.
 
-> **Planned change (`Not implemented`):** a new `cleanupProgress` trigger method will use an
-> empty params object. See [progress-tracker.md](progress-tracker.md).
+The `cleanupProgress` trigger method uses an empty params object. It is a
+`TRIGGER_METHOD_HANDLERS` entry dispatched by `triggerHandler()` like any other method; see
+[Contract: ProgressTracker § Cleanup behaviour](progress-tracker.md#cleanup-behaviour).
 
 ---
 

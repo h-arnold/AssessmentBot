@@ -16,10 +16,11 @@ const CACHE_EXPIRY_SECONDS =
  */
 class CacheManager {
   /**
-   * Initialises the CacheManager with the Apps Script cache service.
+   * Initialises the CacheManager with a supplied cache or the Apps Script script cache.
+   * @param {Object} [cache] - Cache instance to use; defaults to the script cache.
    */
-  constructor() {
-    this.cache = CacheService.getScriptCache();
+  constructor(cache = CacheService.getScriptCache()) {
+    this.cache = cache;
   }
 
   /**
@@ -60,6 +61,21 @@ class CacheManager {
       this.cache.put(key, serialized, ttlSeconds);
     } catch (error) {
       ABLogger.getInstance().error('Error writing to cache:', error);
+      // Don't throw — caching should be best-effort.
+    }
+  }
+
+  /**
+   * Removes a key from the cache.
+   * @param {string} key - The cache key to remove.
+   * @returns {void}
+   * @remarks Cache removal failures are logged through ABLogger and do not break the calling workflow.
+   */
+  remove(key) {
+    try {
+      this.cache.remove(key);
+    } catch (error) {
+      ABLogger.getInstance().error('Error removing from cache:', error);
       // Don't throw — caching should be best-effort.
     }
   }

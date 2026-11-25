@@ -107,7 +107,7 @@ Definitions are created and updated by a separate flow: the frontend upserts via
   1. Validates `event.triggerUid`; a malformed event is logged and returns without cleanup or dispatch.
   2. Resolves the stored context via `TriggerController.getTriggerContext()`; an unknown triggerUid returns with no cleanup; an incomplete or unregistered context is logged and cleaned up.
   3. Fail-closed auth check — `AuthService.checkAccess({ bypassCache: true, neverClaim: true, method })`; a denial is logged once by AuthService and the context is cleaned up.
-  4. Dispatches through `TRIGGER_METHOD_HANDLERS` (`src/backend/Triggers/triggerMethodHandlers.js`) — currently a single `processSelectedAssignment` entry.
+  4. Dispatches through `TRIGGER_METHOD_HANDLERS` (`src/backend/Triggers/triggerMethodHandlers.js`), which registers `processSelectedAssignment` and `cleanupProgress`. The latter runs one deferred cleanup sweep per fired trigger; see [Contract: ProgressTracker § Cleanup behaviour](../data-shapes/progress-tracker.md#cleanup-behaviour).
   5. Owns all cleanup (context clear + trigger deletion) in a finally block, whether the handler completes or throws.
 
 #### Process selected assignment (orchestrator)

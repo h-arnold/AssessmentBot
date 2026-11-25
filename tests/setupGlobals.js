@@ -90,9 +90,8 @@ g.PropertiesService = {
 // Use the shared ProgressTracker mock for tests
 g.ProgressTracker = require('./mocks/ProgressTracker.js');
 
-// Default cleanup seam used by the real ProgressTracker's logError write path.
-// Focused suites replace this object with a spy; Section 4 supplies the real coordinator.
-g.ProgressTrackerCleanup = { schedule: () => {} };
+// The real cleanup coordinator is loaded after its dependencies below,
+// mirroring GAS concatenation order.
 
 // Provide a minimal ABLogger stub for tests so production code can call it directly
 g.ABLogger = {
@@ -147,6 +146,7 @@ g.GASPropertiesUtils = require('../src/backend/Utils/00_GASPropertiesUtils.js');
 // Mirror GAS concatenation order: the keyed store helper evaluates before the
 // facade that resolves it as a script-scope global.
 g.ProgressTrackerStore = require('../src/backend/Utils/01_ProgressTrackerStore.js');
+g.ProgressTrackerCleanup = require('../src/backend/Utils/02_ProgressTrackerCleanup.js');
 
 g.ApiValidationError = require('../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 g.ApiRateLimitError = require('../src/backend/Utils/ErrorTypes/ApiRateLimitError.js');
@@ -286,14 +286,36 @@ const _scriptCache = {
     delete _scriptCacheStore[key];
   },
 };
+// Separate in-memory store for the per-user cleanup flag. It is deliberately
+// independent of the script cache so tests can prove user-scoped dedupe.
+const _userCacheStore = {};
+const _userCache = {
+  get(key) {
+    return Object.hasOwn(_userCacheStore, key) ? _userCacheStore[key] : null;
+  },
+  put(key, value, ttlSeconds) {
+    _userCacheStore[key] = value;
+  },
+  remove(key) {
+    delete _userCacheStore[key];
+  },
+};
 g.CacheService = {
   _resetScriptCache() {
     for (const key of Object.keys(_scriptCacheStore)) {
       delete _scriptCacheStore[key];
     }
   },
+  _resetUserCache() {
+    for (const key of Object.keys(_userCacheStore)) {
+      delete _userCacheStore[key];
+    }
+  },
   getScriptCache() {
     return _scriptCache;
+  },
+  getUserCache() {
+    return _userCache;
   },
 };
 

@@ -23,6 +23,7 @@ describe('ProgressTracker', () => {
   let mockABLogger;
   let cleanupScheduleSpy;
   let restoreGlobals;
+  let savedGlobals;
 
   beforeEach(() => {
     // Reset singleton state before each test
@@ -51,6 +52,7 @@ describe('ProgressTracker', () => {
       }),
     });
     restoreGlobals = mockContext.restore;
+    savedGlobals = mockContext.savedGlobals;
 
     // Reset PropertiesService in-memory store
     globalThis.PropertiesService._resetUserProperties();
@@ -314,6 +316,7 @@ describe('ProgressTracker', () => {
   describe('deferred cleanup on error writes', () => {
     it('logError with deferCleanup writes the error without scheduling cleanup', () => {
       tracker.startTracking('req-a');
+      cleanupScheduleSpy.mockClear();
 
       tracker.logError('Deferred failure', undefined, { deferCleanup: true });
 
@@ -325,6 +328,7 @@ describe('ProgressTracker', () => {
 
     it('logError without options writes the error and still schedules cleanup', () => {
       tracker.startTracking('req-a');
+      cleanupScheduleSpy.mockClear();
 
       tracker.logError('Ordinary failure');
 
@@ -332,6 +336,58 @@ describe('ProgressTracker', () => {
       expect(keyed).not.toBeNull();
       expect(keyed.error).toBe('Ordinary failure');
       expect(cleanupScheduleSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('cleanup scheduling on every progress write', () => {
+    it('schedules cleanup from startTracking', () => {
+      tracker.startTracking('req-schedule');
+
+      expect(cleanupScheduleSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('schedules cleanup from updateProgress', () => {
+      tracker.startTracking('req-schedule');
+      cleanupScheduleSpy.mockClear();
+
+      tracker.updateProgress('Run A in flight');
+
+      expect(cleanupScheduleSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('schedules cleanup from complete', () => {
+      tracker.startTracking('req-schedule');
+      cleanupScheduleSpy.mockClear();
+
+      tracker.complete();
+
+      expect(cleanupScheduleSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('creates only one cleanup trigger across repeated progress writes', () => {
+      const originalCleanup = savedGlobals.ProgressTrackerCleanup;
+      const createTimeBasedTrigger = vi.fn(() => 'cleanup-uid');
+      const controller = {
+        createTimeBasedTrigger,
+        storeTriggerContext: vi.fn(),
+      };
+      const nested = withGlobalMocks({
+        ProgressTrackerCleanup: () => originalCleanup,
+        TriggerController: () =>
+          vi.fn(function () {
+            return controller;
+          }),
+      });
+
+      try {
+        tracker.startTracking('req-dedupe');
+        tracker.updateProgress('step 1');
+        tracker.complete();
+
+        expect(createTimeBasedTrigger).toHaveBeenCalledTimes(1);
+      } finally {
+        nested.restore();
+      }
     });
   });
 

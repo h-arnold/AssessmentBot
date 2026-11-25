@@ -38,6 +38,8 @@ describe('TriggerController', () => {
   let scriptPropertiesData;
   let scriptPropertiesMock;
   let restoreTriggerGlobals;
+  let mockABLogger;
+  let mockLogAndThrowError;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -85,7 +87,25 @@ describe('TriggerController', () => {
       getProjectTriggers: vi.fn(() => []),
       deleteTrigger: vi.fn(),
     };
-    const mockContext = withGlobalMocks({ ScriptApp: () => scriptAppMock });
+    // Logger and error-path doubles observed by the recovery-path tests. The
+    // default logAndThrowError does not throw so the method under test can
+    // return or be inspected after the non-quota error branch.
+    mockABLogger = {
+      debug: vi.fn(),
+      debugUi: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      log: vi.fn(),
+    };
+    mockLogAndThrowError = vi.fn();
+    const mockContext = withGlobalMocks({
+      ScriptApp: () => scriptAppMock,
+      ABLogger: () => ({ getInstance: () => mockABLogger }),
+      ProgressTracker: () => ({
+        getInstance: () => ({ logAndThrowError: mockLogAndThrowError }),
+      }),
+    });
     restoreTriggerGlobals = mockContext.restore;
 
     delete require.cache[require.resolve(TRIGGER_CONTROLLER_PATH)];
@@ -281,6 +301,109 @@ describe('TriggerController', () => {
     expect(removeTriggersSpy).toHaveBeenCalledWith('runTask');
     expect(removeTriggersSpy).not.toHaveBeenCalledWith('triggerProcessSelectedAssignment');
     expect(triggerId).toBe('trigger-recovery-1');
+  });
+
+  describe('createTimeBasedTrigger with skipTooManyTriggersRecovery', () => {
+    it('logs and returns null for a full quota without deleting triggers or retrying', () => {
+      const newTriggerChain = {
+        timeBased: vi.fn().mockReturnThis(),
+        at: vi.fn().mockReturnThis(),
+        create: vi
+          .fn()
+          .mockImplementationOnce(() => {
+            throw new Error('This script has too many triggers');
+          })
+          .mockImplementationOnce(() => ({ getUniqueId: vi.fn(() => 'trigger-recovery-1') })),
+      };
+      globalThis.ScriptApp.newTrigger.mockReturnValue(newTriggerChain);
+      const removeTriggersSpy = vi.spyOn(TriggerController.prototype, 'removeTriggers');
+      const cleanupScheduleSpy = vi.fn();
+      const cleanupContext = withGlobalMocks({
+        ProgressTrackerCleanup: () => ({ schedule: cleanupScheduleSpy }),
+      });
+
+      try {
+        const controller = new TriggerController();
+        const result = controller.createTimeBasedTrigger(
+          'triggerHandler',
+          new Date('2026-01-01T00:10:00.000Z'),
+          { skipTooManyTriggersRecovery: true }
+        );
+
+        expect(result).toBeNull();
+        expect(mockABLogger.warn).toHaveBeenCalled();
+        expect(removeTriggersSpy).not.toHaveBeenCalled();
+        expect(globalThis.ScriptApp.deleteTrigger).not.toHaveBeenCalled();
+        expect(mockLogAndThrowError).not.toHaveBeenCalled();
+        expect(cleanupScheduleSpy).not.toHaveBeenCalled();
+        expect(globalThis.ScriptApp.newTrigger).toHaveBeenCalledTimes(1);
+      } finally {
+        cleanupContext.restore();
+      }
+    });
+
+    it('logs and returns null for a non-quota creation error without recovery or re-arm', () => {
+      const creationError = new Error('ScriptApp service unavailable');
+      const newTriggerChain = {
+        timeBased: vi.fn().mockReturnThis(),
+        at: vi.fn().mockReturnThis(),
+        create: vi.fn(() => {
+          throw creationError;
+        }),
+      };
+      globalThis.ScriptApp.newTrigger.mockReturnValue(newTriggerChain);
+      const removeTriggersSpy = vi.spyOn(TriggerController.prototype, 'removeTriggers');
+      const cleanupScheduleSpy = vi.fn();
+      const cleanupContext = withGlobalMocks({
+        ProgressTrackerCleanup: () => ({ schedule: cleanupScheduleSpy }),
+      });
+
+      try {
+        const controller = new TriggerController();
+        const result = controller.createTimeBasedTrigger(
+          'triggerHandler',
+          new Date('2026-01-01T00:10:00.000Z'),
+          { skipTooManyTriggersRecovery: true }
+        );
+
+        expect(result).toBeNull();
+        expect(mockLogAndThrowError).not.toHaveBeenCalled();
+        expect(removeTriggersSpy).not.toHaveBeenCalled();
+        expect(globalThis.ScriptApp.deleteTrigger).not.toHaveBeenCalled();
+        expect(cleanupScheduleSpy).not.toHaveBeenCalled();
+        expect(globalThis.ScriptApp.newTrigger).toHaveBeenCalledTimes(1);
+        expect(
+          mockABLogger.warn.mock.calls.length + mockABLogger.error.mock.calls.length
+        ).toBeGreaterThan(0);
+      } finally {
+        cleanupContext.restore();
+      }
+    });
+
+    it('still routes a non-quota creation error through logAndThrowError by default', () => {
+      const creationError = new Error('default path failure');
+      const newTriggerChain = {
+        timeBased: vi.fn().mockReturnThis(),
+        at: vi.fn().mockReturnThis(),
+        create: vi.fn(() => {
+          throw creationError;
+        }),
+      };
+      globalThis.ScriptApp.newTrigger.mockReturnValue(newTriggerChain);
+      mockLogAndThrowError.mockImplementationOnce((message) => {
+        throw new Error(message);
+      });
+
+      const controller = new TriggerController();
+
+      expect(() =>
+        controller.createTimeBasedTrigger('triggerHandler', new Date('2026-01-01T00:10:00.000Z'))
+      ).toThrow(/Error creating trigger for triggerHandler/);
+      expect(mockLogAndThrowError).toHaveBeenCalledWith(
+        'Error creating trigger for triggerHandler: default path failure',
+        creationError
+      );
+    });
   });
 
   // Tests merged from tests/utils/triggerController.test.js (assertions

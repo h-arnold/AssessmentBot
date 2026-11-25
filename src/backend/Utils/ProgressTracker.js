@@ -78,6 +78,7 @@ class ProgressTracker extends BaseSingleton {
     };
     ProgressTrackerStore.write(this.properties, this.activeRequestId, initialData);
     ABLogger.getInstance().info('Progress tracking started.');
+    globalThis.ProgressTrackerCleanup.schedule(this.properties);
   }
 
   /**
@@ -101,6 +102,7 @@ class ProgressTracker extends BaseSingleton {
     };
     ProgressTrackerStore.write(this.properties, this.activeRequestId, updatedData);
     ABLogger.getInstance().info(`Progress updated: Step ${this.step} - ${message}`);
+    globalThis.ProgressTrackerCleanup.schedule(this.properties);
   }
 
   /**
@@ -143,6 +145,7 @@ class ProgressTracker extends BaseSingleton {
     ProgressTrackerStore.write(this.properties, this.activeRequestId, updatedData);
     ABLogger.getInstance().info('Progress tracking completed successfully.');
     this.activeRequestId = null;
+    globalThis.ProgressTrackerCleanup.schedule(this.properties);
   }
 
   /**

@@ -416,5 +416,71 @@ describe('triggerHandler', () => {
       expect(mockTriggerController.clearTriggerContext).toHaveBeenCalledWith('known-uid');
       expect(mockTriggerController.deleteTriggerById).toHaveBeenCalledWith('known-uid');
     });
+
+    it('routes a failing cleanup sweep through logAndThrowError with deferCleanup', () => {
+      const sweepFailure = new Error('sweep blew up');
+      const cleanupHandler = vi.fn(() => {
+        throw sweepFailure;
+      });
+      const nestedGlobals = withGlobalMocks({
+        TRIGGER_METHOD_HANDLERS: () => ({
+          processSelectedAssignment: mockDispatchHandler,
+          cleanupProgress: cleanupHandler,
+        }),
+        ProgressTrackerCleanup: () => ({ schedule: vi.fn(), sweep: vi.fn(), rearm: vi.fn() }),
+      });
+
+      try {
+        mockTriggerController.getTriggerContext.mockReturnValue({
+          method: 'cleanupProgress',
+          params: {},
+        });
+
+        expect(() => triggerHandler({ triggerUid: 'cleanup-fail-uid' })).toThrow('sweep blew up');
+        expect(cleanupHandler).toHaveBeenCalledTimes(1);
+        expect(mockProgressTracker.logAndThrowError).toHaveBeenCalledWith(
+          'sweep blew up',
+          sweepFailure,
+          { deferCleanup: true }
+        );
+      } finally {
+        nestedGlobals.restore();
+      }
+    });
+
+    it('does not schedule another cleanup trigger when a sweep fails', () => {
+      // Integration path: use the real ProgressTracker so logError's
+      // deferCleanup handling decides whether schedule() runs.
+      const realProgressTracker = require('#backend/Utils/ProgressTracker.js');
+      realProgressTracker.resetForTests();
+      globalThis.PropertiesService._resetUserProperties();
+      const scheduleSpy = vi.fn();
+      const sweepFailure = new Error('sweep failed again');
+      const nestedGlobals = withGlobalMocks({
+        ProgressTracker: () => ({ getInstance: () => realProgressTracker.getInstance() }),
+        ProgressTrackerCleanup: () => ({ schedule: scheduleSpy, sweep: vi.fn(), rearm: vi.fn() }),
+        TRIGGER_METHOD_HANDLERS: () => ({
+          processSelectedAssignment: mockDispatchHandler,
+          cleanupProgress: () => {
+            throw sweepFailure;
+          },
+        }),
+      });
+
+      try {
+        mockTriggerController.getTriggerContext.mockReturnValue({
+          method: 'cleanupProgress',
+          params: {},
+        });
+
+        expect(() => triggerHandler({ triggerUid: 'cleanup-fail-uid-2' })).toThrow(
+          'sweep failed again'
+        );
+        expect(scheduleSpy).not.toHaveBeenCalled();
+      } finally {
+        nestedGlobals.restore();
+        realProgressTracker.resetForTests();
+      }
+    });
   });
 });

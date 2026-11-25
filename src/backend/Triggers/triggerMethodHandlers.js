@@ -17,6 +17,7 @@
 const TRIGGER_METHOD_HANDLERS = {
   processSelectedAssignment: (parameters) =>
     new AssignmentController().processSelectedAssignment(parameters),
+  cleanupProgress: (parameters) => globalThis.ProgressTrackerCleanup.sweep(parameters),
 };
 
 if (typeof module !== 'undefined' && module.exports) {

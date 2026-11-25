@@ -18,6 +18,7 @@
  * docs/developer/backend/backend-testing.md).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import fs from 'node:fs';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 const mockAssignmentController = { processSelectedAssignment: vi.fn() };
@@ -61,5 +62,32 @@ describe('TRIGGER_METHOD_HANDLERS', () => {
     expect(globalThis.AssignmentController).toHaveBeenCalledTimes(1);
     expect(mockAssignmentController.processSelectedAssignment).toHaveBeenCalledTimes(1);
     expect(mockAssignmentController.processSelectedAssignment).toHaveBeenCalledWith(params);
+  });
+
+  it('dispatches cleanupProgress through the cleanup coordinator', () => {
+    expect(typeof TRIGGER_METHOD_HANDLERS.cleanupProgress).toBe('function');
+
+    const sweep = vi.fn();
+    const cleanupContext = withGlobalMocks({
+      ProgressTrackerCleanup: () => ({ sweep }),
+    });
+
+    try {
+      TRIGGER_METHOD_HANDLERS.cleanupProgress({});
+
+      expect(sweep).toHaveBeenCalledTimes(1);
+    } finally {
+      cleanupContext.restore();
+    }
+  });
+
+  it('exposes cleanupProgress only as a registry entry, not a public GAS function', () => {
+    expect(globalThis.cleanupProgress).toBeUndefined();
+
+    const source = fs.readFileSync(
+      require.resolve('#backend/Triggers/triggerMethodHandlers.js'),
+      'utf8'
+    );
+    expect(source).not.toMatch(/^\s*function\s+cleanupProgress\s*\(/mu);
   });
 });

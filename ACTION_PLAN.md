@@ -2,11 +2,10 @@
 
 ## Delivery status
 
-- Current section: Section 3 — `getProgress` transport handler and registration (complete, pending
-  gate and commit).
-- Current phase: Section 3 docs sync + plan compaction in parallel; RED and GREEN loops both PASSED
-  review with no findings. Section 2 is complete, compacted, gated, committed (`c96acb0e`,
-  `42400598`) and pushed.
+- Current section: Section 4 — Deferred cleanup trigger (complete, pending gate and commit).
+- Current phase: Section 4 docs sync + plan compaction in parallel; RED and GREEN loops both PASSED
+  review with no findings. Section 3 is complete, compacted, gated, committed (`5ce30ff9`,
+  `beeee68d`) and pushed.
 - Branch: `feat/progress-tracker-api-polling`.
 - Regression session ID: `progresstracker-api-polling`.
 - Baseline gate: PASSED — 2026-11-25T10:23:32.661Z, `baseline/baseline.txt`, Overall Status GREEN,
@@ -397,157 +396,125 @@ preserved `Implementation notes / deviations / follow-up` subsection.
 
 ## Section 4 — Deferred cleanup trigger
 
-### Objective
+### Outcome (compacted)
 
-Schedule one cleanup trigger per user, dedupe it with a per-user cache flag and durable marker, and
-delete terminal progress records only, re-arming when non-terminal records remain.
-
-### Constraints
-
-- Cache flag TTL is 600 seconds, passed explicitly to `CacheManager.put()`.
-- The marker is a per-user User Property; the cache is `CacheService.getUserCache()`. `CacheManager`
-  accepts an optional cache instance in its constructor, retaining `CacheService.getScriptCache()`
-  as the constructor-owned default. `tests/setupGlobals.js` must expose a `getUserCache()` mock.
-- Section 4 re-opens `ProgressTracker.js` from Section 2 and wires `schedule()` into `startTracking`,
-  `updateProgress`, `logError` and `complete`, so every progress write checks the dedupe state.
-- `TriggerController.createTimeBasedTrigger('triggerHandler', new Date(now + 10 minutes), {
-skipTooManyTriggersRecovery: true })` is used. With that option **any** creation error is logged
-  via `ABLogger` and the method returns `null`; it never calls `removeTriggers()` (which would delete
-  assessment triggers) or `logAndThrowError()` (which would re-arm cleanup). The coordinator leaves
-  the marker and cache flag unset so a later progress write retries.
-- Marker and cache flag are cleared in a `finally` on every sweep. Re-arming occurs only after a
-  successful sweep that observed a non-terminal record, and rewrites both for the new trigger UID.
-  On a sweep failure the marker is cleared but no re-arm occurs; the next progress write re-arms.
-- `cleanupProgress` is an anonymous arrow in `TRIGGER_METHOD_HANDLERS`.
-- `triggerHandler`'s catch passes `{ deferCleanup: true }` to `logAndThrowError`, so a failed sweep
-  cannot re-arm cleanup through the error-logging path. An integration test must prove this.
-- LOC: new `02_ProgressTrackerCleanup.js` ~180; `CacheManager.js` 74 → ~100;
-  `TriggerController.js` 178 → ~195; `triggerMethodHandlers.js` 24 → ~30. All below 500.
-- `02_` helper loads before the facade and `z_apiHandler.js`.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- @SPEC.md
-- @docs/developer/backend/backend-testing.md
-- @tests/triggers/triggerHandler.test.js
-- @tests/triggers/triggerMethodHandlers.test.js
-- @tests/requestHandlers/CacheManager.test.js
-- @tests/setupGlobals.js
-
-Implementation mandatory docs:
-
-- @SPEC.md
-- @src/backend/Triggers/TriggerController.js
-- @src/backend/Triggers/triggerHandler.js
-- @src/backend/Triggers/triggerMethodHandlers.js
-- @src/backend/RequestHandlers/CacheManager.js
-- @docs/developer/data-shapes/trigger-context.md
-
-Code Reviewer mandatory docs:
-
-- @SPEC.md
-- @docs/developer/backend/backend-file-organisation.md
-
-### Shared helper plan
-
-1. Helper: cleanup coordinator (`schedule`, `sweep`, `rearm`)
-   - Decision: `new`
-   - Owning module/path: `src/backend/Utils/02_ProgressTrackerCleanup.js`
-   - Canonical doc target: `docs/developer/data-shapes/progress-tracker.md`
-   - Planned doc status: `Not implemented`
-2. Helper: `CacheManager` supplied cache and `remove(key)`
-   - Decision: `extend`
-   - Owning module/path: `src/backend/RequestHandlers/CacheManager.js`
-   - Canonical doc target: `docs/developer/data-shapes/progress-tracker.md`
-   - Planned doc status: `Not implemented`
-3. Helper: `TriggerController.createTimeBasedTrigger` with `skipTooManyTriggersRecovery`
-   - Decision: `extend`
-   - Owning module/path: `src/backend/Triggers/TriggerController.js`
-   - Canonical doc target: `docs/developer/data-shapes/progress-tracker.md`
-   - Planned doc status: `Not implemented`
-4. Helper: `TriggerController.storeTriggerContext` and `clearTriggerContext`
-   - Decision: `reuse`
-   - Owning module/path: `src/backend/Triggers/TriggerController.js`
-
-### Data-shape plan
-
-- Update `docs/developer/data-shapes/progress-tracker.md` cleanup key scheme and lifecycle notes;
-  remove their `Not implemented` markers.
-- Reference: @docs/developer/data-shapes/progress-tracker.md @docs/developer/data-shapes/trigger-context.md
-
-### Acceptance criteria
-
-- Only one cleanup trigger is scheduled while the cache flag or marker is present.
-- A sweep deletes terminal keyed records and a terminal legacy `ProgressTracker` record, leaving
-  non-terminal records intact.
-- Re-arming follows only a successful sweep that observed a non-terminal record, and rewrites the
-  marker and cache flag for the new trigger UID.
-- A sweep failure clears the marker in `finally` without re-arming; the next progress write re-arms.
-- A full trigger quota leaves no marker and deletes no assessment triggers.
-- A failed `getUserLock().tryLock()` logs a warning, creates no trigger, and the originating progress
-  write still succeeds. A concurrent write cannot create a second trigger because the marker is
-  rechecked under the lock.
-- A malformed keyed value is logged and skipped by the sweep; valid records in the same sweep are
-  still processed and the sweep completes.
-- `triggerHandler` still owns deletion of the fired trigger and its context.
-
-### Required test cases (Red first)
-
-Backend model/trigger tests:
-
-1. First progress write schedules a trigger; subsequent writes do not.
-2. Cache miss with a valid marker repopulates the cache and does not create a trigger.
-3. Sweep deletes completed and errored records only, including a terminal legacy record, and keeps
-   a non-terminal legacy record.
-4. Sweep with a non-terminal record re-arms one trigger and rewrites marker and cache flag.
-5. Sweep failure clears the marker and cache flag before rethrowing and does not re-arm.
-6. `TriggerController.createTimeBasedTrigger` with `skipTooManyTriggersRecovery` logs and returns
-   `null` for both a full quota and a non-quota creation error; no `triggerHandler` trigger is
-   deleted, no `logAndThrowError()` or `schedule()` re-arm occurs, and no 5-second retry occurs.
-7. Trigger creation failure leaves no marker so a later write retries.
-8. `ProgressTracker.startTracking`, `updateProgress`, `logError` and `complete` each invoke
-   `schedule()`; a second write does not create a second trigger.
-9. `CacheManager` accepts a supplied cache and its `remove(key)` deletes the flag; the default
-   constructor still uses the script cache exactly once.
-10. `cleanupProgress` is dispatched through `triggerHandler` and is not a public GAS function.
-11. A failing sweep dispatched through `triggerHandler` logs via `logAndThrowError(..., { deferCleanup: true })` and creates no new cleanup trigger.
-12. A failed lock acquisition logs a warning, schedules no trigger, and does not make the progress write throw.
-13. A sweep containing one malformed keyed value logs and skips it while still deleting valid terminal records.
-
-### Section checks
-
-- `npm run test:backend -- tests/utils/progressTrackerCleanup.test.js tests/utils/progressTracker.test.js tests/triggers/triggerHandler.test.js tests/triggers/triggerMethodHandlers.test.js tests/requestHandlers/CacheManager.test.js`
-- `npm run lint:backend:check`
-- Mandatory-read evidence gate passed.
-- Planned helper entries added with `Not implemented` before implementation.
-- Canonical-fixture note: local property/cache mocks; no corpus change.
-- Docs sync outcome recorded.
-- Completed section compacted into **Retained for later sections** below.
-
-### Docs delegation reads (when sub-agents are used)
-
-- @docs/developer/data-shapes/progress-tracker.md
-- @docs/developer/data-shapes/trigger-context.md
+Delivered the deferred cleanup coordinator, its dedupe wiring and the terminal-only sweep:
+`02_ProgressTrackerCleanup.js` (`schedule`/`sweep`/`rearm`) is invoked from every progress write and
+dispatched through `triggerHandler`, with `CacheManager` and `TriggerController` extended for the
+user-cache flag and quota-safe trigger creation. RED and GREEN loops both PASSED review with no
+outstanding findings; no refactor was required. Section checks passed: focused suite 6 files /
+92 tests, full backend suite 290 files / 3835 tests, `lint:backend:check` exit 0, Prettier clean,
+global-exposure guard green, and the mandatory-read evidence gate. Contracts, interfaces and
+follow-ups are retained below; authoritative records are in the preserved
+`Implementation notes / deviations / follow-up` subsection.
 
 ### Retained for later sections
 
-- Cleanup scheduling is invoked from four `ProgressTracker` write methods; marker/cache state is
-  per user and deduped under `LockService.getUserLock()`.
-- `createTimeBasedTrigger` now accepts `skipTooManyTriggersRecovery`; default behaviour is unchanged
-  for assessment scheduling.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Document why the marker is user-scoped, why `removeTriggers()` must not be used, and why re-arming
-  follows only a successful sweep.
+- **Cleanup coordinator:** `src/backend/Utils/02_ProgressTrackerCleanup.js` (188 lines) exposes
+  `ProgressTrackerCleanup` with `schedule(properties?)`, `sweep()` and `rearm()`; the guarded
+  `module.exports` is retained. The object must be attached to `globalThis` via
+  `Object.assign(globalThis, { ProgressTrackerCleanup })`: a top-level `const` is a lexical binding,
+  not a global property in the concatenated GAS runtime, where symbols resolve at call time. The
+  `02_` helper sorts before the facade and `z_apiHandler.js`.
+- **Keys, TTL and timing:** marker User Property key `AB_PROGRESS_CLEANUP_TRIGGER` holding the
+  trigger UID; per-user cache flag `AB_PROGRESS_CLEANUP_FLAG` = `pending` with a 600-second TTL
+  passed explicitly to `CacheManager.put()`; trigger delay `new Date(now + 10 minutes)` derived as
+  `CLEANUP_DELAY_MINUTES * RuntimeConstants.SECONDS_PER_MINUTE * RuntimeConstants.MS_PER_SECOND`
+  (values verified stable); `{ skipTooManyTriggersRecovery: true }` on every cleanup trigger
+  creation.
+- **Dedupe:** `schedule(properties?)` short-circuits on a cache hit; on a cache miss with a valid
+  marker it repopulates the flag without creating a trigger; otherwise it acquires
+  `LockService.getUserLock()`, rechecks flag and marker under the lock, then calls `rearm()` inside a
+  `try`/`finally` that releases the lock. A failed `tryLock()` warns via `ABLogger` and never throws
+  or schedules. `createTimeBasedTrigger` returning `null`/`undefined` leaves marker and flag unset so
+  a later write retries. The optional `properties` argument avoids redundant `getUserProperties()`
+  calls and keeps lazy-init tests green.
+- **Sweep:** deletes terminal keyed records (`completed === true` or non-null `error`) plus a terminal
+  legacy `ProgressTracker` record, keeps non-terminal records, and warns-and-skips malformed keyed
+  values (never deleting or rewriting them). Marker and cache flag are cleared in a `finally` on
+  every sweep; exactly one trigger is re-armed only after a successful sweep that observed a
+  non-terminal record, rewriting marker and flag for the new UID. A sweep failure rethrows after the
+  `finally` without re-arming, so the next progress write re-arms. `triggerHandler` still owns
+  deletion of the fired trigger and its context.
+- **Wiring:** `startTracking`, `updateProgress` and `complete` call `schedule(this.properties)`;
+  `logError` still calls `schedule()` no-arg and honours `deferCleanup`; `triggerMethodHandlers.js`
+  registers `cleanupProgress` as an anonymous arrow dispatching
+  `globalThis.ProgressTrackerCleanup.sweep(parameters)`; `triggerHandler`'s catch passes
+  `{ deferCleanup: true }` to `logAndThrowError` so a failed sweep cannot re-arm through the error path.
+- **Extended helpers:** `CacheManager` constructor accepts an optional cache instance with
+  `CacheService.getScriptCache()` as the constructor-owned default and adds best-effort `remove(key)`;
+  `TriggerController.createTimeBasedTrigger(functionName, triggerTime, options)` returns `null` with
+  an `ABLogger` warning under `skipTooManyTriggersRecovery`, never deleting triggers, never
+  re-arming and never retrying (no 5-second retry), while preserving default behaviour for
+  assessment scheduling (quota error → `removeTriggers()` + retry; other errors →
+  `logAndThrowError()`).
+- **Frozen spec and harness:** `tests/utils/progressTrackerCleanup.test.js` (309 lines, 9 `it` cases)
+  is the frozen cleanup-coordinator spec; the 13 required cases are spread across six test files.
+  `tests/setupGlobals.js` now requires the real coordinator at the `02_` load
+  position and exposes a separate `getUserCache()` mock with `_resetUserCache()`. The
+  canonical-fixture note was respected: local property/cache mocks only, no corpus change.
+- **Shared-helper reconciliation:** the three Section 4 entries previously planned `Not implemented`
+  — cleanup coordinator (`02_ProgressTrackerCleanup.js`), `CacheManager` supplied-cache and
+  `remove(key)` extension, and `TriggerController.createTimeBasedTrigger`
+  `skipTooManyTriggersRecovery` extension — are delivered and reconciled in
+  `docs/developer/data-shapes/progress-tracker.md`. The fourth entry,
+  `TriggerController.storeTriggerContext` (with `clearTriggerContext`), was reused unchanged
+  (decision `reuse`). No Section 4 `Not implemented` markers remain; entries for future sections are
+  untouched.
+- **Deviation affecting later sections:** `Object.assign(globalThis, { … })` is used instead of a
+  literal `globalThis.ProgressTrackerCleanup = …` because
+  `unicorn/no-global-object-property-assignment` permits the literal form only on an eslint exempt
+  list outside this section's surface. Two `mockClear()` insertions in pre-existing `deferCleanup`
+  tests isolate spy counts now that `startTracking` schedules.
+- **`@remarks` JSDoc commitments:** still outstanding on the final review — why the marker is
+  user-scoped, why `removeTriggers()` must not be used, why re-arming follows only a successful
+  sweep, and why the top-level `const` needs an explicit `globalThis` attachment.
+- **Open record slots:** docs-sync outcome, regression gate, graphify refresh and commit record
+  remain `...` in the notes below and are to be filled by the orchestrator. No new record is
+  created here.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** ...
-- **Deviations from plan:** ...
-- **Follow-up implications for later sections:** none.
+- **Implementation notes:** RED review returned 1 Improvement and 2 Nitpicks (unpinned 10-minute
+  delay/600-second TTL, header comment inaccuracy, unasserted cache flag on lock failure); all fixed
+  and RED re-review PASSED with no findings. GREEN review returned one Critical finding (the top-level
+  `const` coordinator was never attached to `globalThis`, so all five production GAS reads would
+  throw `TypeError`); fixed with `Object.assign(globalThis, { ProgressTrackerCleanup })` and GREEN
+  re-review PASSED with no findings. Focused suite: 6 files / 92 tests passing; full backend suite
+  290 files / 3835 tests passing; `lint:backend:check` exit 0; Prettier clean; global-exposure guard
+  green. Two stale spy-count assertions in pre-existing `deferCleanup` tests needed
+  `cleanupScheduleSpy.mockClear()` after `startTracking` now that it schedules. Docs sync updated
+  `docs/developer/data-shapes/progress-tracker.md`, `data-shapes/trigger-context.md`,
+  `backend/AssessmentFlow.md` and the ProgressTracker contract description in
+  `.opencode/agents/code-reviewer.md`; no pages created. It removed all Section-4-owned planned
+  markers, marked the three delivered helpers `Implemented`, kept `storeTriggerContext` as `reuse`,
+  and left only Section-5 frontend markers. It also corrected JSDoc in `TriggerController.js` and
+  added a `deferCleanup` `@remarks` note in `triggerHandler.js` (comment-only); scoped
+  `lint:backend:check` re-run clean after those edits. Pre-existing drift (`mkdocs.yml` /
+  `docs/README.md` missing the progress-tracker.md entry) reported but not fixed, already logged.
+- **Deviations from plan:** `schedule()` takes an optional properties-store argument passed as
+  `this.properties` from three write sites to avoid redundant `getUserProperties()` calls and keep
+  lazy-init tests green (`logError` still calls it no-arg). The 10-minute delay is derived via
+  `RuntimeConstants` rather than a literal to clear `no-magic-numbers`. `Object.assign(globalThis, {
+… })` is used instead of a literal `globalThis.ProgressTrackerCleanup = …` because that form is
+  only permitted on an eslint exempt list outside this section's surface; inline disables are
+  discouraged. New module is 188 lines against the ~180 guidance; all files remain below 500.
+- **Follow-up implications for later sections:** Section 5 must add the frontend wrapper and
+  `GetProgressResponseSchema`; the canonical docs retain those markers. The optional `properties`
+  argument and `Object.assign` global attachment are established patterns later sections should
+  preserve.
+- **Section regression gate:** PASSED — 2026-11-25T14:47:41.826Z,
+  `.ts-regression-checker/reports/session-progresstracker-api-polling/runs/2026-11-25T14-47-41.826Z/comparison.txt`,
+  Overall Status GREEN, 8/8 checks passing, 0 regressions, 0 new failures, 0 fixes; no pre-existing
+  failures (baseline fully green). Two earlier gate attempts in this section were blocked by an
+  out-of-scope pre-existing E2E flake (`post-analysis-metadata.feedback.spec.ts` narrow-theme
+  dropdown test: first attempt failed, retry passed, Playwright `unexpected 0 / flaky 1`, a different
+  theme variant each run, no frontend file changed). Recorded as `noted` in
+  `.opencode/scratchpad/progresstrackerrefactor-deferred-findings.md`; the third run was clean.
+- **Graphify refresh (§2.75):** `graphify update .` ran after the gate; it rebuilt 11,918 nodes /
+  29,668 edges / 610 communities and rewrote the tracked `graphify-out/` artifacts (`graph.json`,
+  `graph.html`, `GRAPH_REPORT.md`, `manifest.json`, `.graphify_labels.json`). Local build caches and
+  the dated backup directory remain untracked; they are not committed.
 
 ---
 

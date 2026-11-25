@@ -39,6 +39,10 @@ function cleanupTrigger_(triggerController, triggerUid) {
  * each logged exactly once by AuthService.checkAccess, so this handler never
  * duplicates that log.
  *
+ * A dispatch failure is logged through ProgressTracker.logAndThrowError with
+ * `deferCleanup: true`, so a failed cleanup sweep cannot re-arm itself through
+ * the error-logging path.
+ *
  * Dependencies are resolved as bare globals (GAS concatenation order):
  * TriggerController (Triggers/TriggerController.js) must load before this file.
  */
@@ -106,7 +110,9 @@ function triggerHandler(event) {
     const handler = TRIGGER_METHOD_HANDLERS[context.method];
     handler(context.params);
   } catch (error) {
-    ProgressTracker.getInstance().logAndThrowError(error.message, error);
+    ProgressTracker.getInstance().logAndThrowError(error.message, error, {
+      deferCleanup: true,
+    });
   } finally {
     cleanupTrigger_(triggerController, event.triggerUid);
   }

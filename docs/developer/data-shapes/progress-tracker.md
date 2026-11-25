@@ -1,23 +1,20 @@
 # Contract: ProgressTracker
 
-Keyed User Property records, the `ProgressTracker` facade and the `getProgress` transport are
-implemented. The cleanup coordinator and frontend validation remain planned and are marked
+Keyed User Property records, the `ProgressTracker` facade, the `getProgress` transport and the
+deferred cleanup coordinator are implemented. Frontend validation remains planned and is marked
 `Not implemented` below.
 
 Internal progress state for frontend-driven assessment runs. Progress records are persisted as
 separate GAS User Properties keyed by the `requestId` generated for the `startAssessmentRun`
-API call, and are read back through the `getProgress` endpoint. Cleanup is planned as one
-deferred time-based trigger per user which deletes terminal records only.
+API call, and are read back through the `getProgress` endpoint. One deferred time-based trigger
+per user deletes terminal records only.
 
 Backend modules:
 
-- `src/backend/Utils/ProgressTracker.js` — facade, active run context and public API (implemented)
-- `src/backend/Utils/01_ProgressTrackerStore.js` — keyed property access (implemented)
-- `src/backend/z_Api/progressTracker.js` — `getProgress_` transport helper (implemented)
-
-Planned modules:
-
-- `src/backend/Utils/02_ProgressTrackerCleanup.js` — trigger scheduling and sweep
+- `src/backend/Utils/ProgressTracker.js` — facade, active run context and public API
+- `src/backend/Utils/01_ProgressTrackerStore.js` — keyed property access
+- `src/backend/Utils/02_ProgressTrackerCleanup.js` — trigger scheduling and terminal-only sweep
+- `src/backend/z_Api/progressTracker.js` — `getProgress_` transport helper
 - `src/backend/Triggers/triggerMethodHandlers.js` — `cleanupProgress` trigger method
 
 Sibling contracts:
@@ -37,12 +34,12 @@ Sibling contracts:
 | `ProgressTracker<requestId>` | User Properties | One record per API-driven assessment run. `requestId` is the dispatch ID, appended directly to the key prefix. |
 | `ProgressTracker`            | User Properties | Legacy unkeyed record for call sites with no run context. Not returned by API; eligible for terminal cleanup.  |
 
-Planned cleanup state (`Not implemented`):
+Cleanup state is user scoped, matching the progress records:
 
-| Key                           | Scope           | Notes                                                                          |
-| ----------------------------- | --------------- | ------------------------------------------------------------------------------ |
-| `AB_PROGRESS_CLEANUP_TRIGGER` | User Properties | Per-user marker holding the UID of that user's single pending cleanup trigger. |
-| progress cleanup cache key    | User cache      | Per-user cached pending flag, 600-second TTL; cleared after each cleanup run.  |
+| Key                           | Scope           | Notes                                                                  |
+| ----------------------------- | --------------- | ---------------------------------------------------------------------- |
+| `AB_PROGRESS_CLEANUP_TRIGGER` | User Properties | Per-user marker holding the UID of the single pending cleanup trigger. |
+| `AB_PROGRESS_CLEANUP_FLAG`    | User cache      | Per-user pending flag, 600-second TTL; cleared after each cleanup run. |
 
 ### Record shape
 
@@ -74,25 +71,29 @@ treated as in flight.
 - `ProgressTrackerStore.readAll()` returns raw keyed entries only. Callers own parsing and
   malformed-record handling.
 
-### Planned cleanup behaviour (Not implemented)
+### Cleanup behaviour
 
-- The cleanup trigger check is cached in the user cache with a 600-second TTL; the durable
-  per-user User Property marker covers cache misses. A `LockService.getUserLock()` guard prevents
-  two callers from both creating a cleanup trigger.
-- Cleanup clears the cache flag and marker in a `finally` block on every run. If a non-terminal
-  record remains, it re-arms exactly one trigger and rewrites the marker and cache flag for the new
-  trigger UID before returning, so later writes still see a pending trigger.
-- A sweep failure clears the marker and cache flag in `finally` and does not re-arm; the next
-  progress write re-arms. Re-arming occurs only after a successful sweep that observed a
-  non-terminal record. `triggerHandler` logs such failures with
-  `logAndThrowError(message, error, { deferCleanup: true })` so the `logError` write path cannot
-  re-arm the trigger that just failed.
+- `startTracking()`, `updateProgress()`, `complete()` and default error writes call
+  `ProgressTrackerCleanup.schedule()`. The cached flag suppresses later writes; on a cache miss the
+  durable marker repopulates it. A `LockService.getUserLock()` guard rechecks both before creating
+  a trigger. A failed lock acquisition logs a warning and leaves the progress write intact.
 - Trigger creation passes `{ skipTooManyTriggersRecovery: true }` to `createTimeBasedTrigger()`.
   Under that option **any** creation error is logged and the method returns `null`; it never calls
   `removeTriggers()` (which would delete assessment triggers) or `logAndThrowError()` (which would
   re-arm cleanup). The coordinator leaves the marker and cache flag unset so a later progress write
   retries.
-- Malformed keyed records are logged and skipped by the status read; cleanup does not rewrite them.
+- The fired trigger dispatches `cleanupProgress` from `TRIGGER_METHOD_HANDLERS` with empty params;
+  it is a registry entry, not a public GAS function. `triggerHandler` still clears the context and
+  deletes the fired trigger in its own `finally` block.
+- The sweep deletes terminal records under the keyed `ProgressTracker<requestId>` keys and the
+  legacy `ProgressTracker` key, keeping in-flight records. It logs and skips malformed values under
+  either key form and leaves them untouched.
+- The sweep clears the cache flag and marker in a `finally` block on every path. After a successful
+  sweep that observed an in-flight record, it re-arms one trigger and rewrites both for the new
+  trigger UID. A sweep failure rethrows after cleanup without re-arming; the next progress write
+  retries. `triggerHandler` logs such failures with
+  `logAndThrowError(message, error, { deferCleanup: true })` so the `logError` write path cannot
+  re-arm the trigger that just failed.
 
 ---
 
@@ -145,16 +146,16 @@ Frontend schemas (`Not implemented`) require non-empty `requestId`, finite `step
 
 ## Shared helpers
 
-| Helper                                                                          | Decision | Owning path                                      | Rationale                                                                    | Status            |
-| ------------------------------------------------------------------------------- | -------- | ------------------------------------------------ | ---------------------------------------------------------------------------- | ----------------- |
-| Keyed property access (`readAll`, `write`, `delete`)                            | `new`    | `src/backend/Utils/01_ProgressTrackerStore.js`   | Isolates key derivation, parsing and legacy fallback filtering.              | `Implemented`     |
-| Cleanup coordinator (`schedule`, `sweep`, `rearm`)                              | `new`    | `src/backend/Utils/02_ProgressTrackerCleanup.js` | Owns cache/marker dedupe and terminal-only deletion.                         | `Not implemented` |
-| `ApiRequestContext` (`set`, `get`, `resetForTests`)                             | `new`    | `src/backend/z_Api/z_apiHandler.js`              | Exposes the dispatch ID to handlers without changing all handler signatures. | `Implemented`     |
-| `CacheManager` with supplied cache + `remove(key)`                              | `extend` | `src/backend/RequestHandlers/CacheManager.js`    | Supports user cache and clears the pending-cleanup flag after each run.      | `Not implemented` |
-| `GASPropertiesUtils`                                                            | `reuse`  | `src/backend/Utils/00_GASPropertiesUtils.js`     | Canonical PropertiesService entry point.                                     | Already exists    |
-| `LockService.getUserLock()`                                                     | `reuse`  | GAS service                                      | Same dedupe pattern as `requestStore.js`.                                    | Already exists    |
-| `TriggerController.createTimeBasedTrigger()` with `skipTooManyTriggersRecovery` | `extend` | `src/backend/Triggers/TriggerController.js`      | Prevents quota recovery from deleting assessment triggers.                   | `Not implemented` |
-| `TriggerController.storeTriggerContext()`                                       | `reuse`  | `src/backend/Triggers/TriggerController.js`      | Stores cleanup trigger context like assessment triggers.                     | Already exists    |
+| Helper                                                                          | Decision | Owning path                                      | Rationale                                                                    | Status         |
+| ------------------------------------------------------------------------------- | -------- | ------------------------------------------------ | ---------------------------------------------------------------------------- | -------------- |
+| Keyed property access (`readAll`, `write`, `delete`)                            | `new`    | `src/backend/Utils/01_ProgressTrackerStore.js`   | Isolates key derivation, parsing and legacy fallback filtering.              | `Implemented`  |
+| Cleanup coordinator (`schedule`, `sweep`, `rearm`)                              | `new`    | `src/backend/Utils/02_ProgressTrackerCleanup.js` | Owns cache/marker dedupe and terminal-only deletion.                         | `Implemented`  |
+| `ApiRequestContext` (`set`, `get`, `resetForTests`)                             | `new`    | `src/backend/z_Api/z_apiHandler.js`              | Exposes the dispatch ID to handlers without changing all handler signatures. | `Implemented`  |
+| `CacheManager` with supplied cache + `remove(key)`                              | `extend` | `src/backend/RequestHandlers/CacheManager.js`    | Supports user cache and clears the pending-cleanup flag after each run.      | `Implemented`  |
+| `GASPropertiesUtils`                                                            | `reuse`  | `src/backend/Utils/00_GASPropertiesUtils.js`     | Canonical PropertiesService entry point.                                     | Already exists |
+| `LockService.getUserLock()`                                                     | `reuse`  | GAS service                                      | Same dedupe pattern as `requestStore.js`.                                    | Already exists |
+| `TriggerController.createTimeBasedTrigger()` with `skipTooManyTriggersRecovery` | `extend` | `src/backend/Triggers/TriggerController.js`      | Prevents quota recovery from deleting assessment triggers.                   | `Implemented`  |
+| `TriggerController.storeTriggerContext()`                                       | `reuse`  | `src/backend/Triggers/TriggerController.js`      | Stores cleanup trigger context like assessment triggers.                     | Already exists |
 
 ---
 
@@ -164,14 +165,14 @@ Implemented:
 
 ```text
 src/backend/Utils/01_ProgressTrackerStore.js
+src/backend/Utils/02_ProgressTrackerCleanup.js
 src/backend/Utils/ProgressTracker.js
+src/backend/Triggers/triggerMethodHandlers.js (cleanupProgress)
 src/backend/z_Api/progressTracker.js
 ```
 
 Planned:
 
 ```text
-src/backend/Utils/02_ProgressTrackerCleanup.js
-src/backend/Triggers/triggerMethodHandlers.js (cleanupProgress)
 src/frontend/src/services/assignmentAssessment/*
 ```
