@@ -620,7 +620,11 @@ the preserved `Implementation notes / deviations / follow-up` subsection.
   29,712 edges / 631 communities and rewrote the tracked `graphify-out/` artifacts (`graph.json`,
   `graph.html`, `GRAPH_REPORT.md`, `manifest.json`, `.graphify_labels.json`). Local build caches and
   the dated backup directory remain untracked; they are not committed.
-- **Commit record:** record to follow.
+- **Commit record:** `80640aa8` — `feat(frontend): add typed getProgress service and non-nullable
+start response` — on branch `feat/progress-tracker-api-polling`, pushed successfully to
+  `origin/feat/progress-tracker-api-polling` (`01082518..80640aa8`). Pre-commit hooks (Prettier,
+  frontend lint, `typecheck:all`) passed. Note: the pre-existing uncommitted `model:` edits in five
+  `.opencode/agents/*.md` files were left unstaged and are not part of any commit by this plan.
 
 ---
 
