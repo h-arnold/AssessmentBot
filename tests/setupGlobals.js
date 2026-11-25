@@ -81,6 +81,9 @@ g.PropertiesService = {
       deleteProperty(key) {
         delete _userPropertiesData[key];
       },
+      getProperties() {
+        return { ..._userPropertiesData };
+      },
     };
   },
 };
@@ -318,6 +321,7 @@ Object.assign(g, require('../src/backend/z_Api/requestStore.js'));
 Object.assign(g, require('../src/backend/z_Api/apiConfig.js'));
 Object.assign(g, require('../src/backend/z_Api/assignmentAssessment.js'));
 Object.assign(g, require('../src/backend/z_Api/apiAuth.js'));
+Object.assign(g, require('../src/backend/z_Api/progressTracker.js'));
 Object.assign(g, require('../src/backend/z_Api/abclass/abclassMutations.js'));
 Object.assign(g, require('../src/backend/z_Api/abclass/abclassRead.js'));
 g.ApiRateLimitError = require('../src/backend/Utils/ErrorTypes/ApiRateLimitError.js');

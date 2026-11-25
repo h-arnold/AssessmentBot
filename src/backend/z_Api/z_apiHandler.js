@@ -83,6 +83,7 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   getBackendConfig: () => getBackendConfig_(),
   setBackendConfig: (parameters) => setBackendConfig_(parameters),
   startAssessmentRun: (parameters) => startAssessmentRun_(parameters, ApiRequestContext.get()),
+  getProgress: () => getProgress_(),
   getCohorts: () => new ReferenceDataController().listCohorts(),
   createCohort: (parameters) => new ReferenceDataController().createCohort(parameters.record),
   updateCohort: (parameters) => new ReferenceDataController().updateCohort(parameters),

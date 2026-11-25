@@ -1,33 +1,33 @@
 # Graph Report - clever-comet  (2026-11-25)
 
 ## Corpus Check
-- 1688 files · ~1,767,635 words
+- 1690 files · ~1,769,157 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 15 file(s) not represented in the graph (top: (none) 9, .css 3, .jsonc 1)
 
 ## Summary
-- 11889 nodes · 29637 edges · 612 communities (331 shown, 281 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 871 edges (avg confidence: 0.86)
+- 11900 nodes · 29644 edges · 609 communities (336 shown, 273 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 872 edges (avg confidence: 0.86)
 - Token cost: 900 input · 1,200 output
 
 ## Graph Freshness
-- Built from commit: `d30cf523`
+- Built from commit: `42400598`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - Document Parsing Extraction Tests
-- TaskMetricPreviewContent.tsx
+- assembleTaskPreviewData.ts
 - ABClass Controller Layer
 - Topic Cohort Management
 - assignmentRehydrationCurrentSupport.js
 - Analysis Data Services Schemas
 - Assess Task Modal Tests
 - Class CRUD E2E Tests
-- TaskDefinition
+- AssignmentDefinition
 - Task Preview E2E Tests
 - LLM Request Manager Tests
-- loadBackendModelInputs
+- loadSyntheticAnalysisProfile
 - Task Heatmap E2E Tests
 - ABClass Persistence Controller
 - AssignmentDefinitionWizardModal.test-harness.ts
@@ -36,7 +36,7 @@
 - Synthetic Data Validation Scripts
 - Assess Task Flow Hooks
 - Synthetic Corpus Convention Tests
-- StudentAveragesTableCard.spec.tsx
+- attemptBaselineSelection.ts
 - ABClass Metadata Test Builders
 - Builder Pipeline Steps Lib
 - studentNameTableColumns.spec.tsx
@@ -44,7 +44,7 @@
 - createComputedMetricResult
 - Class Page Data Hooks
 - Post Analysis Feedback Tasks
-- assignmentTopics.zod.ts
+- ref_zod
 - Rollup Averaging Analysis
 - Session Resolution
 - Task Heatmap Page
@@ -71,9 +71,9 @@
 - Frontend Devdependencies
 - Mutation Summary
 - Reference Zod
-- syntheticEditableDefinitionsView.test.ts
+- validateSyntheticAnalysisGraph.js
 - Ab Class Metadata
-- useAssignmentDefinitionWizard.ts
+- useAssessTaskRecoveryFlow.ts
 - Fixture Writer
 - Error Handler
 - assignment-definition-wizard-section-4.spec.ts
@@ -83,7 +83,7 @@
 - Assignment Controller
 - imageManager.integration.test.js
 - Class Page Adapter
-- Assignment Read Item
+- assignmentReadItemValidation.ts
 - Configuration Manager Class
 - Bulk Mutation Resolution
 - Synthetic Backend Model
@@ -92,24 +92,24 @@
 - Generate Submissions
 - Scripts Lint Backend
 - Assignment Read Normalisation
-- assignmentDefinition.zod.ts
-- ApiTransportError
+- ref_vitest
+- AppAuthGate.applicationAccess.spec.tsx
 - Assignment Assessment Zod
 - Validate Output
 - assembleMergedPreviewData.ts
 - Synthetic Assessment Contract
 - Auth Service Harness
-- syntheticGraphValidationEdgeCases.test.ts
+- ref_services
 - Scripts Builder Jsondbapp
-- ref_zod
+- ApiTransportError
 - Scripts Builder Zod
-- ref_node_path
-- AssignmentDefinitionWizardModal.guarded-errors.spec.tsx
+- storage-layout-and-manifest.spec.ts
+- TaskPreviewCard.tsx
 - Ci Frontend E2e
 - Assignment Definition Upsert
 - Settings Backend Journey
 - Classes Management Panel
-- AssignmentsPage.editWorkflow.spec.tsx
+- assignmentDefinitionTestFixtures.ts
 - Post Analysis Metadata
 - Auth Users
 - Build Build Permissions
@@ -119,24 +119,24 @@
 - Assignment Read Single
 - metadataRefreshFixtures.ts
 - dataAnalysis.zod.ts
-- Synthetic Assessment Validation
+- syntheticAssessmentValidationOwners.js
 - averagingAnalyser.ts
-- assignmentLegacyReadPreparationSupport.js
+- assignmentRehydration.legacyAuthority.test.js
 - Backend Studentsubmission Studentsubmissionitem
 - assignmentDefinitionPartials.zod.ts
 - Run Regression Checker
-- Assignment Definitions Table
+- AssignmentsManagementSurface.tsx
 - Synthetic Assessment Validation
 - Builder Fixture
 - Scripts Builder Jsondbapp
-- useAssessTaskRecoveryFlow.ts
+- TaskDefinition
 - Reference Controller
 - Assignment Definition Upsert
-- AssignmentDefinitionWizardModal.reparse.spec.tsx
+- ClassPageContent.tsx
 - Scripts Builder Jsondbapp
 - Ab Logger
 - Backend Settings
-- Synthetic Assessment Rejection
+- classes-page-end-to-end-helpers.ts
 - V0 Release Notes
 - Document Operations
 - previewFixtures.ts
@@ -151,9 +151,9 @@
 - Ant Design Cache
 - Field Path
 - Configuration Manager Auth
-- spacing.ts
+- HeatmapSelectionBar.selectAllHeader.spec.tsx
 - appSpecHarness.ts
-- AssessTaskRecoverySurface.tsx
+- frontendLogger.ts
 - classDetailService.zod.ts
 - Analysis Scoring
 - Collection Metadata
@@ -163,7 +163,7 @@
 - Analysis Medium Baseline
 - Query Engine
 - Project Submission Views
-- authService.zod.ts
+- AuthenticationSettingsTab.tsx
 - Action Plan Deferred
 - Scripts Builder Jsondbapp
 - Db Logger
@@ -183,7 +183,7 @@
 - Abclass Mutations
 - heatmapAdapter.ts
 - Singleton Harness
-- AssignmentDefinitionWizardReviewContent.tsx
+- heatmapBuilderSurfaceTestHelpers.ts
 - Synthetic Graph Integrity
 - Synthetic Graph Shape
 - Scripts Builder Jsondbapp
@@ -191,7 +191,7 @@
 - Student Submission Item
 - Assignment Definition Task
 - Classes Toolbar
-- assignmentWizardMutation.ts
+- authService.zod.ts
 - V0 Release Notes
 - Tool Runners And
 - Synthetic Assessment Image
@@ -205,7 +205,7 @@
 - Node Gyp Undici
 - Id Generator
 - Cohort Year Group
-- syntheticABClassMetadataRoundTrip.test.ts
+- dataAnalysisService.ts
 - Progress Tracker
 - Large Representative
 - Type And Lint
@@ -222,12 +222,12 @@
 - Image Manager
 - Ab Class Assignment
 - Assignment Definition Upsert
-- assignmentDefinitionTestFixtures.ts
+- metricRangeFilter.tsx
 - Performance Measurement
 - SettingsPage.tsx
 - syntheticABClassMetadataGeneratorValidator.test.ts
 - View Results Class
-- modalTestHelpers.tsx
+- sharedQueries.query.spec.tsx
 - Update Engine Validation
 - Scripts Synthetic Tsconfig
 - Slides Parser Table
@@ -237,14 +237,14 @@
 - Tsconfig E2e
 - syntheticLegacyScenarios.test.ts
 - Scripts Builder Tsconfig
-- Sheets Assessor
+- SheetsAssessor
 - Assignment Assessment Base
 - Slides Parser Submission
-- DbManager
+- assignmentReadNormalisation.ts
 - Spreadsheet Task Artifact
 - Ab Class Roster
 - Assignment Definition Persistence
-- Query Invalidation Zod
+- AuthService
 - Tsconfig Node
 - Synthetic Graph Validation
 - Configuration Manager Locked
@@ -252,18 +252,18 @@
 - Mkdocs Markdown Extensions
 - Query Engine Validation
 - Keys And Schema
-- ClassesManagementPanel.bulkMetadataFailure.spec.tsx
+- abclassMetadataFiveFieldShape.test.js
 - main.architecture.spec.tsx
 - Mocks Synthetic Analysis
 - Mocks Synthetic Analysis
-- TriggerController
+- AppAuthGate.tsx
 - Developer Shapes Assignment
 - Developer Testing Synthetic
 - Manage Assignment Definitions
 - Update Engine Field
 - Master Conflict Resolver
 - Assignment Definition Validation
-- googleScriptRunHarness.ts
+- authenticationSettingsTestHelpers.tsx
 - Frontend Authgatemodule
 - Metadata Evidence Oracle
 - Assignment Definition Upsert
@@ -278,21 +278,21 @@
 - Database Collection Management
 - Master Metadata Normaliser
 - Backend Appsscript Webapp
-- Assignment Submissions
-- resolve.ts
+- Assignment/index.js
+- backendConfiguration.zod.ts
 - Validate Class Info
-- TaskHeatmapTable
+- postAnalysisFeedbackTestSupport.tsx
 - Assignment Topic
 - assignmentDefinitionPartialRowValidation.js
 - Frontend Scripts
-- classDetailService.zod.full.spec.ts
-- runners/index.ts
+- assignmentReadNormalisation.legacyPartial.spec.ts
+- apiService.ts
 - Mocks Googleappsscript Mockgoogleclassroommanager
 - Developer Shapes Assessment
 - Developer Shapes Abclass
 - Regression Checker How
 - Assignment Definition
-- syntheticAssessmentCauseShape.test.ts
+- import-path-rules.cjs
 - syntheticABClassMetadataFrontendParity.test.ts
 - Run An Assessment
 - View Results Task
@@ -301,17 +301,17 @@
 - Update Engine
 - Master Lock Manager
 - Backend Api Apiconfig
-- validate-regression-config.spec.ts
-- bulkDelete.spec.tsx
+- syntheticIgnoreBoundary.test.ts
+- classesManagementViewModel.ts
 - Frontend Creatematchmediamock
 - Mock Factories
-- syntheticAssessmentCauseCatalogueSupport.js
+- merge-manifest.spec.ts
 - Registered Transport Endpoints
 - React + TypeScript + Vite
 - frontend-htmlservice-transform.ts
 - Developer Backend Rehydration
 - Ant Design Cache
-- ExistingClassState
+- generateClassMetadata.js
 - Assessment
 - Run An Assessment
 - V0 Release Notes
@@ -319,21 +319,21 @@
 - Import Path Depth
 - Db Lock Service
 - Collection Read Operations
-- Assignment Timestamps
+- syntheticCommittedFixtureRegeneration.test.ts
 - Sheets Assignment
 - triggerHandler.test.js
 - Sheets Feedback
 - Drive Manager Folder
 - Year Group
 - Task Heatmap Chromium
-- Use Page Dataset
-- TaskHeatmapTable.tsx
-- abClassMetadataService.summaryConsumption.spec.ts
+- configurationManagerLockedWriteContract.test.js
+- taskHeatmapTableColumns.tsx
+- vmHelpers.js
 - Assignment Definition Upsert
-- assignmentsPageModalHelpers.tsx
+- syntheticProfileTaskCounts.test.ts
 - Developer Shapes Assignment
 - Metric Display Precision
-- TableTaskArtifact
+- Artifacts/index.js
 - Frontend Max Lines
 - V0 Release Notes
 - Ascreenshot 02fab587
@@ -349,7 +349,7 @@
 - Groups Auth Service
 - Progress Tracker Lazy
 - Heatmaps Builder Chromium
-- Synthetic Assessment Full
+- configurationManagerStorageCollaborator.test.js
 - globalExposure.test.js
 - Developer Backend Singletons
 - Developer Shapes Abclass
@@ -359,8 +359,8 @@
 - Testing Specialist
 - Tsconfig Vitest
 - Update Engine Field
-- Assignment Llm Orchestration
-- Document Parser
+- deriveLegacyAssignmentScenario
+- generateClassRosters.js
 - Drive Manager Modified
 - Assignment Definition Recovery
 - Assignment Definition Reference
@@ -369,7 +369,7 @@
 - Api Auth
 - Class Page Overview
 - Query Foundation Query
-- ABClassController
+- ABClass
 - Run An Assessment
 - V1 Task Preview
 - V1 Heatmap Sticky
@@ -391,11 +391,10 @@
 - Drive Manager File
 - Backend Arrayutils Arrayutils
 - Assignment Definition Response
-- AssignmentDefinitionWizardReviewContent.spec.tsx
+- syntheticClassMetadataViews.test.ts
 - Classroom Assignments
 - Backend Api Googleclassrooms
-- TaskHeatmapTable.merged.spec.tsx
-- syntheticRosterNaming.test.ts
+- registry.test.js
 - Developer Backend Rehydration
 - Type And Lint
 - Frontend Analysis Response
@@ -404,7 +403,7 @@
 - Developer Template Agreed
 - Run An Assessment
 - View Results Preview
-- AppThemeShell.tsx
+- AppAuthGate.warmup.spec.tsx
 - V1 Heatmap Error
 - Ascreenshot 9e86a4fa
 - Images Ascreenshot Slides
@@ -422,11 +421,9 @@
 - Task Heatmap Chromium
 - Frontend Public Logo
 - assignmentAssessment.js
-- Assignment Subclasses Coverage
+- no-task-resume.ts
 - Abclass Mutations Unit
 - Contributing Command Reference
-- LayoutResizeObserver
-- TestCellReferenceFeedback
 - Assignment Definition
 - Developer Shapes Assessment
 - Student Submission
@@ -520,7 +517,6 @@
 - Frontend Analysis Response
 - Developer Shapes Classrooms
 - Developer Shapes Classrooms
-- Utils.js
 - Developer Shapes Transport
 - Progress Tracker
 - Developer Shapes Reference
@@ -570,7 +566,6 @@
 - Requirements Mkdocs
 - Requirements Mkdocs Material
 - Frontend Agents Domain
-- assignmentRehydration.legacySnapshotIsolation.test.js
 - 01_ProgressTrackerStore.js
 
 ## God Nodes (most connected - your core abstractions)
@@ -590,12 +585,12 @@
   docs/releaseNotes/v0.7.5_release_notes.md → src/backend/y_controllers/ABClassController/AGENTS.md
 - `Builder Zod-first validation standard` --semantically_similar_to--> `Frontend Zod schema-first validation`  [INFERRED] [semantically similar]
   scripts/builder/AGENTS.md → src/frontend/AGENTS.md
-- `buildTeacher()` --calls--> `Teacher`  [EXTRACTED]
-  tests/controllers/abclass-upsert-update.test.js → src/backend/Models/Teacher.js
 - `createFreshManager()` --calls--> `ConfigurationManager`  [EXTRACTED]
   tests/configurationManager/configurationManagerSection1aRed.test.js → src/backend/ConfigurationManager/98_ConfigurationManagerClass.js
-- `createManager()` --calls--> `ConfigurationManager`  [EXTRACTED]
-  tests/configurationManager/configurationManagerSection1Red.test.js → src/backend/ConfigurationManager/98_ConfigurationManagerClass.js
+- `makeManager()` --calls--> `ConfigurationManager`  [EXTRACTED]
+  tests/configurationManager/configurationManagerStorageCollaborator.test.js → src/backend/ConfigurationManager/98_ConfigurationManagerClass.js
+- `loadSources()` --calls--> `loadSyntheticAnalysisProfile()`  [EXTRACTED]
+  tests/synthetic-analysis/syntheticLegacyScenarios.test.ts → scripts/synthetic-test-data/loadSyntheticAnalysisProfile.js
 
 ## Import Cycles
 - 2-file cycle: `src/frontend/src/features/assignmentWizard/AssignmentDefinitionWizardReviewContent.tsx -> src/frontend/src/features/assignmentWizard/AssignmentDefinitionWizardReviewFooter.tsx -> src/frontend/src/features/assignmentWizard/AssignmentDefinitionWizardReviewContent.tsx`
@@ -655,99 +650,99 @@
 - **Template sheet copy flow in copyTemplateSheet** — docs_setup_images_user_cropped_screenshot_75fd23b9_copytemplatesheet_function, docs_setup_images_user_cropped_screenshot_75fd23b9_template_sheet_id_placeholder, docs_setup_images_user_cropped_screenshot_75fd23b9_destination_folder_id, docs_setup_images_user_cropped_screenshot_75fd23b9_driveapp_getfilebyid, docs_setup_images_user_cropped_screenshot_75fd23b9_driveapp_getfolderbyid, docs_setup_images_user_cropped_screenshot_75fd23b9_makecopy [INFERRED 0.85]
 - **Worker script to AIAssess library delegation pattern** — docs_setup_images_ascreenshot_52732ff0_placeholder_functions, docs_setup_images_ascreenshot_52732ff0_assessassignment_wrapper, docs_setup_images_ascreenshot_52732ff0_createassignmentdropdownhtml_wrapper, docs_setup_images_ascreenshot_52732ff0_openreferenceslidemodal_wrapper, docs_setup_images_ascreenshot_52732ff0_aiassess_library [INFERRED 0.85]
 
-## Communities (612 total, 281 thin omitted)
+## Communities (609 total, 273 thin omitted)
 
 ### Community 0 - "Document Parsing Extraction Tests"
-Cohesion: 0.02
-Nodes (72): RFC-5322, SheetsParser, IMAGE_TAGS, TRIGGER_METHOD_HANDLERS, BatchUpdateUtility, AbortRequestError, CANONICAL_UTC_MONTH_DAYS, Validate (+64 more)
+Cohesion: 0.03
+Nodes (58): DocumentParser, SheetsParser, IMAGE_TAGS, AbortRequestError, originalGlobals, canonical, globalsToRestore, registryRows (+50 more)
 
-### Community 1 - "TaskMetricPreviewContent.tsx"
-Cohesion: 0.06
-Nodes (46): assembleTaskPreviewData(), coerceArtifactContent(), coerceArtifactType(), coerceSpreadsheetContent(), ANALYSER_ERROR_METRIC, ANALYSER_METRIC, ASSESSMENT_CAUSE, EXTRACTION_CAUSE (+38 more)
+### Community 1 - "assembleTaskPreviewData.ts"
+Cohesion: 0.12
+Nodes (22): assembleTaskPreviewData(), coerceArtifactContent(), coerceArtifactType(), coerceSpreadsheetContent(), ANALYSER_ERROR_METRIC, ANALYSER_METRIC, ASSESSMENT_CAUSE, EXTRACTION_CAUSE (+14 more)
 
 ### Community 2 - "ABClass Controller Layer"
-Cohesion: 0.03
-Nodes (50): ABClass, ClassNotFoundError, getABClass_(), throwAbclassValidationError_(), validateIdentifier_(), createDeleteHarness(), buildExistingClassDoc(), setupCollectionRouter() (+42 more)
+Cohesion: 0.02
+Nodes (58): Student, Teacher, ClassNotFoundError, ABClassController, getABClass_(), throwAbclassValidationError_(), validateIdentifier_(), createDeleteHarness() (+50 more)
 
 ### Community 3 - "Topic Cohort Management"
 Cohesion: 0.03
-Nodes (107): @testing-library/react, createQueryWrapper(), getUpsertDefinitionMock(), loadUseAssignmentDefinitionWizard(), renderWizardHook(), StartupWarmupStateProvider(), createOrchestrationWrapper(), createHookWrapper() (+99 more)
+Nodes (116): @testing-library/react, createQueryWrapper(), loadUseAssignmentDefinitionWizard(), renderWizardHook(), UseAssignmentDefinitionWizardReturn, createStartupWarmupContextValue(), getDatasetState(), createWarmupStateWrapper() (+108 more)
 
 ### Community 4 - "assignmentRehydrationCurrentSupport.js"
-Cohesion: 0.17
-Nodes (24): recordForMode(), RESTORE_MODES, CRITERIA, contradictionRows, CRITERIA, assessmentEntriesAll(), corruptedRecord(), corruptRecordAssessments() (+16 more)
+Cohesion: 0.15
+Nodes (28): ASSESSMENT_ERROR_MESSAGES, recordForMode(), RESTORE_MODES, CRITERIA, contradictionRows, CRITERIA, legacyFull(), legacyPartial() (+20 more)
 
 ### Community 5 - "Analysis Data Services Schemas"
-Cohesion: 0.08
-Nodes (66): ACCURACY_SCORES, ASSIGNMENT_IDS, INPUT, selectedHeatmap(), AssignmentSummaryAnalyser, countNotAttempted(), indexStudentMetrics(), summariseTask() (+58 more)
+Cohesion: 0.11
+Nodes (53): createMalformedOutputZodError(), ACCURACY_SCORES, ASSIGNMENT_IDS, INPUT, createClassWithPartialError(), buildAbsoluteModeInput(), analyseSingleTask(), analyseWithUnknownSubmissionTask() (+45 more)
 
 ### Community 6 - "Assess Task Modal Tests"
 Cohesion: 0.05
-Nodes (117): @testing-library/user-event, AssessTaskModal(), setupReopenInPlace(), CREATE_PATH_ASSIGNMENTS, CREATE_PATH_TOPIC, CREATE_PATH_UPSERT_RESULT, setupWizardTest(), buildCreateUpsertResponse() (+109 more)
+Nodes (124): @testing-library/user-event, AssessTaskModal(), setupReopenInPlace(), CREATE_PATH_ASSIGNMENTS, CREATE_PATH_TOPIC, CREATE_PATH_UPSERT_RESULT, setupWizardTest(), buildCreateUpsertResponse() (+116 more)
 
 ### Community 7 - "Class CRUD E2E Tests"
-Cohesion: 0.04
-Nodes (96): @playwright/test, bulkCohortOptions, cohortPartialsAfterPartialFailure, activeClassPartial, activeGCR, linkedClassPartial, linkedGCR, notCreatedGCR (+88 more)
-
-### Community 8 - "TaskDefinition"
 Cohesion: 0.03
-Nodes (49): SlidesAssignment, TextTaskArtifact, ImageTaskArtifact, ArtifactFactory, AssignmentDefinition, StudentSubmission, TaskDefinition, CacheManager (+41 more)
+Nodes (99): @playwright/test, migratedAssignmentRows, bulkCohortOptions, cohortPartialsAfterPartialFailure, activeClassPartial, activeGCR, linkedClassPartial, linkedGCR (+91 more)
+
+### Community 8 - "AssignmentDefinition"
+Cohesion: 0.05
+Nodes (30): SlidesAssignment, AssignmentDefinition, CacheManager, createTestData(), withClassroomCoursework(), expectAssignmentProperties(), buildAssignmentFixture(), buildConnectedRun() (+22 more)
 
 ### Community 9 - "Task Preview E2E Tests"
 Cohesion: 0.03
-Nodes (125): stickyTableWrapper(), MOTION_PHASE_MARKERS, PREVIEW_HEADER_REGION_SELECTORS, PreviewHeaderMeasurement, PreviewHeaderRegionName, RawPreviewHeaderReading, RawRegionReading, readPreviewHeaderRegions() (+117 more)
+Nodes (123): MOTION_PHASE_MARKERS, PREVIEW_HEADER_REGION_SELECTORS, PreviewHeaderMeasurement, PreviewHeaderRegionName, RawPreviewHeaderReading, RawRegionReading, readPreviewHeaderRegions(), readRawPreviewHeaderRegions() (+115 more)
 
 ### Community 10 - "LLM Request Manager Tests"
 Cohesion: 0.03
-Nodes (115): createConnectedOutcomeRun(), CRITERIA, NOT_ATTEMPTED, OUTCOME_FIXTURES, createCompletedRun(), createConnectedStopRun(), deriveExpectedBatchLengths(), expectStopCompletionBoundaries() (+107 more)
+Nodes (118): DateUtils, Utils, restoredItem(), createConnectedOutcomeRun(), CRITERIA, NOT_ATTEMPTED, OUTCOME_FIXTURES, createCompletedRun() (+110 more)
 
-### Community 11 - "loadBackendModelInputs"
+### Community 11 - "loadSyntheticAnalysisProfile"
 Cohesion: 0.04
-Nodes (71): COMMITTED_FIXTURE_ROOT, COMMITTED_PROFILE_NAMES, deepFreeze(), loadSyntheticAnalysisProfile(), resolveCommittedProfileDirectory(), resolveViewFileName(), adaptClassAssignments(), adaptStandaloneAssignments() (+63 more)
+Nodes (44): COMMITTED_FIXTURE_ROOT, COMMITTED_PROFILE_NAMES, deepFreeze(), loadSyntheticAnalysisProfile(), resolveCommittedProfileDirectory(), resolveViewFileName(), arrangeCorruption(), canonicalViews() (+36 more)
 
 ### Community 12 - "Task Heatmap E2E Tests"
-Cohesion: 0.03
-Nodes (108): ALL_TASK_IDS, createBaselineModeScenario(), DISJOINT_ATTEMPT_SKIPS, PARTIAL_ATTEMPT_SKIPS, SINGLE_ATTEMPTER_SKIPS, selectClass(), CANONICAL_PROFILE_ROWS, canonicalNotAttemptedSnapshot (+100 more)
+Cohesion: 0.04
+Nodes (97): ALL_TASK_IDS, createBaselineModeScenario(), DISJOINT_ATTEMPT_SKIPS, PARTIAL_ATTEMPT_SKIPS, SINGLE_ATTEMPTER_SKIPS, selectClass(), createCanonicalNumericClassMetadata(), ASSIGNMENTS_CONTROL_INDEX (+89 more)
 
 ### Community 13 - "ABClass Persistence Controller"
-Cohesion: 0.04
-Nodes (45): ABClassAssignmentOps, ABClassMutationOps, ABClassPersistence, ABClassValidation, captureSelectedEmbeddedEntry(), expectRejectedBeforeAnyMutation(), ABClassAssignmentOps, expectPersistFailureDiagnostics() (+37 more)
+Cohesion: 0.03
+Nodes (88): adaptClassAssignments(), adaptStandaloneAssignments(), loadBackendModelInputs(), resolveDefinition(), toPartialDefinition(), VIEW_NAMES, ABClassAssignmentOps, ABClassMutationOps (+80 more)
 
 ### Community 14 - "AssignmentDefinitionWizardModal.test-harness.ts"
-Cohesion: 0.10
-Nodes (45): parseStageOneInModal(), createFinalSaveResponse(), createStageOneParseResponse(), performFinalSave(), performStageOneParse(), WizardMocks, assertAllRequiredFieldsPresent(), assertConflictingControlsDisabled() (+37 more)
+Cohesion: 0.04
+Nodes (111): getAssignmentDefinitionMock, getAssignmentTopicsMock, getCohortsMock, getYearGroupsMock, pendingDocumentUrlChanges, upsertAssignmentDefinitionMock, useStartupWarmupStateMock, getAssignmentDefinitionMock (+103 more)
 
 ### Community 15 - "TaskHeatmapPage.tsx"
-Cohesion: 0.04
-Nodes (83): AveragesBasisControl(), AveragesBasisControlProperties, resolveBaselineOptionTooltip(), renderAveragesBasisControlExtra(), PageNavCard(), PageTitleCard(), renderNavigation(), ClassPageHeader() (+75 more)
+Cohesion: 0.06
+Nodes (53): AveragesBasisControl(), AveragesBasisControlProperties, resolveBaselineOptionTooltip(), renderAveragesBasisControlExtra(), PageNavCard(), PageNavCardProperties, PageTitleCard(), PageTitleCardProperties (+45 more)
 
 ### Community 16 - "Assessment Error Preview E2E"
 Cohesion: 0.04
-Nodes (108): ABSENT_CELL, alternatingQueue(), classQueue(), ERROR_CELL, HEALTHY_CELL, openMergedCell(), openMergedSharedDefinition(), openSharedInstances() (+100 more)
+Nodes (100): ABSENT_CELL, alternatingQueue(), classQueue(), ERROR_CELL, HEALTHY_CELL, openMergedCell(), openMergedSharedDefinition(), openSharedInstances() (+92 more)
 
 ### Community 17 - "Synthetic Data Validation Scripts"
-Cohesion: 0.06
-Nodes (93): assertArtefactHash(), assertDefinitionRoleArtefacts(), assertDefinitionTaskArtefacts(), assertDocumentItemArtefact(), assertFullDefinitionArtefacts(), assertItemArtefactSource(), assertNullArtefactField(), assertNullContentDocumentPlaceholder() (+85 more)
+Cohesion: 0.07
+Nodes (76): assertArtefactHash(), assertDefinitionRoleArtefacts(), assertDefinitionTaskArtefacts(), assertDocumentItemArtefact(), assertFullDefinitionArtefacts(), assertItemArtefactSource(), assertNullArtefactField(), assertNullContentDocumentPlaceholder() (+68 more)
 
 ### Community 18 - "Assess Task Flow Hooks"
 Cohesion: 0.04
-Nodes (80): @tanstack/react-query, AssessmentAlertType, AssessmentFetchState, AssessmentState, AssessTaskAssignment, CacheValidationError, CapturedStartContext, deriveLinkableDefinitions() (+72 more)
+Nodes (78): react, AssessmentAlertType, AssessmentFetchState, AssessmentState, AssessTaskAssignment, CacheValidationError, CapturedStartContext, deriveLinkableDefinitions() (+70 more)
 
 ### Community 19 - "Synthetic Corpus Convention Tests"
-Cohesion: 0.05
-Nodes (56): createSeededFaker(), generateAssignments(), applyClassMetadata(), applyMetadata(), buildStanding(), buildStandings(), COMPACT_MATRIX, COMPACT_MATRIX_BY_PROFILE (+48 more)
+Cohesion: 0.07
+Nodes (39): createSeededFaker(), generateAssignments(), generateClassRosters(), generateReferenceData(), generateSyntheticAnalysisGraph(), resolveSeed(), toCanonicalFullProfile(), partitionDefinitions() (+31 more)
 
-### Community 20 - "StudentAveragesTableCard.spec.tsx"
-Cohesion: 0.04
-Nodes (58): { mockAssessTaskModal }, { mockClassPageContent }, { mockGetAssignment }, { mockStudentAveragesTableCard }, { mockTaskHeatmapTable }, { mockUseClassPageData }, { mockUseClassSelection }, ClassPageContentProperties (+50 more)
+### Community 20 - "attemptBaselineSelection.ts"
+Cohesion: 0.08
+Nodes (25): AttemptBaselineDerivation, AttemptBaselineDerivationInput, AttemptBaselineUnavailableError, BASELINE_ROSTER_MINIMUM, collectAttemptedTaskKeysByStudent(), collectRosterAttemptCandidates(), deriveAttemptBaseline(), intersectAttemptSets() (+17 more)
 
 ### Community 21 - "ABClass Metadata Test Builders"
-Cohesion: 0.05
-Nodes (60): AverageScore, parsedEntry(), ParsedRecentEntry, ParsedSnapshot, perturbInput(), perturbParsed(), entryWithTimestamp(), withEntries() (+52 more)
+Cohesion: 0.04
+Nodes (70): parsedEntry(), ParsedRecentEntry, ParsedSnapshot, perturbInput(), perturbParsed(), entryWithTimestamp(), withEntries(), AlignmentBasis (+62 more)
 
 ### Community 22 - "Builder Pipeline Steps Lib"
-Cohesion: 0.06
-Nodes (65): run(), importEntrypointWithMocks(), StepMocks, BuilderCliOptions, parseCliOptions(), parseFrontendMode(), asError(), BuildStageError (+57 more)
+Cohesion: 0.07
+Nodes (60): run(), importEntrypointWithMocks(), StepMocks, BuilderCliOptions, parseCliOptions(), parseFrontendMode(), asError(), isBuildStageError() (+52 more)
 
 ### Community 23 - "studentNameTableColumns.spec.tsx"
 Cohesion: 0.18
@@ -755,35 +750,35 @@ Nodes (15): buildStudentNameColumns(), CLASS_AVERAGE_ROW, resolveTableWrappers()
 
 ### Community 24 - "BackendSettingsPanel.tsx"
 Cohesion: 0.10
-Nodes (28): BackendSettingsFieldDescriptor, backendSettingsFieldDescriptors, BackendSettingsFieldName, backendSettingsFieldNames, BackendSettingsFieldSection, backendSettingsSectionOrder, createBackendSettingsFieldValidator(), jsonDatabaseLogLevelOptions (+20 more)
+Nodes (29): BackendSettingsFieldDescriptor, backendSettingsFieldDescriptors, BackendSettingsFieldName, backendSettingsFieldNames, BackendSettingsFieldSection, backendSettingsSectionOrder, createBackendSettingsFieldValidator(), jsonDatabaseLogLevelOptions (+21 more)
 
 ### Community 25 - "createComputedMetricResult"
 Cohesion: 0.04
-Nodes (100): LucideIconComponent, MetricIconLabel(), MetricIconLabelProperties, getStudentMetric(), METRIC_ENTRIES, RecentAssignmentCard(), RecentAssignmentCardProperties, makeCard() (+92 more)
+Nodes (103): MetricIconLabel(), MetricIconLabelProperties, ClassPageAdapterResult, ClassPageAdapterResultSchema, ClassPageDisplayMetric, ClassPageDisplayMetricSchema, ClassPageNoDataMetric, ClassPageNoDataMetricSchema (+95 more)
 
 ### Community 26 - "Class Page Data Hooks"
-Cohesion: 0.07
-Nodes (58): useClassPageAssignmentPrefetch(), _analysisService, mockAdaptClassPageToViewModel, mockGetABClassQueryOptions, mockUsePageDataset, mockUseQuery, createNonAttemptMetric(), createRoster() (+50 more)
+Cohesion: 0.06
+Nodes (67): @tanstack/react-query, useClassPageAssignmentPrefetch(), _analysisService, mockAdaptClassPageToViewModel, mockGetABClassQueryOptions, mockUsePageDataset, mockUseQuery, createNonAttemptMetric() (+59 more)
 
 ### Community 27 - "Post Analysis Feedback Tasks"
 Cohesion: 0.08
-Nodes (34): NotificationHost, PostAnalysisFeedback, completePostAnalysisInvalidation(), fixture, usePagePostAnalysisTasks(), AttemptKey, Owner(), PostAnalysisOwner (+26 more)
+Nodes (30): NotificationHost, PostAnalysisFeedback, completePostAnalysisInvalidation(), AttemptKey, PostAnalysisOwner, PostAnalysisState, CanonicalMetadataTimestampSchema, AveragingResultSchema (+22 more)
 
-### Community 28 - "assignmentTopics.zod.ts"
-Cohesion: 0.25
-Nodes (7): AssignmentTopic, AssignmentTopicSchema, AssignmentTopicsResponse, AssignmentTopicsResponseSchema, loadAssignmentTopicsSchemas(), validAssignmentTopics, TrimmedNonEmptyStringSchema
+### Community 28 - "ref_zod"
+Cohesion: 0.15
+Nodes (12): AssignmentTopic, AssignmentTopicSchema, AssignmentTopicsResponse, AssignmentTopicsResponseSchema, loadAssignmentTopicsSchemas(), validAssignmentTopics, TrimmedNonEmptyStringSchema, GoogleClassroomSchema (+4 more)
 
 ### Community 29 - "Rollup Averaging Analysis"
-Cohesion: 0.08
-Nodes (44): CardCriterionRollups, rollCriteria(), rollupCardCriteria(), rollupCriterion(), ClassBaseline, computeOverallComposite(), resolveTerminalComposite(), WeightedCriterion (+36 more)
+Cohesion: 0.07
+Nodes (44): CardCriterionRollups, rollCriteria(), rollupCardCriteria(), rollupCriterion(), ClassBaseline, CriterionWeightings, DEFAULT_CRITERION_WEIGHTINGS, convertToBaselineExcluded() (+36 more)
 
 ### Community 30 - "Session Resolution"
-Cohesion: 0.06
-Nodes (63): addCount(), assertRegressionTool(), buildBaselineModeResult(), buildCapturedArtefactContent(), buildCheckCounts(), buildCombinedCommandOutput(), buildCompareModeResult(), buildRunContext() (+55 more)
+Cohesion: 0.04
+Nodes (79): addCount(), assertRegressionTool(), buildBaselineModeResult(), buildCapturedArtefactContent(), buildCheckCounts(), buildCombinedCommandOutput(), buildCompareModeResult(), buildRunContext() (+71 more)
 
 ### Community 31 - "Task Heatmap Page"
-Cohesion: 0.06
-Nodes (28): ClassPage(), AWAITING_DATA_AVAILABILITY, INELIGIBLE_AVAILABILITY, {
+Cohesion: 0.04
+Nodes (49): ClassPage(), AWAITING_DATA_AVAILABILITY, INELIGIBLE_AVAILABILITY, {
   mockUseClassPageData,
   mockAssessTaskModal,
   mockUseClassSelection,
@@ -796,131 +791,131 @@ Nodes (28): ClassPage(), AWAITING_DATA_AVAILABILITY, INELIGIBLE_AVAILABILITY, {
   mockGetAssignment,
   mockStudentAveragesTableCard,
   mockTaskHeatmapTable,
-} (+20 more)
+} (+41 more)
 
 ### Community 32 - "Classes Page End"
-Cohesion: 0.04
-Nodes (99): assignmentRows, confirmDeleteForAssignmentTitle(), initialSettings, settingsAfterFirstSave, openDirtyCreateReview(), ALGEBRA_HOMEWORK_PARTIAL, ALGEBRA_HW_PARTIAL, LINK_PICKER_INFO_TEXT (+91 more)
+Cohesion: 0.07
+Nodes (58): assignmentRows, confirmDeleteForAssignmentTitle(), initialSettings, settingsAfterFirstSave, openDirtyCreateReview(), ALGEBRA_HOMEWORK_PARTIAL, ALGEBRA_HW_PARTIAL, LINK_PICKER_INFO_TEXT (+50 more)
 
 ### Community 33 - "Classes Management View"
 Cohesion: 0.07
-Nodes (48): FulfilledRowResult, RejectedRowResult, RowMutationResult, classesManagementStateMock, makeRow(), renderPanel(), runQueuedBatchMutationMock, runQueuedBatchMutationMock (+40 more)
+Nodes (43): FulfilledRowResult, RejectedRowResult, RowMutationResult, runQueuedBatchMutationMock, bulkCreate(), filterBulkCreateRows(), bulkMetadataUpdate(), BulkMetadataUpdatePayload (+35 more)
 
 ### Community 34 - "Derived Summaries And"
 Cohesion: 0.05
 Nodes (70): BaselineCompatibility, CheckPair, CheckRun, CompareModule, ComparisonResult, loadCompareModule(), Tool, assertNever() (+62 more)
 
 ### Community 35 - "Classes Page"
-Cohesion: 0.04
-Nodes (113): ClassSelectionContext, ClassSelectionContextValue, useClassSelection(), AssignmentsDeleteModal(), AssignmentsManagementSurface(), handleConfirmDelete(), handleRetryAssignmentsData(), AssignmentsStatusAndActionsCard() (+105 more)
+Cohesion: 0.05
+Nodes (95): ClassSelectionContextValue, useClassSelection(), getAssignmentsSurfaceState(), StartupWarmupContextValue, compareYearGroups(), sortYearGroups(), names(), sortedNames() (+87 more)
 
 ### Community 36 - "react"
-Cohesion: 0.06
-Nodes (66): react, BlockingLoadErrorState, InlineDialog(), buildCohortColumns(), ManageCohortsModal(), ManageCohortsModalProperties, DefaultReferenceDataDeleteDialogRenderer(), DefaultReferenceDataFormDialogRenderer() (+58 more)
+Cohesion: 0.03
+Nodes (114): antd, BlockingLoadErrorState, getBlockingLoadErrorMessage(), AssignmentDefinitionWizardModal(), AssignmentDefinitionWizardModalShell(), AssignmentDefinitionWizardModalShellProperties, renderReadyState(), baseProperties (+106 more)
 
 ### Community 37 - "Use Heatmaps Page"
-Cohesion: 0.05
-Nodes (68): AssignmentPreviewInput, createClassWithPartialItem(), ERROR_CAUSE, PartialAssessments, AnalyserCallInput, buildMergedResultForAssignments(), deferredControl, HeatmapsView (+60 more)
+Cohesion: 0.06
+Nodes (55): AssignmentPreviewInput, createClassWithPartialItem(), ERROR_CAUSE, PartialAssessments, AnalyserCallInput, buildMergedResultForAssignments(), deferredControl, HeatmapsView (+47 more)
 
 ### Community 38 - "Build Cell Preview"
-Cohesion: 0.05
-Nodes (55): ArtifactContentByType, ArtifactType, Assessment, buildCellPreviewLookup(), buildEditorBaseUrl(), CellPreviewLookup, AssignmentSubmissionItem, CANONICAL_ASSIGNMENTS (+47 more)
+Cohesion: 0.06
+Nodes (42): ArtifactContentByType, ArtifactType, Assessment, buildCellPreviewLookup(), buildEditorBaseUrl(), CellPreviewLookup, AssignmentSubmissionItem, CANONICAL_ASSIGNMENTS (+34 more)
 
 ### Community 39 - "Db Manager"
-Cohesion: 0.08
-Nodes (21): RFC-3339, ClassroomApiClient, DriveManager, driveManagerFileId, driveManagerFileOperations, driveManagerFolderOperations, driveManagerFolderValidator, driveManagerModifiedTime (+13 more)
+Cohesion: 0.06
+Nodes (28): RFC-3339, DbManager, ClassroomApiClient, DriveManager, driveManagerFileId, driveManagerFileOperations, driveManagerFolderOperations, driveManagerFolderValidator (+20 more)
 
 ### Community 40 - "Api Handler"
-Cohesion: 0.05
-Nodes (41): createApiHandlerRoundTripBridge(), createBridgeVi(), canonical, registryRows, selectedClass, selectedPartial, createCollection(), setupRealAbclassDispatcher() (+33 more)
+Cohesion: 0.06
+Nodes (38): createApiHandlerRoundTripBridge(), createBridgeVi(), dispatch(), fs, ORDINARY_WRITABLE_FIELDS, buildStartedStore(), callAuthorisationStatus(), getApiDispatcherInstance() (+30 more)
 
 ### Community 41 - "Assignment Definition Partials"
 Cohesion: 0.07
 Nodes (31): ApiValidationError, clearModuleCache(), loadValidationModule(), keyCase(), makeCase(), READ_ERRORS, readCase(), TOPIC_ERRORS (+23 more)
 
 ### Community 42 - "appNavigation.tsx"
-Cohesion: 0.08
-Nodes (35): @ant-design/icons, lucide-react, expectBreadcrumbLabels(), expectedNavigationLabels, getBreadcrumbElement(), AppShell(), AppShellProperties, toMenuItems() (+27 more)
+Cohesion: 0.11
+Nodes (28): @ant-design/icons, @ant-design/icons@6.3.4, expectBreadcrumbLabels(), expectedNavigationLabels, getBreadcrumbElement(), AppShell(), AppShellProperties, toMenuItems() (+20 more)
 
 ### Community 43 - "metadataProjection.merge.spec.ts"
 Cohesion: 0.07
-Nodes (44): AverageScores, isTrimmed(), MAX_LIST_ENTRIES, RecentAssignment, collectAlignmentIssues(), StudentStanding, StudentStandings, validateStandingsScoreAlignment() (+36 more)
+Nodes (57): AverageScore, AverageScores, isTrimmed(), MAX_LIST_ENTRIES, RecentAssignment, StudentStanding, StudentStandings, computed() (+49 more)
 
 ### Community 44 - "Task Heatmap Table"
-Cohesion: 0.10
-Nodes (30): buildCollapsedMergedResultWithBaselineFlags(), buildMergedResultWithBaselineFlags(), renderHeatmapTable(), { assembleTaskPreviewDataSpy }, buildMergedZeroWeightResult(), HeatmapCell, HeatmapResult, HeatmapRow (+22 more)
+Cohesion: 0.07
+Nodes (54): BASELINE_CAPTION, BASELINE_MARKER, BASELINE_OFF_EXPLANATION, buildTaskHeaderPresentation(), EXCLUDED_COLUMN_FIRST_CLASS, EXCLUDED_COLUMN_GROUP_CLASS, EXCLUDED_COLUMN_LAST_CLASS, EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS (+46 more)
 
 ### Community 45 - "previewSourceActionTestHelpers.ts"
-Cohesion: 0.07
-Nodes (38): DeferredPopoverContent(), popoverSeam, ACCESSIBLE_LABEL, { assembleTaskPreviewDataSpy }, CELL_DATA, METRIC_RESULT, renderCell(), SCORE_TEXT (+30 more)
+Cohesion: 0.06
+Nodes (44): CONTENT_SOURCE_URL_CELLS, NO_CELL_ERRORS, CellPreviewData, DeferredPopoverContent(), popoverSeam, ACCESSIBLE_LABEL, { assembleTaskPreviewDataSpy }, CELL_DATA (+36 more)
 
 ### Community 46 - "Classes Table"
 Cohesion: 0.07
-Nodes (52): antd, compareRowsByDefaultPriority(), STATUS_ORDER, ClassesNoActiveClassroomsEmptyState(), ClassesTable(), ClassesTableProperties, ActiveColumnFilter, applyColumnFilters() (+44 more)
+Nodes (50): compareRowsByDefaultPriority(), STATUS_ORDER, ClassesNoActiveClassroomsEmptyState(), ClassesTable(), applyColumnFilters(), ClassesTableFilterState, EMPTY_FILTER_STATE, getActiveColumnFilters() (+42 more)
 
 ### Community 47 - "Validate Regression"
-Cohesion: 0.08
-Nodes (51): appendNestedToolFamilies(), assertPathDoesNotEscapeRepoRoot(), assertPathIsNotAbsolute(), assertPathIsNotEmpty(), assertPathResolvesInsideRepoRoot(), assertRepoRelativePathIsValid(), classifyNpmRunToken(), consumePrefixPathToken() (+43 more)
+Cohesion: 0.06
+Nodes (59): appendNestedToolFamilies(), assertPathDoesNotEscapeRepoRoot(), assertPathIsNotAbsolute(), assertPathIsNotEmpty(), assertPathResolvesInsideRepoRoot(), assertRepoRelativePathIsValid(), classifyNpmRunToken(), consumePrefixPathToken() (+51 more)
 
 ### Community 48 - "Api Service"
-Cohesion: 0.11
-Nodes (28): ABClassMetadataSchema, ClassIdSchema, configurationShape, CourseLengthSchema, isMutationRecord(), UpdateABClassRequest, UpdateABClassRequestSchema, UpsertABClassRequest (+20 more)
+Cohesion: 0.12
+Nodes (25): ClassIdSchema, configurationShape, CourseLengthSchema, isMutationRecord(), UpdateABClassRequest, UpsertABClassRequest, UpsertABClassRequestSchema, CLASSES_BULK_MUTATION_JOB_NAME (+17 more)
 
 ### Community 49 - "Dispatcher Auth Endpoints"
-Cohesion: 0.06
-Nodes (18): ApiDisabledError, ApiRateLimitError, canonical, globalsToRestore, registryRows, source, AUTH_API_METHOD_NAMES, dispatchWithHandlerStub() (+10 more)
+Cohesion: 0.07
+Nodes (13): ApiDisabledError, ApiRateLimitError, dispatchWithHandlerStub(), restoreHandlerGlobal(), DEFAULT_DISPATCHER_BEHAVIOUR, expectBoundaryFailureConsoleErrorLog(), expectBoundaryFailureLog(), expectFailureEnvelope() (+5 more)
 
 ### Community 50 - "Bulk Form Modal"
-Cohesion: 0.07
-Nodes (31): EntityType, getDefaultAddNewLabel(), isAddNewSelection(), SelectWithAddNew(), SelectWithAddNewProperties, mockOnAddNew, mockOnChange, standardOptions (+23 more)
+Cohesion: 0.06
+Nodes (40): BulkCreateModal(), BulkCreateModalProperties, FormValues, SelectOption, cohortOptions, yearGroupOptions, bulkCourseLengthSchema, bulkReferenceKeySchema (+32 more)
 
 ### Community 51 - "Ab Class Metadata"
-Cohesion: 0.09
-Nodes (18): ABClassMetadata, NEW_METADATA_FIELDS, classAverages(), entry(), metadata(), scores(), classAverages(), metadata() (+10 more)
+Cohesion: 0.12
+Nodes (13): ABClassMetadata, classAverages(), entry(), metadata(), scores(), classAverages(), metadata(), scores (+5 more)
 
 ### Community 52 - "Frontend Devdependencies"
 Cohesion: 0.05
-Nodes (57): @eslint/js, eslint-plugin-react-hooks, eslint-plugin-react-refresh, globals, happy-dom, playwright, @testing-library/dom, @testing-library/jest-dom (+49 more)
+Nodes (55): @eslint/js, eslint-plugin-react-hooks, eslint-plugin-react-refresh, globals, happy-dom, playwright, @testing-library/dom, @tsconfig/node24 (+47 more)
 
 ### Community 53 - "Mutation Summary"
-Cohesion: 0.05
-Nodes (44): bulkSetCohortMock, bulkSetSelectModalMock, classesManagementStateMock, metadataRows, mockClassesManagementState(), renderPanel(), runQueuedBulkActionMock, renderPanel() (+36 more)
+Cohesion: 0.03
+Nodes (60): classesManagementStateMock, makeRow(), renderPanel(), runQueuedBatchMutationMock, bulkSetCohortMock, bulkSetSelectModalMock, classesManagementStateMock, metadataRows (+52 more)
 
 ### Community 54 - "Reference Zod"
-Cohesion: 0.07
-Nodes (53): compareYearGroups(), sortYearGroups(), names(), sortedNames(), AssignmentTopicListResponseSchema, AssignmentTopicSchema, CohortListResponse, CohortListResponseSchema (+45 more)
+Cohesion: 0.08
+Nodes (49): AssignmentTopicListResponse, AssignmentTopicListResponseSchema, AssignmentTopicSchema, CohortListResponse, CohortListResponseSchema, CohortRecordInputSchema, CohortSchema, CreateAssignmentTopicInput (+41 more)
 
-### Community 55 - "syntheticEditableDefinitionsView.test.ts"
-Cohesion: 0.05
-Nodes (34): validateClassMetadata(), assertGraphArray(), assertGraphRecord(), assertRequiredGraphContainers(), validateSyntheticAnalysisGraph(), EXPECTED_RECENT_COUNTS, FullGraph, Metadata (+26 more)
+### Community 55 - "validateSyntheticAnalysisGraph.js"
+Cohesion: 0.07
+Nodes (39): assertSerialisable(), assertSerialisableChildren(), assertSupportedValue(), isRecord(), validateClassMetadata(), assertClassPartialEntry(), assertClassPartialIdentifier(), assertClassPartialReferences() (+31 more)
 
 ### Community 56 - "Ab Class Metadata"
 Cohesion: 0.06
 Nodes (39): AVERAGE_KEYS, AverageScoreSchema, AverageScoresSchema, averageScoresShape, BaselineAveragesSchema, ClassAveragesSchema, classAveragesShape, currentMetadataKeys (+31 more)
 
-### Community 57 - "useAssignmentDefinitionWizard.ts"
-Cohesion: 0.11
-Nodes (40): canWizardReparseDocuments(), derivePendingUpdateCloseAction(), deriveWizardCloseAction(), hasChangedCreateStageOneValues(), isWizardPrimaryActionDisabled(), shouldPromptForCreateWizardDismissal(), WizardCloseAction, FormInitializationOptions (+32 more)
+### Community 57 - "useAssessTaskRecoveryFlow.ts"
+Cohesion: 0.03
+Nodes (131): ErrorCode, errorCodes, errorCodeToMessageMap, extractErrorCode(), extractRequestId(), hasCodeProperty(), hasRequestIdProperty(), isApiTransportError() (+123 more)
 
 ### Community 58 - "Fixture Writer"
-Cohesion: 0.05
-Nodes (57): prettier@^3.9.9, prettier, appendContainerEntries(), appendValue(), buildProfileViewContents(), commitStagedProfiles(), COMMITTED_FIXTURE_DIRECTORY, createBufferedWriter() (+49 more)
+Cohesion: 0.06
+Nodes (48): prettier@^3.9.9, prettier, appendContainerEntries(), appendValue(), buildProfileViewContents(), commitStagedProfiles(), COMMITTED_FIXTURE_DIRECTORY, createBufferedWriter() (+40 more)
 
 ### Community 59 - "Error Handler"
 Cohesion: 0.06
 Nodes (23): CollectionNotFoundError, ConfigurationError, ConflictError, CoordinationTimeoutError, createErrorConstructorArgs(), DocumentNotFoundError, DuplicateKeyError, ERROR_CODES (+15 more)
 
 ### Community 60 - "assignment-definition-wizard-section-4.spec.ts"
-Cohesion: 0.13
-Nodes (18): assertDisabled(), assertDocumentUrlInputsStillEditable(), assertEnabled(), assertLockedWhileUrlChangePending(), assertPendingUrlChangeDismissesWithoutConfirmation(), assertUnlocked(), fillForm(), getFooterCancel() (+10 more)
+Cohesion: 0.12
+Nodes (19): assertDisabled(), assertDocumentUrlInputsStillEditable(), assertEnabled(), assertLockedWhileUrlChangePending(), assertPendingUrlChangeDismissesWithoutConfirmation(), assertUnlocked(), fillForm(), getFooterCancel() (+11 more)
 
 ### Community 61 - "Stale Recovery Page"
 Cohesion: 0.06
-Nodes (47): DEFINITION_SUCCESS, PARSE_FAILED_ENTRY, STALE_ENTRY, START_SUCCESS, expectAssessmentSuccessSurface(), ACTION_CANCEL, ACTION_CREATE, ACTION_PARSE_AND_CONTINUE (+39 more)
+Nodes (48): DEFINITION_SUCCESS, PARSE_FAILED_ENTRY, STALE_ENTRY, START_SUCCESS, expectAssessmentSuccessSurface(), ACTION_CANCEL, ACTION_CREATE, ACTION_PARSE_AND_CONTINUE (+40 more)
 
 ### Community 62 - "Api Service Transport"
-Cohesion: 0.14
-Nodes (32): DeferredTaskQueue, installScalarTransport(), loadTaskQueue(), ApiErrorEnvelope, ApiSuccessEnvelope, CallApi, CallApiQueued, CancelApiQueued (+24 more)
+Cohesion: 0.10
+Nodes (39): DeferredTaskQueue, installScalarTransport(), loadTaskQueue(), ApiErrorEnvelope, ApiSuccessEnvelope, CallApi, CallApiQueued, CancelApiQueued (+31 more)
 
 ### Community 63 - "validateClassMetadata.js"
 Cohesion: 0.18
@@ -931,92 +926,92 @@ Cohesion: 0.07
 Nodes (20): DefinitionStaleError, AssignmentController, equalFilter(), inputs, memoryCollection(), previousFull, setup(), mockABClass (+12 more)
 
 ### Community 65 - "imageManager.integration.test.js"
-Cohesion: 0.08
-Nodes (34): { ArtifactFactory }, makeImageArtifact(), { ArtifactFactory, ImageManager }, { ArtifactFactory }, makeImageArtifact(), { ImageManager }, memoryCollection(), setupStoreSeam() (+26 more)
+Cohesion: 0.05
+Nodes (48): assignmentRows, buildAcquisition(), canonicalAssignment, canonicalClass, classRows, MockAssignmentDefinition, MockSheetsAssignment, MockSlidesAssignment (+40 more)
 
 ### Community 66 - "Class Page Adapter"
-Cohesion: 0.10
-Nodes (46): adaptClassPageToViewModel(), buildNoDataStudent(), buildPerTaskLookup(), buildRecentAssignment(), computeAverageMetric(), findFirstDuplicate(), noDataMetric(), validateUpdatedAt() (+38 more)
+Cohesion: 0.12
+Nodes (36): adaptClassPageToViewModel(), buildNoDataStudent(), buildPerTaskLookup(), buildRecentAssignment(), computeAverageMetric(), findFirstDuplicate(), noDataMetric(), validateUpdatedAt() (+28 more)
 
-### Community 67 - "Assignment Read Item"
-Cohesion: 0.09
-Nodes (50): artifactTypes, corruptedArtifact(), corruptItem(), criteria, existingArtifact(), hasExactCriteria(), hasInvalidNullParentArtifact(), hasInvalidNullParentAssessments() (+42 more)
+### Community 67 - "assignmentReadItemValidation.ts"
+Cohesion: 0.17
+Nodes (25): artifactTypes, criteria, existingArtifact(), hasExactCriteria(), hasInvalidNullParentArtifact(), hasInvalidNullParentAssessments(), hasItemContext(), hasNoEntries() (+17 more)
 
 ### Community 69 - "Bulk Mutation Resolution"
-Cohesion: 0.09
-Nodes (40): filterEligibleForActiveState(), BulkFailureMessageCopy, createBulkCreateFailureMessage(), createBulkDeleteFailureMessage(), createBulkFailureMessage(), createBulkMetadataFailureMessage(), createBulkSetActiveFailureMessage(), createBulkSetInactiveFailureMessage() (+32 more)
+Cohesion: 0.08
+Nodes (41): filterEligibleForActiveState(), BulkFailureMessageCopy, createBulkCreateFailureMessage(), createBulkDeleteFailureMessage(), createBulkFailureMessage(), createBulkMetadataFailureMessage(), createBulkSetActiveFailureMessage(), createBulkSetInactiveFailureMessage() (+33 more)
 
 ### Community 70 - "Synthetic Backend Model"
-Cohesion: 0.12
-Nodes (33): canonicalClasses(), clone(), invalidMetadata(), teacherGlobal, expectFullSubmissionPreserved(), expectMetadataNodesDetached(), expectPartialSubmissionMatchesRedactedSource(), expectPartialSubmissionRedacted() (+25 more)
+Cohesion: 0.16
+Nodes (27): expectFullSubmissionPreserved(), expectPartialSubmissionRedacted(), expectClassFieldsMatch(), expectDefinitionResolution(), expectEmbeddedAssignmentMatches(), expectFieldsDeepEqual(), expectFieldsMatch(), expectFullAssignmentFieldsMatch() (+19 more)
 
 ### Community 71 - "Synthetic Full Large"
-Cohesion: 0.08
-Nodes (32): LARGE_FULL_ASSIGNMENTS_PER_CLASS, LARGE_FULL_BANDS, LARGE_FULL_CLASS_COUNT, LARGE_FULL_COMPLETION_BANDS, LARGE_FULL_PROFILE, LARGE_FULL_PROFILE_NAME, LARGE_FULL_STUDENTS_PER_CLASS, LARGE_FULL_YEAR_GROUP_COUNT (+24 more)
+Cohesion: 0.07
+Nodes (33): LARGE_FULL_ASSIGNMENTS_PER_CLASS, LARGE_FULL_BANDS, LARGE_FULL_CLASS_COUNT, LARGE_FULL_COMPLETION_BANDS, LARGE_FULL_PROFILE, LARGE_FULL_STUDENTS_PER_CLASS, LARGE_FULL_SUBMISSION_BANDS, LARGE_FULL_YEAR_GROUP_COUNT (+25 more)
 
 ### Community 72 - "Devdependencies Googleappsscript"
 Cohesion: 0.06
-Nodes (45): author, dependencies, @google/clasp@^3.4.1, description, devDependencies, eslint@10.15.0, eslint-plugin-googleappsscript@^1.0.5, eslint-plugin-jsdoc@65.2.0 (+37 more)
+Nodes (47): author, dependencies, @google/clasp@^3.4.1, description, devDependencies, eslint@10.15.0, eslint-plugin-googleappsscript@^1.0.5, eslint-plugin-jsdoc@65.2.0 (+39 more)
 
 ### Community 73 - "Generate Submissions"
-Cohesion: 0.05
-Nodes (60): crc32(), isoAt(), pngChunk(), SUPPORTED_LOCALES, TIMELINE_START_MS, toImageDataUrl(), toPngScanlines(), ARTEFACT_BODY_TYPES (+52 more)
+Cohesion: 0.06
+Nodes (54): crc32(), isoAt(), pngChunk(), SUPPORTED_LOCALES, TIMELINE_START_MS, toImageDataUrl(), toPngScanlines(), ARTEFACT_BODY_TYPES (+46 more)
 
 ### Community 74 - "Scripts Lint Backend"
 Cohesion: 0.04
 Nodes (46): scripts, build:dev, build:frontend, build:gas-bundle, build:production, builder:compile, fixtures:synthetic, fixtures:synthetic:full (+38 more)
 
 ### Community 75 - "Assignment Read Normalisation"
-Cohesion: 0.08
-Nodes (32): assessmentErrorAssessments, assessmentErrorResult, baseline, corruptAssessments, numericAssessments, source, mediumSource, smallSource (+24 more)
+Cohesion: 0.11
+Nodes (16): assessmentErrorAssessments, assessmentErrorResult, baseline, corruptAssessments, numericAssessments, source, mediumSource, smallSource (+8 more)
 
-### Community 76 - "assignmentDefinition.zod.ts"
-Cohesion: 0.06
-Nodes (34): CANONICAL_EDITABLE_DEFINITIONS, PENDING_DOCUMENT_URLS, renderSequence(), RESOLVED_DOCUMENT_CHANGE, SequenceRender, upsertMock, buildIdShapeFields(), buildReparseRequest() (+26 more)
+### Community 76 - "ref_vitest"
+Cohesion: 0.07
+Nodes (21): RFC-5322, TRIGGER_METHOD_HANDLERS, BatchUpdateUtility, CANONICAL_UTC_MONTH_DAYS, Validate, originalGlobals, primeCollectionLookupByKey(), restoreReferenceDataTestGlobals() (+13 more)
 
-### Community 77 - "ApiTransportError"
-Cohesion: 0.03
-Nodes (121): App(), AppThemeShell(), { getAuthorisationStatusMock, getApplicationAccessMock, warmStartupQueriesMock }, AppAuthGate(), AccessGateProbe(), forbiddenWarmupError, getApplicationAccessMock, getAuthorisationStatusMock (+113 more)
+### Community 77 - "AppAuthGate.applicationAccess.spec.tsx"
+Cohesion: 0.13
+Nodes (23): AccessGateProbe(), forbiddenWarmupError, getApplicationAccessMock, getAuthorisationStatusMock, renderResolvedAccessGate(), ResolvedAccessGateOptions, seedForbiddenWarmupError(), seedReadyWarmupData() (+15 more)
 
 ### Community 78 - "Assignment Assessment Zod"
 Cohesion: 0.07
-Nodes (36): assessmentCauseSchema, assessmentResultSchema, assessmentScoreSchema, errorResult, numericScore, partialAssessmentResultSchema, stageCodes, SUPPORTED_ARTIFACT_TYPES (+28 more)
+Nodes (37): assessmentCauseSchema, assessmentResultSchema, assessmentScoreSchema, errorResult, numericScore, partialAssessmentResultSchema, stageCodes, SUPPORTED_ARTIFACT_TYPES (+29 more)
 
 ### Community 79 - "Validate Output"
-Cohesion: 0.09
-Nodes (34): checksumUtf8(), generateJsonDbNamespaceWrapper(), resolveOrderedSourcePaths(), resolvePublicExports(), runJsonDbInlineNamespace(), REAL_VENDORED_SOURCE_FILES, STAGE_ID, validateConfiguredExports() (+26 more)
+Cohesion: 0.10
+Nodes (34): BuildStageError, checksumUtf8(), generateJsonDbNamespaceWrapper(), resolveOrderedSourcePaths(), resolvePublicExports(), runJsonDbInlineNamespace(), REAL_VENDORED_SOURCE_FILES, STAGE_ID (+26 more)
 
 ### Community 80 - "assembleMergedPreviewData.ts"
-Cohesion: 0.15
-Nodes (15): assembleMergedPreviewData(), buildPreviewStatusByTaskKey(), deriveOrderedAssignmentIds(), FIRST_CAUSE, inputs(), LATER_CAUSE, lookupWith(), MergedPreviewAssemblyResult (+7 more)
+Cohesion: 0.21
+Nodes (13): assembleMergedPreviewData(), buildPreviewStatusByTaskKey(), deriveOrderedAssignmentIds(), MergedPreviewAssemblyResult, mergeLookupInto(), mergeLookupsInColumnOrder(), buildLookup(), col() (+5 more)
 
 ### Community 81 - "Synthetic Assessment Contract"
-Cohesion: 0.14
-Nodes (38): expectContractVersionAndCriteria(), expectErrorEntriesCarryReasoning(), expectFullProjectionsMatchSources(), expectPartialsRedactBodiesOnly(), expectUsableArtefactBodies(), RawRecord, ARTEFACT_TYPES, artefactsOfTask() (+30 more)
+Cohesion: 0.15
+Nodes (36): expectContractVersionAndCriteria(), expectErrorEntriesCarryReasoning(), expectFullProjectionsMatchSources(), expectPartialsRedactBodiesOnly(), expectUsableArtefactBodies(), RawRecord, ARTEFACT_TYPES, artefactsOfTask() (+28 more)
 
 ### Community 82 - "Auth Service Harness"
+Cohesion: 0.14
+Nodes (30): createAuthApiConfigurationManager(), dispatchAuthApi(), MAX_CONFIG_BLOB_BYTES, provisionAuthApiContext(), rawStoreBlob(), resetAuthApiTestState(), storedScriptPropertiesState(), teardownAuthApiTestContext() (+22 more)
+
+### Community 83 - "ref_services"
 Cohesion: 0.09
-Nodes (33): AuthService, setupDispatcherAuthTest(), teardownDispatcherAuthTest(), createAuthApiConfigurationManager(), dispatchAuthApi(), MAX_CONFIG_BLOB_BYTES, provisionAuthApiContext(), rawStoreBlob() (+25 more)
+Nodes (16): canonicalFull, fullRows, GeneratedAssessment, GeneratedAssignment, GeneratedGraphWithAssignments, GeneratedItem, generatedSmall, GeneratedSubmission (+8 more)
 
-### Community 83 - "syntheticGraphValidationEdgeCases.test.ts"
-Cohesion: 0.06
-Nodes (22): canonicalFull, fullRows, GeneratedAssessment, GeneratedAssignment, GeneratedGraphWithAssignments, GeneratedItem, generatedSmall, GeneratedSubmission (+14 more)
-
-### Community 85 - "ref_zod"
-Cohesion: 0.03
-Nodes (66): ApiErrorEnvelope, ApiTransportError, { useQueryMock, useStartupWarmupStateMock }, logClassPagePipelineError(), { mockLogFrontendError }, useClassPagePipelineDiagnostics(), buildDeleteBlockedError(), deleteCohortMock (+58 more)
+### Community 85 - "ApiTransportError"
+Cohesion: 0.09
+Nodes (17): ApiErrorEnvelope, ApiTransportError, buildDeleteBlockedError(), buildDeleteBlockedError(), staleDetails, createAssignmentTopicInput, createCohortInput, createYearGroupInput (+9 more)
 
 ### Community 86 - "Scripts Builder Zod"
 Cohesion: 0.08
-Nodes (34): getBuilderRoot(), getRepoRoot(), loadBuilderConfig(), parseConfig(), resolveBuildDir(), resolveBuilderPaths(), ResolveBuilderPathsOptions, resolveSourceDir() (+26 more)
+Nodes (35): getBuilderRoot(), getRepoRoot(), loadBuilderConfig(), parseConfig(), resolveBuildDir(), resolveBuilderPaths(), ResolveBuilderPathsOptions, resolveSourceDir() (+27 more)
 
-### Community 87 - "ref_node_path"
-Cohesion: 0.08
-Nodes (19): BaselineCompatibilityResult, PrepareSessionStorageOptions, PrepareSessionStorageResult, RegressionTool, SessionIdSource, SessionManifest, SessionManifestCheck, StorageMode (+11 more)
+### Community 87 - "storage-layout-and-manifest.spec.ts"
+Cohesion: 0.17
+Nodes (9): BaselineCompatibilityResult, PrepareSessionStorageOptions, PrepareSessionStorageResult, RegressionTool, SessionIdSource, SessionManifest, SessionManifestCheck, StorageMode (+1 more)
 
-### Community 88 - "AssignmentDefinitionWizardModal.guarded-errors.spec.tsx"
-Cohesion: 0.08
-Nodes (35): getAssignmentDefinitionMock, getAssignmentTopicsMock, getCohortsMock, getYearGroupsMock, pendingDocumentUrlChanges, upsertAssignmentDefinitionMock, useStartupWarmupStateMock, getAssignmentDefinitionMock (+27 more)
+### Community 88 - "TaskPreviewCard.tsx"
+Cohesion: 0.06
+Nodes (41): lucide-react, LucideIcon, LucideIconComponent, LucideIconProperties, ImageRenderer(), ImageRendererProperties, EntityType, getDefaultAddNewLabel() (+33 more)
 
 ### Community 89 - "Ci Frontend E2e"
 Cohesion: 0.07
@@ -1027,16 +1022,16 @@ Cohesion: 0.12
 Nodes (27): PersistError, extractSheetsTaskDefinitionsMock, extractSlidesTaskDefinitionsMock, extractSheetsTaskDefinitionsMock, extractSlidesTaskDefinitionsMock, runDocumentChangeUpsert(), createTimestampPayload(), extractSheetsTaskDefinitionsMock (+19 more)
 
 ### Community 91 - "Settings Backend Journey"
-Cohesion: 0.15
-Nodes (26): baseBackendConfig, noStoredKeyBackendConfig, partialLoadBackendConfig, refreshedBackendConfig, refreshedWriteResult, apiKeyLabel, backendAssessorBatchSizeLabel, backendSettingsLoadFailureCopy (+18 more)
+Cohesion: 0.11
+Nodes (30): expectBreadcrumbLabels(), getBreadcrumb(), navigationMenuLabels, pageExpectations, baseBackendConfig, noStoredKeyBackendConfig, partialLoadBackendConfig, refreshedBackendConfig (+22 more)
 
 ### Community 92 - "Classes Management Panel"
-Cohesion: 0.11
-Nodes (32): filterEligibleForBulkMetadataUpdate(), BulkActionOutcomeAlert, TopLevelBulkActionDescriptor, bulkSetCohort(), bulkSetCourseLength(), bulkSetYearGroup(), getCreateTopLevelBulkActionDescriptor(), TopLevelBulkActionKey (+24 more)
+Cohesion: 0.10
+Nodes (35): filterEligibleForBulkMetadataUpdate(), BulkActionOutcomeAlert, TopLevelBulkActionDescriptor, buildRequiredClassPartialsRefreshFailureOutcome(), buildRequiredClassPartialsRefreshSuccessOutcome(), extractRefreshErrorMetadata(), isApiTransportErrorLike(), runMutationWithRequiredClassPartialsRefresh() (+27 more)
 
-### Community 93 - "AssignmentsPage.editWorkflow.spec.tsx"
-Cohesion: 0.09
-Nodes (27): AssignmentsPage(), {
+### Community 93 - "assignmentDefinitionTestFixtures.ts"
+Cohesion: 0.04
+Nodes (54): AssignmentsPage(), {
   getAssignmentDefinitionPartialsMock,
   getAssignmentDefinitionMock,
   getAssignmentTopicsMock,
@@ -1057,11 +1052,11 @@ Nodes (27): AssignmentsPage(), {
   upsertAssignmentDefinitionMock,
   useStartupWarmupStateMock,
   refetchAfterStaleInvalidateMock,
-}, migratedContractRows, readyRows, expectedFilterNamesByColumn (+19 more)
+}, migratedContractRows, readyRows, expectedFilterNamesByColumn (+46 more)
 
 ### Community 94 - "Post Analysis Metadata"
-Cohesion: 0.15
-Nodes (21): assignmentDefinitions, assignmentsByKey, buildScenario(), classDocuments, classPartials, createChangedMetadataScenario(), createLaterVersionMetadataScenario(), expectedScore() (+13 more)
+Cohesion: 0.08
+Nodes (35): CANONICAL_PROFILE_ROWS, canonicalNotAttemptedSnapshot, canonicalNullSnapshot, canonicalNumericSnapshot, CanonicalPartialRow, classPartialsRaw, assignmentDefinitions, assignmentsByKey (+27 more)
 
 ### Community 95 - "Auth Users"
 Cohesion: 0.07
@@ -1072,12 +1067,12 @@ Cohesion: 0.06
 Nodes (35): permissions, runs-on, steps, concurrency, cancel-in-progress, group, environment, if (+27 more)
 
 ### Community 97 - "Legacy Assessment Parity"
-Cohesion: 0.11
-Nodes (33): ALL_ERROR_STUDENT_ID, analyse(), computed(), expectComputedMetric(), expectErrorAndNotAttemptedSemantics(), expectLegacyTaskRows(), expectTopScorerCells(), studentRow() (+25 more)
+Cohesion: 0.08
+Nodes (37): AveragingAnalyserInputSchema, ALL_ERROR_STUDENT_ID, analyse(), computed(), expectComputedMetric(), expectErrorAndNotAttemptedSemantics(), expectLegacyTaskRows(), expectTopScorerCells() (+29 more)
 
 ### Community 98 - "Ts Base Rules"
-Cohesion: 0.07
-Nodes (33): fs, importPathDepthPlugin, importPathDepthRule, INDEX_FILES, isFile(), MODULE_EXTENSIONS, path, pathAliases (+25 more)
+Cohesion: 0.11
+Nodes (22): importPathDepthPlugin, pathAliases, nodeToolingRules, path, security, securityRecommendedErrorRules, sonarjs, tsBaseRules (+14 more)
 
 ### Community 99 - "Session Storage"
 Cohesion: 0.07
@@ -1088,88 +1083,84 @@ Cohesion: 0.09
 Nodes (24): assignmentItemReferences(), assignments, callApiMock, classes, classItemReferences(), classProbe(), documentSubmission(), ItemReference (+16 more)
 
 ### Community 101 - "metadataRefreshFixtures.ts"
-Cohesion: 0.18
-Nodes (21): refreshABClassMetadataInQueue(), RefreshOutcome, requireDefinitionCoverage(), compareAssignmentNewestFirst(), getMetadataRefreshDecision(), isStaleSource(), selectNewestAssignment(), refreshABClassMetadata() (+13 more)
+Cohesion: 0.15
+Nodes (25): createAnalysisService(), createAnalysisService(), selectedHeatmap(), fixture, MetadataRefreshInput, refreshABClassMetadataInQueue(), RefreshOutcome, requireDefinitionCoverage() (+17 more)
 
 ### Community 102 - "dataAnalysis.zod.ts"
-Cohesion: 0.06
-Nodes (34): AnalysisFilter, AnalysisFilterSchema, AnalysisModeSchema, AppliedCriterionWeightings, AppliedCriterionWeightingsSchema, AttemptBaselineSchema, AverageContributionSchema, ComputedMetricSchema (+26 more)
+Cohesion: 0.05
+Nodes (43): resolveTerminalComposite(), WeightedCriterion, AnalysisFilter, AnalysisFilterSchema, AnalysisModeSchema, AppliedCriterionWeightings, AppliedCriterionWeightingsSchema, AttemptBaselineSchema (+35 more)
 
-### Community 103 - "Synthetic Assessment Validation"
-Cohesion: 0.20
-Nodes (20): buildValidationContext(), collectTaskIds(), applyBlankStudentSpreadsheet(), runBlankStudentSpreadsheetMatrix(), Target, applyNullContentPlaceholder(), NULL_BODY_HASH_CORRUPTION_VALUES, runNullBodyHashMatrix() (+12 more)
+### Community 103 - "syntheticAssessmentValidationOwners.js"
+Cohesion: 0.07
+Nodes (45): assertAssignmentsByKeyView(), validateTransportGraph(), buildValidationContext(), collectTaskIds(), applyBlankStudentSpreadsheet(), runBlankStudentSpreadsheetMatrix(), Target, applyCauseError() (+37 more)
 
 ### Community 104 - "averagingAnalyser.ts"
-Cohesion: 0.06
-Nodes (69): consoleMethodByLevel, FrontendLogEntry, FrontendLogLevel, FrontendLogOptions, FrontendLogPayload, isLevelEnabled(), isSensitiveKey(), logFrontendEvent() (+61 more)
-
-### Community 105 - "assignmentLegacyReadPreparationSupport.js"
-Cohesion: 0.12
-Nodes (17): AssignmentRehydration, ABClassResponseMapper, classRead(), classView(), CORRUPT_RECORD, CRITERIA, HEALTHY_ASSIGNMENT_ID, isCorruptItem() (+9 more)
+Cohesion: 0.09
+Nodes (45): computeEffectiveWeight(), createTaskWeightingIndex(), accumulateDataPoints(), DefinitionLookup, processAssignment(), createAccumulator(), createDataPointAccumulator(), ensureAverageContribution() (+37 more)
 
 ### Community 106 - "Backend Studentsubmission Studentsubmissionitem"
-Cohesion: 0.05
-Nodes (15): Student, buildStudent(), assertProgressTrackerMockAvailable(), classroomApiClientModulePath, createClassroomApiClientHarness(), _activeUserEmail, fetchAllStudents(), _groupMemberRoles (+7 more)
+Cohesion: 0.06
+Nodes (10): _activeUserEmail, fetchAllStudents(), _groupMemberRoles, { randomUUID }, _registerGroup(), _resetGroups(), _scriptCache, _scriptCacheStore (+2 more)
 
 ### Community 107 - "assignmentDefinitionPartials.zod.ts"
-Cohesion: 0.03
-Nodes (97): BlockingConfig, resolveBlockingResultConfig(), NormalisedError, toError(), ClassPageBlocking(), BlockingResult(), ContentRegion(), HeatmapBuilderSurface() (+89 more)
+Cohesion: 0.05
+Nodes (63): NormalisedError, toError(), analyserResultFixture, assignmentDefinitionPartials, assignmentFullFixture, BASE_ARTIFACT_FIELDS, classFullFixture, COMPUTED_3 (+55 more)
 
 ### Community 108 - "Run Regression Checker"
-Cohesion: 0.16
-Nodes (22): isCrossPlatformAbsolutePath(), isErrnoExceptionWithCode(), joinChildPath(), listFilesRecursive(), normalisePathSeparators(), normaliseRelativeSegments(), loadDefaultRegressionCheckerConfig(), discoverPrefixedPackageDirectories() (+14 more)
+Cohesion: 0.21
+Nodes (16): isCrossPlatformAbsolutePath(), isErrnoExceptionWithCode(), normaliseRelativeSegments(), loadDefaultRegressionCheckerConfig(), discoverPrefixedPackageDirectories(), extractNpmPrefixPaths(), getCandidateDirectories(), isRecord() (+8 more)
 
-### Community 109 - "Assignment Definitions Table"
-Cohesion: 0.15
-Nodes (16): AssignmentDefinitionsTable(), ASSIGNMENTS_FILTER_DESCRIPTORS, AssignmentsFilterColumnKey, AssignmentsFilterDescriptor, AssignmentsFilterDropdown(), AssignmentsFilterOption, AssignmentsFilterState, createFilterDropdownRenderer() (+8 more)
+### Community 109 - "AssignmentsManagementSurface.tsx"
+Cohesion: 0.09
+Nodes (25): AssignmentDefinitionsTable(), ASSIGNMENTS_FILTER_DESCRIPTORS, AssignmentsFilterColumnKey, AssignmentsFilterDescriptor, AssignmentsFilterDropdown(), AssignmentsFilterOption, AssignmentsFilterState, createFilterDropdownRenderer() (+17 more)
 
 ### Community 110 - "Synthetic Assessment Validation"
-Cohesion: 0.09
-Nodes (39): applyImageBody(), applySpreadsheetBody(), artefactOfRole(), ROLES, runDefinitionSourceMatrix(), SHARED_REJECTION_ROWS, targetOf(), applyCompletedImageArtefact() (+31 more)
+Cohesion: 0.07
+Nodes (56): CATALOGUE_REASONING, catalogueCauseEntries(), CAUSE_CATALOGUE, runCauseCatalogueMatrix(), WRONG_PAIR_ROWS, CRITERIA, expectUsableArtefactBody(), SOURCE_UNREADABLE_REASONING (+48 more)
 
 ### Community 111 - "Builder Fixture"
 Cohesion: 0.10
 Nodes (19): listTree(), CONFIGURED_VENDORED_SOURCE_FILES, createLegacyReleaseArchiveFromSnapshot(), createVendoredSnapshotPaths(), REAL_VENDORED_MANIFEST, REAL_VENDORED_SOURCE_CONTENT, VendoredSnapshotOptions, writeVendoredSnapshot() (+11 more)
 
-### Community 113 - "useAssessTaskRecoveryFlow.ts"
-Cohesion: 0.16
-Nodes (28): mapErrorToUserMessage(), ApprovalUpsertResult, buildRecoveryApprovalRequest(), findResumeTitle(), hasSettledApprovalFailure(), isApprovalNotReady(), isGenerationObsolete(), isSaveBlocked() (+20 more)
+### Community 113 - "TaskDefinition"
+Cohesion: 0.08
+Nodes (15): StudentSubmission, TaskDefinition, assignmentHarness(), createTaskDefinition(), canonicalInput(), upsertWithExtractionPage(), extractSubmissionArtifacts(), extractTaskDefinitions() (+7 more)
 
 ### Community 115 - "Assignment Definition Upsert"
 Cohesion: 0.11
 Nodes (23): DEFINITION_KEY_VALIDATION_MESSAGES, PRIMARY_TOPIC_KEY_VALIDATION_MESSAGES, UPSERT_REQUIRED_FIELDS, validateRecoveryFieldShapes_(), validateRequiredYearGroupKey_(), validateTaskWeightingsShape_(), validateUpsertOptionalDefinitionKey_(), validateUpsertParameters_() (+15 more)
 
-### Community 116 - "AssignmentDefinitionWizardModal.reparse.spec.tsx"
-Cohesion: 0.10
-Nodes (29): CANONICAL_EDITABLE_DEFINITIONS, createUpdateOptions(), getAssignmentDefinitionMock, getAssignmentTopicsMock, getCohortsMock, getYearGroupsMock, upsertAssignmentDefinitionMock, useStartupWarmupStateMock (+21 more)
+### Community 116 - "ClassPageContent.tsx"
+Cohesion: 0.05
+Nodes (45): { mockAssessTaskModal }, { mockClassPageContent }, { mockGetAssignment }, { mockStudentAveragesTableCard }, { mockTaskHeatmapTable }, { mockUseClassPageData }, { mockUseClassSelection }, ClassPageBlocking() (+37 more)
 
 ### Community 118 - "Ab Logger"
 Cohesion: 0.11
 Nodes (7): ABLogger, isErrorLike_(), ScriptAppManager, authInfoMock, mockGetAuthorizationInfo, mockGetScriptId, mockInvalidateAuth
 
 ### Community 119 - "Backend Settings"
-Cohesion: 0.19
-Nodes (23): getBackendConfigMock, mapBackendConfigToBackendSettingsFormValuesMock, mapBackendSettingsFormValuesToBackendConfigWriteInputMock, messageSuccessMock, setBackendConfigMock, backendConfigReloadCallCount, BackendSettingsHookValue, BackendSettingsProbeHandle (+15 more)
+Cohesion: 0.20
+Nodes (22): getBackendConfigMock, mapBackendConfigToBackendSettingsFormValuesMock, mapBackendSettingsFormValuesToBackendConfigWriteInputMock, messageSuccessMock, setBackendConfigMock, backendConfigReloadCallCount, BackendSettingsHookValue, BackendSettingsProbeHandle (+14 more)
 
-### Community 120 - "Synthetic Assessment Rejection"
-Cohesion: 0.13
-Nodes (18): MARKER_CORRUPTION_ROWS, RawRecord, runMarkerMatrix(), NULL_PARENT_CORRUPTION_ROWS, runNullParentCorruptionMatrix(), Target, NULL_PARENT_SOURCE_FIELD_ROWS, NULL_PARENT_STRICTNESS_ROWS (+10 more)
+### Community 120 - "classes-page-end-to-end-helpers.ts"
+Cohesion: 0.08
+Nodes (41): ALGEBRA_HOMEWORK_DATA, assertCardButtonStates(), BREADCRUMB_NAVIGATION_NAME, CARD_INDEX_FIRST, CARD_INDEX_SECOND, CARD_INDEX_THIRD, CLASSES_LABEL, CreateAssessTaskScenarioOptions (+33 more)
 
 ### Community 121 - "V0 Release Notes"
 Cohesion: 0.07
 Nodes (15): ScriptAppManager authorisation helpers, TriggerController centralised trigger creation, Readonly Classroom OAuth scopes, Admin-only Authentication settings tab, brokenConfig fail-closed denial, __CONFIG_STORE_KEY__ single JSON blob, Authentication management endpoints, Role-based access control (admin and user) (+7 more)
 
 ### Community 123 - "previewFixtures.ts"
-Cohesion: 0.11
-Nodes (14): assignmentsByKey, CANONICAL_ASSIGNMENT, CANONICAL_CLASS, CANONICAL_PARTIAL, classesById, expectNormalNavigation(), navigationCard(), RenderOptions (+6 more)
+Cohesion: 0.17
+Nodes (18): CanonicalSubmission, CanonicalSubmissionItem, requireRecord(), requireTextArtifactContent(), assignmentsByKey, CANONICAL_CLASS, CANONICAL_SHEETS_ASSIGNMENT, CanonicalReadyCell (+10 more)
 
 ### Community 125 - "assignmentRehydration.legacy.test.js"
-Cohesion: 0.10
-Nodes (13): AssignmentCurrentRestoration, AssignmentLegacyRead, expectCorruptPlaceholder(), singleDocumentSubmissionRecord(), documentSubmissionWithoutSibling(), corruptRecordAssessments(), deriveStoredScenario(), embeddedTaskIds() (+5 more)
+Cohesion: 0.09
+Nodes (29): AssignmentCurrentRestoration, AssignmentLegacyRead, AssignmentRehydration, expectCorruptPlaceholder(), singleDocumentSubmissionRecord(), documentSubmissionWithoutSibling(), classRead(), classView() (+21 more)
 
 ### Community 126 - "Api Handler"
-Cohesion: 0.08
-Nodes (21): ABCLASS_TRANSPORT_API_METHOD_NAMES, ABCLASS_TRANSPORT_PARAMS, ABCLASS_TRANSPORT_RESULTS, ASSIGNMENT_DEFINITION_API_METHOD_NAMES, ASSIGNMENT_DEFINITION_PARAMS, ASSIGNMENT_DEFINITION_RESULTS, BACKEND_CONFIG_API_METHOD_NAMES, EXPECTED_ALLOWLISTED_METHOD_HANDLER_KEYS (+13 more)
+Cohesion: 0.12
+Nodes (17): ABCLASS_TRANSPORT_API_METHOD_NAMES, ABCLASS_TRANSPORT_PARAMS, ABCLASS_TRANSPORT_RESULTS, ASSIGNMENT_DEFINITION_API_METHOD_NAMES, ASSIGNMENT_DEFINITION_PARAMS, ASSIGNMENT_DEFINITION_RESULTS, BACKEND_CONFIG_API_METHOD_NAMES, EXPECTED_ALLOWLISTED_METHOD_HANDLER_KEYS (+9 more)
 
 ### Community 127 - "Synthetic Tooling Commands"
 Cohesion: 0.11
@@ -1184,7 +1175,7 @@ Cohesion: 0.10
 Nodes (4): DatabaseConfig, DEFAULT_QUERY_ENGINE_LOGICAL_OPERATORS, DEFAULT_QUERY_ENGINE_SUPPORTED_OPERATORS, LOG_LEVELS
 
 ### Community 131 - "Use Classes Management"
-Cohesion: 0.12
+Cohesion: 0.11
 Nodes (20): pruneSelectedRowKeys(), rows, buildRowsForReadyState(), ClassesManagementState, ClassesManagementViewState, ClassesQueriesState, ClassesQuerySnapshot, ClassesRefreshStateOptions (+12 more)
 
 ### Community 132 - "Ant Design Cache"
@@ -1192,40 +1183,40 @@ Cohesion: 0.09
 Nodes (25): App.useApp, Modal, Modal.confirm, Modal.destroyAll, Modal.method, Modal.useModal, DebounceSelect, popupRender (+17 more)
 
 ### Community 134 - "Configuration Manager Auth"
-Cohesion: 0.17
-Nodes (12): DEFAULTS, ConfigurationManagerProxy, expectOverCapRejection(), installInMemoryStore(), installInMemoryStore(), makeManager(), buildBackendConfigResponse(), buildDefaultBackendConfigStore() (+4 more)
+Cohesion: 0.24
+Nodes (7): CONFIG_KEYS, CONFIG_SCHEMA, DEFAULTS, ConfigurationManagerProxy, buildDefaultBackendConfigStore(), createConfiguredConfigurationManager(), installStoredConfig()
 
-### Community 135 - "spacing.ts"
-Cohesion: 0.10
-Nodes (20): PageNavCardProperties, PageTitleCardProperties, TitleLevel, AssignmentSelectSkeletonProperties, ClassPageHeaderActions(), ClassPageHeaderActionsProperties, filterShownOptions(), HeaderOption (+12 more)
+### Community 135 - "HeatmapSelectionBar.selectAllHeader.spec.tsx"
+Cohesion: 0.06
+Nodes (31): AssignmentPartialEntry, HeatmapSelectionBar(), HeatmapSelectionBarProperties, allowClearControl(), ASSIGNMENT_DEFINITION_PARTIALS, CLASS_FULL, CLASS_PARTIALS, combobox() (+23 more)
 
 ### Community 136 - "appSpecHarness.ts"
 Cohesion: 0.16
 Nodes (23): ApiMethodResponse, ApiMethodResponseMap, ApiResponseEnvelope, applicationAccessMethodName, assignmentDefinitionPartialsMethodName, assignmentTopicsMethodName, authStatusMethodName, buildResolvedWarmupResponses() (+15 more)
 
-### Community 137 - "AssessTaskRecoverySurface.tsx"
-Cohesion: 0.11
-Nodes (20): AssignmentDefinitionWizardModal(), AssignmentDefinitionWizardModalShell(), AssignmentDiscardConfirm(), AssignmentDiscardConfirmProperties, loadDiscardConfirmComponent(), loadDiscardConfirmModule(), AssignmentDefinitionWizardModalProperties, AssessTaskCreateReview() (+12 more)
+### Community 137 - "frontendLogger.ts"
+Cohesion: 0.08
+Nodes (37): normaliseUnknownError(), createStartupWarmupSnapshotForStatus(), StartupWarmupSnapshot, adoptWarmupCycleOutcome(), AdoptWarmupCycleOutcomeOptions, createWarmupSnapshotFromQueryClient(), deriveWarmupStatus(), getDatasetWarmupState() (+29 more)
 
 ### Community 138 - "classDetailService.zod.ts"
 Cohesion: 0.07
-Nodes (27): InputSchemaModule, loadDataAnalysisZod(), minimalAssignmentDefinitionPartial, minimalClassFull, ParseOnly, callApiMock, canonicalClass, { mockLogFrontendError } (+19 more)
+Nodes (35): AssignmentDefinitionPartialSchema, InputSchemaModule, loadDataAnalysisZod(), minimalAssignmentDefinitionPartial, minimalClassFull, ParseOnly, callApiMock, canonicalClass (+27 more)
 
 ### Community 139 - "Analysis Scoring"
 Cohesion: 0.07
 Nodes (35): Deferred and Out-of-Scope Findings Ledger, Delegation Mandatory Reads, Feature Delivery Plan (TDD-First) Template, Optional Teacher Tutorials and Explainers Section, Architecture Decision Record Rules, Periodic Documentation Audit Scope, Documentation Style Guide, Choose the Doc Action (+27 more)
 
 ### Community 141 - "useBackendSettings.ts"
-Cohesion: 0.14
-Nodes (23): getBlockingLoadErrorMessage(), BackendSettingsForm, mapBackendConfigToBackendSettingsFormValues(), mapBackendSettingsFormValuesToBackendConfigWriteInput(), BackendSettingsFormTestValues, maskedBackendConfig, storedKeyFormValues, applyBackendSettingsSaveTransactionOutcome() (+15 more)
+Cohesion: 0.19
+Nodes (18): mapBackendConfigToBackendSettingsFormValues(), mapBackendSettingsFormValuesToBackendConfigWriteInput(), applyBackendSettingsSaveTransactionOutcome(), BackendSettingsHookValue, BackendSettingsQueryOptions, BackendSettingsSaveDependencies, BackendSettingsSaveTransactionOutcome, getBackendSettingsFormValues() (+10 more)
 
 ### Community 142 - "Slides Parser Harness"
-Cohesion: 0.22
-Nodes (18): buildNormalTableMock(), buildSlidesParserHarness(), createShapeElement(), createSlide(), createSlidesParserMockLogger(), createTableElement(), createTableElementFromMock(), createTaggedElement() (+10 more)
+Cohesion: 0.24
+Nodes (17): buildNormalTableMock(), buildSlidesParserHarness(), createShapeElement(), createSlide(), createSlidesParserMockLogger(), createTableElement(), createTableElementFromMock(), createTaggedElement() (+9 more)
 
 ### Community 143 - "ref_node_fs"
-Cohesion: 0.06
-Nodes (22): child, drainStream(), main(), pollForResponse(), waitForExit(), DELEGATION_CASES, EXPECTED_API_METHODS, FACADE_PATH (+14 more)
+Cohesion: 0.04
+Nodes (38): setup(), createdRoots, PromptEvent, collectAttachments(), existingIdentifiers(), extractMentionTokens(), isAttachable(), isInsideRoot() (+30 more)
 
 ### Community 144 - "Analysis Medium Baseline"
 Cohesion: 0.13
@@ -1239,9 +1230,9 @@ Nodes (4): getDefaultLogicalOperators(), getDefaultMaxNestedDepth(), getDefaultS
 Cohesion: 0.13
 Nodes (26): buildClassTransportViews(), groupAssignmentsByClassId(), toClassPartial(), toPartialAssignment(), projectAssessmentEntry(), stripAssessmentReasoning(), toFullArtifact(), toFullItem() (+18 more)
 
-### Community 147 - "authService.zod.ts"
-Cohesion: 0.04
-Nodes (90): ApplicationAccessContext, ApplicationAccessContextValue, ApplicationAccessReason, ApplicationAccessRole, AuthenticationModeSwitchModal(), AuthenticationModeSwitchModalProperties, AuthenticationProviderRegions(), AuthenticationProviderRegionsProperties (+82 more)
+### Community 147 - "AuthenticationSettingsTab.tsx"
+Cohesion: 0.08
+Nodes (36): AuthenticationModeSwitchModal(), AuthenticationModeSwitchModalProperties, AuthenticationProviderRegions(), AuthenticationProviderRegionsProperties, AuthenticationSettingsTab(), AuthenticationStatusStack(), AuthenticationStatusStackProperties, authModeOptions (+28 more)
 
 ### Community 148 - "Action Plan Deferred"
 Cohesion: 0.09
@@ -1252,20 +1243,20 @@ Cohesion: 0.15
 Nodes (17): collectClassFullIdentifiers(), collectClassPartialIdentifiers(), collectDefinitionPartialIdentifiers(), collectFullAssignmentIdentifiers(), collectIdentifiers(), collectItemIdentifiers(), collectProhibitedValues(), collectReferenceIdentifiers() (+9 more)
 
 ### Community 153 - "No Silence"
-Cohesion: 0.15
-Nodes (16): DESCRIPTION, addedLineMatch(), hasSilencingRule(), isRecord(), isSourceFile(), patchMarkerPath(), rejectIfSuppressed(), rejectSuppressedPatch() (+8 more)
+Cohesion: 0.36
+Nodes (10): addedLineMatch(), hasSilencingRule(), isRecord(), isSourceFile(), patchMarkerPath(), rejectIfSuppressed(), rejectSuppressedPatch(), setup() (+2 more)
 
 ### Community 154 - "Markdown Renderer"
-Cohesion: 0.12
-Nodes (16): fuse.js, react-dom, react-markdown, remark-gfm, dependencies, @ant-design/icons@6.3.4, antd@6.6.7, fuse.js@^7.5.0 (+8 more)
+Cohesion: 0.11
+Nodes (17): fuse.js, react-dom, react-markdown, remark-gfm, dependencies, antd@6.6.7, fuse.js@^7.5.0, lucide-react@^1.52.0 (+9 more)
 
 ### Community 158 - "Llm Request Manager"
 Cohesion: 0.17
 Nodes (3): LLM_ACCEPTED_STATUSES, LLM_STOP_STATUSES, LLMRequestManager
 
 ### Community 159 - "backendSettingsForm.zod.ts"
-Cohesion: 0.09
-Nodes (28): backendAssessorBatchSizeSchema, BackendSettingsFormSchema, daysUntilAuthRevokeSchema, jsonDatabaseLockTimeoutMsSchema, jsonDatabaseLogLevelSchema, jsonDatabaseLogLevelValues, slidesFetchBatchSizeSchema, blankDriveFolderFormValues (+20 more)
+Cohesion: 0.16
+Nodes (15): backendAssessorBatchSizeSchema, BackendSettingsFormSchema, daysUntilAuthRevokeSchema, jsonDatabaseLockTimeoutMsSchema, jsonDatabaseLogLevelSchema, jsonDatabaseLogLevelValues, slidesFetchBatchSizeSchema, blankDriveFolderFormValues (+7 more)
 
 ### Community 160 - "backendConfigurationService.spec.ts"
 Cohesion: 0.11
@@ -1284,12 +1275,12 @@ Cohesion: 0.18
 Nodes (12): adaptMetadataRequestError_(), deleteABClass_(), getAbClassController_(), updateABClass_(), upsertABClass_(), validateDeleteABClassParameters_(), validateMutationClassId_(), validateUpdateABClassParameters_() (+4 more)
 
 ### Community 165 - "heatmapAdapter.ts"
-Cohesion: 0.07
-Nodes (52): analyserResultFixture, assignmentDefinitionPartials, assignmentFullFixture, BASE_ARTIFACT_FIELDS, classFullFixture, COMPUTED_3, COMPUTED_4, COMPUTED_5 (+44 more)
+Cohesion: 0.10
+Nodes (30): buildAssignmentPartial(), buildClassFull(), buildDefinitionPartial(), buildPartials(), buildPerStudentTaskMetric(), buildStudentSummaries(), LINEAR_TASK_IDS, minimalAveragingResult() (+22 more)
 
-### Community 167 - "AssignmentDefinitionWizardReviewContent.tsx"
-Cohesion: 0.14
-Nodes (21): AssignmentDefinitionWizardModalShellProperties, renderReadyState(), baseProperties, buildSeedTaskRows(), CANONICAL_EDITABLE_DEFINITIONS, ReviewContentHarness(), ShellHarness(), toReviewContentProperties() (+13 more)
+### Community 167 - "heatmapBuilderSurfaceTestHelpers.ts"
+Cohesion: 0.11
+Nodes (27): computeDatasetBlockingError(), computeHeatmapsSurfaceState(), computeQueryBlockingError(), computeServiceError(), HeatmapsSurfaceState, INITIAL_SELECTION_STATE, SelectionCascadeAction, SelectionState (+19 more)
 
 ### Community 168 - "Synthetic Graph Integrity"
 Cohesion: 0.11
@@ -1299,17 +1290,21 @@ Nodes (16): collectFullItems(), collectFullItemsWithLocation(), collectPartialIt
 Cohesion: 0.11
 Nodes (16): collectTimestampPairs(), compactGraphs, EARLIEST_BOUNDED_ACADEMIC_INSTANT_MS, expectAssignmentViewsMatch(), expectSubmissionItemsMatch(), GeneratedDefinitionDocument, GeneratedPersistenceArtifact, GeneratedPersistenceAssignment (+8 more)
 
+### Community 172 - "Student Submission Item"
+Cohesion: 0.10
+Nodes (3): StudentSubmissionItem, historicalAssignment(), expectMutatedImageBodiesUsable()
+
 ### Community 173 - "Assignment Definition Task"
-Cohesion: 0.24
-Nodes (12): absentToEmptyObject_(), absentToNull_(), artefactCollectionOf_(), artefactCollectionsEqual_(), artefactListsEqual_(), compareTaskEquivalence_(), isTaskObject_(), normaliseArtefact_() (+4 more)
+Cohesion: 0.18
+Nodes (15): absentToEmptyObject_(), absentToNull_(), artefactCollectionOf_(), artefactCollectionsEqual_(), artefactListsEqual_(), compareTaskEquivalence_(), isTaskObject_(), normaliseArtefact_() (+7 more)
 
 ### Community 174 - "Classes Toolbar"
-Cohesion: 0.15
-Nodes (15): ClassesToolbar(), ClassesToolbarDisabledState, ClassesToolbarEligibility, ClassesToolbarProperties, getBulkActionEligibility(), getClassesToolbarDisabledState(), getSelectionMessage(), hasOnlyStatuses() (+7 more)
+Cohesion: 0.16
+Nodes (14): ClassesToolbar(), ClassesToolbarDisabledState, ClassesToolbarEligibility, ClassesToolbarProperties, getBulkActionEligibility(), getClassesToolbarDisabledState(), getSelectionMessage(), hasOnlyStatuses() (+6 more)
 
-### Community 175 - "assignmentWizardMutation.ts"
-Cohesion: 0.15
-Nodes (21): ErrorCode, errorCodes, errorCodeToMessageMap, extractErrorCode(), extractRequestId(), hasCodeProperty(), hasRequestIdProperty(), isApiTransportError() (+13 more)
+### Community 175 - "authService.zod.ts"
+Cohesion: 0.08
+Nodes (30): hasScriptAuthorisation(), loadAuthService(), ApplicationAccessReasonValues, ApplicationAccessSchema, ApplicationRoleValues, AuthenticationSettingsSchema, AuthModeValues, AuthorisationStatusSchema (+22 more)
 
 ### Community 176 - "V0 Release Notes"
 Cohesion: 0.11
@@ -1355,9 +1350,9 @@ Nodes (17): zod, undici, overrides, body-parser, fast-uri, gaxios, glob, @google
 Cohesion: 0.17
 Nodes (3): Cohort, getCurrentAcademicYearStart_(), loadCohort()
 
-### Community 189 - "syntheticABClassMetadataRoundTrip.test.ts"
-Cohesion: 0.08
-Nodes (19): canonicalClasses, canonicalPartials, classId, FIVE_FIELD_KEYS, GoogleScriptGlobal, normalisedSourceMetadata, rawMetadata, rawReplacement (+11 more)
+### Community 189 - "dataAnalysisService.ts"
+Cohesion: 0.11
+Nodes (22): AssignmentSummaryAnalyser, countNotAttempted(), indexStudentMetrics(), summariseTask(), AssignmentSummary, AssignmentSummarySchema, AssignmentSummaryThresholds, AssignmentSummaryThresholdsSchema (+14 more)
 
 ### Community 191 - "Large Representative"
 Cohesion: 0.12
@@ -1395,13 +1390,13 @@ Nodes (35): AssessmentBot - Core Agent Contract, Contributing, Assessment Flow D
 Cohesion: 0.13
 Nodes (15): Frontend, Data Analysis Architecture, Frontend Architecture, Frontend Loading and Width Standards, Frontend Logging and Error Handling, Frontend Modal Patterns, Frontend Playwright E2E, Frontend React Query and Prefetch (+7 more)
 
-### Community 206 - "assignmentDefinitionTestFixtures.ts"
-Cohesion: 0.16
-Nodes (12): expectRejectsIdShapeOverride(), omittedBackendSuccessPayload, asParserSchema(), AssignmentDefinitionPartialFixture, createMutableRowFixture(), emptyCohorts, loadAssignmentDefinitionPartialsSchemas(), loadAssignmentDefinitionSchemas() (+4 more)
+### Community 206 - "metricRangeFilter.tsx"
+Cohesion: 0.15
+Nodes (23): buildMetricRangeFilter(), DEFAULT_NON_COMPUTED_FILTER_FLAGS, isMetricInRange(), MetricRangeFilterOptions, MetricRangeFilterProperties, ApplyFilterOptions, METRIC_RANGE_FILTER_STATE_TOGGLES, MetricRangeFilterDropdown() (+15 more)
 
 ### Community 208 - "SettingsPage.tsx"
-Cohesion: 0.15
-Nodes (15): normaliseUnknownError(), administratorAccessContextValue, renderSettingsPage(), standardUserAccessContextValue, logGoogleClassroomsPrefetchFailure(), SettingsPageGoogleClassroomsPrefetch(), GoogleClassroomsQueryState, renderPrefetchComponent() (+7 more)
+Cohesion: 0.09
+Nodes (25): ApplicationAccessContext, ApplicationAccessContextValue, ApplicationAccessReason, ApplicationAccessRole, useApplicationAccessContext(), administratorAccess, { getAuthenticationSettingsMock, setAuthenticationSettingsMock }, settings (+17 more)
 
 ### Community 209 - "syntheticABClassMetadataGeneratorValidator.test.ts"
 Cohesion: 0.14
@@ -1411,9 +1406,9 @@ Nodes (13): asRecord(), expectNestedNewFields(), FIVE_FIELD_KEYS, Graph, isScore
 Cohesion: 0.15
 Nodes (14): Class context header with breadcrumb and Back to Classes, Class results page, Dark mode toggle, Edit Student Details action (disabled), Four assessment metric columns (Completeness, Accuracy, SPaG, Overall), N (not applicable) score indicator, Recent assignment card with last-assessed date and four scores, Recent Assignments section (+6 more)
 
-### Community 211 - "modalTestHelpers.tsx"
-Cohesion: 0.15
-Nodes (18): cohortOptions, yearGroupOptions, selectOptions, ReferenceDataManagementModalScaffoldProperties, assertControlDisabled(), assertMessage(), buildDefaultScaffoldProperties(), buildScaffoldProperties() (+10 more)
+### Community 211 - "sharedQueries.query.spec.tsx"
+Cohesion: 0.09
+Nodes (24): getAssignmentDefinitionPartialsQueryOptions(), getABClassMock, getABClassPartialsMock, getAssignmentDefinitionPartialsMock, getAssignmentMock, getAssignmentTopicsMock, getAuthorisationStatusMock, getCohortsMock (+16 more)
 
 ### Community 213 - "Scripts Synthetic Tsconfig"
 Cohesion: 0.14
@@ -1428,20 +1423,24 @@ Cohesion: 0.14
 Nodes (14): compilerOptions, allowImportingTsExtensions, jsx, lib, module, moduleDetection, moduleResolution, noEmit (+6 more)
 
 ### Community 219 - "syntheticLegacyScenarios.test.ts"
-Cohesion: 0.13
-Nodes (15): applyMarker(), deriveLegacyAssignmentScenario(), resolveOwningClass(), resolveVariant(), SUPPORTED_VARIANTS, linkedReadScenario(), deriveSmall(), expectDeepFrozen() (+7 more)
+Cohesion: 0.16
+Nodes (9): deriveSmall(), expectDeepFrozen(), expectRetainsCanonicalFields(), JsonRecord, LegacyScenario, loadSources(), scenario(), Sources (+1 more)
 
 ### Community 220 - "Scripts Builder Tsconfig"
 Cohesion: 0.15
 Nodes (12): compilerOptions, lib, module, moduleResolution, outDir, paths, resolveJsonModule, rootDir (+4 more)
 
-### Community 224 - "DbManager"
-Cohesion: 0.20
-Nodes (7): DbManager, createManager(), createDbManagerTestContext(), mockConfigurationManager, mockJsonDbApp, mockProgressTracker, useDbManagerTestContext()
+### Community 221 - "SheetsAssessor"
+Cohesion: 0.08
+Nodes (5): SheetsAssessor, TestAssessment, TestCellReferenceFeedback, TestAssessment, TestCellReferenceFeedback
 
-### Community 228 - "Query Invalidation Zod"
-Cohesion: 0.25
-Nodes (12): buildRequiredClassPartialsRefreshFailureOutcome(), buildRequiredClassPartialsRefreshSuccessOutcome(), extractRefreshErrorMetadata(), isApiTransportErrorLike(), RequiredClassPartialsRefreshOutcome, runMutationWithRequiredClassPartialsRefresh(), RefreshErrorMetadata, refreshErrorMetadataSchema (+4 more)
+### Community 224 - "assignmentReadNormalisation.ts"
+Cohesion: 0.13
+Nodes (25): corruptedArtifact(), corruptItem(), isIdentity(), replacementArtifact(), sourceIdentity(), addMissingFullTasks(), classRootSchema, corrupt (+17 more)
+
+### Community 228 - "AuthService"
+Cohesion: 0.11
+Nodes (7): AuthService, createDispatcherAuthEnvironment(), setupDispatcherAuthTest(), teardownDispatcherAuthTest(), legacyConfigurationGlobalsPath, buildBackendConfigResponse(), createConfigurationManagerMock()
 
 ### Community 229 - "Tsconfig Node"
 Cohesion: 0.15
@@ -1452,8 +1451,8 @@ Cohesion: 0.19
 Nodes (10): CompletionClassView, createGraphWithoutTransportView(), createMutableGraph(), firstAssignmentWithSubmission(), firstClassId(), firstPartialItem(), GeneratedClassDocument, GeneratedFullAssignment (+2 more)
 
 ### Community 231 - "Configuration Manager Locked"
-Cohesion: 0.13
-Nodes (6): RFC-3629, ConfigurationManagerStorage, safeParseConfigObject_(), ConfigurationManagerDefaults, ConfigurationManagerLockedWrite, utf8ByteLength_()
+Cohesion: 0.18
+Nodes (4): RFC-3629, ConfigurationManagerDefaults, ConfigurationManagerLockedWrite, utf8ByteLength_()
 
 ### Community 232 - "User Cropped Screenshot"
 Cohesion: 0.23
@@ -1464,12 +1463,12 @@ Cohesion: 0.17
 Nodes (11): exclude_docs, markdown_extensions, pymdownx.highlight, pymdownx.tabbed, anchor_linenums, alternate_style, repo_name, repo_url (+3 more)
 
 ### Community 235 - "Keys And Schema"
-Cohesion: 0.16
-Nodes (12): AUTH_USER_ALLOWED_KEYS, AUTH_USER_ALLOWED_ROLES, CONFIG_KEYS, CONFIG_SCHEMA, parseAuthUsersJson_(), validateAuthRevision_(), validateAuthStateStrict_(), validateAuthUserEntry_() (+4 more)
+Cohesion: 0.24
+Nodes (8): AUTH_USER_ALLOWED_KEYS, AUTH_USER_ALLOWED_ROLES, parseAuthUsersJson_(), validateAuthRevision_(), validateAuthStateStrict_(), validateAuthUserEntry_(), validateAuthUsersJson_(), fs
 
-### Community 236 - "ClassesManagementPanel.bulkMetadataFailure.spec.tsx"
-Cohesion: 0.10
-Nodes (12): bulkSetCohortMock, bulkSetCourseLengthMock, bulkSetCourseLengthModalMock, BulkSetCourseLengthModalStub(), bulkSetSelectModalMock, BulkSetSelectModalStub(), bulkSetYearGroupMock, classesManagementStateMock (+4 more)
+### Community 236 - "abclassMetadataFiveFieldShape.test.js"
+Cohesion: 0.11
+Nodes (12): NEW_METADATA_FIELDS, ABClassMetadataValidationError, Entries, canonicalLegacy(), canonicalLegacyRow(), canonicalLegacyWithoutRecent(), canonicalLegacyWithRecentCount(), fiveField() (+4 more)
 
 ### Community 237 - "main.architecture.spec.tsx"
 Cohesion: 0.19
@@ -1483,6 +1482,10 @@ Nodes (11): generatedEntityCounts, assignmentDefinitions, assignments, assignmen
 Cohesion: 0.17
 Nodes (11): generatedEntityCounts, assignmentDefinitions, assignments, assignmentTopics, classes, cohorts, students, yearGroups (+3 more)
 
+### Community 240 - "AppAuthGate.tsx"
+Cohesion: 0.16
+Nodes (17): AppAuthGate(), isApplicationAccessEnabled(), isApplicationAccessGranted(), ApplicationAccessBlockingResult(), OAuthTransportErrorResult(), PermissionsRequiredResult(), ApplicationAccessProbe(), createQueryWrapper() (+9 more)
+
 ### Community 241 - "Developer Shapes Assignment"
 Cohesion: 0.18
 Nodes (8): Transient runtime fields, assign_full collection, Assignment contract, Assignment partial variant, CellReferenceFeedback, Feedback sub-entity, getAssignment read, startAssessmentRun
@@ -1495,13 +1498,13 @@ Nodes (18): Google Groups authorisation caching policy, GoogleGroupsAuthService,
 Cohesion: 0.18
 Nodes (10): Assignment definitions table, Assignments page (assignment-definition management UI), Create assignment action, Dark mode toggle in header, Document type values SLIDES and SHEETS, Refresh assignments data action, Sample assignment definitions (Newest algebra recap, Database design introduction, Spreadsheet skills baseline, Algebra foundations), Sidebar navigation (Dashboard, Classes, Assignments, Heatmaps, Settings) (+2 more)
 
-### Community 247 - "googleScriptRunHarness.ts"
-Cohesion: 0.08
-Nodes (14): expectBreadcrumbLabels(), getBreadcrumb(), navigationMenuLabels, pageExpectations, migratedAssignmentRows, backendConfig, createGoogleScriptRunApiHandlerMock(), assertNoLiveDates() (+6 more)
+### Community 247 - "authenticationSettingsTestHelpers.tsx"
+Cohesion: 0.27
+Nodes (16): getAuthenticationSettingsMock, messageErrorMock, messageSuccessMock, setAuthenticationSettingsMock, administratorAccessContextValue, blankGroupGroupsModeSettings, createAuthSettingsSaveError(), emptyUserListSettings (+8 more)
 
 ### Community 248 - "Frontend Authgatemodule"
-Cohesion: 0.25
-Nodes (9): AuthGateModule, createRootMock, getMainEntrypointComposition(), getOnlyRenderedChild(), getRenderedComponentChain(), getRenderedTypeName(), QueryProviderModule, ReactElementLike (+1 more)
+Cohesion: 0.15
+Nodes (13): rootElement, AuthGateModule, createRootMock, getMainEntrypointComposition(), getOnlyRenderedChild(), getRenderedComponentChain(), getRenderedTypeName(), QueryProviderModule (+5 more)
 
 ### Community 249 - "Metadata Evidence Oracle"
 Cohesion: 0.29
@@ -1547,17 +1550,21 @@ Nodes (6): extends, include, extends, include, extends, include
 Cohesion: 0.20
 Nodes (9): dependencies, enabledAdvancedServices, exceptionLogging, oauthScopes, runtimeVersion, timeZone, webapp, access (+1 more)
 
-### Community 263 - "resolve.ts"
-Cohesion: 0.17
-Nodes (12): setup(), createdRoots, PromptEvent, collectAttachments(), existingIdentifiers(), extractMentionTokens(), isAttachable(), isInsideRoot() (+4 more)
+### Community 262 - "Assignment/index.js"
+Cohesion: 0.10
+Nodes (3): AssignmentTimestamps, AssignmentSubmissions, AssignmentLLMOrchestration
+
+### Community 263 - "backendConfiguration.zod.ts"
+Cohesion: 0.15
+Nodes (17): BackendSettingsFormTestValues, maskedBackendConfig, storedKeyFormValues, BackendApiKeyWriteSchema, BackendConfig, BackendConfigSchema, BackendConfigWriteInput, BackendConfigWriteInputSchema (+9 more)
 
 ### Community 264 - "Validate Class Info"
 Cohesion: 0.27
 Nodes (6): JSON_DB_LOG_LEVELS, toBoolean_(), toBooleanString_(), validateApiKey_(), validateClassInfo_(), validateRequiredClassInfoStringProperty_()
 
-### Community 265 - "TaskHeatmapTable"
-Cohesion: 0.26
-Nodes (16): BASELINE_CAPTION, BASELINE_MARKER, BASELINE_OFF_EXPLANATION, buildTaskHeaderPresentation(), EXCLUDED_COLUMN_FIRST_CLASS, EXCLUDED_COLUMN_GROUP_CLASS, EXCLUDED_COLUMN_LAST_CLASS, EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS (+8 more)
+### Community 265 - "postAnalysisFeedbackTestSupport.tsx"
+Cohesion: 0.20
+Nodes (15): Owner(), usePostAnalysisTasks(), createPostAnalysisTaskDescriptors(), completeNotificationLeave(), HookState, METADATA_TASK_ID, metadataDescriptor(), REFRESH_DESCRIPTION (+7 more)
 
 ### Community 267 - "assignmentDefinitionPartialRowValidation.js"
 Cohesion: 0.36
@@ -1567,13 +1574,13 @@ Nodes (8): isIsoDateTimeString_(), PARTIAL_REQUIRED_FIELDS, validateDefinitionKe
 Cohesion: 0.20
 Nodes (10): scripts, build, dev, lint, preview, test, test:coverage, test:e2e (+2 more)
 
-### Community 269 - "classDetailService.zod.full.spec.ts"
-Cohesion: 0.18
-Nodes (13): AssignmentDefinitionPartialSchema, AssignmentPartialSchema, BaseTaskArtifactPartialSchema, StudentSummarySchema, TeacherSummarySchema, validAssignmentDefinitionPartial, validAssignmentPartial, validBaseTaskArtifactPartial (+5 more)
+### Community 269 - "assignmentReadNormalisation.legacyPartial.spec.ts"
+Cohesion: 0.19
+Nodes (16): mediumClasses, smallClasses, normaliseClassRead(), assertMalformedCriterionIsolation(), assertProvidedEntryOnly(), assertRawRedaction(), assertTaskIdentityIsolation(), canonical (+8 more)
 
-### Community 270 - "runners/index.ts"
-Cohesion: 0.16
-Nodes (14): assertNever(), buildRunnerInvocation(), getNpmScriptName(), getTscProjectPath(), NpmScriptRunConfig, RegressionCheckConfig, RegressionTool, runChecksInLane() (+6 more)
+### Community 270 - "apiService.ts"
+Cohesion: 0.17
+Nodes (13): ApiErrorResponseSchema, ApiResponseSchema, ApiSuccessResponseSchema, buildFailureMetadata(), deserialiseRawResponse(), dispatchAttempt(), getRunner(), GoogleScriptRunApiHandler (+5 more)
 
 ### Community 271 - "Mocks Googleappsscript Mockgoogleclassroommanager"
 Cohesion: 0.20
@@ -1595,9 +1602,9 @@ Nodes (7): Baseline flow, Compare flow, Comparison artefacts, Exit codes, Regres
 Cohesion: 0.22
 Nodes (7): assdef_full full cache, AssignmentDefinition contract, assignment_definitions registry, definitionKey, Full and partial hydration levels, TaskDefinition sub-entity, upsertAssignmentDefinition
 
-### Community 276 - "syntheticAssessmentCauseShape.test.ts"
-Cohesion: 0.29
-Nodes (7): applyCauseError(), Cause, CAUSE_SHAPE_ROWS, Owner, runCauseShapeMatrix(), Target, CAUSE_RULE
+### Community 276 - "import-path-rules.cjs"
+Cohesion: 0.16
+Nodes (9): fs, importPathDepthRule, INDEX_FILES, isFile(), MODULE_EXTENSIONS, path, resolveExistingModule(), toAliasSpecifier() (+1 more)
 
 ### Community 277 - "syntheticABClassMetadataFrontendParity.test.ts"
 Cohesion: 0.14
@@ -1623,25 +1630,25 @@ Nodes (8): devDependencies, eslint-plugin-sonarjs@4.2.2, imports, #builder/*, es
 Cohesion: 0.31
 Nodes (7): AUTH_MANAGED_CONFIG_FIELDS, BACKEND_CONFIG_WRITABLE_FIELDS, commitBackendConfigPatch_(), getBackendConfig_(), maskApiKey_(), setBackendConfig_(), stageBackendConfigPatch_()
 
-### Community 285 - "validate-regression-config.spec.ts"
-Cohesion: 0.15
-Nodes (10): RegressionConfigValidationError, PACKAGE_JSON_SCRIPTS_BY_DIRECTORY, REPO_ROOT, validateRegressionConfig(), npmScriptRunSchema, parallelSchema, regressionCheckSchema, RegressionConfigInput (+2 more)
+### Community 285 - "syntheticIgnoreBoundary.test.ts"
+Cohesion: 0.22
+Nodes (10): child, drainStream(), main(), pollForResponse(), waitForExit(), gitignoreEntries, readIgnoreReport(), repositoryRoot (+2 more)
 
-### Community 286 - "bulkDelete.spec.tsx"
-Cohesion: 0.33
-Nodes (7): classesManagementStateMock, makeRow(), renderBulkDeleteModal(), renderPanel(), runQueuedBatchMutationMock, BulkDeleteModal(), BulkDeleteModalProperties
+### Community 286 - "classesManagementViewModel.ts"
+Cohesion: 0.11
+Nodes (20): BulkCreateOptions, classesManagementStateMock, makeRow(), renderBulkDeleteModal(), renderPanel(), runQueuedBatchMutationMock, BulkDeleteModal(), BulkDeleteModalProperties (+12 more)
 
 ### Community 287 - "Frontend Creatematchmediamock"
-Cohesion: 0.25
-Nodes (3): getComputedStyleMock(), readInlineStyles(), ResizeObserverMock
+Cohesion: 0.20
+Nodes (5): @testing-library/jest-dom, @testing-library/jest-dom@7.0.1, getComputedStyleMock(), readInlineStyles(), ResizeObserverMock
 
 ### Community 288 - "Mock Factories"
 Cohesion: 0.22
 Nodes (6): createFreshManager(), createMockDriveApp(), createMockDriveManager(), createMockPropertiesService(), createMockSpreadsheetApp(), setupGlobalGASMocks()
 
-### Community 289 - "syntheticAssessmentCauseCatalogueSupport.js"
-Cohesion: 0.33
-Nodes (6): CATALOGUE_REASONING, catalogueCauseEntries(), CAUSE_CATALOGUE, runCauseCatalogueMatrix(), WRONG_PAIR_ROWS, CRITERIA
+### Community 289 - "merge-manifest.spec.ts"
+Cohesion: 0.26
+Nodes (11): Manifest, ManifestService, mergeScopes(), mergeServices(), readManifest(), runMergeManifest(), sortKeysDeep(), REAL_VENDORED_MANIFEST_PATH (+3 more)
 
 ### Community 290 - "Registered Transport Endpoints"
 Cohesion: 0.12
@@ -1652,8 +1659,8 @@ Cohesion: 0.50
 Nodes (3): Expanding the ESLint configuration, React Compiler, React + TypeScript + Vite
 
 ### Community 292 - "frontend-htmlservice-transform.ts"
-Cohesion: 0.24
-Nodes (10): hasUnresolvedAssetAttributeReference(), hasUnresolvedExternalModuleScriptReference(), readAttributeValue(), removeAttribute(), replaceAsync(), resolveBuiltAssetPath(), runFrontendHtmlServiceTransform(), runTransformAndReadOutput() (+2 more)
+Cohesion: 0.27
+Nodes (9): hasUnresolvedAssetAttributeReference(), hasUnresolvedExternalModuleScriptReference(), readAttributeValue(), removeAttribute(), replaceAsync(), resolveBuiltAssetPath(), runFrontendHtmlServiceTransform(), runTransformAndReadOutput() (+1 more)
 
 ### Community 293 - "Developer Backend Rehydration"
 Cohesion: 0.29
@@ -1663,9 +1670,9 @@ Nodes (5): Assignment Rehydration Strategy, Full Assignment, Hydration, Partial 
 Cohesion: 0.36
 Nodes (8): Typography copyable configuration, Typography design tokens, Typography editable configuration, EllipsisConfig, Typography.Paragraph, Typography.Text, Typography.Title, Typography component
 
-### Community 296 - "Assessment"
-Cohesion: 0.20
-Nodes (4): Assessment, ASSESSMENT_ERROR_MESSAGES, acquisitionAssessments(), malformedCauses
+### Community 295 - "generateClassMetadata.js"
+Cohesion: 0.27
+Nodes (10): applyClassMetadata(), applyMetadata(), buildStanding(), buildStandings(), COMPACT_MATRIX, COMPACT_MATRIX_BY_PROFILE, generateClassMetadata(), getFullMatrixCase() (+2 more)
 
 ### Community 297 - "Run An Assessment"
 Cohesion: 0.39
@@ -1683,6 +1690,10 @@ Nodes (8): Alt Text markers, The Browser App, Cell-level evidence, Heatmaps buil
 Cohesion: 0.25
 Nodes (5): { importPathDepthRule, pathAliases }, path, repositoryRoot, ruleOptions, { RuleTester }
 
+### Community 303 - "syntheticCommittedFixtureRegeneration.test.ts"
+Cohesion: 0.17
+Nodes (9): COMMITTED_PROFILE_NAMES, COMMITTED_TASKS_PER_DEFINITION, FULL_LARGE_CANONICAL_PARAMETERS, generationFailureControl, PROFILE_VIEW_FILE_NAMES, ProfileManifest, REPOSITORY_ROOT, snapshotDirectory() (+1 more)
+
 ### Community 305 - "triggerHandler.test.js"
 Cohesion: 0.18
 Nodes (11): cleanupTrigger_(), triggerHandler(), authGroup, authMode, authRevision, authUsers, isFresh, mockABLogger (+3 more)
@@ -1691,21 +1702,21 @@ Nodes (11): cleanupTrigger_(), triggerHandler(), authGroup, authMode, authRevisi
 Cohesion: 0.39
 Nodes (8): Accuracy metric panel with most/least accurate tasks and below-threshold tasks, Completeness metric panel with tasks requiring attention, Dark mode toggle in top bar, Information tooltip icons on metric panel headings, Per-task threshold and assessed score breakdown, Requires attention tag on flagged tasks, Application shell sidebar navigation (Dashboard, Classes, Assignments, Heatmaps, Settings), Task Heatmap page
 
-### Community 310 - "Use Page Dataset"
-Cohesion: 0.29
-Nodes (3): createWarmupStateReturn(), { mockUseQuery, mockUseStartupWarmupState, mockGetStartupWarmupQueryOptions }, resolveWarmupStatus()
+### Community 310 - "configurationManagerLockedWriteContract.test.js"
+Cohesion: 0.33
+Nodes (6): installInMemoryConfigStore(), expectOverCapRejection(), installInMemoryStore(), installInMemoryStore(), installInMemoryScriptProperties(), installScriptLockMock()
 
-### Community 311 - "TaskHeatmapTable.tsx"
-Cohesion: 0.24
-Nodes (6): PreviewStatus, buildAdaptiveTierGroups(), resolveColumnPreviewStatus(), TaskHeatmapData, compareStudentNames(), StudentNameComparable
+### Community 311 - "taskHeatmapTableColumns.tsx"
+Cohesion: 0.23
+Nodes (15): PreviewStatus, buildAdaptiveTierGroups(), buildMetricCellAccessibleLabel(), buildMetricSorter(), buildTaskMetricSubColumns(), getCellMetric(), getDisplayTitle(), readLookupCell() (+7 more)
 
-### Community 312 - "abClassMetadataService.summaryConsumption.spec.ts"
-Cohesion: 0.47
-Nodes (10): computed(), controlledBaselineScores(), controlledClassScores(), controlledEntry(), controlledStandings(), controlledTargetScores(), createControlledSummary(), marker() (+2 more)
+### Community 312 - "vmHelpers.js"
+Cohesion: 0.25
+Nodes (4): clearGoogleClassroomsHandlerModuleCache(), fs, loadRealGoogleClassroomsHandlerWithGlobals(), vm
 
-### Community 314 - "assignmentsPageModalHelpers.tsx"
-Cohesion: 0.31
-Nodes (10): AssignmentDefinitionPartialRow, clickUpdateButtonInRow(), findRowInAssignmentsTable(), FindRowOptions, getAssignmentsTable(), openUpdateAssignmentModal(), setQueryDataIfDefined(), SetupQueryClientOptions (+2 more)
+### Community 314 - "syntheticProfileTaskCounts.test.ts"
+Cohesion: 0.25
+Nodes (8): ARTEFACT_BODY_TYPES, assertTextCounts(), EXPECTED_TASKS_PER_DEFINITION, GeneratedAssignmentDefinition, GeneratedFullDefinition, GeneratedReferenceData, GeneratedTask, taskIndices()
 
 ### Community 315 - "Developer Shapes Assignment"
 Cohesion: 0.29
@@ -1714,6 +1725,10 @@ Nodes (7): ABClass contract, Assignment contract, AssignmentDefinition contract,
 ### Community 316 - "Metric Display Precision"
 Cohesion: 0.29
 Nodes (3): Average display precision (DEFAULT_PRECISION = 2), Individual score precision (INDIVIDUAL_SCORE_PRECISION = 0), MetricIconLabel component
+
+### Community 317 - "Artifacts/index.js"
+Cohesion: 0.11
+Nodes (4): TextTaskArtifact, TableTaskArtifact, ImageTaskArtifact, ArtifactFactory
 
 ### Community 318 - "Frontend Max Lines"
 Cohesion: 0.33
@@ -1755,9 +1770,9 @@ Nodes (5): ProgressTrackerProxy, FakeConfigurationManager, mockDeleteProperty, m
 Cohesion: 0.33
 Nodes (7): Dark mode toggle, Select a class to build a heatmap empty state, Class, Topics and Assignments filter controls, Heatmaps builder page (E2E visual snapshot), Navigation sidebar, Playwright visual regression baseline screenshot, Refresh button
 
-### Community 333 - "Synthetic Assessment Full"
+### Community 333 - "configurationManagerStorageCollaborator.test.js"
 Cohesion: 0.36
-Nodes (7): applyReasoningRow(), entryWithScore(), FULL_REASONING_ROWS, Owner, runFullReasoningMatrix(), Target, REASONING_RULE
+Nodes (3): ConfigurationManagerStorage, safeParseConfigObject_(), makeManager()
 
 ### Community 334 - "globalExposure.test.js"
 Cohesion: 0.29
@@ -1787,6 +1802,14 @@ Nodes (6): Classroom Creator custom Google Sheets menu, Create Assessment Record
 Cohesion: 0.33
 Nodes (6): compilerOptions, lib, module, moduleResolution, noEmit, types
 
+### Community 344 - "deriveLegacyAssignmentScenario"
+Cohesion: 0.43
+Nodes (6): applyMarker(), deriveLegacyAssignmentScenario(), resolveOwningClass(), resolveVariant(), SUPPORTED_VARIANTS, linkedReadScenario()
+
+### Community 345 - "generateClassRosters.js"
+Cohesion: 0.52
+Nodes (6): buildClassDocument(), buildStudentId(), buildStudents(), buildTeacher(), stripLeadingHonourific(), STRIPPED_LEADING_HONOURIFICS
+
 ### Community 352 - "Class Page Overview"
 Cohesion: 0.40
 Nodes (6): Class title card with Back to Classes and Start New Assessment actions, Class Page Overview UI (Chromium Linux E2E snapshot), Dark mode toggle in the top header, Recent Assignments card showing one assessed assignment and four metric scores, Left sidebar navigation: Dashboard, Classes, Assignments, Heatmaps, Settings, Student Averages table with all-tasks/baseline-tasks toggle, name search and metric score columns
@@ -1795,9 +1818,9 @@ Nodes (6): Class title card with Back to Classes and Start New Assessment action
 Cohesion: 0.33
 Nodes (3): QueryKeysModule, QueryModule, QueryProviderModule
 
-### Community 354 - "ABClassController"
-Cohesion: 0.04
-Nodes (20): ABClassMetadataValidationError, ABClassController, classConfiguration, classWithMetadata, clone(), collection(), fullAssignment, harness() (+12 more)
+### Community 354 - "ABClass"
+Cohesion: 0.05
+Nodes (16): ABClass, ExistingClassState, makeClass(), clone(), restoredClass(), teacherGlobal, canonicalClasses(), clone() (+8 more)
 
 ### Community 355 - "Run An Assessment"
 Cohesion: 0.50
@@ -1863,9 +1886,9 @@ Nodes (4): Agent Modes: primary, subagent, all, Agent Setup and Configuration Sk
 Cohesion: 0.40
 Nodes (5): imports, #backend/*, #synthetic/*, #synthetic-data/*, #test-helpers/*
 
-### Community 377 - "AssignmentDefinitionWizardReviewContent.spec.tsx"
-Cohesion: 0.28
-Nodes (5): buildSeedTaskRows(), buildStageTwoContentProperties(), CANONICAL_EDITABLE_DEFINITIONS, loadReviewContentComponent(), loadReviewContentModule()
+### Community 377 - "syntheticClassMetadataViews.test.ts"
+Cohesion: 0.29
+Nodes (5): Graph, MATRIX, Metadata, SCORE_TEMPLATES, Scores
 
 ### Community 378 - "Classroom Assignments"
 Cohesion: 0.60
@@ -1874,14 +1897,6 @@ Nodes (3): getGoogleClassroomAssignments_(), clearGoogleClassroomAssignmentsModu
 ### Community 379 - "Backend Api Googleclassrooms"
 Cohesion: 0.60
 Nodes (3): getGoogleClassrooms_(), clearGoogleClassroomsModuleCache(), loadGoogleClassroomsModuleWithGlobals()
-
-### Community 380 - "TaskHeatmapTable.merged.spec.tsx"
-Cohesion: 0.33
-Nodes (8): buildCollapsedMergedResult(), buildMergedRows(), buildSingleSourceMergedResult(), buildTwoSourceMergedResult(), openTaskPopover(), PreviewStatusMap, renderTable(), PREVIEW_ERROR_TEXT
-
-### Community 381 - "syntheticRosterNaming.test.ts"
-Cohesion: 0.29
-Nodes (6): collectHonourificNames(), COMMITTED_PROFILE_NAMES, extractLeadingToken(), GeneratedSyntheticAnalysisGraph, ObservedClassRoster, STRIPPED_HONOURIFICS
 
 ### Community 383 - "Type And Lint"
 Cohesion: 0.50
@@ -1907,9 +1922,9 @@ Nodes (4): Assignment definition form fields — Assignment Title, Topic, Year G
 Cohesion: 0.50
 Nodes (4): Accuracy criterion score shown as a green badge (4), Text-based marking feedback preview card in view results, Reasoning section giving the LLM justification for the mark, Student Response section quoting the student's answer
 
-### Community 391 - "AppThemeShell.tsx"
-Cohesion: 0.33
-Nodes (4): AppThemeShellProperties, appThemeToken, getReducedMotionMediaQuery(), usePrefersReducedMotion()
+### Community 391 - "AppAuthGate.warmup.spec.tsx"
+Cohesion: 0.11
+Nodes (18): App(), AppThemeShell(), AppThemeShellProperties, appThemeToken, getReducedMotionMediaQuery(), usePrefersReducedMotion(), { getAuthorisationStatusMock, getApplicationAccessMock, warmStartupQueriesMock }, { getAuthorisationStatusMock, getApplicationAccessMock, warmStartupQueriesMock } (+10 more)
 
 ### Community 392 - "V1 Heatmap Error"
 Cohesion: 0.67
@@ -1967,6 +1982,10 @@ Nodes (4): Assessment Bot web app logo (SVG), Dark purple, navy and gold brand c
 Cohesion: 0.60
 Nodes (3): getAssignment_(), throwAssignmentValidationError_(), validateIdentifier_()
 
+### Community 409 - "no-task-resume.ts"
+Cohesion: 0.50
+Nodes (3): isRecord(), setup(), STRIPPED_NOTICE
+
 ### Community 418 - "Ant Design Cache"
 Cohesion: 0.67
 Nodes (3): Collapse accordion mode, Collapse ItemType, Collapse collapsible trigger
@@ -2011,29 +2030,25 @@ Nodes (3): Apps Script highlighted in Google Sheets Extensions menu, Copy of Ass
 Cohesion: 0.67
 Nodes (3): Arch symbol logo mark, AssessmentBot Main Logo, AssessmentBot wordmark
 
-### Community 610 - "assignmentRehydration.legacySnapshotIsolation.test.js"
-Cohesion: 0.67
-Nodes (3): historicalRecord(), prepare(), restoredRecordWithNonPlainEntries()
-
 ## Knowledge Gaps
-- **457 isolated node(s):** `RFC-3629`, `RFC-5322`, `RFC-3339`, `Back and refresh controls`, `Persistent sidebar navigation` (+452 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 4353 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **281 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **457 isolated node(s):** `RFC-5322`, `RFC-3629`, `RFC-3339`, `Back and refresh controls`, `Persistent sidebar navigation` (+452 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 4363 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **273 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `@playwright/test` connect `Class CRUD E2E Tests` to `Classes Page End`, `Task Preview E2E Tests`, `Task Heatmap E2E Tests`, `Assessment Error Preview E2E`, `Frontend Devdependencies`, `googleScriptRunHarness.ts`, `Settings Backend Journey`, `assignment-definition-wizard-section-4.spec.ts`, `Stale Recovery Page`, `Post Analysis Metadata`?**
-  _High betweenness centrality (0.023) - this node is a cross-community bridge._
-- **What connects `RFC-3629`, `RFC-5322`, `RFC-3339` to the rest of the system?**
+- **Why does `setupReferenceDataTestGlobals()` connect `ref_vitest` to `Cohort Year Group`?**
+  _High betweenness centrality (0.021) - this node is a cross-community bridge._
+- **What connects `RFC-5322`, `RFC-3629`, `RFC-3339` to the rest of the system?**
   _457 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Document Parsing Extraction Tests` be split into smaller, more focused modules?**
-  _Cohesion score 0.02099751997795536 - nodes in this community are weakly interconnected._
-- **Why does `react` connect `react` to `TaskMetricPreviewContent.tsx`, `Topic Cohort Management`, `Use Classes Management`, `Assess Task Modal Tests`, `AppThemeShell.tsx`, `spacing.ts`, `AssessTaskRecoverySurface.tsx`, `TaskHeatmapTable`, `appSpecHarness.ts`, `useBackendSettings.ts`, `TaskHeatmapPage.tsx`, `Assessment Error Preview E2E`, `Assess Task Flow Hooks`, `authService.zod.ts`, `StudentAveragesTableCard.spec.tsx`, `studentNameTableColumns.spec.tsx`, `BackendSettingsPanel.tsx`, `createComputedMetricResult`, `Markdown Renderer`, `Class Page Data Hooks`, `Post Analysis Feedback Tasks`, `Task Heatmap Page`, `Classes Page`, `Use Heatmaps Page`, `AssignmentDefinitionWizardReviewContent.tsx`, `appNavigation.tsx`, `previewSourceActionTestHelpers.ts`, `Classes Table`, `assignmentWizardMutation.ts`, `Bulk Form Modal`, `Frontend Devdependencies`, `Mutation Summary`, `Use Page Dataset`, `TaskHeatmapTable.tsx`, `useAssignmentDefinitionWizard.ts`, `assignmentDefinition.zod.ts`, `ApiTransportError`, `SettingsPage.tsx`, `modalTestHelpers.tsx`, `ref_zod`, `Classes Management Panel`, `Query Foundation Query`, `assignmentDefinitionPartials.zod.ts`, `ClassesManagementPanel.bulkMetadataFailure.spec.tsx`, `Assignment Definitions Table`, `useAssessTaskRecoveryFlow.ts`, `AssignmentDefinitionWizardModal.reparse.spec.tsx`, `Backend Settings`, `AssignmentDefinitionWizardReviewContent.spec.tsx`, `TaskHeatmapTable.merged.spec.tsx`?**
-  _High betweenness centrality (0.019) - this node is a cross-community bridge._
-- **Should `TaskMetricPreviewContent.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.06493506493506493 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0260235947258848 - nodes in this community are weakly interconnected._
+- **Why does `AssignmentTopic` connect `Assignment Topic` to `ref_vitest`?**
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
+- **Should `assembleTaskPreviewData.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.12169312169312169 - nodes in this community are weakly interconnected._
+- **Why does `react` connect `Assess Task Flow Hooks` to `Topic Cohort Management`, `Use Classes Management`, `Assess Task Modal Tests`, `AppAuthGate.warmup.spec.tsx`, `HeatmapSelectionBar.selectAllHeader.spec.tsx`, `frontendLogger.ts`, `postAnalysisFeedbackTestSupport.tsx`, `appSpecHarness.ts`, `useBackendSettings.ts`, `AssignmentDefinitionWizardModal.test-harness.ts`, `TaskHeatmapPage.tsx`, `AuthenticationSettingsTab.tsx`, `studentNameTableColumns.spec.tsx`, `BackendSettingsPanel.tsx`, `createComputedMetricResult`, `Markdown Renderer`, `Class Page Data Hooks`, `Post Analysis Feedback Tasks`, `Task Heatmap Page`, `Classes Page`, `react`, `Use Heatmaps Page`, `heatmapBuilderSurfaceTestHelpers.ts`, `appNavigation.tsx`, `Task Heatmap Table`, `previewSourceActionTestHelpers.ts`, `Classes Table`, `Bulk Form Modal`, `Frontend Devdependencies`, `Mutation Summary`, `taskHeatmapTableColumns.tsx`, `useAssessTaskRecoveryFlow.ts`, `AppAuthGate.applicationAccess.spec.tsx`, `metricRangeFilter.tsx`, `SettingsPage.tsx`, `TaskPreviewCard.tsx`, `Classes Management Panel`, `assignmentDefinitionTestFixtures.ts`, `Query Foundation Query`, `assignmentDefinitionPartials.zod.ts`, `AssignmentsManagementSurface.tsx`, `AppAuthGate.tsx`, `ClassPageContent.tsx`, `Backend Settings`, `Frontend Authgatemodule`?**
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
 - **Should `ABClass Controller Layer` be split into smaller, more focused modules?**
-  _Cohesion score 0.03288314738696418 - nodes in this community are weakly interconnected._
-- **Should `Topic Cohort Management` be split into smaller, more focused modules?**
-  _Cohesion score 0.03243616287094548 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.024998082969097463 - nodes in this community are weakly interconnected._

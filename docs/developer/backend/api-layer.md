@@ -317,8 +317,9 @@ if (typeof module !== 'undefined' && module.exports) {
 
 This pattern is currently used by `getGoogleClassrooms_`, `getGoogleClassroomAssignments_`,
 `getAssignmentDefinitionPartials_`, `deleteAssignmentDefinition_`, `upsertAssignmentDefinition_`,
-`getAssignmentDefinition_`, `getAssignment_`, `startAssessmentRun_`, `getBackendConfig_`, `setBackendConfig_`,
-`upsertABClass_`, `updateABClass_`, `deleteABClass_`, and `getABClass_`.
+`getAssignmentDefinition_`, `getAssignment_`, `startAssessmentRun_`, `getProgress_`,
+`getBackendConfig_`, `setBackendConfig_`, `upsertABClass_`, `updateABClass_`, `deleteABClass_`, and
+`getABClass_`.
 
 ## Validation ownership rules
 
@@ -599,6 +600,20 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   `startAssessmentRun_()` helper reads the dispatcher's `ApiRequestContext` accessor; the
   controller still returns `null` and forwards the ID into trigger context params.
   Error codes: `DEFINITION_STALE` (non-retriable, with `details` block), `INVALID_REQUEST` (transport validation failure), `INTERNAL_ERROR` (definition not found, ABClass not found, or other domain errors).
+
+- `getProgress` — returns the current keyed progress records for frontend-driven assessment runs.
+  Source: `src/backend/z_Api/progressTracker.js`, via the `getProgress_()` helper called from
+  `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_apiHandler.js`.
+  Parameters: none.
+  Handler behaviour: reads all keyed progress User Properties through
+  `ProgressTrackerStore.readAll()`. Only keyed records are returned; the legacy unkeyed
+  `ProgressTracker` record has no `requestId` for the frontend to correlate and is excluded.
+  Malformed keyed values are logged at warning level and skipped; a property-store read failure
+  propagates to the `apiHandler` error boundary.
+  Response data: `{ tasks: ProgressRecord[] }` inside the standard success envelope, sorted by
+  `timestamp` ascending with `requestId` ascending as tie-break, or `{ tasks: [] }` when no keyed
+  records exist. See [Contract: ProgressTracker § Transport](../data-shapes/progress-tracker.md#transport).
+  The frontend service wrapper and response schema remain planned.
 
 - `getAssignment` — reads a single fully-hydrated assignment by course and assignment id.
   Source: `src/backend/z_Api/assignmentAssessment.js`, via the `getAssignment_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.readRehydrateAssignment()` in `src/backend/y_controllers/ABClassController/index.js`.

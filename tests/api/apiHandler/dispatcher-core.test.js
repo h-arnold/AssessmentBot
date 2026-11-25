@@ -278,4 +278,38 @@ describe('Api/apiHandler dispatcher — core dispatch, validation and request ID
       }
     }
   });
+
+  it('dispatches getProgress through the allowlist and returns tasks in the success envelope', () => {
+    const expectedTasks = [
+      {
+        requestId: 'req-progress-dispatch',
+        step: 1,
+        message: 'Marking submission',
+        completed: false,
+        error: null,
+        timestamp: '2026-01-01T10:00:00.000Z',
+      },
+    ];
+    const getProgressHandler = vi.fn(() => ({ tasks: expectedTasks }));
+    const originalGetProgress = globalThis.getProgress_;
+    globalThis.getProgress_ = getProgressHandler;
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const response = ApiDispatcher.getInstance().handle({ method: 'getProgress' });
+
+      expect(response).toMatchObject({
+        ok: true,
+        data: { tasks: expectedTasks },
+      });
+      expect(getProgressHandler).toHaveBeenCalledTimes(1);
+      expect(getProgressHandler).toHaveBeenCalledWith();
+    } finally {
+      if (originalGetProgress === undefined) {
+        delete globalThis.getProgress_;
+      } else {
+        globalThis.getProgress_ = originalGetProgress;
+      }
+    }
+  });
 });

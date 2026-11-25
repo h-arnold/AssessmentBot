@@ -2,10 +2,11 @@
 
 ## Delivery status
 
-- Current section: Section 2 — Keyed ProgressTracker store and active run context (complete, pending
+- Current section: Section 3 — `getProgress` transport handler and registration (complete, pending
   gate and commit).
-- Current phase: Section 2 docs sync + plan compaction in parallel; RED and GREEN loops both PASSED
-  review with no findings.
+- Current phase: Section 3 docs sync + plan compaction in parallel; RED and GREEN loops both PASSED
+  review with no findings. Section 2 is complete, compacted, gated, committed (`c96acb0e`,
+  `42400598`) and pushed.
 - Branch: `feat/progress-tracker-api-polling`.
 - Regression session ID: `progresstracker-api-polling`.
 - Baseline gate: PASSED — 2026-11-25T10:23:32.661Z, `baseline/baseline.txt`, Overall Status GREEN,
@@ -301,98 +302,92 @@ are in the preserved `Implementation notes / deviations / follow-up` subsection.
 
 ## Section 3 — `getProgress` transport handler and registration
 
-### Objective
+### Outcome (compacted)
 
-Expose all keyed progress records to the frontend through a single allowlisted `apiHandler` method.
-
-### Constraints
-
-- `getProgress_` is a trailing-underscore function in a single `z_Api` module with a guarded
-  `module.exports`.
-- No request parameters; no new envelope fields.
-- Filter to keyed records only, sort by `timestamp` ascending then `requestId` ascending.
-- Return `{ tasks: [] }` when no keyed records exist.
-- LOC: new `z_Api/progressTracker.js` ~70; `z_apiHandler.js` ~480 after registration.
-- The `registry.test.js` count changes from 31 to 32 allowed methods.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- @SPEC.md
-- @tests/api/apiHandler/registry.test.js
-- @tests/api/apiHandler/dispatcher-core.test.js
-- @tests/helpers/apiHandlerTestUtils.js
-
-Implementation mandatory docs:
-
-- @SPEC.md
-- @docs/developer/backend/api-layer.md
-- @docs/developer/data-shapes/transport-envelope.md
-- @src/backend/z_Api/z_apiHandler.js
-
-Code Reviewer mandatory docs:
-
-- @SPEC.md
-- @docs/developer/backend/api-layer.md
-
-### Shared helper plan
-
-- Helper: keyed store `readAll()` from Section 2
-  - Decision: `reuse`
-  - Owning module/path: `src/backend/Utils/01_ProgressTrackerStore.js`
-  - Canonical doc target: `docs/developer/data-shapes/progress-tracker.md`
-
-### Data-shape plan
-
-- Add the `getProgress` endpoint details to `docs/developer/data-shapes/progress-tracker.md` and
-  remove the planned endpoint marker; remove the planned-endpoint note from `transport-envelope.md`.
-- Reference: @docs/developer/data-shapes/transport-envelope.md @docs/developer/data-shapes/progress-tracker.md
-
-### Acceptance criteria
-
-- `getProgress` is registered and returns a success envelope with `data.tasks`.
-- Records are sorted deterministically and the legacy unkeyed record is excluded.
-- Malformed keyed records are logged and skipped without failing the request.
-- The global-exposure guard test remains green.
-
-### Required test cases (Red first)
-
-API layer tests:
-
-1. `getProgress_` returns `{ tasks: [] }` when only the legacy key exists.
-2. `getProgress_` returns two keyed records in timestamp/requestId order.
-3. A malformed keyed record is skipped and logged.
-4. `getProgress` is present in `ALLOWLISTED_METHOD_HANDLERS` and passes the exposure guard.
-
-### Section checks
-
-- `npm run test:backend -- tests/api/apiHandler`
-- `npm run lint:backend:check`
-- Mandatory-read evidence gate passed.
-- Canonical-fixture note: local property fixtures; no corpus change.
-- Docs sync outcome recorded.
-- Completed section compacted into **Retained for later sections** below.
-
-### Docs delegation reads (when sub-agents are used)
-
-- @docs/developer/data-shapes/progress-tracker.md
-- @docs/developer/data-shapes/transport-envelope.md
+Delivered the allowlisted `getProgress` transport. `getProgress_` reads all keyed User Properties through
+`GASPropertiesUtils.getUserProperties()` and `ProgressTrackerStore.readAll()`, skips malformed records with a
+warning, sorts deterministically and returns `{ tasks }` (or `{ tasks: [] }`). It is registered as a
+parameterless closure in `ALLOWLISTED_METHOD_HANDLERS`; the shared envelope and public GAS surface are
+unchanged. Section checks passed: `npm run test:backend -- tests/api/apiHandler` (16 files / 190 tests),
+`npm run lint:backend:check` clean, Prettier clean, `globalExposure.test.js` (6 tests) and the full backend
+suite (289 files / 3812 tests). Mandatory-read evidence gate passed; the planned shared-helper entry
+(`readAll()` reuse) was honoured and the canonical-fixture note was respected (local property fixtures, no
+corpus change). Contracts and follow-ups are retained below; authoritative evidence and records are in the
+preserved `Implementation notes / deviations / follow-up` subsection.
 
 ### Retained for later sections
 
-- `readAll()` returns keyed records only; malformed ones are skipped in `getProgress_`.
-- The allowlist now has 32 methods; `getProgress` is registered with no parameters.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Document why the legacy key is excluded from the transport payload.
+- **Handler module and interface:** `getProgress_` lives in `src/backend/z_Api/progressTracker.js` (57 lines)
+  as a top-level trailing-underscore function with a guarded `module.exports` (`{ getProgress_ }`). It takes
+  no parameters, obtains the property store via `GASPropertiesUtils.getUserProperties()` and delegates key
+  filtering to `ProgressTrackerStore.readAll(properties)`, which returns keyed entries only (the legacy
+  unkeyed `ProgressTracker` key is excluded).
+- **Malformed-record and failure handling:** invalid JSON, or records with a missing, empty or non-string
+  `requestId`, are logged via `ABLogger.getInstance().warn()` and skipped so one bad entry cannot fail the
+  request. Property-store read errors propagate to the apiHandler error boundary; there is no catch-and-ignore
+  around `getUserProperties()` or `readAll()`.
+- **Sort and payload contract:** records are sorted by `timestamp` ascending then `requestId` ascending using
+  plain string comparison; `SORT_BEFORE = -1` is a named constant to avoid a `no-magic-numbers` lint warning.
+  Returns `{ tasks }` / `{ tasks: [] }` and no `Date` values.
+- **Registration:** `getProgress: () => getProgress_(),` is in `ALLOWLISTED_METHOD_HANDLERS` (now 32 methods).
+  No new envelope fields and no new public GAS function; the global-exposure guard is green.
+- **Test harness:** `tests/setupGlobals.js` now loads `progressTracker.js` as a global
+  (`Object.assign(g, require('../src/backend/z_Api/progressTracker.js'))`) and the in-memory
+  `PropertiesService` mock exposes `getProperties()`; both are additive changes.
+- **Frozen specification:** `tests/api/apiHandler/progressTrackerTransport.test.js` holds four handler cases
+  (empty array with only the legacy key, deterministic sort excluding the legacy record, malformed-record skip
+  with a logged warning, and read-failure propagation), `tests/api/apiHandler/registry.test.js` asserts the
+  32 allowlist keys and `tests/api/apiHandler/dispatcher-core.test.js` holds one dispatch case. Test files are
+  a frozen exclusion, so no new coverage is added there.
+- **Shared-helper reconciliation:** the Section 3 entry reused `readAll()` from
+  `src/backend/Utils/01_ProgressTrackerStore.js` (decision `reuse`); no new helper was added and no
+  `Not implemented` marker belonged to this section. Helpers planned for Section 4 (cleanup coordinator,
+  `CacheManager` extension and `TriggerController` extension) remain `Not implemented` and unchanged.
+- **`@remarks` JSDoc commitment:** the `getProgress_` JSDoc explains why the legacy unkeyed key is excluded
+  from the transport payload and why malformed records are skipped; this remains on the final `@remarks`
+  review.
+- **Informational follow-up from GREEN review:** coverage shows two defensive branches not exercised by tests
+  (the no-`requestId` skip and the reverse sort direction). Accepted with rationale because test files are a
+  frozen exclusion; no code change.
+- **Workflow note (not a deviation):** the implementation agent was denied `edit` on `tests/**` by its own
+  permission rule, so the orchestrator dispatched the single harness line in `tests/setupGlobals.js` to the
+  Testing Specialist, who applied it and revalidated.
+- **Open record slots:** docs-sync outcome, regression gate, graphify refresh and commit record are still `...`
+  in the notes below and are to be filled by the orchestrator. No new record is created here.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** ...
-- **Deviations from plan:** ...
-- **Follow-up implications for later sections:** none.
+- **Implementation notes:** RED review PASSED with no findings (6 intentional `AssertionError`
+  failures: four transport cases on the missing module, dispatcher `UNKNOWN_METHOD`, registry 31 vs
+  32; lint and Prettier clean, exposure guard green). GREEN review PASSED with zero findings; the
+  `SORT_BEFORE = -1` constant (introduced to clear two `no-magic-numbers` warnings) and the 57-line
+  module were explicitly accepted. Focused checks after GREEN: 16 files / 190 tests passing,
+  `lint:backend:check` clean, Prettier clean, exposure guard 6 tests green, full backend suite 289
+  files / 3812 tests passing. Docs sync updated `docs/developer/data-shapes/progress-tracker.md`,
+  `data-shapes/transport-envelope.md`, `data-shapes/INDEX.md`, `backend/api-layer.md` and the
+  ProgressTracker contract description in `.opencode/agents/code-reviewer.md`; no pages created. It
+  removed the Section-3-owned `Transport`/`Validation` `Not implemented` markers and the planned
+  endpoint note in `transport-envelope.md`, and left Section 4 cleanup and Section 5 frontend
+  markers intact. No source JSDoc was edited by the docs agent, so no scoped lint re-run was needed.
+  One new out-of-scope doc nitpick (`readAll()` "parsing" rationale wording) was logged as
+  `disregarded` in `.opencode/scratchpad/progresstrackerrefactor-deferred-findings.md`.
+- **Deviations from plan:** none. The implementation agent could not edit `tests/**` because its own
+  permission rule denies it; the orchestrator dispatched the single authorised harness line in
+  `tests/setupGlobals.js` to the Testing Specialist, who applied it and revalidated. This is a
+  workflow routing note, not a deviation.
+- **Follow-up implications for later sections:** GREEN review noted two defensive branches not
+  covered by tests (the no-`requestId` skip and the reverse sort direction); accepted with rationale
+  because test files are a frozen exclusion. No code change required. Section 4 must add the real
+  cleanup coordinator and Section 5 the frontend wrapper and `GetProgressResponseSchema`; the
+  canonical docs retain those markers.
+- **Section regression gate:** PASSED — 2026-11-25T12:48:57.687Z,
+  `.ts-regression-checker/reports/session-progresstracker-api-polling/runs/2026-11-25T12-48-57.687Z/comparison.txt`,
+  Overall Status GREEN, 8/8 checks passing, 0 regressions, 0 new failures, 0 fixes; no pre-existing
+  failures (baseline fully green).
+- **Graphify refresh (§2.75):** `graphify update .` ran after the gate; it rebuilt 11,900 nodes /
+  29,644 edges / 609 communities and rewrote the tracked `graphify-out/` artifacts (`graph.json`,
+  `graph.html`, `GRAPH_REPORT.md`, `manifest.json`, `.graphify_labels.json`). Local build caches and
+  the dated backup directory remain untracked; they are not committed.
 
 ---
 

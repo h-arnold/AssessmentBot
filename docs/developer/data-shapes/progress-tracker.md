@@ -1,23 +1,23 @@
 # Contract: ProgressTracker
 
-Keyed User Property records and the `ProgressTracker` facade are implemented. The `getProgress`
-transport, cleanup coordinator and frontend validation remain planned and are marked
+Keyed User Property records, the `ProgressTracker` facade and the `getProgress` transport are
+implemented. The cleanup coordinator and frontend validation remain planned and are marked
 `Not implemented` below.
 
 Internal progress state for frontend-driven assessment runs. Progress records are persisted as
 separate GAS User Properties keyed by the `requestId` generated for the `startAssessmentRun`
-API call, and are read back through the planned `getProgress` endpoint. Cleanup is planned as one
+API call, and are read back through the `getProgress` endpoint. Cleanup is planned as one
 deferred time-based trigger per user which deletes terminal records only.
 
 Backend modules:
 
 - `src/backend/Utils/ProgressTracker.js` — facade, active run context and public API (implemented)
 - `src/backend/Utils/01_ProgressTrackerStore.js` — keyed property access (implemented)
+- `src/backend/z_Api/progressTracker.js` — `getProgress_` transport helper (implemented)
 
 Planned modules:
 
 - `src/backend/Utils/02_ProgressTrackerCleanup.js` — trigger scheduling and sweep
-- `src/backend/z_Api/progressTracker.js` — `getProgress_` transport helper
 - `src/backend/Triggers/triggerMethodHandlers.js` — `cleanupProgress` trigger method
 
 Sibling contracts:
@@ -96,7 +96,7 @@ treated as in flight.
 
 ---
 
-## Transport (Not implemented)
+## Transport
 
 ### `getProgress` (read)
 
@@ -109,9 +109,15 @@ treated as in flight.
 | Frontend service | `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts` |
 | Frontend Zod     | `GetProgressResponseSchema` in `assignmentAssessment.zod.ts`                    |
 
-The response uses the shared success envelope unchanged (`ok`, `requestId`, `data`). Records are
-sorted by `timestamp` ascending with `requestId` ascending as tie-break. The legacy unkeyed record
-is excluded. An empty store returns `{ tasks: [] }`.
+The response uses the shared success envelope unchanged (`ok`, `requestId`, `data`). Only keyed
+records are returned; the legacy unkeyed `ProgressTracker` record has no `requestId` for the
+frontend to correlate and is excluded. `getProgress_` reads through
+`ProgressTrackerStore.readAll()`, logs and skips malformed keyed values, and propagates a
+property-store read failure to the `apiHandler` error boundary. Records are sorted by `timestamp`
+ascending with `requestId` ascending as tie-break. An empty set of keyed records returns
+`{ tasks: [] }`.
+
+The frontend service and `GetProgressResponseSchema` remain planned (`Not implemented`).
 
 ### `startAssessmentRun` response change
 
@@ -126,11 +132,14 @@ None. Each progress record is a flat object.
 
 ---
 
-## Validation (Not implemented)
+## Validation
 
-Frontend schemas require non-empty `requestId`, finite `step`, string `message`, boolean
-`completed`, nullable `error` and ISO 8601 `timestamp`. Backend transport validation stays in
-`getProgress_`; domain invariants stay in `ProgressTracker` and `AssignmentController`.
+`getProgress_` checks only the keyed record's `requestId` (non-empty string); it does not validate
+the other record fields at the transport boundary. Domain invariants stay in `ProgressTracker` and
+`AssignmentController`.
+
+Frontend schemas (`Not implemented`) require non-empty `requestId`, finite `step`, string
+`message`, boolean `completed`, nullable `error` and ISO 8601 `timestamp`.
 
 ---
 
@@ -156,13 +165,13 @@ Implemented:
 ```text
 src/backend/Utils/01_ProgressTrackerStore.js
 src/backend/Utils/ProgressTracker.js
+src/backend/z_Api/progressTracker.js
 ```
 
 Planned:
 
 ```text
 src/backend/Utils/02_ProgressTrackerCleanup.js
-src/backend/z_Api/progressTracker.js
 src/backend/Triggers/triggerMethodHandlers.js (cleanupProgress)
 src/frontend/src/services/assignmentAssessment/*
 ```
