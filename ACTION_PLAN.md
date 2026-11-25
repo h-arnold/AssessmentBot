@@ -826,7 +826,10 @@ and for the section regression gate and commit records to come.
   implementation's earlier refresh had already captured the new symbols). Tracked
   `graphify-out/` artifacts are committed with the section; untracked build caches remain
   uncommitted.
-- **Commit record:** record to follow.
+- **Commit record:** `36404202` — `feat(backend): replace legacy unkeyed progress record with
+keyed records` — on branch `feat/progress-tracker-api-polling`, pushed successfully to
+  `origin/feat/progress-tracker-api-polling` (`c0a071ab..36404202`). Pre-commit hooks (Prettier,
+  backend lint, `typecheck:all`) passed.
 
 ---
 
