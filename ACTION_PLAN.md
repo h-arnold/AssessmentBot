@@ -806,8 +806,16 @@ the baseline: required (files changed) — PASSED, run at 2026-11-25 (session
 `progresstracker-api-polling`), Overall Status GREEN, 8/8 checks passing, 0 regressions,
 0 new failures, 0 fixes; report under
 `.ts-regression-checker/reports/session-progresstracker-api-polling/`. The branch is clean
-against the baseline and ready for the Final Documentation Pass. Cleanup commit recorded
-below.
+against the baseline and ready for the Final Documentation Pass.
+
+**Cleanup commit record:** `ac992563` — `refactor(backend): de-slop progress tracker cleanup
+pass` — on branch `feat/progress-tracker-api-polling`, pushed to
+`origin/feat/progress-tracker-api-polling` (`dd119388...ac992563` force-update after an amend
+that removed accidentally staged untracked graphify caches from the first push `dd119388`;
+those cache files are back to untracked and remain uncommitted). Includes the eleven code/test/
+plan/doc files plus the regenerated tracked `graphify-out/` artifacts (`graphify update .` ran
+after the cleanup edits; only the labels file shrank, no topology change). Pre-commit hooks
+(Prettier, backend lint, `typecheck:all`) passed.
 
 ---
 
