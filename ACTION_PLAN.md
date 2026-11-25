@@ -817,6 +817,27 @@ plan/doc files plus the regenerated tracked `graphify-out/` artifacts (`graphify
 after the cleanup edits; only the labels file shrank, no topology change). Pre-commit hooks
 (Prettier, backend lint, `typecheck:all`) passed.
 
+### Final Documentation Pass (§5.2) — completed
+
+Gate satisfied: the §5.1 post-cleanup comparison was GREEN. The pass (first attempt returned
+empty; retried once successfully) reconciled cross-section drift and the deferred doc items:
+
+- `docs/developer/backend/api-layer.md` — the `getProgress` entry now mentions the shared
+  `ProgressTrackerStore.parse()` step before the field-level checks, and the `z_apiHandler.js`
+  path typo at line 606 was fixed inside the same edited entry (nitpick disposition updated in
+  the deferred-findings log).
+- `mkdocs.yml` — `ProgressTracker` added to the Data Shapes nav (nitpick disposition updated).
+- `.opencode/agents/docs.md` — `progress-tracker.md` added to the Documentation Landscape tree
+  (nitpick disposition updated).
+- Verified as already accurate, no changes: `AssessmentFlow.md`, `singletons.md`,
+  `backend-logging-and-error-handling.md`, all data-shape docs, frontend testing docs, JSDoc on
+  all changed modules, and the AGENTS files. No new pages created.
+- Reported, not fixed: `singletons.md` "CacheManager generic methods" bullet (lines 413-416)
+  omits the since-added `remove(key)` and constructor-supplied-cache option — nothing false;
+  extension contract owned by `progress-tracker.md`.
+- Commit: `6fedd53e` — `docs: final documentation pass for progress tracker polling` — pushed to
+  `origin/feat/progress-tracker-api-polling` (`88a54eac..6fedd53e`); pre-commit hooks passed.
+
 ---
 
 ## Deferred and Out-of-Scope Findings
