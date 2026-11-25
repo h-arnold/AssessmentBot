@@ -1,10 +1,57 @@
 /**
  * Tests for the ProgressTracker facade and the ProgressTrackerStore helper
  * namespace: real modules, in-memory PropertiesService mock, ABLogger spy seam.
+ *
+ * Every progress write lands on a keyed `ProgressTracker<requestId>` record.
+ * Facade calls made without a bound run (startTracking with no argument, and
+ * unbound error, reset, read and delete calls) bind a generated correlation ID
+ * first, so the bare unkeyed `ProgressTracker` key is never written or read.
  */
 const ProgressTracker = require('#backend/Utils/ProgressTracker.js');
 const ProgressTrackerStore = require('#backend/Utils/01_ProgressTrackerStore.js');
 const { withGlobalMocks } = require('../helpers/globalMockManager.js');
+
+/** User Property key of the unkeyed pre-upgrade progress record. */
+const BARE_LEGACY_KEY = 'ProgressTracker';
+
+/**
+ * Seeds a record directly under the bare pre-upgrade key, in the shape a
+ * deployment from before keyed records would have left behind. Bypasses
+ * ProgressTrackerStore key derivation, which requires a request ID.
+ * @param {Object} [overrides] - Fields to set on the seeded record.
+ * @returns {Object} The seeded record.
+ */
+function seedBareLegacyRecord(overrides = {}) {
+  const record = {
+    step: 3,
+    message: 'pre-upgrade progress',
+    completed: false,
+    error: null,
+    timestamp: '2026-01-01T09:00:00.000Z',
+    ...overrides,
+  };
+  globalThis.PropertiesService.getUserProperties().setProperty(
+    BARE_LEGACY_KEY,
+    JSON.stringify(record)
+  );
+  return record;
+}
+
+/**
+ * Makes Utilities.getUuid return a deterministic sequence and records every
+ * generated value so tests can reference the correlation ID the facade binds.
+ *
+ * @returns {string[]} Live array of generated IDs in generation order.
+ */
+function stubGeneratedRequestIds() {
+  const generated = [];
+  vi.spyOn(globalThis.Utilities, 'getUuid').mockImplementation(() => {
+    const id = `generated-run-${generated.length + 1}`;
+    generated.push(id);
+    return id;
+  });
+  return generated;
+}
 
 /**
  * Reads a parsed User Property record from the in-memory store.
@@ -21,7 +68,7 @@ describe('ProgressTracker', () => {
   let mockABLogger;
   let cleanupScheduleSpy;
   let restoreGlobals;
-  let savedGlobals;
+  let generatedIds;
 
   beforeEach(() => {
     // Reset singleton state before each test
@@ -50,7 +97,10 @@ describe('ProgressTracker', () => {
       }),
     });
     restoreGlobals = mockContext.restore;
-    savedGlobals = mockContext.savedGlobals;
+
+    // Every correlation ID the facade generates comes from Utilities.getUuid;
+    // the deterministic sequence keeps generated keys predictable in tests.
+    generatedIds = stubGeneratedRequestIds();
 
     // Reset PropertiesService in-memory store
     globalThis.PropertiesService._resetUserProperties();
@@ -79,18 +129,30 @@ describe('ProgressTracker', () => {
   });
 
   describe('startTracking', () => {
-    it('initialises properties and resets steps', () => {
+    it('binds a generated correlation ID and writes the initial keyed record when called without an ID', () => {
       tracker.startTracking();
 
-      // Should have set a property
-      const stored = JSON.parse(
-        globalThis.PropertiesService.getUserProperties().getProperty('ProgressTracker')
-      );
-      expect(stored).toBeDefined();
+      expect(generatedIds.length).toBeGreaterThan(0);
+      const generatedId = generatedIds[0];
+      const stored = readUserProperty(ProgressTrackerStore.keyFor(generatedId));
+      expect(stored).not.toBeNull();
+      expect(stored.requestId).toBe(generatedId);
       expect(stored.message).toContain('Starting the assessment');
       expect(stored.completed).toBe(false);
       expect(stored.error).toBeNull();
       expect(stored.step).toBe(0);
+      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
+    });
+
+    it('keeps writing to the generated run record after an unanchored start', () => {
+      tracker.startTracking();
+      tracker.updateProgress('Marking submissions');
+
+      const stored = readUserProperty(ProgressTrackerStore.keyFor(generatedIds[0]));
+      expect(generatedIds).toHaveLength(1);
+      expect(stored).not.toBeNull();
+      expect(stored.message).toBe('Marking submissions');
+      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
     });
   });
 
@@ -118,16 +180,14 @@ describe('ProgressTracker', () => {
   });
 
   describe('clearProgress', () => {
-    it('deletes the stored progress property', () => {
-      tracker.startTracking();
-      expect(
-        globalThis.PropertiesService.getUserProperties().getProperty('ProgressTracker')
-      ).toBeTruthy();
+    it('deletes the keyed record of the bound run', () => {
+      tracker.startTracking('req-clear');
+      expect(readUserProperty(ProgressTrackerStore.keyFor('req-clear'))).not.toBeNull();
 
       tracker.clearProgress();
-      expect(
-        globalThis.PropertiesService.getUserProperties().getProperty('ProgressTracker')
-      ).toBeNull();
+
+      expect(readUserProperty(ProgressTrackerStore.keyFor('req-clear'))).toBeNull();
+      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
     });
   });
 
@@ -157,14 +217,14 @@ describe('ProgressTracker', () => {
       expect(result).toBe('Context message: Something went wrong');
     });
 
-    it('stores the error in progress data', () => {
+    it('stores the error in the bound run record', () => {
+      tracker.startTracking('req-capture');
       const error = new Error('Disk failure');
       tracker.captureError(error, 'Save failed');
 
-      const stored = JSON.parse(
-        globalThis.PropertiesService.getUserProperties().getProperty('ProgressTracker')
-      );
-      expect(stored.error).toBe('Save failed: Disk failure');
+      const keyed = readUserProperty(ProgressTrackerStore.keyFor('req-capture'));
+      expect(keyed.error).toBe('Save failed: Disk failure');
+      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
     });
 
     it('uses error message alone when no context provided', () => {
@@ -180,26 +240,25 @@ describe('ProgressTracker', () => {
       expect(() => tracker.logAndThrowError('Fatal error')).toThrow('Fatal error');
     });
 
-    it('logs the error before throwing', () => {
+    it('logs the error into the bound run record before throwing', () => {
+      tracker.startTracking('req-thrown');
       expect(() => tracker.logAndThrowError('Log before throw')).toThrow();
 
-      const stored = JSON.parse(
-        globalThis.PropertiesService.getUserProperties().getProperty('ProgressTracker')
-      );
-      expect(stored.error).toBe('Log before throw');
+      const keyed = readUserProperty(ProgressTrackerStore.keyFor('req-thrown'));
+      expect(keyed.error).toBe('Log before throw');
+      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
     });
   });
 
   describe('complete', () => {
-    it('marks progress as completed', () => {
-      tracker.startTracking();
+    it('marks the bound run record as completed', () => {
+      tracker.startTracking('req-complete');
       tracker.complete();
 
-      const stored = JSON.parse(
-        globalThis.PropertiesService.getUserProperties().getProperty('ProgressTracker')
-      );
-      expect(stored.completed).toBe(true);
-      expect(stored.message).toBe('Task completed successfully.');
+      const keyed = readUserProperty(ProgressTrackerStore.keyFor('req-complete'));
+      expect(keyed.completed).toBe(true);
+      expect(keyed.message).toBe('Task completed successfully.');
+      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
     });
   });
 
@@ -214,15 +273,6 @@ describe('ProgressTracker', () => {
       expect(keyed.message).toContain('Starting the assessment');
       expect(keyed.completed).toBe(false);
       expect(keyed.error).toBeNull();
-    });
-
-    it('startTracking without a request ID writes the legacy unkeyed record', () => {
-      tracker.startTracking();
-
-      const legacy = readUserProperty('ProgressTracker');
-      expect(legacy).not.toBeNull();
-      expect(legacy.message).toContain('Starting the assessment');
-      expect(legacy.step).toBe(0);
     });
 
     it('keeps two runs independent when updating progress', () => {
@@ -256,36 +306,31 @@ describe('ProgressTracker', () => {
       expect(tracker.getStepAsNumber()).toBe(1);
     });
 
-    it('writes completion to the bound record before falling back to the legacy record', () => {
-      tracker.startTracking();
-      const legacyBefore = readUserProperty('ProgressTracker');
-
+    it('writes the terminal record to the bound run record and clears the run context', () => {
       tracker.startTracking('req-a');
       tracker.updateProgress('Run A in flight');
+
       tracker.complete();
 
       const keyed = readUserProperty('ProgressTrackerreq-a');
       expect(keyed).not.toBeNull();
       expect(keyed.completed).toBe(true);
       expect(keyed.message).toBe('Task completed successfully.');
-      expect(readUserProperty('ProgressTracker')).toEqual(legacyBefore);
-      expect(tracker.getCurrentProgress()).toEqual(legacyBefore);
+      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
+      expect(tracker.getCurrentProgress()).toBeNull();
     });
 
-    it('fresh instance reads the legacy record after resetForTests clears the context', () => {
-      tracker.startTracking();
-      const legacyBefore = readUserProperty('ProgressTracker');
+    it('fresh instance reads only keyed records after resetForTests clears the context', () => {
+      seedBareLegacyRecord({ message: 'pre-upgrade leftover' });
 
       tracker.startTracking('req-a');
       tracker.updateProgress('Run A in flight');
-      const keyedBeforeReset = readUserProperty('ProgressTrackerreq-a');
 
       ProgressTracker.resetForTests();
       const freshTracker = ProgressTracker.getInstance();
 
       expect(freshTracker).not.toBe(tracker);
-      expect(keyedBeforeReset).not.toBeNull();
-      expect(freshTracker.getCurrentProgress()).toEqual(legacyBefore);
+      expect(freshTracker.getCurrentProgress()).toBeNull();
     });
 
     it('captureError writes to the bound record and leaves the legacy record untouched', () => {
@@ -297,7 +342,7 @@ describe('ProgressTracker', () => {
       const keyed = readUserProperty('ProgressTrackerreq-a');
       expect(keyed).not.toBeNull();
       expect(keyed.error).toBe('Save failed: Disk failure');
-      expect(readUserProperty('ProgressTracker')).toBeNull();
+      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
     });
 
     it('logAndThrowError writes to the bound record before throwing', () => {
@@ -307,85 +352,76 @@ describe('ProgressTracker', () => {
       const keyed = readUserProperty('ProgressTrackerreq-a');
       expect(keyed).not.toBeNull();
       expect(keyed.error).toBe('Fatal run failure');
-      expect(readUserProperty('ProgressTracker')).toBeNull();
+      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
     });
   });
 
-  describe('deferred cleanup on error writes', () => {
-    it('logError with deferCleanup writes the error without scheduling cleanup', () => {
-      tracker.startTracking('req-a');
-      cleanupScheduleSpy.mockClear();
-
-      tracker.logError('Deferred failure', undefined, { deferCleanup: true });
-
-      const keyed = readUserProperty('ProgressTrackerreq-a');
-      expect(keyed).not.toBeNull();
-      expect(keyed.error).toBe('Deferred failure');
+  describe('unbound calls bind a generated run context', () => {
+    it('logError writes a terminal keyed record under the generated key and schedules cleanup', () => {
       expect(cleanupScheduleSpy).not.toHaveBeenCalled();
-    });
 
-    it('logError without options writes the error and still schedules cleanup', () => {
-      tracker.startTracking('req-a');
-      cleanupScheduleSpy.mockClear();
+      tracker.logError('Unbound failure');
 
-      tracker.logError('Ordinary failure');
-
-      const keyed = readUserProperty('ProgressTrackerreq-a');
+      expect(generatedIds.length).toBeGreaterThan(0);
+      const keyed = readUserProperty(ProgressTrackerStore.keyFor(generatedIds[0]));
       expect(keyed).not.toBeNull();
-      expect(keyed.error).toBe('Ordinary failure');
-      expect(cleanupScheduleSpy).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('cleanup scheduling on every progress write', () => {
-    it('schedules cleanup from startTracking', () => {
-      tracker.startTracking('req-schedule');
-
+      expect(keyed.requestId).toBe(generatedIds[0]);
+      expect(keyed.error).toBe('Unbound failure');
+      expect(keyed.message).toBe('An error occurred.');
+      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
       expect(cleanupScheduleSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('schedules cleanup from updateProgress', () => {
-      tracker.startTracking('req-schedule');
-      cleanupScheduleSpy.mockClear();
+    it('getCurrentProgress never selects the bare pre-upgrade record', () => {
+      const preUpgrade = seedBareLegacyRecord();
 
-      tracker.updateProgress('Run A in flight');
+      const progress = tracker.getCurrentProgress();
 
-      expect(cleanupScheduleSpy).toHaveBeenCalledTimes(1);
+      expect(progress).not.toEqual(preUpgrade);
+      expect(progress).toBeNull();
     });
 
-    it('schedules cleanup from complete', () => {
-      tracker.startTracking('req-schedule');
-      cleanupScheduleSpy.mockClear();
+    it('logAndThrowError writes a terminal keyed record under the generated key and throws', () => {
+      expect(() => tracker.logAndThrowError('Unbound fatal')).toThrow('Unbound fatal');
 
-      tracker.complete();
-
-      expect(cleanupScheduleSpy).toHaveBeenCalledTimes(1);
+      expect(generatedIds.length).toBeGreaterThan(0);
+      const keyed = readUserProperty(ProgressTrackerStore.keyFor(generatedIds[0]));
+      expect(keyed).not.toBeNull();
+      expect(keyed.error).toBe('Unbound fatal');
+      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
     });
 
-    it('creates only one cleanup trigger across repeated progress writes', () => {
-      const originalCleanup = savedGlobals.ProgressTrackerCleanup;
-      const createTimeBasedTrigger = vi.fn(() => 'cleanup-uid');
-      const controller = {
-        createTimeBasedTrigger,
-        storeTriggerContext: vi.fn(),
-      };
-      const nested = withGlobalMocks({
-        ProgressTrackerCleanup: () => originalCleanup,
-        TriggerController: () =>
-          vi.fn(function () {
-            return controller;
-          }),
-      });
+    it('captureError writes a terminal keyed record under the generated key and returns the message', () => {
+      const result = tracker.captureError(new Error('Disk failure'), 'Save failed');
 
-      try {
-        tracker.startTracking('req-dedupe');
-        tracker.updateProgress('step 1');
-        tracker.complete();
+      expect(result).toBe('Save failed: Disk failure');
+      expect(generatedIds.length).toBeGreaterThan(0);
+      const keyed = readUserProperty(ProgressTrackerStore.keyFor(generatedIds[0]));
+      expect(keyed).not.toBeNull();
+      expect(keyed.error).toBe('Save failed: Disk failure');
+      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
+    });
 
-        expect(createTimeBasedTrigger).toHaveBeenCalledTimes(1);
-      } finally {
-        nested.restore();
-      }
+    it('resetSteps writes a step-zero record under the generated key', () => {
+      tracker.incrementStep();
+      tracker.incrementStep();
+
+      tracker.resetSteps();
+
+      expect(generatedIds.length).toBeGreaterThan(0);
+      const keyed = readUserProperty(ProgressTrackerStore.keyFor(generatedIds[0]));
+      expect(keyed).not.toBeNull();
+      expect(keyed.step).toBe(0);
+      expect(keyed.requestId).toBe(generatedIds[0]);
+      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
+    });
+
+    it('clearProgress leaves a pre-upgrade bare-key record untouched', () => {
+      const preUpgrade = seedBareLegacyRecord();
+
+      tracker.clearProgress();
+
+      expect(readUserProperty(BARE_LEGACY_KEY)).toEqual(preUpgrade);
     });
   });
 
@@ -416,84 +452,5 @@ describe('ProgressTracker', () => {
 
       expect(mockABLogger.error).toHaveBeenCalledWith('Developer details:', 'connection refused');
     });
-  });
-});
-
-describe('ProgressTrackerStore.parse', () => {
-  let mockABLogger, restoreGlobals;
-
-  beforeEach(() => {
-    mockABLogger = {
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      log: vi.fn(),
-      debugUi: vi.fn(),
-    };
-    const mockContext = withGlobalMocks({ ABLogger: () => ({ getInstance: () => mockABLogger }) });
-    restoreGlobals = mockContext.restore;
-  });
-
-  afterEach(() => {
-    restoreGlobals();
-    vi.restoreAllMocks();
-  });
-
-  it('returns the stored record for valid JSON', () => {
-    const record = {
-      requestId: 'req-parse',
-      step: 2,
-      message: 'Marking task 2 of 3',
-      completed: false,
-      error: null,
-      timestamp: '2026-01-01T09:00:00.000Z',
-    };
-    const key = ProgressTrackerStore.keyFor(record.requestId);
-
-    expect(ProgressTrackerStore.parse(JSON.stringify(record), key)).toEqual(record);
-    expect(mockABLogger.warn).not.toHaveBeenCalled();
-  });
-
-  it('returns null and warns once for a malformed value without throwing', () => {
-    const key = ProgressTrackerStore.keyFor('req-malformed');
-
-    let parsed;
-    expect(() => {
-      parsed = ProgressTrackerStore.parse('{not-valid-json', key);
-    }).not.toThrow();
-
-    expect(parsed).toBeNull();
-    expect(mockABLogger.warn).toHaveBeenCalledTimes(1);
-    expect(mockABLogger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('malformed progress record'),
-      expect.objectContaining({ key })
-    );
-  });
-
-  it('returns null without a warning when no value is stored', () => {
-    const key = ProgressTrackerStore.keyFor('req-missing');
-
-    expect(ProgressTrackerStore.parse(null, key)).toBeNull();
-    expect(mockABLogger.warn).not.toHaveBeenCalled();
-  });
-
-  it('warns and returns null for a stored JSON null while leaving the stored value intact', () => {
-    const key = ProgressTrackerStore.keyFor('req-null-literal');
-    globalThis.PropertiesService.getUserProperties().setProperty(key, 'null');
-    const rawBefore = globalThis.PropertiesService.getUserProperties().getProperty(key);
-
-    let parsed;
-    expect(() => {
-      parsed = ProgressTrackerStore.parse(rawBefore, key);
-    }).not.toThrow();
-
-    expect(parsed).toBeNull();
-    expect(mockABLogger.warn).toHaveBeenCalledTimes(1);
-    expect(mockABLogger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('malformed progress record'),
-      expect.objectContaining({ key })
-    );
-    expect(globalThis.PropertiesService.getUserProperties().getProperty(key)).toBe(rawBefore);
   });
 });

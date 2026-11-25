@@ -113,7 +113,9 @@ None — TriggerContext is a pair of flat key-value properties with no embedded 
   (`AuthService.checkAccess({ bypassCache: true, neverClaim: true })`).
 - `processSelectedAssignment` validates a supplied `requestId` with
   `Validate.validateNonEmptyString()` before starting progress tracking, so an empty or blank ID
-  fails loudly. A trigger context with no `requestId` keeps the legacy unkeyed progress path.
+  fails loudly. A context with no `requestId` reaches the facade unbound, which generates a
+  correlation ID and writes a keyed record (see
+  [Contract: ProgressTracker](progress-tracker.md#persistence)).
 - Malformed input (missing event, unknown triggerUid, unknown method) surfaces via
   fail-loud logging only — GAS discards trigger return values, so no error envelope is
   produced.

@@ -88,10 +88,13 @@ const ProgressTrackerCleanup = {
   },
 
   /**
-   * Deletes terminal progress records, keeping in-flight runs intact.
-   * Marker and cache flag are cleared on every path; a successful sweep that
-   * observed an in-flight record re-arms one trigger. A sweep failure is
-   * rethrown after cleanup without re-arming, so a later progress write retries.
+   * Deletes terminal progress records, keeping in-flight runs intact, and
+   * deletes the bare pre-upgrade key outright: records are keyed only now, so
+   * a stale unkeyed copy is dead data and must not keep the cleanup timer
+   * re-arming. Marker and cache flag are cleared on every path; a successful
+   * sweep that observed an in-flight keyed record re-arms one trigger. A sweep
+   * failure is rethrown after cleanup without re-arming, so a later progress
+   * write retries.
    *
    * @returns {void}
    */
@@ -101,15 +104,17 @@ const ProgressTrackerCleanup = {
     let hasInFlightRecord = false;
 
     try {
-      // The legacy unkeyed record joins the keyed entries as a synthetic final
-      // entry so both key forms share the same terminal/in-flight handling.
-      const legacyKey = ProgressTrackerStore.LEGACY_KEY;
-      const entries = [
-        ...ProgressTrackerStore.readAll(properties),
-        { key: legacyKey, value: properties.getProperty(legacyKey) },
-      ];
+      // Pre-upgrade deployments kept one unkeyed record at the bare prefix
+      // key. Records are keyed only now, so delete it outright instead of
+      // treating it as a synthetic entry: a stale non-terminal copy would
+      // otherwise keep the cleanup timer re-arming forever. It is dead data
+      // either way, so delete whatever is stored there and move on.
+      if (properties.getProperty(ProgressTrackerStore.KEY_PREFIX) !== null) {
+        properties.deleteProperty(ProgressTrackerStore.KEY_PREFIX);
+        ABLogger.getInstance().info('Deleted pre-upgrade unkeyed progress record.');
+      }
 
-      for (const entry of entries) {
+      for (const entry of ProgressTrackerStore.readAll(properties)) {
         const record = ProgressTrackerStore.parse(entry.value, entry.key);
         if (record === null) continue;
         if (typeof record !== 'object' || Array.isArray(record)) {

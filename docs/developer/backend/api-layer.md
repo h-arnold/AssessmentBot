@@ -605,15 +605,15 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Source: `src/backend/z_Api/progressTracker.js`, via the `getProgress_()` helper called from
   `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.
   Parameters: none.
-  Handler behaviour: reads all keyed progress User Properties through
+  Handler behaviour: reads every `ProgressTracker`-prefixed User Property entry through
   `ProgressTrackerStore.readAll()` and parses each value with the shared
-  `ProgressTrackerStore.parse()` helper before its own field checks. Only keyed records are
-  returned; the legacy unkeyed `ProgressTracker` record has no `requestId` for the frontend to
-  correlate and is excluded. Malformed keyed values are logged at warning level and skipped; a
+  `ProgressTrackerStore.parse()` helper before its own field check. Records without a non-empty
+  `requestId` — for example pre-upgrade unkeyed data — are logged at warning level and skipped, so
+  they never reach the frontend. Malformed values are logged and skipped the same way; a
   property-store read failure propagates to the `apiHandler` error boundary.
   Response data: `{ tasks: ProgressRecord[] }` inside the standard success envelope, sorted by
-  `timestamp` ascending with `requestId` ascending as tie-break, or `{ tasks: [] }` when no keyed
-  records exist. See [Contract: ProgressTracker § Transport](../data-shapes/progress-tracker.md#transport).
+  `timestamp` ascending with `requestId` ascending as tie-break, or `{ tasks: [] }` when no
+  records survive those checks. See [Contract: ProgressTracker § Transport](../data-shapes/progress-tracker.md#transport).
   Frontend wrapper: `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts`
   (`getProgress()`), with response validation in
   `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts`

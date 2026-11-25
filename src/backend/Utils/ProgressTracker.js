@@ -23,7 +23,7 @@ class ProgressTracker extends BaseSingleton {
     this.properties = null;
     /** @type {number} Step counter for the current execution */
     this.step = 0;
-    /** @type {string|null} Bound request ID; null selects the legacy unkeyed record */
+    /** @type {string|null} Active run correlation ID; generated on demand when absent */
     this.activeRequestId = null;
     /** @type {boolean} Whether lazy initialisation has run */
     this._initialized = false;
@@ -61,13 +61,32 @@ class ProgressTracker extends BaseSingleton {
   }
 
   /**
+   * Binds the active run context, generating a correlation ID when none is
+   * set. Write and read paths call this first so an unbound call can never
+   * touch the bare pre-upgrade key: a generated ID places the record in the
+   * keyed namespace, and the store embeds the ID in the record itself.
+   *
+   * @private
+   * @returns {void}
+   */
+  _ensureRunContext() {
+    if (typeof this.activeRequestId === 'string' && this.activeRequestId.length > 0) return;
+    this.activeRequestId = Utilities.getUuid();
+  }
+
+  /**
    * Initialises progress tracking and binds the active run context.
-   * @param {string} [requestId] - Correlation ID for the run; omit for the legacy unkeyed record.
+   * @param {string|null} [requestId] - Correlation ID for the run; a fresh
+   *   correlation ID is generated when absent or empty.
    * @returns {void}
    */
   startTracking(requestId = null) {
     this.ensureInitialized();
-    this.activeRequestId = requestId;
+    if (typeof requestId === 'string' && requestId.length > 0) {
+      this.activeRequestId = requestId;
+    } else {
+      this._ensureRunContext();
+    }
     this.step = 0;
     const initialData = this._record({
       message: 'Starting the assessment. This may take up to a minute...',
@@ -86,6 +105,7 @@ class ProgressTracker extends BaseSingleton {
    */
   updateProgress(message, shouldIncrementStep = true) {
     this.ensureInitialized();
+    this._ensureRunContext();
     if (shouldIncrementStep) {
       // Increment the step if no specific step is provided and shouldIncrementStep is true
       this.incrementStep();
@@ -108,6 +128,7 @@ class ProgressTracker extends BaseSingleton {
    * Resets the step counter to 0.
    */
   resetSteps() {
+    this._ensureRunContext();
     this.step = 0;
     const currentData = this.getCurrentProgress() || {};
     const updatedData = this._record({}, currentData);
@@ -120,13 +141,14 @@ class ProgressTracker extends BaseSingleton {
    */
   complete() {
     this.ensureInitialized();
+    this._ensureRunContext();
     const currentData = this.getCurrentProgress() || {};
     const updatedData = this._record(
       { completed: true, message: 'Task completed successfully.' },
       currentData
     );
     // Write while the context is still bound, then release it. Clearing first
-    // would strand this terminal record under the legacy key.
+    // would send the terminal write to a freshly generated context instead.
     ProgressTrackerStore.write(this.properties, this.activeRequestId, updatedData);
     ABLogger.getInstance().info('Progress tracking completed successfully.');
     this.activeRequestId = null;
@@ -145,6 +167,7 @@ class ProgressTracker extends BaseSingleton {
    */
   logError(errorMessage, extraErrorDetails, options) {
     this.ensureInitialized();
+    this._ensureRunContext();
     const currentData = this.getCurrentProgress() || {};
     const updatedData = this._record(
       { error: errorMessage, message: 'An error occurred.' },
@@ -281,6 +304,7 @@ class ProgressTracker extends BaseSingleton {
    */
   getCurrentProgress() {
     this.ensureInitialized();
+    this._ensureRunContext();
     const progress = ProgressTrackerStore.read(this.properties, this.activeRequestId);
     if (progress) {
       return progress;
@@ -333,10 +357,12 @@ class ProgressTracker extends BaseSingleton {
   }
 
   /**
-   * Deletes the progress record for the active run context, or the legacy record when unbound.
+   * Deletes the record for the active run context; an unbound call binds a
+   * generated context first, so pre-upgrade bare-key data is left alone.
    */
   clearProgress() {
     this.ensureInitialized();
+    this._ensureRunContext();
     ProgressTrackerStore.delete(this.properties, this.activeRequestId);
     ABLogger.getInstance().info('All progress data cleared.');
   }

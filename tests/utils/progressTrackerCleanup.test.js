@@ -9,11 +9,12 @@
  *     cache miss, no duplicate trigger on later writes, no marker or cache flag
  *     left behind when trigger creation fails so a later write can retry, and
  *     a warning with no trigger when the user lock cannot be acquired.
- *   - `sweep()` deletes only terminal records (completed or errored, keyed and
- *     legacy), keeps in-flight records and malformed values untouched, clears
- *     the marker and cache flag on every path, re-arms exactly one trigger only
- *     after a successful sweep that observes an in-flight record, and rethrows
- *     a sweep failure without re-arming.
+ *   - `sweep()` deletes terminal keyed records and deletes the bare
+ *   `ProgressTracker` key (pre-upgrade data) unconditionally, terminal or
+ *   not, keeping in-flight keyed records and malformed values untouched.
+ *   It clears the marker and cache flag on every path, re-arms one trigger
+ *   after a successful sweep that observed an in-flight keyed record, and
+ *   rethrows failures without re-arming.
  *
  * Property and cache state use the in-memory mocks from tests/setupGlobals.js;
  * no canonical analysis fixture applies to transient progress state.
@@ -21,6 +22,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
+/** User Property key of the unkeyed pre-upgrade progress record. */
+const BARE_LEGACY_KEY = 'ProgressTracker';
 const MARKER_KEY = 'AB_PROGRESS_CLEANUP_TRIGGER';
 const CLEANUP_METHOD = 'cleanupProgress';
 const CLEANUP_FLAG_TTL_SECONDS = 600;
@@ -211,37 +214,30 @@ describe('ProgressTrackerCleanup', () => {
   });
 
   describe('sweep', () => {
-    it('deletes terminal keyed records and a terminal legacy record but keeps non-terminal keyed records', () => {
+    it('deletes terminal keyed records and the bare pre-upgrade key, keeping in-flight keyed records', () => {
       writeRecord('terminal-completed', { completed: true });
       writeRecord('terminal-error', { error: 'Run failed' });
       writeRecord('still-running', { completed: false, error: null });
-      writeRaw(
-        globalThis.ProgressTrackerStore.keyFor(null),
-        JSON.stringify(record(null, { completed: true }))
-      );
+      writeRaw(BARE_LEGACY_KEY, JSON.stringify(record(null, { completed: true })));
       seedMarker('cleanup-uid-1');
 
       globalThis.ProgressTrackerCleanup.sweep();
 
       expect(readRaw(globalThis.ProgressTrackerStore.keyFor('terminal-completed'))).toBeNull();
       expect(readRaw(globalThis.ProgressTrackerStore.keyFor('terminal-error'))).toBeNull();
-      expect(readRaw(globalThis.ProgressTrackerStore.keyFor(null))).toBeNull();
+      expect(readRaw(BARE_LEGACY_KEY)).toBeNull();
       expect(readRaw(globalThis.ProgressTrackerStore.keyFor('still-running'))).not.toBeNull();
     });
 
-    it('keeps a non-terminal legacy record', () => {
-      writeRaw(
-        globalThis.ProgressTrackerStore.keyFor(null),
-        JSON.stringify(record(null, { completed: false, error: null }))
-      );
+    it('deletes a non-terminal pre-upgrade record unconditionally without re-arming for it', () => {
+      writeRaw(BARE_LEGACY_KEY, JSON.stringify(record(null, { completed: false, error: null })));
       seedMarker('cleanup-uid-1');
 
       globalThis.ProgressTrackerCleanup.sweep();
 
-      expect(readRaw(globalThis.ProgressTrackerStore.keyFor(null))).not.toBeNull();
-      expect(JSON.parse(readRaw(globalThis.ProgressTrackerStore.keyFor(null))).completed).toBe(
-        false
-      );
+      expect(readRaw(BARE_LEGACY_KEY)).toBeNull();
+      expect(createTimeBasedTrigger).not.toHaveBeenCalled();
+      expect(readMarker()).toBeNull();
     });
 
     it('re-arms exactly one trigger and rewrites the marker and cache flag when a non-terminal record survives', () => {

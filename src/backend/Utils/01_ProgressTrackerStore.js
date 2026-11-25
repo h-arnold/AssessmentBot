@@ -2,30 +2,37 @@
  * ProgressTrackerStore - keyed User Property access for progress records.
  *
  * Owns key derivation and serialisation so the facade only decides which run
- * is active. A missing request ID selects the legacy unkeyed record. The
- * `parse` helper restores stored values and warns on bad values (invalid JSON or the JSON literal null); its
- * callers keep their own field-level checks.
+ * is active. Every record lives at `ProgressTracker<requestId>` with the
+ * request ID embedded in the stored value, and key derivation requires a
+ * non-empty request ID. The bare `ProgressTracker` key is never written here:
+ * entries under it are pre-upgrade data that readAll still returns (prefix
+ * filter only) so the cleanup sweep can migrate them away. The `parse` helper
+ * restores stored values and warns on bad values (invalid JSON or the JSON
+ * literal null); its callers keep their own field-level checks.
  *
  * @namespace
  */
 const ProgressTrackerStore = {
-  /** Prefix and legacy key name: keyed records append the request ID directly. */
-  LEGACY_KEY: 'ProgressTracker',
+  /** Key prefix; the request ID is appended directly to derive a record key. */
+  KEY_PREFIX: 'ProgressTracker',
 
   /**
    * Derives the User Property key for a run.
-   * @param {string|null|undefined} requestId - Correlation ID for the run, or absent for the legacy record.
+   * @param {string} requestId - Correlation ID for the run. Required.
    * @returns {string} The property key holding the record.
+   * @throws {Error} When requestId is absent, empty or not a string.
    */
   keyFor(requestId) {
-    if (!requestId) return this.LEGACY_KEY;
-    return `${this.LEGACY_KEY}${requestId}`;
+    if (typeof requestId !== 'string' || requestId.length === 0) {
+      throw new Error('ProgressTrackerStore requires a non-empty requestId string.');
+    }
+    return `${this.KEY_PREFIX}${requestId}`;
   },
 
   /**
    * Reads and parses a single progress record.
    * @param {GoogleAppsScript.Properties.Properties} properties - User Property store supplied by the facade.
-   * @param {string|null|undefined} requestId - Correlation ID for the run, or absent for the legacy record.
+   * @param {string} requestId - Non-empty correlation ID of the run.
    * @returns {Object|null} The parsed record, or null when no value is stored.
    */
   read(properties, requestId) {
@@ -35,21 +42,21 @@ const ProgressTrackerStore = {
   },
 
   /**
-   * Serialises and writes a progress record. Keyed records always carry their request ID.
+   * Serialises and writes a progress record, embedding the request ID.
    * @param {GoogleAppsScript.Properties.Properties} properties - User Property store supplied by the facade.
-   * @param {string|null|undefined} requestId - Correlation ID for the run, or absent for the legacy record.
+   * @param {string} requestId - Non-empty correlation ID for the run.
    * @param {Object} record - Record fields to persist.
    * @returns {void}
    */
   write(properties, requestId, record) {
-    const stored = requestId ? { ...record, requestId } : record;
+    const stored = { ...record, requestId };
     properties.setProperty(this.keyFor(requestId), JSON.stringify(stored));
   },
 
   /**
    * Deletes a single progress record.
    * @param {GoogleAppsScript.Properties.Properties} properties - User Property store supplied by the facade.
-   * @param {string|null|undefined} requestId - Correlation ID for the run, or absent for the legacy record.
+   * @param {string} requestId - Non-empty correlation ID for the run.
    * @returns {void}
    */
   delete(properties, requestId) {
@@ -57,17 +64,17 @@ const ProgressTrackerStore = {
   },
 
   /**
-   * Lists raw entries for all keyed records, excluding the legacy unkeyed record.
-   * Callers parse each entry with parse() and keep their own field-level
-   * checks; this helper only filters keys.
+   * Lists raw entries for every property whose key starts with the prefix,
+   * including the bare pre-upgrade key. Callers parse each entry with parse()
+   * and keep their own field-level checks; this helper only filters keys.
    * @param {GoogleAppsScript.Properties.Properties} properties - User Property store supplied by the facade.
-   * @returns {Array<{key: string, value: string}>} Keyed property entries as stored.
+   * @returns {Array<{key: string, value: string}>} Prefix-matching property entries as stored.
    */
   readAll(properties) {
     const allProperties = properties.getProperties();
     const entries = [];
     for (const [key, value] of Object.entries(allProperties)) {
-      if (key.startsWith(this.LEGACY_KEY) && key !== this.LEGACY_KEY) {
+      if (key.startsWith(this.KEY_PREFIX)) {
         entries.push({ key, value });
       }
     }

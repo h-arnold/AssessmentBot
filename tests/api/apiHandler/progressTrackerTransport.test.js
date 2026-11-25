@@ -2,14 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { setupApiHandlerTestContext, teardownApiHandlerTestContext } = require('./shared.js');
 
+/** User Property key of the unkeyed pre-upgrade progress record. */
+const BARE_LEGACY_KEY = 'ProgressTracker';
+
 /**
  * Loads the getProgress transport handler from its production module.
  *
  * The handler takes no parameters and defines the read side of progress
- * polling: it returns `{ tasks }` holding every keyed record sorted by
- * timestamp then requestId, skips malformed values with a warning, excludes
- * the legacy unkeyed record, and propagates property-store read failures to
- * the apiHandler error boundary.
+ * polling: it returns `{ tasks }` holding every record that passes the
+ * field-level `requestId` check, sorted by timestamp then requestId. Records
+ * without a `requestId` (including pre-upgrade bare-key records) and
+ * malformed values are skipped with a logged warning, and property-store read
+ * failures propagate to the apiHandler error boundary.
  *
  * @returns {Function} The getProgress_ handler.
  */
@@ -22,15 +26,15 @@ function loadGetProgressHandler() {
 }
 
 /**
- * Writes one progress record into the in-memory User Properties mock.
- * @param {string|null} requestId - Correlation ID, or null for the legacy record.
+ * Writes one keyed progress record into the in-memory User Properties mock.
+ * @param {string} requestId - Non-empty correlation ID; keyed as `ProgressTracker<requestId>`.
  * @param {Object} overrides - Fields to set on the stored record.
  * @returns {{key: string, record: Object}} The stored key and parsed record.
  */
 function writeProgressRecord(requestId, overrides = {}) {
   const key = globalThis.ProgressTrackerStore.keyFor(requestId);
   const record = {
-    ...(requestId ? { requestId } : {}),
+    requestId,
     step: 0,
     message: 'Assessment in progress',
     completed: false,
@@ -40,6 +44,30 @@ function writeProgressRecord(requestId, overrides = {}) {
   };
   globalThis.PropertiesService.getUserProperties().setProperty(key, JSON.stringify(record));
   return { key, record };
+}
+
+/**
+ * Writes a record in the pre-upgrade shape directly under the bare key, as a
+ * deployment from before keyed records would have left behind. Bypasses key
+ * derivation, which requires a request ID.
+ *
+ * @param {Object} overrides - Fields to set on the stored record.
+ * @returns {{key: string, record: Object}} The stored key and parsed record.
+ */
+function writePreUpgradeRecord(overrides = {}) {
+  const record = {
+    step: 0,
+    message: 'Assessment in progress',
+    completed: false,
+    error: null,
+    timestamp: '2026-01-01T09:00:00.000Z',
+    ...overrides,
+  };
+  globalThis.PropertiesService.getUserProperties().setProperty(
+    BARE_LEGACY_KEY,
+    JSON.stringify(record)
+  );
+  return { key: BARE_LEGACY_KEY, record };
 }
 
 describe('Api/getProgress transport helper', () => {
@@ -53,18 +81,19 @@ describe('Api/getProgress transport helper', () => {
     teardownApiHandlerTestContext(vi, context);
   });
 
-  it('returns an empty tasks array when only the legacy unkeyed record exists', () => {
-    writeProgressRecord(null, { message: 'Legacy run', completed: true });
+  it('skips a pre-upgrade record with no requestId, warns, and returns an empty tasks array', () => {
+    writePreUpgradeRecord({ message: 'Pre-upgrade run', completed: true });
     const getProgress = loadGetProgressHandler();
 
     expect(getProgress()).toEqual({ tasks: [] });
+    expect(context.warnSpy).toHaveBeenCalled();
   });
 
-  it('returns keyed records sorted by timestamp then requestId, excluding the legacy record', () => {
+  it('returns keyed records sorted by timestamp then requestId, skipping pre-upgrade records', () => {
     const early = writeProgressRecord('req-early', { timestamp: '2026-01-01T09:00:00.000Z' });
     const laterZ = writeProgressRecord('req-z', { timestamp: '2026-01-01T10:00:00.000Z' });
     const laterA = writeProgressRecord('req-a', { timestamp: '2026-01-01T10:00:00.000Z' });
-    writeProgressRecord(null, { timestamp: '2026-01-01T08:00:00.000Z' });
+    writePreUpgradeRecord({ timestamp: '2026-01-01T08:00:00.000Z' });
     const getProgress = loadGetProgressHandler();
 
     expect(getProgress()).toEqual({ tasks: [early.record, laterA.record, laterZ.record] });

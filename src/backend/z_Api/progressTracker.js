@@ -8,10 +8,12 @@ const SORT_BEFORE = -1;
 /**
  * Reads all keyed progress records for the frontend transport.
  *
- * @remarks The legacy unkeyed `ProgressTracker` record is excluded deliberately: it backs call
- * sites with no active run context and carries no `requestId` for the frontend to correlate.
- * Malformed keyed values are logged and skipped so one corrupt entry cannot fail the whole
- * request; a failure to read the property store propagates to the apiHandler error boundary.
+ * @remarks Progress records are keyed only: `readAll()` lists every `ProgressTracker`-prefixed
+ * entry, so a pre-upgrade bare `ProgressTracker` key also reaches the loop. The field-level check
+ * below skips any record without a non-empty `requestId` — which covers that pre-upgrade data —
+ * so it never reaches the response; the cleanup sweep deletes the bare key outright. Malformed
+ * values are logged and skipped so one corrupt entry cannot fail the whole request; a failure to
+ * read the property store propagates to the apiHandler error boundary.
  * @returns {{ tasks: Array<Object> }} Keyed records sorted by timestamp, then requestId.
  */
 function getProgress_() {
