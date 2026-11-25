@@ -1374,9 +1374,9 @@
     "semantic_hash": ""
   },
   "src/backend/Triggers/triggerMethodHandlers.js": {
-    "mtime": 1795613740.4588544,
-    "seen": 1795619014.6454825,
-    "ast_hash": "bd3418cb5e6cd91dc17dc8fb788f9340",
+    "mtime": 1795634978.0983686,
+    "seen": 1795635157.0764976,
+    "ast_hash": "bdc68f4de15cb67ba0b8877c95c37eba",
     "semantic_hash": ""
   },
   "src/backend/Utils/00_ArrayUtils.js": {
@@ -1482,9 +1482,9 @@
     "semantic_hash": "fa6aaa164b87aa887584775f76457bf3"
   },
   "src/backend/Utils/ProgressTracker.js": {
-    "mtime": 1795614053.555101,
-    "seen": 1795619014.6455202,
-    "ast_hash": "555ca7d432195f7ae42ff7961adbf60c",
+    "mtime": 1795635064.063353,
+    "seen": 1795635157.0765352,
+    "ast_hash": "97dd71d8d224ffccca854f0f806c0fb8",
     "semantic_hash": ""
   },
   "src/backend/Utils/ScriptAppManager.js": {
@@ -9162,15 +9162,15 @@
     "semantic_hash": ""
   },
   "tests/triggers/triggerHandler.test.js": {
-    "mtime": 1795612290.82171,
-    "seen": 1795619014.6479466,
-    "ast_hash": "5a95563161b5a7c2ab0328344dae0547",
+    "mtime": 1795635438.6676142,
+    "seen": 1795635595.6859787,
+    "ast_hash": "e1cb411fa20f2535fcd70af214c073d0",
     "semantic_hash": ""
   },
   "tests/triggers/triggerMethodHandlers.test.js": {
-    "mtime": 1795612283.366631,
-    "seen": 1795619014.647948,
-    "ast_hash": "a15659fe8cb367134c40aceb49faec3e",
+    "mtime": 1795636158.5195856,
+    "seen": 1795636300.2010725,
+    "ast_hash": "fc909a2188edef3388f96e792da806f9",
     "semantic_hash": ""
   },
   "tests/utils/ablogger.test.js": {
@@ -9276,9 +9276,9 @@
     "semantic_hash": "878b9ab73a4b54ecbb22668662407569"
   },
   "tests/utils/progressTracker.test.js": {
-    "mtime": 1795614206.84369,
-    "seen": 1795619014.64798,
-    "ast_hash": "2efa8da999824aa91834ae381d48868d",
+    "mtime": 1795636313.941766,
+    "seen": 1795636373.7128077,
+    "ast_hash": "e28fc66d72a2ff527ea9e3dd476b5dda",
     "semantic_hash": ""
   },
   "tests/utils/scriptAppManager.test.js": {
@@ -9468,9 +9468,9 @@
     "semantic_hash": "580a29c9e1d183bf569ae48b1ef2de5f"
   },
   "ACTION_PLAN.md": {
-    "mtime": 1795633486.9347708,
-    "seen": 1795633498.2894728,
-    "ast_hash": "ccb7f652fdbaf06c656e5d6f3e8a8825",
+    "mtime": 1795633516.4850974,
+    "seen": 1795635157.079054,
+    "ast_hash": "5c627c3e77a0888a986950328d7f6a34",
     "semantic_hash": ""
   },
   "AGENTS.md": {
@@ -9666,9 +9666,9 @@
     "semantic_hash": "5b23aa6bd20ba8d728beab34f5d16d08"
   },
   "docs/developer/data-shapes/progress-tracker.md": {
-    "mtime": 1795626866.35927,
-    "seen": 1795631023.7362928,
-    "ast_hash": "e7c838ae4422e123468b8c406dc01fdb",
+    "mtime": 1795636299.6396518,
+    "seen": 1795636300.2012339,
+    "ast_hash": "fe066eae2f0b19f7b0fc4d2794b28b19",
     "semantic_hash": ""
   },
   "docs/developer/data-shapes/reference-data.md": {
@@ -10500,33 +10500,33 @@
     "semantic_hash": ""
   },
   "src/backend/Utils/01_ProgressTrackerStore.js": {
-    "mtime": 1795607466.3185916,
-    "seen": 1795609529.298974,
-    "ast_hash": "57db19494739b1e092e5454281cf9541",
+    "mtime": 1795636227.6940937,
+    "seen": 1795636300.1986444,
+    "ast_hash": "328d90199a4e1f922a5700373d66303c",
     "semantic_hash": ""
   },
   "src/backend/z_Api/progressTracker.js": {
-    "mtime": 1795610351.412278,
-    "seen": 1795611885.3901365,
-    "ast_hash": "7a45c8c2078dd8debd13571355b1eff1",
+    "mtime": 1795634667.9697828,
+    "seen": 1795635157.0766075,
+    "ast_hash": "7b43ceee7715a2713c044ffc8203eb08",
     "semantic_hash": ""
   },
   "tests/api/apiHandler/progressTrackerTransport.test.js": {
-    "mtime": 1795609839.2472637,
-    "seen": 1795611885.3918266,
-    "ast_hash": "6ca3f09c45f7d8898d4703f8b677224f",
+    "mtime": 1795635366.120792,
+    "seen": 1795635595.685299,
+    "ast_hash": "5233ab5a6ad99f4ae7dcd543881cef6c",
     "semantic_hash": ""
   },
   "src/backend/Utils/02_ProgressTrackerCleanup.js": {
-    "mtime": 1795615151.4814768,
-    "seen": 1795619014.6454914,
-    "ast_hash": "ce77db825c7b978da87fac99334cc5f9",
+    "mtime": 1795634643.332495,
+    "seen": 1795635157.0765064,
+    "ast_hash": "e8408ad4b07ed104b0951d7ca8a6ad4a",
     "semantic_hash": ""
   },
   "tests/utils/progressTrackerCleanup.test.js": {
-    "mtime": 1795612987.5310287,
-    "seen": 1795619014.647982,
-    "ast_hash": "9965e4502b98ac61f8783fd17373a38a",
+    "mtime": 1795636209.4649568,
+    "seen": 1795636300.2011104,
+    "ast_hash": "5e6e2a7d8e145e9b3b79fe959da35328",
     "semantic_hash": ""
   },
   "package-lock.json": {

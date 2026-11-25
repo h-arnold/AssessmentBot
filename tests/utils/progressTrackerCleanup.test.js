@@ -1,11 +1,19 @@
 /**
- * RED-phase tests for the deferred cleanup coordinator.
+ * Unit tests for the deferred cleanup coordinator (ProgressTrackerCleanup).
  *
- * The coordinator is reached through the `globalThis.ProgressTrackerCleanup`
- * seam (schedule/sweep/rearm) so this file collects cleanly while implementation
- * is pending. Every assertion below describes required behaviour and fails while
- * the seam is a no-op, except the non-terminal legacy guard, which passes in RED
- * by design. The green phase loads the real coordinator at that global.
+ * Both entry points are reached through the `globalThis.ProgressTrackerCleanup`
+ * seam (schedule/sweep/rearm) loaded by tests/setupGlobals.js in GAS
+ * concatenation order. The suite covers the coordinator contract:
+ *   - `schedule()` dedupes pending cleanups per user: one time-based trigger on
+ *     the first write, cache-flag repopulation from the durable marker on a
+ *     cache miss, no duplicate trigger on later writes, no marker or cache flag
+ *     left behind when trigger creation fails so a later write can retry, and
+ *     a warning with no trigger when the user lock cannot be acquired.
+ *   - `sweep()` deletes only terminal records (completed or errored, keyed and
+ *     legacy), keeps in-flight records and malformed values untouched, clears
+ *     the marker and cache flag on every path, re-arms exactly one trigger only
+ *     after a successful sweep that observes an in-flight record, and rethrows
+ *     a sweep failure without re-arming.
  *
  * Property and cache state use the in-memory mocks from tests/setupGlobals.js;
  * no canonical analysis fixture applies to transient progress state.
@@ -39,10 +47,6 @@ function cleanupTriggerDateScheduledFrom(nowMs) {
   };
 }
 
-function keyFor(requestId) {
-  return requestId ? `ProgressTracker${requestId}` : 'ProgressTracker';
-}
-
 function record(requestId, overrides = {}) {
   return {
     step: 1,
@@ -57,7 +61,7 @@ function record(requestId, overrides = {}) {
 
 function writeRecord(requestId, overrides) {
   globalThis.PropertiesService.getUserProperties().setProperty(
-    keyFor(requestId),
+    globalThis.ProgressTrackerStore.keyFor(requestId),
     JSON.stringify(record(requestId, overrides))
   );
 }
@@ -211,25 +215,33 @@ describe('ProgressTrackerCleanup', () => {
       writeRecord('terminal-completed', { completed: true });
       writeRecord('terminal-error', { error: 'Run failed' });
       writeRecord('still-running', { completed: false, error: null });
-      writeRaw('ProgressTracker', JSON.stringify(record(null, { completed: true })));
+      writeRaw(
+        globalThis.ProgressTrackerStore.keyFor(null),
+        JSON.stringify(record(null, { completed: true }))
+      );
       seedMarker('cleanup-uid-1');
 
       globalThis.ProgressTrackerCleanup.sweep();
 
-      expect(readRaw(keyFor('terminal-completed'))).toBeNull();
-      expect(readRaw(keyFor('terminal-error'))).toBeNull();
-      expect(readRaw('ProgressTracker')).toBeNull();
-      expect(readRaw(keyFor('still-running'))).not.toBeNull();
+      expect(readRaw(globalThis.ProgressTrackerStore.keyFor('terminal-completed'))).toBeNull();
+      expect(readRaw(globalThis.ProgressTrackerStore.keyFor('terminal-error'))).toBeNull();
+      expect(readRaw(globalThis.ProgressTrackerStore.keyFor(null))).toBeNull();
+      expect(readRaw(globalThis.ProgressTrackerStore.keyFor('still-running'))).not.toBeNull();
     });
 
     it('keeps a non-terminal legacy record', () => {
-      writeRaw('ProgressTracker', JSON.stringify(record(null, { completed: false, error: null })));
+      writeRaw(
+        globalThis.ProgressTrackerStore.keyFor(null),
+        JSON.stringify(record(null, { completed: false, error: null }))
+      );
       seedMarker('cleanup-uid-1');
 
       globalThis.ProgressTrackerCleanup.sweep();
 
-      expect(readRaw('ProgressTracker')).not.toBeNull();
-      expect(JSON.parse(readRaw('ProgressTracker')).completed).toBe(false);
+      expect(readRaw(globalThis.ProgressTrackerStore.keyFor(null))).not.toBeNull();
+      expect(JSON.parse(readRaw(globalThis.ProgressTrackerStore.keyFor(null))).completed).toBe(
+        false
+      );
     });
 
     it('re-arms exactly one trigger and rewrites the marker and cache flag when a non-terminal record survives', () => {
@@ -271,7 +283,7 @@ describe('ProgressTrackerCleanup', () => {
         getProperties: () => realProperties.getProperties(),
         setProperty: (key, value) => realProperties.setProperty(key, value),
         deleteProperty: (key) => {
-          if (key === keyFor('failing-record')) {
+          if (key === globalThis.ProgressTrackerStore.keyFor('failing-record')) {
             throw new Error('user property delete failed');
           }
           realProperties.deleteProperty(key);
@@ -294,14 +306,14 @@ describe('ProgressTrackerCleanup', () => {
     });
 
     it('logs and skips a malformed keyed value while still deleting valid terminal records', () => {
-      const malformedKey = keyFor('malformed');
+      const malformedKey = globalThis.ProgressTrackerStore.keyFor('malformed');
       writeRaw(malformedKey, 'not-json{{{');
       writeRecord('terminal-valid', { completed: true });
       seedMarker('cleanup-uid-1');
 
       expect(() => globalThis.ProgressTrackerCleanup.sweep()).not.toThrow();
 
-      expect(readRaw(keyFor('terminal-valid'))).toBeNull();
+      expect(readRaw(globalThis.ProgressTrackerStore.keyFor('terminal-valid'))).toBeNull();
       expect(readRaw(malformedKey)).toBe('not-json{{{');
       expect(mockABLogger.warn).toHaveBeenCalled();
     });

@@ -1,11 +1,9 @@
 /**
- * Unit tests for ProgressTracker.
- *
- * Uses the real ProgressTracker module with PropertiesService mocked
- * via setupGlobals.js (in-memory store). The ABLogger global mock
- * prevents spurious console output.
+ * Tests for the ProgressTracker facade and the ProgressTrackerStore helper
+ * namespace: real modules, in-memory PropertiesService mock, ABLogger spy seam.
  */
 const ProgressTracker = require('#backend/Utils/ProgressTracker.js');
+const ProgressTrackerStore = require('#backend/Utils/01_ProgressTrackerStore.js');
 const { withGlobalMocks } = require('../helpers/globalMockManager.js');
 
 /**
@@ -418,5 +416,84 @@ describe('ProgressTracker', () => {
 
       expect(mockABLogger.error).toHaveBeenCalledWith('Developer details:', 'connection refused');
     });
+  });
+});
+
+describe('ProgressTrackerStore.parse', () => {
+  let mockABLogger, restoreGlobals;
+
+  beforeEach(() => {
+    mockABLogger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      log: vi.fn(),
+      debugUi: vi.fn(),
+    };
+    const mockContext = withGlobalMocks({ ABLogger: () => ({ getInstance: () => mockABLogger }) });
+    restoreGlobals = mockContext.restore;
+  });
+
+  afterEach(() => {
+    restoreGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('returns the stored record for valid JSON', () => {
+    const record = {
+      requestId: 'req-parse',
+      step: 2,
+      message: 'Marking task 2 of 3',
+      completed: false,
+      error: null,
+      timestamp: '2026-01-01T09:00:00.000Z',
+    };
+    const key = ProgressTrackerStore.keyFor(record.requestId);
+
+    expect(ProgressTrackerStore.parse(JSON.stringify(record), key)).toEqual(record);
+    expect(mockABLogger.warn).not.toHaveBeenCalled();
+  });
+
+  it('returns null and warns once for a malformed value without throwing', () => {
+    const key = ProgressTrackerStore.keyFor('req-malformed');
+
+    let parsed;
+    expect(() => {
+      parsed = ProgressTrackerStore.parse('{not-valid-json', key);
+    }).not.toThrow();
+
+    expect(parsed).toBeNull();
+    expect(mockABLogger.warn).toHaveBeenCalledTimes(1);
+    expect(mockABLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('malformed progress record'),
+      expect.objectContaining({ key })
+    );
+  });
+
+  it('returns null without a warning when no value is stored', () => {
+    const key = ProgressTrackerStore.keyFor('req-missing');
+
+    expect(ProgressTrackerStore.parse(null, key)).toBeNull();
+    expect(mockABLogger.warn).not.toHaveBeenCalled();
+  });
+
+  it('warns and returns null for a stored JSON null while leaving the stored value intact', () => {
+    const key = ProgressTrackerStore.keyFor('req-null-literal');
+    globalThis.PropertiesService.getUserProperties().setProperty(key, 'null');
+    const rawBefore = globalThis.PropertiesService.getUserProperties().getProperty(key);
+
+    let parsed;
+    expect(() => {
+      parsed = ProgressTrackerStore.parse(rawBefore, key);
+    }).not.toThrow();
+
+    expect(parsed).toBeNull();
+    expect(mockABLogger.warn).toHaveBeenCalledTimes(1);
+    expect(mockABLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('malformed progress record'),
+      expect.objectContaining({ key })
+    );
+    expect(globalThis.PropertiesService.getUserProperties().getProperty(key)).toBe(rawBefore);
   });
 });

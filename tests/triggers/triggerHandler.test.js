@@ -1,8 +1,7 @@
 /**
- * Tests for the triggerHandler entrypoint (ACTION_PLAN Section 2).
+ * Tests for the `triggerHandler` GAS entry point (src/backend/Triggers/triggerHandler.js).
  *
- * src/backend/Triggers/triggerHandler.js has been delivered (green phase complete); the
- * top-level require below loads the production module.
+ * The top-level require below loads the production module directly.
  *
  * Contract under test:
  *   triggerHandler(event) validates the event first (missing/malformed event,
@@ -76,7 +75,7 @@ const authRevision = { value: '' };
 // false for a configured install and irrelevant for the never-claim rows.
 const isFresh = { value: false };
 
-// Module under test — created in the green phase (ACTION_PLAN Section 2).
+// Module under test: the public GAS entry point dispatched by time-based triggers.
 const { triggerHandler } = require('#backend/Triggers/triggerHandler.js');
 
 describe('triggerHandler', () => {

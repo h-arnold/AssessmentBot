@@ -1,15 +1,15 @@
 /**
- * Tests for the TRIGGER_METHOD_HANDLERS registry (ACTION_PLAN Section 8).
+ * Tests for the `TRIGGER_METHOD_HANDLERS` registry.
  *
- * src/backend/Triggers/triggerMethodHandlers.js has been delivered (green phase complete); the
- * top-level require below loads the production module.
+ * The top-level require below loads the production module directly.
  *
  * Contract under test: the registry follows the SPEC form exactly —
  * processSelectedAssignment: (params) => new AssignmentController()
  * .processSelectedAssignment(params) — each entry is an anonymous arrow
- * function inside a const object literal. There must be NO top-level function
- * declarations in the file, otherwise the §7 global-exposure guard scan
- * (globalExposure.test.js) flags it.
+ * function inside a const object literal. There must be no top-level function
+ * declarations in the file: the static exposure guard (globalExposure.test.js)
+ * flags them because GAS would expose any top-level function without a
+ * trailing underscore as a callable google.script.run global.
  *
  * AssignmentController is a GAS global constructor, mocked here with a
  * constructable vi.fn (arrow functions cannot be invoked with `new`). The mock
@@ -23,7 +23,7 @@ import { withGlobalMocks } from '../helpers/globalMockManager.js';
 
 const mockAssignmentController = { processSelectedAssignment: vi.fn() };
 
-// Module under test — created in the green phase (ACTION_PLAN Section 8).
+// Module under test: the registry that triggerHandler dispatches trigger contexts through.
 const { TRIGGER_METHOD_HANDLERS } = require('#backend/Triggers/triggerMethodHandlers.js');
 
 describe('TRIGGER_METHOD_HANDLERS', () => {

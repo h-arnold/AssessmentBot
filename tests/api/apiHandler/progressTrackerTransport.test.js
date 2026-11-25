@@ -2,33 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { setupApiHandlerTestContext, teardownApiHandlerTestContext } = require('./shared.js');
 
-const PROGRESS_TRACKER_TRANSPORT_PATH = '../../../src/backend/z_Api/progressTracker.js';
-
 /**
- * Loads the getProgress transport helper from its production module.
+ * Loads the getProgress transport handler from its production module.
  *
- * The module is added in the implementation phase, so a missing file is surfaced
- * as a failed assertion here rather than as a collection error. Once the module
- * exists, the same call returns the real trailing-underscore handler.
+ * The handler takes no parameters and defines the read side of progress
+ * polling: it returns `{ tasks }` holding every keyed record sorted by
+ * timestamp then requestId, skips malformed values with a warning, excludes
+ * the legacy unkeyed record, and propagates property-store read failures to
+ * the apiHandler error boundary.
  *
  * @returns {Function} The getProgress_ handler.
  */
 function loadGetProgressHandler() {
-  let resolvedPath;
-  try {
-    resolvedPath = require.resolve(PROGRESS_TRACKER_TRANSPORT_PATH);
-  } catch (error) {
-    if (error?.code === 'MODULE_NOT_FOUND') {
-      expect(
-        null,
-        'getProgress transport module must exist at src/backend/z_Api/progressTracker.js'
-      ).not.toBeNull();
-    }
-    throw error;
-  }
-
-  delete require.cache[resolvedPath];
-  const transport = require(resolvedPath);
+  const transport = require('#backend/z_Api/progressTracker.js');
   expect(transport.getProgress_, 'getProgress_ must be exported for Node tests').toBeTypeOf(
     'function'
   );

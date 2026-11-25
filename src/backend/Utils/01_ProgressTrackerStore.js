@@ -2,9 +2,9 @@
  * ProgressTrackerStore - keyed User Property access for progress records.
  *
  * Owns key derivation and serialisation so the facade only decides which run
- * is active. A missing request ID selects the legacy unkeyed record. This
- * module does not inspect malformed values: aggregation and cleanup own that
- * decision.
+ * is active. A missing request ID selects the legacy unkeyed record. The
+ * `parse` helper restores stored values and warns on bad values (invalid JSON or the JSON literal null); its
+ * callers keep their own field-level checks.
  *
  * @namespace
  */
@@ -57,8 +57,9 @@ const ProgressTrackerStore = {
   },
 
   /**
-   * Lists raw values for all keyed records, excluding the legacy unkeyed record.
-   * Callers own parsing and malformed-record handling; this helper only filters keys.
+   * Lists raw entries for all keyed records, excluding the legacy unkeyed record.
+   * Callers parse each entry with parse() and keep their own field-level
+   * checks; this helper only filters keys.
    * @param {GoogleAppsScript.Properties.Properties} properties - User Property store supplied by the facade.
    * @returns {Array<{key: string, value: string}>} Keyed property entries as stored.
    */
@@ -71,6 +72,50 @@ const ProgressTrackerStore = {
       }
     }
     return entries;
+  },
+
+  /**
+   * Parses a stored value into a progress record.
+   *
+   * Returns null silently when the value is absent (raw is null; no warning
+   * is logged). Otherwise, warns once via ABLogger (with the key for
+   * context) and returns null when the value is not valid JSON or is the
+   * JSON literal null - which JSON.parse parses successfully, so it must
+   * not slip through silently. Callers keep their own field-level checks
+   * (record shape, requestId presence) and decide how to treat a null result. Unlike read(),
+   * which fails loudly on a malformed value read for an active run, this
+   * helper supports readAll() consumers sweeping many records, where one
+   * corrupt value must not abort the loop.
+   *
+   * @param {string|null} raw - Raw stored value; null when the key is absent.
+   * @param {string} key - Property key, for the warning context.
+   * @returns {Object|null} The parsed value, or null when the key is absent, the JSON is malformed or the value is JSON null.
+   */
+  parse(raw, key) {
+    if (raw === null) {
+      return null;
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      ABLogger.getInstance().warn(
+        'Skipping malformed progress record: the stored value is not valid JSON.',
+        {
+          key,
+          error,
+        }
+      );
+      return null;
+    }
+    if (parsed === null) {
+      ABLogger.getInstance().warn(
+        'Skipping malformed progress record: the stored value is JSON null.',
+        { key }
+      );
+      return null;
+    }
+    return parsed;
   },
 };
 

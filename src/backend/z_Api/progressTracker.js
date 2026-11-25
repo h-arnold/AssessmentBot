@@ -20,16 +20,12 @@ function getProgress_() {
   const tasks = [];
 
   for (const { key, value } of entries) {
-    let record;
-    try {
-      record = JSON.parse(value);
-    } catch (error) {
-      ABLogger.getInstance().warn('Skipping malformed keyed progress record.', { key, error });
-      continue;
-    }
+    // parse() warns and returns null for malformed JSON, so a corrupt entry
+    // is skipped with one warning instead of failing the whole request.
+    const record = ProgressTrackerStore.parse(value, key);
+    if (record === null) continue;
 
     if (
-      !record ||
       typeof record !== 'object' ||
       typeof record.requestId !== 'string' ||
       record.requestId.length === 0

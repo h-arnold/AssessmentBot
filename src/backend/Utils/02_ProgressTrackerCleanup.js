@@ -32,29 +32,13 @@ const TRIGGER_ENTRYPOINT = 'triggerHandler';
 const CLEANUP_METHOD = 'cleanupProgress';
 
 /**
- * Parses a stored progress record, logging and skipping malformed values.
+ * Stores the pending-cleanup flag in the per-user cache.
  *
- * @param {string} key - User Property key holding the record.
- * @param {string|null} raw - Raw stored value.
- * @returns {Object|null} The parsed record, or null when it is malformed.
+ * @param {CacheManager} cache - Cache manager wrapping the per-user cache.
+ * @returns {void}
  */
-const parseStoredRecord = (key, raw) => {
-  if (raw === null) return null;
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (error) {
-    ABLogger.getInstance().warn('Skipping malformed progress record during cleanup.', {
-      key,
-      error,
-    });
-    return null;
-  }
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    ABLogger.getInstance().warn('Skipping malformed progress record during cleanup.', { key });
-    return null;
-  }
-  return parsed;
+const markPending = (cache) => {
+  cache.put(CLEANUP_FLAG_KEY, CLEANUP_FLAG_VALUE, CLEANUP_FLAG_TTL_SECONDS);
 };
 
 /**
@@ -81,7 +65,7 @@ const ProgressTrackerCleanup = {
     if (cache.get(CLEANUP_FLAG_KEY) !== null) return;
 
     if (properties.getProperty(CLEANUP_MARKER_KEY) !== null) {
-      cache.put(CLEANUP_FLAG_KEY, CLEANUP_FLAG_VALUE, CLEANUP_FLAG_TTL_SECONDS);
+      markPending(cache);
       return;
     }
 
@@ -94,7 +78,7 @@ const ProgressTrackerCleanup = {
     try {
       if (cache.get(CLEANUP_FLAG_KEY) !== null) return;
       if (properties.getProperty(CLEANUP_MARKER_KEY) !== null) {
-        cache.put(CLEANUP_FLAG_KEY, CLEANUP_FLAG_VALUE, CLEANUP_FLAG_TTL_SECONDS);
+        markPending(cache);
         return;
       }
       this.rearm();
@@ -117,22 +101,28 @@ const ProgressTrackerCleanup = {
     let hasInFlightRecord = false;
 
     try {
-      const entries = ProgressTrackerStore.readAll(properties);
+      // The legacy unkeyed record joins the keyed entries as a synthetic final
+      // entry so both key forms share the same terminal/in-flight handling.
+      const legacyKey = ProgressTrackerStore.LEGACY_KEY;
+      const entries = [
+        ...ProgressTrackerStore.readAll(properties),
+        { key: legacyKey, value: properties.getProperty(legacyKey) },
+      ];
+
       for (const entry of entries) {
-        const record = parseStoredRecord(entry.key, entry.value);
+        const record = ProgressTrackerStore.parse(entry.value, entry.key);
         if (record === null) continue;
+        if (typeof record !== 'object' || Array.isArray(record)) {
+          ABLogger.getInstance().warn(
+            'Skipping progress record that is not an object; it is left untouched.',
+            {
+              key: entry.key,
+            }
+          );
+          continue;
+        }
         if (isTerminalRecord(record)) {
           properties.deleteProperty(entry.key);
-        } else {
-          hasInFlightRecord = true;
-        }
-      }
-
-      const legacyKey = ProgressTrackerStore.LEGACY_KEY;
-      const legacy = parseStoredRecord(legacyKey, properties.getProperty(legacyKey));
-      if (legacy !== null) {
-        if (isTerminalRecord(legacy)) {
-          properties.deleteProperty(legacyKey);
         } else {
           hasInFlightRecord = true;
         }
@@ -173,7 +163,7 @@ const ProgressTrackerCleanup = {
     const properties = GASPropertiesUtils.getUserProperties();
     const cache = new CacheManager(CacheService.getUserCache());
     properties.setProperty(CLEANUP_MARKER_KEY, triggerUid);
-    cache.put(CLEANUP_FLAG_KEY, CLEANUP_FLAG_VALUE, CLEANUP_FLAG_TTL_SECONDS);
+    markPending(cache);
     return triggerUid;
   },
 };

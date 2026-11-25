@@ -764,6 +764,53 @@ UI concept.
 
 ---
 
+## Post-implementation passes
+
+### De-Sloppification pass (§5.1) — completed
+
+The pass inspected the full delivered change surface (backend ProgressTracker stack,
+`z_Api` handlers, triggers, `CacheManager`, frontend `assignmentAssessment` services, and
+their tests). Outcome: no blocking slop; six in-scope fixes applied and reviewed to clean
+(three review rounds; final verdict PASS, no outstanding findings):
+
+- **C1** — unreachable fallback branch and duplicated regex extraction removed from
+  `getStepAsNumber()` (`src/backend/Utils/ProgressTracker.js`).
+- **I1** — shared `ProgressTrackerStore.parse(raw, key)` helper added to
+  `src/backend/Utils/01_ProgressTrackerStore.js` (parse-or-null, one ABLogger warn for
+  malformed JSON _and_ for a present value that parses to JSON `null`; silent null for an
+  absent key) and reused by both `readAll()` consumers; each caller keeps its field-level
+  checks. A focused test block covers `parse` in `tests/utils/progressTracker.test.js`.
+- **I2** — `startTracking()` sets `this.step = 0` directly instead of the redundant
+  `resetSteps()` read+write; `resetSteps()` kept (test-pinned public method).
+- **I3** — private `_record(fields, current = {})` builder replaces five record literals.
+  Deviation from the delegated `(message, overrides)` signature: `(fields, current)` was
+  required so fresh-record paths do not merge stored fields and stored-field writes keep
+  their exact field sets; records are semantically identical (key order differs; every
+  consumer JSON.parses).
+- **N1** — `cleanupProgress` registration no longer passes an argument `sweep()` ignores.
+- **N2** — `markPending(cache)` helper replaces three identical cache-flag puts; the
+  legacy-key sweep folded into the main loop as a synthetic entry; intentional
+  double-checked-locking checks kept.
+- **N3-N5** — dead RED-phase transport-test scaffolding removed (with `#backend` alias
+  migration in the touched file), stale TDD-phase test headers rewritten to describe the
+  contracts, local `keyFor()` duplicate replaced with the shared global helper.
+- **Docs (same-change obligation)** — `docs/developer/data-shapes/progress-tracker.md`
+  updated: callers parse via `ProgressTrackerStore.parse()` and keep field-level checks;
+  shared-helper table row now enumerates `parse`. Drift note recorded for
+  §5.2: `docs/developer/backend/api-layer.md` `getProgress` entry could mention the
+  `parse()` step (optional precision; no false claim).
+
+Review evidence: `.opencode/scratchpad/review-desloppification-5-1{,-round2,-round3}.md`.
+No deferred out-of-scope findings were used as cleanup targets. Final comparison against
+the baseline: required (files changed) — PASSED, run at 2026-11-25 (session
+`progresstracker-api-polling`), Overall Status GREEN, 8/8 checks passing, 0 regressions,
+0 new failures, 0 fixes; report under
+`.ts-regression-checker/reports/session-progresstracker-api-polling/`. The branch is clean
+against the baseline and ready for the Final Documentation Pass. Cleanup commit recorded
+below.
+
+---
+
 ## Deferred and Out-of-Scope Findings
 
 | Finding                                   | Severity | Scope rationale                                      | Evidence                                                   | Disposition | User decision                         |

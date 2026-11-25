@@ -68,14 +68,12 @@ class ProgressTracker extends BaseSingleton {
   startTracking(requestId = null) {
     this.ensureInitialized();
     this.activeRequestId = requestId;
-    this.resetSteps();
-    const initialData = {
-      step: this.step,
+    this.step = 0;
+    const initialData = this._record({
       message: 'Starting the assessment. This may take up to a minute...',
       completed: false,
       error: null,
-      timestamp: new Date().toISOString(),
-    };
+    });
     ProgressTrackerStore.write(this.properties, this.activeRequestId, initialData);
     ABLogger.getInstance().info('Progress tracking started.');
     globalThis.ProgressTrackerCleanup.schedule(this.properties);
@@ -93,13 +91,7 @@ class ProgressTracker extends BaseSingleton {
       this.incrementStep();
     }
 
-    const updatedData = {
-      step: this.step,
-      message: message,
-      completed: false,
-      error: null,
-      timestamp: new Date().toISOString(),
-    };
+    const updatedData = this._record({ message, completed: false, error: null });
     ProgressTrackerStore.write(this.properties, this.activeRequestId, updatedData);
     ABLogger.getInstance().info(`Progress updated: Step ${this.step} - ${message}`);
     globalThis.ProgressTrackerCleanup.schedule(this.properties);
@@ -118,11 +110,7 @@ class ProgressTracker extends BaseSingleton {
   resetSteps() {
     this.step = 0;
     const currentData = this.getCurrentProgress() || {};
-    const updatedData = {
-      ...currentData,
-      step: this.step,
-      timestamp: new Date().toISOString(),
-    };
+    const updatedData = this._record({}, currentData);
     ProgressTrackerStore.write(this.properties, this.activeRequestId, updatedData);
     ABLogger.getInstance().info('Steps reset to 0.');
   }
@@ -133,13 +121,10 @@ class ProgressTracker extends BaseSingleton {
   complete() {
     this.ensureInitialized();
     const currentData = this.getCurrentProgress() || {};
-    const updatedData = {
-      ...currentData,
-      step: this.step,
-      completed: true,
-      message: 'Task completed successfully.',
-      timestamp: new Date().toISOString(),
-    };
+    const updatedData = this._record(
+      { completed: true, message: 'Task completed successfully.' },
+      currentData
+    );
     // Write while the context is still bound, then release it. Clearing first
     // would strand this terminal record under the legacy key.
     ProgressTrackerStore.write(this.properties, this.activeRequestId, updatedData);
@@ -161,13 +146,10 @@ class ProgressTracker extends BaseSingleton {
   logError(errorMessage, extraErrorDetails, options) {
     this.ensureInitialized();
     const currentData = this.getCurrentProgress() || {};
-    const updatedData = {
-      ...currentData,
-      step: this.step,
-      error: errorMessage, // This is what users will see in the UI
-      message: 'An error occurred.',
-      timestamp: new Date().toISOString(),
-    };
+    const updatedData = this._record(
+      { error: errorMessage, message: 'An error occurred.' },
+      currentData
+    );
     ProgressTrackerStore.write(this.properties, this.activeRequestId, updatedData);
     ABLogger.getInstance().error('ProgressTracker logged a user-facing error.', {
       errorMessage,
@@ -271,6 +253,28 @@ class ProgressTracker extends BaseSingleton {
   }
 
   /**
+   * Builds the record to persist for the current step.
+   *
+   * The caller's fields are merged over the stored record when one is passed,
+   * then the in-memory step counter and a fresh timestamp are stamped on top.
+   * The write paths that keep stored fields (reset, complete, error) pass the
+   * record they read; the fresh-record paths (start, update) omit it.
+   *
+   * @private
+   * @param {Object} fields - The fields this write sets.
+   * @param {Object} [current] - The stored record to merge underneath.
+   * @returns {Object} The record ready to persist.
+   */
+  _record(fields, current = {}) {
+    return {
+      ...current,
+      ...fields,
+      step: this.step,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  /**
    * Retrieves the current progress data.
    *
    * @returns {Object|null} The current progress data or null if not found.
@@ -306,38 +310,26 @@ class ProgressTracker extends BaseSingleton {
   }
 
   /**
-   * Extracts and returns the step number as an integer.
-   * If the step contains text and numbers, it parses and extracts the number.
+   * Returns the current step number.
    *
-   * @returns {number|null} The extracted step number or null if not found.
+   * With an active run context, this reads the step value from the bound
+   * record, returning null when the record or its step is missing. Otherwise,
+   * this returns the in-memory step counter.
+   *
+   * @returns {number|null} The current step number or null.
    */
   getStepAsNumber() {
     if (this.activeRequestId) {
-      const progress = this.getCurrentProgress();
-      const step = progress?.step;
+      const step = this.getCurrentProgress()?.step;
+
       if (step === undefined || step === null) {
-        ABLogger.getInstance().info('No step data available.');
         return null;
       }
-      const numberMatch = step.toString().match(/\d+/u);
-      return numberMatch ? Number.parseInt(numberMatch[0], 10) : null;
+
+      return typeof step === 'number' ? step : Number.parseInt(step, 10);
     }
 
-    // First check if we have it locally
-    if (this.step !== undefined) {
-      return typeof this.step === 'number' ? this.step : Number.parseInt(this.step.toString(), 10);
-    }
-
-    // Fall back to getting it from stored progress
-    const progress = this.getCurrentProgress();
-    if (!progress?.step) {
-      ABLogger.getInstance().info('No step data available.');
-      return null;
-    }
-
-    const step = progress.step;
-    const numberMatch = step.toString().match(/\d+/u); // Extract the first number in the string
-    return numberMatch ? Number.parseInt(numberMatch[0], 10) : null;
+    return this.step;
   }
 
   /**

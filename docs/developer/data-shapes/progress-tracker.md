@@ -67,8 +67,9 @@ treated as in flight.
   error writes call `ProgressTrackerCleanup.schedule()`; `deferCleanup: true` skips it for callers
   that already own cleanup and must not schedule another pass. `captureError` passes no options and
   uses the default.
-- `ProgressTrackerStore.readAll()` returns raw keyed entries only. Callers own parsing and
-  malformed-record handling.
+- `ProgressTrackerStore.readAll()` returns raw keyed entries. Callers parse each entry with
+  `ProgressTrackerStore.parse()`, which returns null for absent or malformed values and warns on
+  malformed JSON; callers keep their own field-level checks (record shape, `requestId` presence).
 
 ### Cleanup behaviour
 
@@ -152,7 +153,7 @@ see [assignment.md § `startAssessmentRun`](assignment.md#startassessmentrun-wri
 
 | Helper                                                                          | Decision | Owning path                                      | Rationale                                                                    | Status         |
 | ------------------------------------------------------------------------------- | -------- | ------------------------------------------------ | ---------------------------------------------------------------------------- | -------------- |
-| Keyed property access (`readAll`, `write`, `delete`)                            | `new`    | `src/backend/Utils/01_ProgressTrackerStore.js`   | Isolates key derivation, parsing and legacy fallback filtering.              | `Implemented`  |
+| Keyed property access (`readAll`, `write`, `delete`, `parse`)                   | `new`    | `src/backend/Utils/01_ProgressTrackerStore.js`   | Isolates key derivation, parsing and legacy fallback filtering.              | `Implemented`  |
 | Cleanup coordinator (`schedule`, `sweep`, `rearm`)                              | `new`    | `src/backend/Utils/02_ProgressTrackerCleanup.js` | Owns cache/marker dedupe and terminal-only deletion.                         | `Implemented`  |
 | `ApiRequestContext` (`set`, `get`, `resetForTests`)                             | `new`    | `src/backend/z_Api/z_apiHandler.js`              | Exposes the dispatch ID to handlers without changing all handler signatures. | `Implemented`  |
 | `CacheManager` with supplied cache + `remove(key)`                              | `extend` | `src/backend/RequestHandlers/CacheManager.js`    | Supports user cache and clears the pending-cleanup flag after each run.      | `Implemented`  |
