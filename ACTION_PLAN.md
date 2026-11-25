@@ -2,8 +2,10 @@
 
 ## Delivery status
 
-- Current section: Section 1 complete; next up is Section 2 — Keyed ProgressTracker store and active run context.
-- Current phase: Section 2 Red loop (tests) — not started.
+- Current section: Section 2 — Keyed ProgressTracker store and active run context (complete, pending
+  gate and commit).
+- Current phase: Section 2 docs sync + plan compaction in parallel; RED and GREEN loops both PASSED
+  review with no findings.
 - Branch: `feat/progress-tracker-api-polling`.
 - Regression session ID: `progresstracker-api-polling`.
 - Baseline gate: PASSED — 2026-11-25T10:23:32.661Z, `baseline/baseline.txt`, Overall Status GREEN,
@@ -200,128 +202,96 @@ runs` — on branch `feat/progress-tracker-api-polling`, pushed successfully to
 
 ## Section 2 — Keyed ProgressTracker store and active run context
 
-### Objective
+### Outcome (compacted)
 
-Replace the single progress property with per-run keyed records, add an active run context so
-existing call sites need no signature changes, and split the facade so keyed persistence and cleanup
-scheduling have distinct owners and test surfaces. The split is a cohesion decision, not a line-count
-obligation.
-
-### Constraints
-
-- `startTracking(requestId?)` binds the active context; no argument selects the legacy key.
-- `complete()` writes the terminal record through the bound context and only then clears it; clearing first would strand a non-terminal keyed record.
-- With an active context, `getCurrentProgress()`, `getStatus()` and `getStepAsNumber()` read the
-  keyed record; with none they read the legacy record.
-- Preserve `getInstance()`, `resetForTests()` (which also clears the active context),
-  `getCurrentProgress()`, `getStatus()`, `getStepAsNumber()` and the lazy `ensureInitialized()`
-  boundary.
-- Extend `logError()` and `logAndThrowError()` with an optional options object carrying
-  `deferCleanup`; when true, the error write must not invoke the cleanup scheduler. Default
-  behaviour stays unchanged for existing callers. `captureError()` is unchanged.
-- Use `GASPropertiesUtils` for property access; do not set `FREEZE_AFTER_INIT`.
-- LOC: `ProgressTracker.js` 339 → ~330 after extraction; new `01_ProgressTrackerStore.js` ~120;
-  `tests/utils/progressTracker.test.js` 216 → ~350. All below 500.
-- New store helper loads before the facade via its `01_` prefix.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- @SPEC.md
-- @docs/developer/backend/backend-testing.md
-- @tests/utils/progressTracker.test.js
-- @tests/setupGlobals.js
-
-Implementation mandatory docs:
-
-- @SPEC.md
-- @docs/developer/backend/singletons.md
-- @docs/developer/backend/backend-logging-and-error-handling.md
-- @src/backend/Utils/ProgressTracker.js
-- @src/backend/00_BaseSingleton.js
-- @src/backend/Utils/00_GASPropertiesUtils.js
-
-Code Reviewer mandatory docs:
-
-- @SPEC.md
-- @docs/developer/backend/singletons.md
-
-### Shared helper plan
-
-1. Helper: keyed property access (`readAll`, `write`, `delete`, key derivation)
-   - Decision: `new`
-   - Owning module/path: `src/backend/Utils/01_ProgressTrackerStore.js`
-   - Call-site rationale: isolates key derivation, parsing and legacy filtering from the facade.
-   - Canonical doc target: `docs/developer/data-shapes/progress-tracker.md`
-   - Planned doc status: `Not implemented`
-2. Helper: `GASPropertiesUtils`
-   - Decision: `reuse`
-   - Owning module/path: `src/backend/Utils/00_GASPropertiesUtils.js`
-   - Call-site rationale: canonical PropertiesService entry point.
-
-### Data-shape plan
-
-- Create/confirm the planned record shape in `docs/developer/data-shapes/progress-tracker.md`;
-  remove its persistence and record-shape `Not implemented` markers once verified.
-- Reference: @docs/developer/data-shapes/progress-tracker.md
-
-### Acceptance criteria
-
-- Two runs with different `requestId` values produce two independent User Property records.
-- A write after `startTracking(id)` updates only `ProgressTracker<id>`.
-- `getCurrentProgress()` and `getStatus()` read the bound record while a context is active and the
-  legacy record otherwise.
-- `resetForTests()` clears the active context and singleton cache.
-- Malformed-record handling belongs to the `getProgress_` aggregation in Section 3 and the cleanup
-  sweep in Section 4, not to the keyed store.
-
-### Required test cases (Red first)
-
-Backend model tests:
-
-1. `startTracking('req-a')` writes `ProgressTrackerreq-a` with step 0 and the initial message.
-2. `startTracking()` with no ID writes the legacy `ProgressTracker` key.
-3. `updateProgress()` after binding does not modify another run's record.
-4. `getCurrentProgress()` after binding returns the keyed record; after `complete()` or
-   `resetForTests()` it returns the legacy record or null.
-5. `captureError()` and `logAndThrowError()` write to the bound record.
-6. `complete()` writes `completed: true` to the keyed record before clearing the context; the legacy key stays untouched.
-7. `resetForTests()` removes singleton and active-context state.
-8. `logError(message, details, { deferCleanup: true })` writes the error record without calling the
-   cleanup scheduler; the default call still schedules.
-
-### Section checks
-
-- `npm run test:backend -- tests/utils/progressTracker.test.js tests/singletons`
-- `npm run lint:backend:check`
-- Mandatory-read evidence gate passed.
-- Planned helper entry added with `Not implemented` before implementation.
-- Canonical-fixture note: local in-memory property mock; no corpus change.
-- Docs sync outcome recorded.
-- Completed section compacted into **Retained for later sections** below.
-
-### Docs delegation reads (when sub-agents are used)
-
-- @docs/developer/data-shapes/progress-tracker.md
+Delivered per-run keyed progress records with an active run context so existing callers need no
+signature changes, plus a store facade split that gives keyed persistence and cleanup scheduling
+distinct owners and test surfaces. The key scheme is `ProgressTracker<requestId>` with no separator;
+a missing ID selects the legacy `ProgressTracker` key. Section checks passed: focused backend run
+(`npm run test:backend -- tests/utils/progressTracker.test.js tests/singletons`) 7 files / 53 tests,
+`npm run lint:backend:check` clean, full backend suite 288 files / 3807 tests, Prettier clean.
+Mandatory-read evidence gate passed, the planned helper entry carried `Not implemented` before
+implementation, and the canonical-fixture note was honoured with an in-memory property mock and no
+corpus change. Contracts and follow-ups are retained below; authoritative evidence and deviations
+are in the preserved `Implementation notes / deviations / follow-up` subsection.
 
 ### Retained for later sections
 
-- Keyed writes go through `01_ProgressTrackerStore.js`; the facade owns the active context.
-- `complete()` writes through the bound context before clearing it.
-- Section 4 must re-open `startTracking`, `updateProgress`, `logError` and `complete` in
-  `ProgressTracker.js` to invoke the cleanup coordinator; those write methods are the handoff point.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Document why the active context is per execution and why the facade must stay unfrozen.
+- **Key scheme and record shape:** keyed User Property key is `ProgressTracker<requestId>` with the
+  ID appended directly (no separator); the legacy unkeyed record remains at `ProgressTracker`.
+  Keyed fields are `requestId`, `step`, `message`, `completed`, `error` (`string | null`) and
+  `timestamp` (ISO 8601 string from `toISOString()`). Section 3 exposes only keyed records; Section 4
+  deletes terminal records under both key forms.
+- **Store helper (`src/backend/Utils/01_ProgressTrackerStore.js`):** owns `keyFor`, `read`, `write`,
+  `delete` and `readAll`. `readAll(properties)` returns raw `{ key, value }` entries for keyed keys
+  only (legacy key excluded) and deliberately does no decoding or malformed-record parsing — Section 3
+  aggregation and Section 4 cleanup own that. `write` injects `requestId` into keyed records; a missing
+  ID targets the legacy key. The facade supplies the `GASPropertiesUtils`-sourced property store; all
+  property access goes through `GASPropertiesUtils`.
+- **Facade (`src/backend/Utils/ProgressTracker.js`):** owns `activeRequestId`. `startTracking(id?)`
+  binds the context, with no argument selecting legacy; `complete()` writes the terminal record
+  through the still-bound context before clearing it (clearing first would strand a non-terminal
+  keyed record); `resetForTests()` clears the context and the singleton cache. `getCurrentProgress()`,
+  `getStatus()` and `getStepAsNumber()` read the bound record when a context is active and the legacy
+  record otherwise. `FREEZE_AFTER_INIT` is not set because the context is mutated after
+  `ensureInitialized()`. `propertyKey` was removed, and the facade is 375 lines against the ~330 plan
+  guidance — both judged acceptable in GREEN review.
+- **Error-write seam:** `logError()` and `logAndThrowError()` accept an optional
+  `{ deferCleanup?: boolean }`; the default calls `globalThis.ProgressTrackerCleanup.schedule()` while
+  `deferCleanup: true` skips it. `captureError()` is unchanged. Section 4 supplies the real cleanup
+  coordinator and re-wires `startTracking`, `updateProgress`, `logError` and `complete` to invoke
+  `schedule()`; its `toHaveBeenCalledTimes(1)` spy count may need adjusting once the other write
+  methods gain a `schedule()` call.
+- **Test bootstrap (`tests/setupGlobals.js`):** provides a default no-op `ProgressTrackerCleanup`
+  seam (focused suites replace it with a spy) and loads `ProgressTrackerStore` before the facade in
+  GAS concatenation order. Section 4 must replace the no-op seam with the real cleanup module. Section 3
+  needs `getProperties()` on the in-memory `PropertiesService` mock for `readAll()`.
+- **Shared-helper reconciliation:** the keyed property access helper (planned `Not implemented` in the
+  Section 2 shared-helper plan) is delivered by `01_ProgressTrackerStore.js` and reconciled in
+  `docs/developer/data-shapes/progress-tracker.md`; `GASPropertiesUtils` is reused unchanged. Helpers
+  planned for later sections (Section 4 cleanup coordinator, `CacheManager` extension and
+  `TriggerController` extension) remain `Not implemented`.
+- **`@remarks` JSDoc commitment:** the per-execution active context and the unfrozen facade are
+  documented in the `ProgressTracker.js` class JSDoc and remain on the final `@remarks` review.
+- **Open record slots:** docs-sync outcome, regression gate, graphify refresh and commit record are
+  still `...` in the notes below and are to be filled by the orchestrator. No new record is created
+  here.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** ...
-- **Deviations from plan:** ...
+- **Implementation notes:** RED review PASSED with no findings (9 intentional `AssertionError`
+  failures, all six singleton files passing, lint clean, no scope drift). GREEN review PASSED with
+  zero findings; the 375-line facade and removal of `propertyKey` were explicitly judged acceptable
+  (below the 500-line checklist and 550-line hard trigger, and key derivation now owned by the
+  store). Focused checks after GREEN: 7 files / 53 tests passing, `lint:backend:check` clean, full
+  backend suite 288 files / 3807 tests passing, Prettier clean. Docs sync updated
+  `docs/developer/data-shapes/progress-tracker.md`, `data-shapes/INDEX.md`,
+  `backend/AssessmentFlow.md`, `backend/singletons.md` and added the ProgressTracker contract to the
+  Data Shapes list in `.opencode/agents/code-reviewer.md`; no new pages created. It removed the
+  Section-2-owned `Not implemented` markers (whole-document status, persistence, sub-entities,
+  shared helpers, file index, keyed-store helper) and left later-section markers intact (cleanup,
+  transport/getProgress, validation, `CacheManager`, `createTimeBasedTrigger`). Post-docs-sync
+  JSDoc edits in `ProgressTracker.js` were comments only; scoped `lint:backend:check` and the focused
+  53-test run were re-run and remain green. Four out-of-scope doc findings were logged as
+  `disregarded` nitpicks in `.opencode/scratchpad/progresstrackerrefactor-deferred-findings.md`.
+- **Deviations from plan:** facade is 375 lines against the ~330 guidance (judged acceptable in GREEN
+  review); the store helper is 80 lines against the ~120 guidance. The cleanup-scheduling seam is
+  established in Section 2 as a global call site with a no-op harness stub; the real coordinator is
+  Section 4 work.
 - **Follow-up implications for later sections:** cleanup coordinator consumes the store helper and
-  is wired into the four write methods listed above.
+  is wired into the four write methods listed above. Section 4 must replace the `setupGlobals.js`
+  no-op `ProgressTrackerCleanup` with the real `02_ProgressTrackerCleanup.js` module; its
+  `toHaveBeenCalledTimes(1)` spy count may need adjusting once the other write methods gain
+  `schedule()`. Section 3 needs `getProperties()` on the in-memory `PropertiesService` mock for
+  `readAll()` and must remove the remaining transport/validation markers.
+- **Section regression gate:** PASSED — 2026-11-25T12:09:34.185Z,
+  `.ts-regression-checker/reports/session-progresstracker-api-polling/runs/2026-11-25T12-09-34.185Z/comparison.txt`,
+  Overall Status GREEN, 8/8 checks passing, 0 regressions, 0 new failures, 0 fixes; no pre-existing
+  failures (baseline fully green).
+- **Graphify refresh (§2.75):** `graphify update .` ran after the gate; it rebuilt 11,889 nodes /
+  29,637 edges / 612 communities and rewrote the tracked `graphify-out/` artifacts (`graph.json`,
+  `graph.html`, `GRAPH_REPORT.md`, `manifest.json`, `.graphify_labels.json`). Local build caches and
+  the dated backup directory remain untracked; they are not committed.
 
 ---
 

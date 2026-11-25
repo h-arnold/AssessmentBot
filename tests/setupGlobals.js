@@ -87,6 +87,10 @@ g.PropertiesService = {
 // Use the shared ProgressTracker mock for tests
 g.ProgressTracker = require('./mocks/ProgressTracker.js');
 
+// Default cleanup seam used by the real ProgressTracker's logError write path.
+// Focused suites replace this object with a spy; Section 4 supplies the real coordinator.
+g.ProgressTrackerCleanup = { schedule: () => {} };
+
 // Provide a minimal ABLogger stub for tests so production code can call it directly
 g.ABLogger = {
   getInstance: () => ({
@@ -137,6 +141,9 @@ g.ArrayUtils = require('../src/backend/Utils/00_ArrayUtils.js');
 
 g.DateUtils = require('../src/backend/Utils/DateUtils.js');
 g.GASPropertiesUtils = require('../src/backend/Utils/00_GASPropertiesUtils.js');
+// Mirror GAS concatenation order: the keyed store helper evaluates before the
+// facade that resolves it as a script-scope global.
+g.ProgressTrackerStore = require('../src/backend/Utils/01_ProgressTrackerStore.js');
 
 g.ApiValidationError = require('../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 g.ApiRateLimitError = require('../src/backend/Utils/ErrorTypes/ApiRateLimitError.js');

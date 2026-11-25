@@ -1482,10 +1482,10 @@
     "semantic_hash": "fa6aaa164b87aa887584775f76457bf3"
   },
   "src/backend/Utils/ProgressTracker.js": {
-    "mtime": 1795602131.636918,
-    "seen": 1795606132.2421367,
-    "ast_hash": "dc9cebcf2682679911f25054687caa77",
-    "semantic_hash": "dc9cebcf2682679911f25054687caa77"
+    "mtime": 1795608280.7906725,
+    "seen": 1795609529.2990036,
+    "ast_hash": "1b36e60ed28b60eed4a10713ceca4841",
+    "semantic_hash": ""
   },
   "src/backend/Utils/ScriptAppManager.js": {
     "mtime": 1795602131.636918,
@@ -8616,10 +8616,10 @@
     "semantic_hash": "6c7503e780cd25f13306109dc97fc732"
   },
   "tests/setupGlobals.js": {
-    "mtime": 1795602131.7649193,
-    "seen": 1795606132.2441418,
-    "ast_hash": "67ed750af894a2451445c0e41c3cc9e8",
-    "semantic_hash": "67ed750af894a2451445c0e41c3cc9e8"
+    "mtime": 1795607558.8576975,
+    "seen": 1795609529.30122,
+    "ast_hash": "5d7ffdc9c9b2aa3d885a1048b8518c51",
+    "semantic_hash": ""
   },
   "tests/singletons/PerformanceMeasurement.js": {
     "mtime": 1795602131.7649193,
@@ -9276,10 +9276,10 @@
     "semantic_hash": "878b9ab73a4b54ecbb22668662407569"
   },
   "tests/utils/progressTracker.test.js": {
-    "mtime": 1795602131.7759194,
-    "seen": 1795606132.2443237,
-    "ast_hash": "fc42442ba100e7633ddb7558202926b6",
-    "semantic_hash": "fc42442ba100e7633ddb7558202926b6"
+    "mtime": 1795606702.809466,
+    "seen": 1795609529.3014343,
+    "ast_hash": "32135198d3533ac120303abe95aff2a4",
+    "semantic_hash": ""
   },
   "tests/utils/scriptAppManager.test.js": {
     "mtime": 1795602131.7759194,
@@ -9360,10 +9360,10 @@
     "semantic_hash": ""
   },
   ".opencode/agents/code-reviewer.md": {
-    "mtime": 1795602131.532917,
-    "seen": 1795606132.2443495,
-    "ast_hash": "06a158995f7908285c2cd9d93378e855",
-    "semantic_hash": "06a158995f7908285c2cd9d93378e855"
+    "mtime": 1795608480.1177673,
+    "seen": 1795609529.301462,
+    "ast_hash": "606cd4f280e2fc7fc981bae18b87b634",
+    "semantic_hash": ""
   },
   ".opencode/agents/data-shapes-agent.md": {
     "mtime": 1795602131.532917,
@@ -9468,9 +9468,9 @@
     "semantic_hash": "580a29c9e1d183bf569ae48b1ef2de5f"
   },
   "ACTION_PLAN.md": {
-    "mtime": 1795605331.7450497,
-    "seen": 1795606132.2443793,
-    "ast_hash": "c9821db280a1592415f5fbbba0a80cb3",
+    "mtime": 1795608567.6866806,
+    "seen": 1795609529.3014953,
+    "ast_hash": "86e5a2eea654503049eb87eaf99475f1",
     "semantic_hash": ""
   },
   "AGENTS.md": {
@@ -9528,9 +9528,9 @@
     "semantic_hash": "88be0c9fd9b9277a46eced9421ef9d4f"
   },
   "docs/developer/backend/AssessmentFlow.md": {
-    "mtime": 1795605015.2626958,
-    "seen": 1795606132.2443964,
-    "ast_hash": "51310acff7e24530ee966cb1775bdd07",
+    "mtime": 1795608231.9611552,
+    "seen": 1795609529.3015144,
+    "ast_hash": "18c14c2cb3d18f6d4d5301ee009c5a9e",
     "semantic_hash": ""
   },
   "docs/developer/backend/Vendoring.md": {
@@ -9576,10 +9576,10 @@
     "semantic_hash": "298ec8d4760122ac3b35d55ff00fb905"
   },
   "docs/developer/backend/singletons.md": {
-    "mtime": 1795602131.5409172,
-    "seen": 1795606132.24441,
-    "ast_hash": "8513d65985bc3f334e4526c65348ec23",
-    "semantic_hash": "8513d65985bc3f334e4526c65348ec23"
+    "mtime": 1795608237.8352175,
+    "seen": 1795609529.3015292,
+    "ast_hash": "5b41af7ada0933075d534c293512ec63",
+    "semantic_hash": ""
   },
   "docs/developer/builder/TypeScriptAndLintConfigHierarchy.md": {
     "mtime": 1795602131.541917,
@@ -9600,10 +9600,10 @@
     "semantic_hash": "28fe0807af16744cdc099c5d6b4a8e84"
   },
   "docs/developer/data-shapes/INDEX.md": {
-    "mtime": 1795602131.541917,
-    "seen": 1795606132.244417,
-    "ast_hash": "dba5df4de2dd1ff959bc2e551f430f23",
-    "semantic_hash": "dba5df4de2dd1ff959bc2e551f430f23"
+    "mtime": 1795608413.0920658,
+    "seen": 1795609529.3015366,
+    "ast_hash": "b88ab45880511ec53d978c3317328893",
+    "semantic_hash": ""
   },
   "docs/developer/data-shapes/abclass.md": {
     "mtime": 1795602131.5429173,
@@ -9666,9 +9666,9 @@
     "semantic_hash": "5b23aa6bd20ba8d728beab34f5d16d08"
   },
   "docs/developer/data-shapes/progress-tracker.md": {
-    "mtime": 1795604954.4361079,
-    "seen": 1795606132.2444348,
-    "ast_hash": "c4c5bcc918d46bb782098e8020b9b170",
+    "mtime": 1795608451.6614697,
+    "seen": 1795609529.301556,
+    "ast_hash": "a7779b50420658ee1a534d74806801e2",
     "semantic_hash": ""
   },
   "docs/developer/data-shapes/reference-data.md": {
@@ -10497,6 +10497,12 @@
     "mtime": 1795602131.642918,
     "seen": 1795606132.2445607,
     "ast_hash": "88a559ea2bdfd207beee1492bfdd770e",
+    "semantic_hash": ""
+  },
+  "src/backend/Utils/01_ProgressTrackerStore.js": {
+    "mtime": 1795607466.3185916,
+    "seen": 1795609529.298974,
+    "ast_hash": "57db19494739b1e092e5454281cf9541",
     "semantic_hash": ""
   },
   "package-lock.json": {

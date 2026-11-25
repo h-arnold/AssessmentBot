@@ -1,18 +1,21 @@
-# Contract: ProgressTracker (planned)
+# Contract: ProgressTracker
 
-> **Status: `Not implemented`.** This document records the agreed target contract for the
-> ProgressTracker refactor. Entries stay marked `Not implemented` until the implementation agent
-> delivers them and removes the marker.
+Keyed User Property records and the `ProgressTracker` facade are implemented. The `getProgress`
+transport, cleanup coordinator and frontend validation remain planned and are marked
+`Not implemented` below.
 
 Internal progress state for frontend-driven assessment runs. Progress records are persisted as
 separate GAS User Properties keyed by the `requestId` generated for the `startAssessmentRun`
-API call, and read back through the `getProgress` endpoint. Cleanup is owned by one deferred
-time-based trigger per user which deletes terminal records only.
+API call, and are read back through the planned `getProgress` endpoint. Cleanup is planned as one
+deferred time-based trigger per user which deletes terminal records only.
 
-Planned backend implementation:
+Backend modules:
 
-- `src/backend/Utils/ProgressTracker.js` — facade, active run context and public API
-- `src/backend/Utils/01_ProgressTrackerStore.js` — keyed property access
+- `src/backend/Utils/ProgressTracker.js` — facade, active run context and public API (implemented)
+- `src/backend/Utils/01_ProgressTrackerStore.js` — keyed property access (implemented)
+
+Planned modules:
+
 - `src/backend/Utils/02_ProgressTrackerCleanup.js` — trigger scheduling and sweep
 - `src/backend/z_Api/progressTracker.js` — `getProgress_` transport helper
 - `src/backend/Triggers/triggerMethodHandlers.js` — `cleanupProgress` trigger method
@@ -25,36 +28,54 @@ Sibling contracts:
 
 ---
 
-## Persistence (Not implemented)
+## Persistence
 
 ### Key scheme
 
-| Key                           | Scope           | Notes                                                                                                         |
-| ----------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------- |
-| `ProgressTracker<requestId>`  | User Properties | One record per API-driven assessment run. `requestId` is a non-empty UUID.                                    |
-| `ProgressTracker`             | User Properties | Legacy unkeyed record for call sites with no run context. Not returned by API; eligible for terminal cleanup. |
-| `AB_PROGRESS_CLEANUP_TRIGGER` | User Properties | Per-user marker holding the UID of that user's single pending cleanup trigger.                                |
-| progress cleanup cache key    | User cache      | Per-user cached pending flag, 600-second TTL; cleared after each cleanup run.                                 |
+| Key                          | Scope           | Notes                                                                                                          |
+| ---------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------- |
+| `ProgressTracker<requestId>` | User Properties | One record per API-driven assessment run. `requestId` is the dispatch ID, appended directly to the key prefix. |
+| `ProgressTracker`            | User Properties | Legacy unkeyed record for call sites with no run context. Not returned by API; eligible for terminal cleanup.  |
+
+Planned cleanup state (`Not implemented`):
+
+| Key                           | Scope           | Notes                                                                          |
+| ----------------------------- | --------------- | ------------------------------------------------------------------------------ |
+| `AB_PROGRESS_CLEANUP_TRIGGER` | User Properties | Per-user marker holding the UID of that user's single pending cleanup trigger. |
+| progress cleanup cache key    | User cache      | Per-user cached pending flag, 600-second TTL; cleared after each cleanup run.  |
 
 ### Record shape
 
-| Field       | Type           | Required | Notes                                                                  |
-| ----------- | -------------- | -------- | ---------------------------------------------------------------------- |
-| `requestId` | `string`       | yes      | Non-empty; matches the dispatch `requestId`.                           |
-| `step`      | `number`       | yes      | Finite, monotonic within the run.                                      |
-| `message`   | `string`       | yes      | User-facing progress text.                                             |
-| `completed` | `boolean`      | yes      | `true` only after a successful run finishes.                           |
-| `error`     | string or null | yes      | User-facing error text; `null` when absent.                            |
-| `timestamp` | `string`       | yes      | ISO 8601 string from the last write. No live `Date` crosses transport. |
+| Field       | Type           | Required   | Notes                                                                     |
+| ----------- | -------------- | ---------- | ------------------------------------------------------------------------- |
+| `requestId` | `string`       | keyed only | Non-empty; matches the dispatch `requestId`. Absent on the legacy record. |
+| `step`      | `number`       | yes        | Finite, monotonic within the run.                                         |
+| `message`   | `string`       | yes        | User-facing progress text.                                                |
+| `completed` | `boolean`      | yes        | `true` only after a successful run finishes.                              |
+| `error`     | string or null | yes        | User-facing error text; `null` when absent.                               |
+| `timestamp` | `string`       | yes        | ISO 8601 string from the last write. No live `Date` crosses transport.    |
 
 Terminal records are those with `completed === true` or a non-null `error`. All other records are
 treated as in flight.
 
 ### Key persistence notes
 
-- All property access goes through `GASPropertiesUtils`.
+- All property access goes through `GASPropertiesUtils`. The facade supplies the User Property store
+  to `ProgressTrackerStore`, which owns key derivation and serialisation.
 - Writes to distinct `ProgressTracker<requestId>` keys do not contend with one another. The legacy
   unkeyed key retains its existing single-record behaviour.
+- `startTracking(requestId)` binds the active run ID for the execution. Reads and writes follow that
+  context; `complete()` clears it only after writing the terminal record. Call sites without an ID
+  keep the legacy key.
+- `logError` and `logAndThrowError` accept an optional `{ deferCleanup }` options object. Default
+  error writes call `ProgressTrackerCleanup.schedule()`; `deferCleanup: true` skips it for callers
+  that already own cleanup and must not schedule another pass. `captureError` passes no options and
+  uses the default.
+- `ProgressTrackerStore.readAll()` returns raw keyed entries only. Callers own parsing and
+  malformed-record handling.
+
+### Planned cleanup behaviour (Not implemented)
+
 - The cleanup trigger check is cached in the user cache with a 600-second TTL; the durable
   per-user User Property marker covers cache misses. A `LockService.getUserLock()` guard prevents
   two callers from both creating a cleanup trigger.
@@ -99,7 +120,7 @@ is excluded. An empty store returns `{ tasks: [] }`.
 
 ---
 
-## Sub-entities (Not implemented)
+## Sub-entities
 
 None. Each progress record is a flat object.
 
@@ -113,11 +134,11 @@ Frontend schemas require non-empty `requestId`, finite `step`, string `message`,
 
 ---
 
-## Planned shared helpers (Not implemented)
+## Shared helpers
 
 | Helper                                                                          | Decision | Owning path                                      | Rationale                                                                    | Status            |
 | ------------------------------------------------------------------------------- | -------- | ------------------------------------------------ | ---------------------------------------------------------------------------- | ----------------- |
-| Keyed property access (`readAll`, `write`, `delete`)                            | `new`    | `src/backend/Utils/01_ProgressTrackerStore.js`   | Isolates key derivation, parsing and legacy fallback filtering.              | `Not implemented` |
+| Keyed property access (`readAll`, `write`, `delete`)                            | `new`    | `src/backend/Utils/01_ProgressTrackerStore.js`   | Isolates key derivation, parsing and legacy fallback filtering.              | `Implemented`     |
 | Cleanup coordinator (`schedule`, `sweep`, `rearm`)                              | `new`    | `src/backend/Utils/02_ProgressTrackerCleanup.js` | Owns cache/marker dedupe and terminal-only deletion.                         | `Not implemented` |
 | `ApiRequestContext` (`set`, `get`, `resetForTests`)                             | `new`    | `src/backend/z_Api/z_apiHandler.js`              | Exposes the dispatch ID to handlers without changing all handler signatures. | `Implemented`     |
 | `CacheManager` with supplied cache + `remove(key)`                              | `extend` | `src/backend/RequestHandlers/CacheManager.js`    | Supports user cache and clears the pending-cleanup flag after each run.      | `Not implemented` |
@@ -128,13 +149,20 @@ Frontend schemas require non-empty `requestId`, finite `step`, string `message`,
 
 ---
 
-## File index (planned)
+## File index
+
+Implemented:
 
 ```text
-Implementation:  src/backend/Utils/01_ProgressTrackerStore.js
-                 src/backend/Utils/02_ProgressTrackerCleanup.js
-                 src/backend/Utils/ProgressTracker.js
-Transport:       src/backend/z_Api/progressTracker.js
-Trigger entry:   src/backend/Triggers/triggerMethodHandlers.js (cleanupProgress)
-Frontend:        src/frontend/src/services/assignmentAssessment/*
+src/backend/Utils/01_ProgressTrackerStore.js
+src/backend/Utils/ProgressTracker.js
+```
+
+Planned:
+
+```text
+src/backend/Utils/02_ProgressTrackerCleanup.js
+src/backend/z_Api/progressTracker.js
+src/backend/Triggers/triggerMethodHandlers.js (cleanupProgress)
+src/frontend/src/services/assignmentAssessment/*
 ```

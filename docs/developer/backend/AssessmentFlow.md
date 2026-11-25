@@ -540,7 +540,8 @@ Persisted shapes: [Contract: Assignment](../data-shapes/assignment.md) (full rec
 
 **Method**: `ProgressTracker.complete()` — `src/backend/Utils/ProgressTracker.js`
 
-- Progress is a singleton writing a JSON record (`step`, `message`, `completed`, `error`, `timestamp`) to User Properties under the `ProgressTracker` key.
+- Progress is a singleton writing a JSON record (`step`, `message`, `completed`, `error`, `timestamp`, plus `requestId` for keyed runs) to User Properties. Assessment runs write to `ProgressTracker<requestId>`; call sites with no run context keep the legacy `ProgressTracker` key.
+- `startTracking(requestId)` binds the active run context for the execution, so later writes need no signature change. `complete()` writes the terminal record while that context is still bound, then clears it.
 - `complete()` sets `completed: true` and leaves any recorded `error` in place.
 
 ---

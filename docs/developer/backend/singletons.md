@@ -344,6 +344,10 @@ const apiKey = config.getApiKey();
    - `resetForTests()` allows clean state between tests
    - Easy to mock and verify lazy behaviour
 
+5. **Mutable state after initialisation**:
+   - If a singleton binds state after `ensureInitialized()`, do not set `FREEZE_AFTER_INIT`; freezing would block the later mutation. `ProgressTracker` binds an active run ID this way.
+   - Clear that state in `resetForTests()` alongside `_instance`, so a later test cannot inherit the previous context.
+
 ---
 
 ## Best Practices
