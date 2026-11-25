@@ -67,9 +67,9 @@ export default defineConfig([
       // relies on sanitising and validating inputs at the relevant boundaries instead.
       'security/detect-object-injection': 'off',
       'no-console': 'error',
-      // Warn on oversized files so they are picked up for refactoring when touched.
-      // Matches the backend 500-line threshold; currently flags several large specs.
-      'max-lines': ['warn', 500],
+      // Enforce a file-size ceiling so oversized files are decomposed before they grow further.
+      // Matches the backend 500-line threshold.
+      'max-lines': ['error', 500],
       'no-restricted-properties': [
         'error',
         {

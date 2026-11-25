@@ -47,7 +47,7 @@ A frontend source file under `src/frontend/src/**` that exceeds **550 lines** mu
 
 ### 4.1 Rules
 
-- ESLint `max-lines` warns at 500 lines as an early refactor signal; 550 lines is the hard decomposition trigger.
+- ESLint `max-lines` errors at 500 lines; 550 lines is the hard decomposition trigger.
 - Treat 550 lines as a hard decomposition trigger for every frontend file being worked on. Do not defer the split, and do not merely move additional logic elsewhere while leaving the over-threshold file without a justified responsibility boundary.
 - Never reduce the line count using formatting tricks: do not remove blank lines, join statements, compress JSX or TypeScript, shorten names, or condense, delete, or weaken comments, JSDoc, or documentation. A smaller file is not decomposed unless its responsibilities are actually split into maintainable modules.
 - Do not create speculative one-caller helpers solely to hide lines. Each extracted module must own a coherent responsibility and follow the shared-helper and abstraction rules in `frontend-shared-helpers-and-abstraction-standards.md`.

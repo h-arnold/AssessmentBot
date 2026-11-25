@@ -206,7 +206,7 @@ module.exports = [
           detectObjects: false,
         },
       ],
-      'max-lines': ['warn', 500],
+      'max-lines': ['error', 500],
     },
   },
   {
@@ -267,7 +267,7 @@ module.exports = [
       'prefer-object-has-own': 'warn',
       'no-negated-condition': 'warn',
       'require-unicode-regexp': 'off',
-      'max-lines': ['warn', 500],
+      'max-lines': ['error', 500],
     },
   },
   {
@@ -286,7 +286,7 @@ module.exports = [
       'prefer-object-has-own': 'warn',
       'no-negated-condition': 'warn',
       'require-unicode-regexp': 'off',
-      'max-lines': ['warn', 500],
+      'max-lines': ['error', 500],
     },
   },
   {
@@ -332,7 +332,7 @@ module.exports = [
       'no-negated-condition': 'warn',
       'require-unicode-regexp': 'off',
       ...sonarjs.configs.recommended.rules,
-      'max-lines': ['warn', 500],
+      'max-lines': ['error', 500],
     },
   },
   {
