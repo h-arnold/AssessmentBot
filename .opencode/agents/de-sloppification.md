@@ -59,15 +59,21 @@ Work in a strict sequence:
 1. **Map the area**
    - Identify the modules, files, and call paths that are most likely to contain slop.
    - Look for recent additions, helper-heavy modules, utility layers, and code with many one-line wrappers.
+   - If `graphify-out/graph.json` exists, start with `graphify god-nodes --top 10` and the community labels in `graphify-out/GRAPH_REPORT.md` to locate helper-heavy modules and hubs, then use `graphify explain` on suspect nodes to enumerate structural connections before opening source. Derive query tokens from the graph vocabulary per `.opencode/skills/graphify/references/query.md` Step 0. Keep the graph read-only while inspecting: do not run `update`, `save-result` or `reflect` during a slop hunt (§5 covers refreshing after edits).
 2. **Search aggressively**
    - Compare similar files and functions.
    - Search for duplicate strings, repeated conditionals, repeated error handling, and near-identical logic.
    - Check for stale imports, unused exports, dead branches, and commented-out code.
+   - Treat INFERRED `semantically_similar_to` edges (0.6–0.95) as duplicate-logic leads: they mark functions solving the same problem with no structural link. Confirm against source before reporting.
+   - Use `graphify path "A" "B"` between two near-duplicates to expose chains of indirection; long chains of pass-through wrappers are collapse candidates.
+   - Use `graphify affected "X" --depth 2` and `calls` edges to count real callers for the "more than one real caller" test; confirm with grep because dynamic use may not appear in the graph.
+   - Bypass check for hubs: take a distinctive literal from a shared utility's body and grep files with no graph edge to that node. Reimplementations are prime candidates for duplicated logic and redundant shims.
 3. **Test the necessity**
    - Ask whether each abstraction has more than one real caller.
    - Ask whether each guard protects a real boundary or just expresses fear.
    - Ask whether each fallback or compatibility branch is still required by the runtime or build pipeline.
    - Check whether the candidate change deviates from canonical policy docs rather than only from style preference.
+   - If the graph carries a `rationale` node or `rationale_for` edge for a guard or shim, read it before calling the guard slop; no rationale plus no real boundary strengthens the finding.
 4. **Prefer removal over addition**
    - Delete dead code.
    - Inline one-off helpers.
@@ -87,7 +93,8 @@ Do not report a slop finding unless you can point to concrete evidence:
 - why the code is unnecessary, duplicated, stale, or misleading
 - what should happen instead
 
-If the evidence is weak, label it as a hypothesis and keep investigating. Do not inflate uncertainty into a finding.
+- If the evidence is weak, label it as a hypothesis and keep investigating. Do not inflate uncertainty into a finding.
+- A graph edge is a lead, not proof. INFERRED/AMBIGUOUS confidence and degree zero are not findings and never justify deletion; confirm by source read and grep. State when a claim rests on graph evidence alone.
 
 ## 4. Cleanup Rules
 
@@ -110,7 +117,8 @@ If you edit files, validate the touched area before returning work:
 - use the repository's preferred commands rather than inventing new ones
 - treat a failing validation as a reason to fix the code, not to soften the report
 
-If validation is unavailable in the environment, state the limitation explicitly and explain what remains unverified.
+- If validation is unavailable in the environment, state the limitation explicitly and explain what remains unverified.
+- After deleting or moving code, run `graphify update .` (AST-only and cheap) and re-run `graphify explain` on the affected nodes to confirm no remaining callers. If you cannot update the graph, state the staleness limitation explicitly.
 
 ## 6. Reporting Format
 

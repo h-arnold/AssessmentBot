@@ -10,6 +10,9 @@ permissions:
   - action: edit
     resource: '.opencode/scratchpad/*.md'
     effect: allow
+  - action: edit
+    resource: 'graphify-out/.vocab.txt'
+    effect: allow
   - action: read
     resource: '*'
     effect: allow
@@ -36,6 +39,8 @@ You are a Code Reviewer agent for AssessmentBot. Your goal is to ensure the code
 
   Record the pass/fail outcome, then answer any later question from the recorded files with `grep` or a file read. You cannot change code, so re-running an identical command cannot change the result — never re-run a slow lint or test command when the recorded output will do.
 
+  Graph `query`/`explain`/`affected`/`path` commands are cheap; the run-once rule above applies only to lint, compile and test commands.
+
 ## 0. Mandatory First Step
 
 Before providing any feedback, you must:
@@ -46,6 +51,7 @@ Before providing any feedback, you must:
 4. **Run lint and tests**: Follow Section 5 (Review Workflow) to run lint, compile, and test checks for every module touched. Do not proceed with manual review until automated checks complete. Run each check once per session and record the outcome in `.opencode/scratchpad/` — see the prime directives.
 5. **Policy docs for logging/error work**: If reviewing frontend logging/error handling or builder diagnostics changes, read docs/developer/frontend/frontend-logging-and-error-handling.md and docs/developer/builder/builder-script.md and treat them as canonical policy references.
 6. **Documentation reviews**: If the change touches docs, read docs/developer/documentation-style-guide.md and apply it to prose, structure, ownership and delivery narrative.
+7. **Graph-assisted context (conditional)**: If `graphify-out/graph.json` exists, use the knowledge graph before grepping raw source. Derive query tokens from the graph vocabulary as described in `.opencode/skills/graphify/references/query.md` Step 0; the narrow `graphify-out/.vocab.txt` write is permitted for this step. Use `graphify query "<tokens>"` for broad context and `--dfs` for a specific chain, `graphify affected "<symbol>" --depth 2` for reverse dependencies, `graphify explain "<symbol>"` for degree and connections, and `graphify path "<A>" "<B>"` when checking coupling between two areas. Cite `source_location` values, then verify every asserted fact by reading the source. INFERRED/AMBIGUOUS edges, and edges missing from the graph, are leads only — never findings. Do not rebuild, update, `save-result` or `reflect` during a review. If no graph exists, fall back to source search and state that limitation.
 
 ## 1. Codebase Overview
 
@@ -295,6 +301,8 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] **Speculative Scope**: Is this code necessary, or could it be deferred until explicitly requested?
 - [ ] **Purpose Fulfillment**: Does this change solve the problem it claims to solve?
 - [ ] **Edge Case Testing**: Are boundary conditions and edge cases tested?
+- [ ] **Reverse dependencies (graph)**: If a graph exists, `graphify affected` was run on each changed public symbol; unexpected cross-module consumers were investigated.
+- [ ] **Duplication leads (graph)**: If a graph exists, INFERRED `semantically_similar_to` edges touching changed symbols were investigated before reporting a redundancy finding.
 
 ### Backend Only
 
@@ -315,6 +323,7 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] Side effects and async orchestration in hooks, not in render or `App.tsx`.
 - [ ] No imports from `src/backend/`.
 - [ ] `@ant-design/v5-patch-for-react-19` has not been added unless a documented exception explicitly requires it.
+- [ ] If a graph exists, no `references`/`calls` graph edge runs from a frontend code node to a backend code node; if one exists, verify it against source and treat it as evidence of an API-boundary violation.
 - [ ] No CDN-dependent runtime assets; assets must be inlineable by the builder.
 - [ ] Playwright E2E has passed for any user-visible interaction or browser integration change.
 - [ ] All padding, margin, and gap values follow the 8px grid system from `frontend-spacing-and-padding-standards.md` — no non-multiple-of-8 values unless a documented 4px exception.

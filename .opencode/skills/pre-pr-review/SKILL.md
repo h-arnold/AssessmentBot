@@ -22,6 +22,8 @@ verified by the regression checker up front.
 4. Synthesises the results into `PR_REVIEW.md` at the repo root.
 5. Walks through each finding to capture decisions, then creates GitHub Issues for any deferred
    findings (combined where similar or overlapping).
+6. Records the final review outcome in graphify's memory when a knowledge graph exists, so later
+   sessions learn which cited sources were useful, dead ends, or corrected.
 
 ## Quick start
 
@@ -101,6 +103,7 @@ For every focus, the handoff prompt MUST include:
     findings should be clearly separated from diff findings and labelled as incidental so the orchestrator
     can surface them in `PR_REVIEW.md` for the user to triage. Every claim needs file:line evidence.
 - The requested outcome: a structured review (Critical / Improvement / Nitpick) for that focus only.
+- If `graphify-out/graph.json` exists, add: _"Use graphify `query`/`affected`/`path`/`explain` with vocabulary expansion before raw grep; the graph is read-only during these parallel reviews — do not `update`, `save-result` or `reflect`."_ This carries the `AGENTS.md` graph-first rule into every reviewer handoff.
 
 ### Core focuses (always run)
 
@@ -304,7 +307,36 @@ findings decided as **Defer**.
   GitHub Issue number/URL so the document and tracker stay in sync.
 - If no findings were deferred, skip this step.
 
-## Step 8 — Return to the user
+## Step 8 — Record the review outcome (conditional)
+
+Only the orchestrator runs this step; review sub-agents are explicitly read-only towards the graph.
+Skip it when `graphify-out/graph.json` does not exist.
+
+Write a brief summary of the final dispositions to `.opencode/scratchpad/review-outcome.md` (the
+finding, its decision, and the rationale — a few lines per finding, not the whole `PR_REVIEW.md`),
+then save it to graphify's memory:
+
+```bash
+graphify save-result \
+  --question "Pre-PR review of <branch>: <focus areas>" \
+  --answer-file .opencode/scratchpad/review-outcome.md \
+  --type review \
+  --nodes <label1> <label2> ... \
+  --outcome <useful|dead_end|corrected>
+```
+
+Choose the outcome from the decisions recorded in Step 6, using the first match:
+
+- `corrected` — the user rejected a finding as factually wrong. Add `--correction "<what the user said was right>"`.
+- `useful` — at least one finding was upheld and a fix or deferral was agreed.
+- `dead_end` — no finding was actionable (clean review, or every finding was dismissed without a factual correction).
+
+Omit `--nodes` when reviewers cited only `file:line` locations and no graph node labels. Pass at
+most 10 labels. After saving, run `graphify reflect` to fold the outcome into
+`graphify-out/reflections/LESSONS.md`. Do not run `graphify update .` here — graph maintenance
+stays with the implementation cycle.
+
+## Step 9 — Return to the user
 
 Print a brief summary:
 
