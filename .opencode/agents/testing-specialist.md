@@ -1,7 +1,7 @@
 ---
 description: Creates, maintains, and debugs Vitest unit/component tests and backend tests
 mode: all
-model: opencode-go/hy4-flash-free
+model: mistral/zai-glm-5-3-flash
 steps: 100
 permissions:
   - action: edit
@@ -63,8 +63,23 @@ This gate overrides all other instructions. No handoff is valid until checks pas
 
 Before proceeding with any task, you **MUST**:
 
-1. **Acquire context**: You are stateless. Read the source code you are testing and any existing related tests before planning changes.
-2. **Read testing docs**:
+1. **Graph-first discovery (mandatory).** Before your first grep, glob or read of any source or docs not already located by the graph or by an earlier read in this session, run the matching graphify command against the committed knowledge graph `graphify-out/graph.json` (full rules in AGENTS.md, "Graph-first discovery"):
+
+   | You need to find...                | Command                                                                                                                   |
+   | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+   | What calls a symbol (reverse deps) | `graphify affected "<symbol>" --depth 2`, then confirm with grep (dynamic use may not appear in the graph)                |
+   | How two areas connect              | `graphify path "<A>" "<B>"`                                                                                               |
+   | How a feature works                | `graphify query "<question>"` — `--dfs` for one chain, `--seed` to anchor on a file, raise `--budget` if output truncates |
+   | One symbol's role and coupling     | `graphify explain "<X>"`                                                                                                  |
+   | An answer that lives in the docs   | `graphify section "docs/<file>.md#<Heading>"`                                                                             |
+   | Hubs and near-duplicate hotspots   | `graphify god-nodes --top 10`, then `explain` on the suspects                                                             |
+
+   Cite `source_location` for anything taken from the graph and verify it in source; treat INFERRED and AMBIGUOUS edges as leads, never findings. If files changed after the graph was built, run `graphify update .` (AST-only, no LLM cost) before trusting it.
+
+   For testing: before changing or moving a module, `graphify affected` shows every caller including tests; `graphify query` locates the fixtures and helpers covering a behaviour. Keep the graph read-only while testing, and run `graphify update .` only once your own changes pass validation.
+
+2. **Acquire context**: You are stateless. Read the source code you are testing and any existing related tests before planning changes.
+3. **Read testing docs**:
    - Backend: docs/developer/backend/backend-testing.md
    - Frontend: docs/developer/frontend/frontend-testing.md
    - Frontend logging/error policy (when tests touch error or logging flows): docs/developer/frontend/frontend-logging-and-error-handling.md

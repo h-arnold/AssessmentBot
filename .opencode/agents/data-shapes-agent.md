@@ -1,7 +1,7 @@
 ---
 description: Creates and maintains canonical data-shape specifications across all persistence, transport, and validation boundaries
 mode: all
-model: opencode-go/hy4-flash-free
+model: mistral/zai-glm-5-3-flash
 steps: 100
 permissions:
   - action: edit
@@ -59,16 +59,31 @@ You are typically invoked by an orchestrator when a change affects data persiste
 
 Before creating or updating data-shape documents, you must:
 
-1. **Read existing data-shape docs**: Read all files under `docs/developer/data-shapes/` (starting with `INDEX.md`) to understand current contracts and see if the affected contract already has a file.
+1. **Graph-first discovery (mandatory).** Before your first grep or read of source or docs not already located by the graph or by an earlier read in this session, run the matching graphify command against the committed knowledge graph `graphify-out/graph.json` (full rules in AGENTS.md, "Graph-first discovery"):
 
-2. **Read source files directly**: For every contract in scope, read:
+   | You need to find...                | Command                                                                                                                   |
+   | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+   | What calls a symbol (reverse deps) | `graphify affected "<symbol>" --depth 2`, then confirm with grep (dynamic use may not appear in the graph)                |
+   | How two areas connect              | `graphify path "<A>" "<B>"`                                                                                               |
+   | How a feature works                | `graphify query "<question>"` — `--dfs` for one chain, `--seed` to anchor on a file, raise `--budget` if output truncates |
+   | One symbol's role and coupling     | `graphify explain "<X>"`                                                                                                  |
+   | An answer that lives in the docs   | `graphify section "docs/<file>.md#<Heading>"`                                                                             |
+   | Hubs and near-duplicate hotspots   | `graphify god-nodes --top 10`, then `explain` on the suspects                                                             |
+
+   Cite `source_location` for anything taken from the graph and verify it in source; INFERRED and AMBIGUOUS edges are leads, never findings. If files changed after the graph was built, run `graphify update .` (AST-only, no LLM cost) first.
+
+   For data-shape work: use `graphify query` / `graphify affected` on the shape's symbols to enumerate producers and consumers across persistence, transport and frontend schemas, and `graphify path` to see the boundary chain between them — feed these into the source reading in the next item.
+
+2. **Read existing data-shape docs**: Read all files under `docs/developer/data-shapes/` (starting with `INDEX.md`) to understand current contracts and see if the affected contract already has a file.
+
+3. **Read source files directly**: For every contract in scope, read:
    - Backend model `toJSON()` and `toPartialJSON()` methods (these define the actual persistence shapes)
    - Backend `z_Api` handler files (these define the actual transport shapes)
    - Backend controller response-mapper methods (these apply transport-boundary transformations)
    - Frontend Zod schema files (`.zod.ts`) for both request and response shapes
    - Frontend service files (`.ts`) that consume the schemas
 
-3. **Read existing shared-helper tracking**: If the shared helpers doc exists (e.g. `docs/developer/SharedHelpers.md`), read it to ensure shape docs reference it correctly rather than duplicating helper-status tracking.
+4. **Read existing shared-helper tracking**: If the shared helpers doc exists (e.g. `docs/developer/SharedHelpers.md`), read it to ensure shape docs reference it correctly rather than duplicating helper-status tracking.
 
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 

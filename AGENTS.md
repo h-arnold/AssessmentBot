@@ -22,6 +22,30 @@ AssessmentBot is a Google Apps Script tool that marks student submissions to Goo
 
 opencode injects this file automatically, and injects a component file once you interact with a file in that component's directory or below. Read a component file directly only when the injected content does not cover your task.
 
+## Graph-first discovery (graphify)
+
+`graphify-out/graph.json` is a committed knowledge graph of this repo (nodes = symbols, files and doc headings; edges = AST and inferred relationships). For any task that needs to locate, understand or reason about code or docs, run a graphify command before your first grep, glob or source read — this applies to implementation, review and test work, not only to questions about the codebase. An explicit `/graphify` invocation follows the installed skill's instructions.
+
+| You need to find...                                     | Command                                                                                                                               |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Callers or other reverse dependencies of a symbol       | `graphify affected "<symbol>" --depth 2` (confirm with grep; dynamic use may not appear in the graph)                                 |
+| How two areas connect                                   | `graphify path "<A>" "<B>"`                                                                                                           |
+| How a feature works ("how does X work?")                | `graphify query "<question>"` — `--dfs` traces one chain, `--seed <file>` anchors the traversal, raise `--budget` if output truncates |
+| One symbol's role and coupling                          | `graphify explain "<X>"`                                                                                                              |
+| An answer that lives in a doc, without opening the file | `graphify section "docs/<file>.md#<Heading>"`                                                                                         |
+| Hubs and near-duplicate hotspots                        | `graphify god-nodes --top 10`, then `explain` on the suspects                                                                         |
+
+Rules:
+
+- Cite `source_location` for a fact taken from the graph, then verify it in source. INFERRED and AMBIGUOUS edges are leads, never findings.
+- Before creating a new abstraction, reuse first (Prime Directive 2.1.5): run `graphify query` for an existing implementation. Before proposing to delete or merge near-duplicates, run `graphify path` between them to expose shared callers.
+- If files changed after the graph was built, run `graphify update .` (AST-only, no LLM cost) before querying, or state the staleness. After modifying code, run `graphify update .` so the next agent's queries see your change.
+- During parallel review the graph is read-only — no `update`, `save-result` or `reflect`; the orchestrator owns graph maintenance.
+- Dirty graphify-out/ files after hooks or incremental updates are not a reason to skip graphify. Skip it only when the task is about stale or incorrect graph output, or the user says not to use it.
+- Read GRAPH_REPORT.md only for broad architecture review, or when `query`, `path` or `explain` fall short.
+- A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected; do not flag it as churn or suggest skipping the rebuild.
+- Sub-agent handoffs for any task involving exploration must repeat the graph-first rule above, alongside the Mandatory Reading paths.
+
 ## 2. Prime Directives
 
 These apply to all components.
@@ -154,18 +178,3 @@ If guidance appears in multiple places, update the doc first, then keep AGENTS r
 ### 7.2 Same-Change Documentation Obligation
 
 Any change that alters documented behaviour must carry its documentation update in the same change. Delegate documentation updates to the `Docs` agent (`.opencode/agents/docs.md`) and canonical data-shape specification updates to the `Data Shapes Agent` (`.opencode/agents/data-shapes-agent.md`).
-
-## graphify
-
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
-
-When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.
-
-Rules:
-
-- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. When the answer is under a Markdown heading, `graphify section "<heading>"` prints that section's text, so the .md need not be opened. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
-- A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.

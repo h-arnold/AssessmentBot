@@ -1,7 +1,7 @@
 ---
 description: Keeps project documentation accurate, current, and aligned with actual code behaviour
 mode: all
-model: opencode-go/hy4-flash-free
+model: mistral/zai-glm-5-3-flash
 steps: 100
 permissions:
   - action: edit
@@ -50,11 +50,26 @@ context) and a summary of implemented behaviour.
 
 Before writing documentation updates, you must:
 
-1. **Acquire Context**: Read the changed source files directly. Do not rely only on change summaries.
-2. **Size and Structure Check**: Read the whole of every doc you intend to edit, not only the affected section. List its headings, record sections that are duplicated, stale, or owned by another canonical doc, and plan to delete or relocate them in the same pass.
-3. **Read Existing Docs**: `docs/developer/documentation-style-guide.md` is compulsory reading on every task and the source of truth for writing style. Then read relevant docs under `docs/developer/` (and user-facing docs if impacted). When frontend documentation, frontend standards, or frontend agent guidance may be in scope, explicitly check `docs/developer/frontend/frontend-loading-and-width-standards.md`, `docs/developer/frontend/frontend-spacing-and-padding-standards.md`, and `src/frontend/AGENTS.md` alongside any feature-specific frontend docs.
-4. **Inspect JSDoc**: Check JSDoc in touched files for accuracy against actual function/class behaviour.
-5. **Policy Drift Check Setup**: Identify the canonical policy docs for the changed behaviour and plan to verify that docs remain aligned before completion.
+1. **Graph-first discovery (mandatory).** Before your first grep or doc read not already located by the graph or by an earlier read in this session, run the matching graphify command against the committed knowledge graph `graphify-out/graph.json` (full rules in AGENTS.md, "Graph-first discovery"):
+
+   | You need to find...                | Command                                                                                                                   |
+   | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+   | What calls a symbol (reverse deps) | `graphify affected "<symbol>" --depth 2`, then confirm with grep (dynamic use may not appear in the graph)                |
+   | How two areas connect              | `graphify path "<A>" "<B>"`                                                                                               |
+   | How a feature works                | `graphify query "<question>"` — `--dfs` for one chain, `--seed` to anchor on a file, raise `--budget` if output truncates |
+   | One symbol's role and coupling     | `graphify explain "<X>"`                                                                                                  |
+   | An answer that lives in the docs   | `graphify section "docs/<file>.md#<Heading>"`                                                                             |
+   | Hubs and near-duplicate hotspots   | `graphify god-nodes --top 10`, then `explain` on the suspects                                                             |
+
+   Cite `source_location` for anything taken from the graph and verify it in source; INFERRED and AMBIGUOUS edges are leads, never findings. If files changed after the graph was built, run `graphify update .` (AST-only, no LLM cost) first.
+
+   For documentation work: `graphify section` prints an exact doc section without opening the file, and `graphify query` finds every doc and code node related to the changed behaviour — feed its results into the structural and ownership checks below. Verify anything taken from the graph against source before writing it into a doc.
+
+2. **Acquire Context**: Read the changed source files directly. Do not rely only on change summaries.
+3. **Size and Structure Check**: Read the whole of every doc you intend to edit, not only the affected section. List its headings, record sections that are duplicated, stale, or owned by another canonical doc, and plan to delete or relocate them in the same pass.
+4. **Read Existing Docs**: `docs/developer/documentation-style-guide.md` is compulsory reading on every task and the source of truth for writing style. Then read relevant docs under `docs/developer/` (and user-facing docs if impacted). When frontend documentation, frontend standards, or frontend agent guidance may be in scope, explicitly check `docs/developer/frontend/frontend-loading-and-width-standards.md`, `docs/developer/frontend/frontend-spacing-and-padding-standards.md`, and `src/frontend/AGENTS.md` alongside any feature-specific frontend docs.
+5. **Inspect JSDoc**: Check JSDoc in touched files for accuracy against actual function/class behaviour.
+6. **Policy Drift Check Setup**: Identify the canonical policy docs for the changed behaviour and plan to verify that docs remain aligned before completion.
 
 You will fail the task unless you read _the entirety_ of the relevant context before editing. Do not skip or shortcut this step.
 
