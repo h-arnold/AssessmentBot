@@ -719,8 +719,29 @@ Align canonical docs with the delivered code and remove planned-only markers.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** ...
-- **Deviations from plan:** ...
+- **Implementation notes:** verification-only section; no code, test or documentation file was
+  changed. All four required checks verified directly: (1) no `Not implemented` marker exists in
+  `progress-tracker.md`, `assignment.md`, `trigger-context.md`, `transport-envelope.md` or
+  `INDEX.md`, and the shape entries match the delivered contracts; (2) `AssessmentFlow.md:543`
+  describes keyed records (`ProgressTracker<requestId>`, with call sites without run context
+  keeping the legacy key); (3) `api-layer.md:604-617` lists `getProgress` with its source and
+  response validation; (4) the shared-helper table in `progress-tracker.md` lists every delivered
+  helper with `Implemented` or `Already exists` status and no remaining planned-only markers
+  anywhere under `docs/developer/data-shapes/`. Optional `@remarks` review: captured —
+  `src/backend/Utils/ProgressTracker.js:5` (active run context is per-execution; facade does not
+  set `FREEZE_AFTER_INIT`, i.e. unfrozen singleton), `src/backend/Utils/ProgressTracker.js:7`
+  (same) and `src/backend/Utils/02_ProgressTrackerCleanup.js:4` (per-user pending-trigger dedupe).
+  Docs sync pass: not needed — the section changed no code and found no doc gaps; earlier sections
+  already synced these documents. Plan compaction: not needed — no delivery history to remove.
+- **Deviations from plan:** none.
+- **Section regression gate:** PASSED — run at 2026-11-25 (session `progresstracker-api-polling`),
+  Overall Status GREEN, 8/8 checks passing, 0 regressions, 0 new failures, 0 fixes; report under
+  `.ts-regression-checker/reports/session-progresstracker-api-polling/`.
+- **Graphify refresh (§2.75):** `graphify update .` ran after the gate; this section changed no
+  source files, so the tracked `graphify-out/` artifacts were already current and only
+  `manifest.json` was rewritten (no topology changes). Committed with the section bookkeeping
+  commit below; untracked build caches remain uncommitted.
+- **Commit record:** record to follow.
 
 ---
 
