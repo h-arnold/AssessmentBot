@@ -292,6 +292,10 @@ are in the preserved `Implementation notes / deviations / follow-up` subsection.
   29,637 edges / 612 communities and rewrote the tracked `graphify-out/` artifacts (`graph.json`,
   `graph.html`, `GRAPH_REPORT.md`, `manifest.json`, `.graphify_labels.json`). Local build caches and
   the dated backup directory remain untracked; they are not committed.
+- **Commit record:** `c96acb0e` — `feat(backend): add keyed progress records and active run context`
+  — on branch `feat/progress-tracker-api-polling`, pushed successfully to
+  `origin/feat/progress-tracker-api-polling` (`d30cf523..c96acb0e`). Pre-commit hooks (Prettier,
+  backend lint, `typecheck:all`) passed.
 
 ---
 
