@@ -6,5 +6,6 @@ coverage/
 /.github/
 src/AdminSheet/
 src/AssessmentRecordTemplate/
+graphify-out/
 **/*.min.js
 *.lock
