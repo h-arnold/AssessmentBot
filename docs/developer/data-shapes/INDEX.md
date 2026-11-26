@@ -72,6 +72,9 @@ Containment links:
   blob with `AuthUserEntry` as an embedded sub-entity of the `authUsers` JSON array.
 - **Frontend Data Analysis Response** is derived in memory from ABClass data and live
   AssignmentDefinition partials; it has no persistence or transport boundary.
+- **ProgressTracker** is standalone — keyed User Property records under `ProgressTracker<requestId>`
+  with a flat `ProgressRecord` and no embedded sub-entities
+  (see [ProgressTracker](progress-tracker.md#sub-entities)).
 
 ### Cross-reference rules
 

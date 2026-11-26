@@ -14,9 +14,10 @@ Sibling contracts:
 
 - [Contract: BackendConfig](backend-config.md) — Shares GAS PropertiesService persistence
   pattern (`getUserProperties()` vs `getScriptProperties()`).
-- No other sibling contracts — RequestStore is an internal backend mechanism with no
-  frontend-facing transport, no API endpoints, and no registration in
-  `ALLOWLISTED_METHOD_HANDLERS`.
+- [Contract: ProgressTracker](progress-tracker.md) — Shares User Properties and `LockService`
+  conventions; its per-user cleanup dedupe follows the same lock pattern as the request store.
+- RequestStore itself is an internal backend mechanism with no frontend-facing transport, no API
+  endpoints, and no registration in `ALLOWLISTED_METHOD_HANDLERS`.
 
 ---
 

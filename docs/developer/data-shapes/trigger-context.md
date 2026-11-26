@@ -17,8 +17,11 @@ Sibling contracts:
   with no transport.
 - [Contract: AuthCache](auth-cache.md) — AuthService's in-memory group-membership cache;
   `triggerHandler()` reads it via `AuthService.checkAccess({ bypassCache: true, neverClaim: true })`.
-- No other sibling contracts — TriggerContext is an internal backend mechanism with no
-  frontend-facing transport and no registration in `ALLOWLISTED_METHOD_HANDLERS`.
+- [Contract: ProgressTracker](progress-tracker.md) — Owns the `cleanupProgress` trigger whose method
+  and empty params are stored here, and consumes the `requestId` carried for
+  `processSelectedAssignment`.
+- TriggerContext itself is an internal backend mechanism with no frontend-facing transport and no
+  registration in `ALLOWLISTED_METHOD_HANDLERS`.
 
 ---
 
