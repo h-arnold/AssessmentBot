@@ -12,6 +12,11 @@
 
 import { createDefinitionPartial, createMetricResult } from '../dataAnalysis/fixtures';
 import { ClassFullFixtureDefaults } from '../abClass/classFullFixtureDefaults';
+import smallClassesRaw from '@synthetic/small/classesById.json?raw';
+import smallDefinitionPartialsRaw from '@synthetic/small/assignmentDefinitionPartials.json?raw';
+import { DataAnalysisService } from '@/services/dataAnalysis/dataAnalysisService';
+import { AssignmentDefinitionPartialsResponseSchema } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { AssignmentDefinitionPartialsResponse } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type {
   AveragingResult,
   PerTaskRow,
@@ -21,11 +26,15 @@ import type {
   AnalysisMode,
   AverageContribution,
 } from '@/services/dataAnalysis/dataAnalysis.zod';
-import type {
-  ClassFull,
-  AssignmentPartial,
-  StudentSummary,
+import {
+  ClassFullSchema,
+  type ClassFull,
+  type AssignmentPartial,
+  type StudentSummary,
 } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
+
+const SMALL_CLASSES = JSON.parse(smallClassesRaw) as Record<string, unknown>;
+const SMALL_DEFINITION_PARTIALS = JSON.parse(smallDefinitionPartialsRaw) as unknown;
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -33,6 +42,9 @@ import type {
 
 /** Default ISO timestamp used as `createdAt` / `updatedAt` in fixtures. */
 export const DEFAULT_TS = '2026-01-01T00:00:00.000Z';
+
+/** Assignment count that distinguishes the full history from the old three-item cap. */
+const MORE_THAN_THREE_ASSIGNMENTS = 3;
 
 // ---------------------------------------------------------------------------
 // Fixture builders
@@ -284,4 +296,68 @@ export function classFull(
   } = {}
 ): ClassFull {
   return { ...new ClassFullFixtureDefaults(overrides) };
+}
+
+/**
+ * Detach one canonical assignment without its null-name submission.
+ *
+ * @param {ClassFull['assignments'][number]} assignmentRecord - Canonical assignment.
+ * @returns {ClassFull['assignments'][number]} Clone with analysable submissions.
+ */
+function withoutNullNameSubmissions(
+  assignmentRecord: ClassFull['assignments'][number]
+): ClassFull['assignments'][number] {
+  return {
+    ...assignmentRecord,
+    submissions: assignmentRecord.submissions.filter(({ studentName }) => studentName !== null),
+  };
+}
+
+/**
+ * Build a full-history adapter input from the committed `small` corpus.
+ *
+ * @remarks
+ * The class and definition registry come from the canonical committed views.
+ * The analysis is produced by the real `DataAnalysisService` from a detached
+ * clone of that class. Algorithmic boundary: every compact class's newest
+ * assignment carries one null-`studentName` submission, which the analyser
+ * rejects in `buildPerStudentRows`; the clone drops only that submission so the
+ * canonical analysis covers all four assignments. The adapter still receives
+ * the untouched full class.
+ *
+ * @returns {Object} Canonical analyser result, full class and definition registry.
+ */
+export function canonicalFullHistoryAdapterInput(): {
+  analyserResult: AveragingResult;
+  classFull: ClassFull;
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse;
+} {
+  const assignmentDefinitionPartials =
+    AssignmentDefinitionPartialsResponseSchema.parse(SMALL_DEFINITION_PARTIALS);
+  const canonicalClasses = Object.values(SMALL_CLASSES).map((raw) => ClassFullSchema.parse(raw));
+  const selectedClass = canonicalClasses.find(
+    (candidate) => candidate.assignments.length > MORE_THAN_THREE_ASSIGNMENTS
+  );
+  if (!selectedClass) {
+    throw new Error('Canonical small corpus has no class with more than three assignments');
+  }
+
+  const analysableClass = ClassFullSchema.parse({
+    ...selectedClass,
+    assignments: selectedClass.assignments.map((record) => withoutNullNameSubmissions(record)),
+  });
+  const analyserResult = new DataAnalysisService().analyse({
+    classes: [analysableClass],
+    assignmentDefinitionPartials,
+    filter: { classIds: [analysableClass.classId], analysisMode: 'absolute' },
+  })[0];
+  if (!analyserResult) {
+    throw new Error('Canonical small class produced no analysis result');
+  }
+
+  return {
+    analyserResult,
+    classFull: selectedClass,
+    assignmentDefinitionPartials,
+  };
 }

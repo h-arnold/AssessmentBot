@@ -37,13 +37,6 @@ import { TaskTitlesUnavailableError } from '@/services/dataAnalysis/heatmapAdapt
 import { getAssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionUtilities';
 
 // ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-/** Maximum number of recent assignment cards to return. */
-const MAX_RECENT_ASSIGNMENTS = 3;
-
-// ---------------------------------------------------------------------------
 // Trust validation helpers
 // ---------------------------------------------------------------------------
 
@@ -324,18 +317,17 @@ export function adaptClassPageToViewModel(input: {
     return { assignment, validatedUpdatedAt: rawUpdatedAt };
   });
 
-  // Take the most recent 3 *before* rolling up (avoids ~(A-3)·T wasted rollups)
-  const topAssignments = validatedAssignments
-    .toSorted((a, b) => {
-      return compareAssignmentUpdatedAtDesc(
-        { updatedAt: a.validatedUpdatedAt, assignmentId: a.assignment.assignmentId },
-        { updatedAt: b.validatedUpdatedAt, assignmentId: b.assignment.assignmentId }
-      );
-    })
-    .slice(0, MAX_RECENT_ASSIGNMENTS);
+  // Order the full history newest first. Validation above covers every assignment,
+  // and the presentation layer owns the initial three-card display limit.
+  const sortedAssignments = validatedAssignments.toSorted((a, b) => {
+    return compareAssignmentUpdatedAtDesc(
+      { updatedAt: a.validatedUpdatedAt, assignmentId: a.assignment.assignmentId },
+      { updatedAt: b.validatedUpdatedAt, assignmentId: b.assignment.assignmentId }
+    );
+  });
 
   const warnedDefinitionKeys = new Set<string>();
-  const recentAssignments: RecentAssignmentCardModel[] = topAssignments.map(
+  const recentAssignments: RecentAssignmentCardModel[] = sortedAssignments.map(
     ({ assignment, validatedUpdatedAt }) => {
       const definitionKey = assignment.assignmentDefinitionKey;
       const partial = getAssignmentDefinitionPartial(assignmentDefinitionPartials, definitionKey);

@@ -16,6 +16,7 @@ import {
   DEFAULT_TS,
   assignment,
   averagingResult,
+  canonicalFullHistoryAdapterInput,
   classFull,
   computedPerTaskRow,
   singleAssignmentAdapterInput,
@@ -24,6 +25,9 @@ import {
 import { adaptClassPageToViewModel } from './classPageAdapter';
 import { TaskTitlesUnavailableError } from '@/services/dataAnalysis/heatmapAdapter';
 import type { PerTaskRow } from '@/services/dataAnalysis/dataAnalysis.zod';
+
+/** Assignment count that distinguishes the full history from the old three-item cap. */
+const MORE_THAN_THREE_ASSIGNMENTS = 3;
 
 describe('adaptClassPageToViewModel', () => {
   describe('recentAssignments', () => {
@@ -40,54 +44,56 @@ describe('adaptClassPageToViewModel', () => {
       expect(result.recentAssignments).toEqual([]);
     });
 
-    it('returns up to 3 assignments sorted by updatedAt descending', () => {
-      const perTaskRows: PerTaskRow[] = [
-        computedPerTaskRow('dk-a', 't1', { completeness: 4, accuracy: 3, spag: 2 }),
-        computedPerTaskRow('dk-b', 't1', { completeness: 5, accuracy: 4, spag: 3 }),
-        computedPerTaskRow('dk-c', 't1', { completeness: 3, accuracy: 2, spag: 1 }),
-        computedPerTaskRow('dk-d', 't1', { completeness: 2, accuracy: 2, spag: 2 }),
-      ];
+    it('returns every canonical class assignment in descending updatedAt order without truncating older assignments', () => {
+      const input = canonicalFullHistoryAdapterInput();
+      const suppliedAssignments = input.classFull.assignments;
+      if (suppliedAssignments.length <= MORE_THAN_THREE_ASSIGNMENTS) {
+        throw new Error('Canonical fixture must supply more than three assignments');
+      }
+
+      // Independent newest-first derivation from the raw canonical input:
+      // updatedAt descending, with ascending assignmentId as tie-break.
+      const expectedIds = suppliedAssignments
+        .toSorted((left, right) => {
+          return (
+            String(right.updatedAt).localeCompare(String(left.updatedAt)) ||
+            left.assignmentId.localeCompare(right.assignmentId)
+          );
+        })
+        .map((supplied) => supplied.assignmentId);
+
+      const result = adaptClassPageToViewModel(input);
+
+      const returnedIds = result.recentAssignments.map((card) => card.assignmentId);
+      expect(result.recentAssignments).toHaveLength(suppliedAssignments.length);
+      expect(returnedIds).toEqual(expectedIds);
+    });
+
+    // Algorithmic boundary: equal `updatedAt` values are not present in the
+    // corpus, and local control is required to isolate the ascending-ID tie-break.
+    it('orders every equal-timestamp assignment by ascending assignmentId', () => {
+      const suppliedAssignmentIds = ['a-3', 'a-1', 'a-4', 'a-2'];
 
       const result = adaptClassPageToViewModel({
-        analyserResult: averagingResult({
-          perTask: perTaskRows,
-        }),
+        analyserResult: averagingResult({ perTask: [] }),
         classFull: classFull({
           students: [student('s-1', 'Alice')],
-          assignments: [
-            assignment({
-              assignmentId: 'a-D',
-              updatedAt: '2026-04-01T00:00:00.000Z',
-              definitionKey: 'dk-d',
-            }),
-            assignment({
-              assignmentId: 'a-C',
-              updatedAt: '2026-03-01T00:00:00.000Z',
-              definitionKey: 'dk-c',
-            }),
-            assignment({
-              assignmentId: 'a-B',
-              updatedAt: '2026-05-01T00:00:00.000Z',
-              definitionKey: 'dk-b',
-            }),
-            assignment({
-              assignmentId: 'a-A',
-              updatedAt: '2026-06-01T00:00:00.000Z',
-              definitionKey: 'dk-a',
-            }),
-          ],
+          assignments: suppliedAssignmentIds.map((assignmentId) => {
+            return assignment({
+              assignmentId,
+              updatedAt: DEFAULT_TS,
+              definitionKey: `dk-${assignmentId}`,
+            });
+          }),
         }),
-        assignmentDefinitionPartials: ['dk-a', 'dk-b', 'dk-c', 'dk-d'].map((dk) =>
-          createDefinitionPartial({ definitionKey: dk })
+        assignmentDefinitionPartials: suppliedAssignmentIds.map((assignmentId) =>
+          createDefinitionPartial({ definitionKey: `dk-${assignmentId}` })
         ),
       });
 
-      const expectedTopCount = 3;
-      expect(result.recentAssignments).toHaveLength(expectedTopCount);
-      // Most recent 3 by updatedAt: a-A (June), a-B (May), a-D (April)
-      expect(result.recentAssignments[0].assignmentId).toBe('a-A');
-      expect(result.recentAssignments[1].assignmentId).toBe('a-B');
-      expect(result.recentAssignments[2].assignmentId).toBe('a-D');
+      const returnedIds = result.recentAssignments.map((card) => card.assignmentId);
+      expect(result.recentAssignments).toHaveLength(suppliedAssignmentIds.length);
+      expect(returnedIds).toEqual(['a-1', 'a-2', 'a-3', 'a-4']);
     });
 
     it('preserves millisecond precision when sorting assignments by lastAssessedAt', () => {

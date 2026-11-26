@@ -1,10 +1,11 @@
 /**
  * The Recent Assignments section for the Class page.
  *
- * Renders a section `Card` (`size="small"`, `title="Recent Assignments"`)
- * wrapping:
+ * Receives the adapter's full newest-first assignment history and renders a
+ * section `Card` (`size="small"`, `title="Recent Assignments"`) wrapping:
  * - A row of up to three `RecentAssignmentCard` components, centre-aligned
- *   via `Flex`, when `recentAssignments` is non-empty.
+ *   via `Flex`, when `recentAssignments` is non-empty. The three-card depth is
+ *   a temporary presentation limit; the adapter does not truncate the history.
  * - An `Empty` component with a CTA button inside the card body when
  *   `recentAssignments` is empty.
  *
@@ -29,8 +30,15 @@ import type { RecentAssignmentCardModel } from './classPageAdapter.zod';
 import { RecentAssignmentCard } from './RecentAssignmentCard';
 import { pageContent } from '@/pages/pageContent';
 
+/**
+ * Temporary presentation limit while the section still renders cards. The
+ * adapter supplies the full newest-first assignment history; only the first
+ * three entries are shown here.
+ */
+const VISIBLE_RECENT_ASSIGNMENTS = 3;
+
 type RecentAssignmentsSectionProperties = Readonly<{
-  /** The list of recent assignment cards to render (up to 3). */
+  /** The full newest-first assignment history; only the first three are displayed. */
   recentAssignments: RecentAssignmentCardModel[];
   /** Callback invoked when the user clicks "Start New Assessment". */
   onStartNewAssessment: () => void;
@@ -49,11 +57,13 @@ type RecentAssignmentsSectionProperties = Readonly<{
  * Render the Recent Assignments section.
  *
  * Renders a section `Card` with `title="Recent Assignments"` wrapping either
- * a row of `RecentAssignmentCard` components (1-3, centre-aligned) or an
- * `Empty` component with a CTA button when recentAssignments is empty.
+ * a row of up to three `RecentAssignmentCard` components (centre-aligned, drawn
+ * from the supplied newest-first history) or an `Empty` component with a CTA
+ * button when no assignments are supplied.
  *
  * @param {Readonly<RecentAssignmentsSectionProperties>} root0 - Component properties.
- * @param {RecentAssignmentCardModel[]} root0.recentAssignments - The list of recent assignment cards.
+ * @param {RecentAssignmentCardModel[]} root0.recentAssignments - The full newest-first assignment history;
+ *   only the first three entries are displayed.
  * @param {() => void} root0.onStartNewAssessment - Callback invoked when the user clicks "Start New Assessment".
  * @param {(assignmentId: string) => void} [root0.onOpenHeatmap] - Optional callback forwarded to each card,
  *   invoked on card click to open the heatmap view.
@@ -66,6 +76,8 @@ export function RecentAssignmentsSection({
   onOpenHeatmap,
   analysisMode,
 }: RecentAssignmentsSectionProperties): JSX.Element {
+  const visibleAssignments = recentAssignments.slice(0, VISIBLE_RECENT_ASSIGNMENTS);
+
   return (
     <Card size="small" title="Recent Assignments">
       {recentAssignments.length === 0 ? (
@@ -76,7 +88,7 @@ export function RecentAssignmentsSection({
         </Empty>
       ) : (
         <Flex justify="center" gap="middle" wrap>
-          {recentAssignments.map((card) => {
+          {visibleAssignments.map((card) => {
             return (
               <RecentAssignmentCard
                 key={card.assignmentId}

@@ -654,6 +654,30 @@ substitutes the frozen `NOT_ATTEMPTED_METRIC` even when the analyser reported
 `computed`, so a `computed` metric is never shown against a cell with no
 submission.
 
+### `ClassPageAdapterResult`
+
+Frontend Zod: `ClassPageAdapterResultSchema` in
+`src/frontend/src/features/classPage/classPageAdapter.zod.ts`.
+Adapter: `adaptClassPageToViewModel()` in `src/frontend/src/features/classPage/classPageAdapter.ts`.
+
+`recentAssignments` carries the complete supplied class assignment history, not a
+truncated top-three selection. Trust validation covers the whole list before it is
+ordered: duplicate `assignmentId` values throw, and `validateUpdatedAt` rejects a
+null or unparseable `updatedAt` on any assignment. Every validated assignment then
+builds a `RecentAssignmentCardModel` through `buildRecentAssignment`, rolling up its
+available per-task evidence through `rollupCardCriteria` (or the no-data placeholder
+when no rows exist) and computing `average` via `computeOverallComposite`. No entry
+is omitted for recency.
+
+Ordering is `updatedAt` descending with `assignmentId` ascending as the
+equal-timestamp tie-break, applied by the shared `compareAssignmentUpdatedAtDesc`
+comparator so the adapter result and the Class-page prefetch use identical
+newest-first ordering. `ClassPageAdapterResultSchema` validates the array shape only
+and imposes no length cap. The initial three-entry display limit is temporary and
+owned by the presentation layer: `RecentAssignmentsSection` slices the supplied list
+with `VISIBLE_RECENT_ASSIGNMENTS = 3` for rendering. It is not a property of the
+adapter result or its schema.
+
 ### `ClassPageDisplayMetric` (adapter-local exception)
 
 Frontend Zod: `ClassPageDisplayMetricSchema` in
@@ -1328,6 +1352,8 @@ Class summary analyser: `src/frontend/src/services/dataAnalysis/classSummaryAnal
 Heatmap adapters: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`, `src/frontend/src/services/dataAnalysis/heatmapAdapter.merged.ts`
 Metric display: `src/frontend/src/services/dataAnalysis/metricDisplay/`
 Class-page adapter schema: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
+Class-page adapter: `src/frontend/src/features/classPage/classPageAdapter.ts` → `adaptClassPageToViewModel()` (full-history `recentAssignments`); `classPageModel.ts` → `compareAssignmentUpdatedAtDesc` (shared recency comparator, also used by the three-assignment prefetch)
+Class-page presentation limit: `src/frontend/src/features/classPage/RecentAssignmentsSection.tsx` → `VISIBLE_RECENT_ASSIGNMENTS` (display-only three-entry slice)
 Class-page adapter card-rollup rule: `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts` → `rollupCardCriteria` (baseline-mode card aggregates); `deriveBaselineTaskKeySet` (`src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`)
 
 Metadata refresh execution companions:
