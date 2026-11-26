@@ -52,8 +52,8 @@ Cleanup state is user scoped, matching the progress records:
 | `error`     | string or null | yes      | User-facing error text; `null` when absent.                                                                                                   |
 | `timestamp` | `string`       | yes      | ISO 8601 string from the last write. No live `Date` crosses transport.                                                                        |
 
-Terminal records are those with `completed === true` or a non-null `error`. All other records are
-treated as in flight.
+Terminal records are those with `completed === true` or a present, non-null `error`. A record with
+no `error` field is incomplete, not failed, and is treated as in flight.
 
 ### Key persistence notes
 
@@ -79,9 +79,11 @@ treated as in flight.
 ### Cleanup behaviour
 
 - `startTracking()`, `updateProgress()`, `complete()` and default error writes call
-  `ProgressTrackerCleanup.schedule()`. The cached flag suppresses later writes; on a cache miss the
-  durable marker repopulates it. A `LockService.getUserLock()` guard rechecks both before creating
-  a trigger. A failed lock acquisition logs a warning and leaves the progress write intact.
+  `ProgressTrackerCleanup.schedule(properties)`. The cached flag suppresses later writes; on a cache
+  miss the durable marker is checked against the live project triggers. A live marker repopulates the
+  flag; a stale marker — its trigger deleted by quota recovery or an auth-denied cleanup run — is
+  cleared so the write re-arms. A `LockService.getUserLock()` guard rechecks both before creating a
+  trigger. A failed lock acquisition logs a warning and leaves the progress write intact.
 - Trigger creation passes `{ skipTooManyTriggersRecovery: true }` to `createTimeBasedTrigger()`.
   Under that option **any** creation error is logged and the method returns `null`; it never calls
   `removeTriggers()` (which would delete assessment triggers) or `logAndThrowError()` (which would
@@ -94,12 +96,15 @@ treated as in flight.
   records. It also deletes the bare `ProgressTracker` key unconditionally as a pre-upgrade
   migration, before the terminal/in-flight pass, so a stale non-terminal unkeyed record cannot keep
   the cleanup timer re-arming. It logs and skips malformed keyed values and leaves them untouched.
-- The sweep clears the cache flag and marker in a `finally` block on every path. After a successful
-  sweep that observed an in-flight record, it re-arms one trigger and rewrites both for the new
-  trigger UID. A sweep failure rethrows after cleanup without re-arming; the next progress write
-  retries. `triggerHandler` logs such failures with
-  `logAndThrowError(message, error, { deferCleanup: true })` so the `logError` write path cannot
-  re-arm the trigger that just failed.
+- The sweep clears the cache flag and marker under `LockService.getUserLock()` in a `finally` block.
+  After a successful sweep that observed an in-flight record, it re-arms one trigger and rewrites
+  both for the new trigger UID while holding that lock. If the lock is held by a concurrent write,
+  the sweep leaves the marker and flag to that write's `schedule()` call, which validates the marker
+  against live triggers; the cached flag bounds any delay to its TTL. A sweep failure rethrows after
+  cleanup without re-arming there. `triggerHandler` logs such failures with
+  `logError(message, error, { deferCleanup: true })` so the write path cannot re-arm the trigger that
+  just failed, calls `ProgressTrackerCleanup.schedule(properties)` explicitly to give the new terminal
+  error record a cleanup trigger, then rethrows an `Error` carrying the dispatch error's message.
 
 ---
 
@@ -120,8 +125,9 @@ The response uses the shared success envelope unchanged (`ok`, `requestId`, `dat
 reads through `ProgressTrackerStore.readAll()`, which lists every prefix-matching property entry, so
 a pre-upgrade unkeyed record also reaches the handler; its field-level `requestId` check then
 skips — with a logged warning — any record without a non-empty `requestId`, which covers
-pre-upgrade data. Malformed keyed values are logged and skipped, and a property-store read failure
-propagates to the `apiHandler` error boundary. Records are sorted by `timestamp` ascending with
+pre-upgrade data. Unparseable JSON values and JSON `null` are logged and skipped by
+`ProgressTrackerStore.parse()`. A property-store read failure propagates to the `apiHandler` error
+boundary. Records are sorted by `timestamp` ascending with
 `requestId` ascending as tie-break; when no record survives the checks the response is
 `{ tasks: [] }`.
 
@@ -143,10 +149,14 @@ None. Each progress record is a flat object.
 
 ## Validation
 
-`getProgress_` checks each record's `requestId` (non-empty string) and skips any record without
-one — including pre-upgrade records that never carried it — with a logged warning. No other record
-field is validated at the transport boundary. Domain invariants stay in `ProgressTracker` and
-`AssignmentController`.
+`getProgress_` skips unparseable JSON values, JSON `null` and any record without a non-empty
+`requestId` — including pre-upgrade records that never carried it — with a logged warning. No other
+record field is validated at the transport boundary. A JSON object that passes the `requestId` check
+but is missing or mistypes another field is returned as-is; the frontend `ProgressRecordSchema` then
+rejects the whole response. This is a known discrepancy: skip-and-continue covers unparseable JSON,
+JSON `null` and absent or empty `requestId`, not partial records. Domain invariants stay in
+`ProgressTracker` and `AssignmentController`; adding full-record validation to the transport
+boundary would duplicate them.
 
 The frontend validates responses at the service boundary. `ProgressRecordSchema` requires a non-empty
 `requestId`, a finite `step`, a string `message`, a boolean `completed`, a nullable string `error` and

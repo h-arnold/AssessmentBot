@@ -42,45 +42,71 @@ const markPending = (cache) => {
 };
 
 /**
+ * Reports whether the trigger named by the durable marker is still live.
+ * A marker whose trigger was deleted externally — quota recovery in
+ * TriggerController or an auth-denied cleanup run in triggerHandler — must not
+ * keep suppressing a fresh cleanup trigger.
+ *
+ * @param {GoogleAppsScript.Properties.Properties} properties - The caller's User Property store.
+ * @returns {boolean} True when a live trigger still carries the marker UID.
+ */
+const hasLiveCleanupTrigger = (properties) => {
+  const markerUid = properties.getProperty(CLEANUP_MARKER_KEY);
+  if (markerUid === null) return false;
+  return ScriptApp.getProjectTriggers().some((trigger) => trigger.getUniqueId() === markerUid);
+};
+
+/**
  * Reports whether a progress record is terminal, so in-flight runs are kept.
+ * A record missing `error` is incomplete, not failed: only an explicit
+ * completion flag or a present, non-null error makes it terminal.
  *
  * @param {Object} record - Parsed progress record.
  * @returns {boolean} True when the run completed or carries an error.
  */
-const isTerminalRecord = (record) => record.completed === true || record.error !== null;
+const isTerminalRecord = (record) =>
+  record.completed === true || (record.error !== null && record.error !== undefined);
 
 const ProgressTrackerCleanup = {
   /**
    * Schedules one cleanup trigger for this user when none is pending.
-   * A cache miss falls back to the durable marker; the final check and creation
+   * A cache miss falls back to the durable marker, which is checked against
+   * the live project triggers: a marker whose trigger was deleted externally
+   * is cleared rather than treated as pending. The final check and creation
    * run under the user lock so concurrent writes cannot create two triggers.
    * A failed lock acquisition is logged and does not break the progress write.
    *
-   * @param {GoogleAppsScript.Properties.Properties} [properties] - The caller's User Property store; defaults to a fresh handle.
+   * @param {GoogleAppsScript.Properties.Properties} properties - The caller's User Property store.
    * @returns {void}
    */
-  schedule(properties = GASPropertiesUtils.getUserProperties()) {
+  schedule(properties) {
     const cache = new CacheManager(CacheService.getUserCache());
 
     if (cache.get(CLEANUP_FLAG_KEY) !== null) return;
 
-    if (properties.getProperty(CLEANUP_MARKER_KEY) !== null) {
+    if (hasLiveCleanupTrigger(properties)) {
       markPending(cache);
       return;
     }
+    properties.deleteProperty(CLEANUP_MARKER_KEY);
 
     const lock = LockService.getUserLock();
     if (!lock.tryLock()) {
-      ABLogger.getInstance().warn('Could not acquire the user lock to schedule progress cleanup.');
+      ABLogger.getInstance().warn('Could not acquire the user lock to schedule progress cleanup.', {
+        phase: 'schedule',
+        flagKey: CLEANUP_FLAG_KEY,
+        markerKey: CLEANUP_MARKER_KEY,
+      });
       return;
     }
 
     try {
       if (cache.get(CLEANUP_FLAG_KEY) !== null) return;
-      if (properties.getProperty(CLEANUP_MARKER_KEY) !== null) {
+      if (hasLiveCleanupTrigger(properties)) {
         markPending(cache);
         return;
       }
+      properties.deleteProperty(CLEANUP_MARKER_KEY);
       this.rearm();
     } finally {
       lock.releaseLock();
@@ -91,10 +117,13 @@ const ProgressTrackerCleanup = {
    * Deletes terminal progress records, keeping in-flight runs intact, and
    * deletes the bare pre-upgrade key outright: records are keyed only now, so
    * a stale unkeyed copy is dead data and must not keep the cleanup timer
-   * re-arming. Marker and cache flag are cleared on every path; a successful
-   * sweep that observed an in-flight keyed record re-arms one trigger. A sweep
-   * failure is rethrown after cleanup without re-arming, so a later progress
-   * write retries.
+   * re-arming. Marker and cache flag are cleared, and a successful sweep that
+   * observed an in-flight keyed record re-arms one trigger, all under the user
+   * lock so a concurrent progress write cannot create a second trigger. If the
+   * lock is held by a concurrent write, the sweep leaves the marker and flag to
+   * that write's `schedule()`, which validates the marker against live triggers;
+   * the cached flag bounds any delay to its TTL. A sweep failure is rethrown
+   * after cleanup without re-arming.
    *
    * @returns {void}
    */
@@ -102,16 +131,15 @@ const ProgressTrackerCleanup = {
     const properties = GASPropertiesUtils.getUserProperties();
     const cache = new CacheManager(CacheService.getUserCache());
     let hasInFlightRecord = false;
+    let wasSuccessful = false;
 
     try {
-      // Pre-upgrade deployments kept one unkeyed record at the bare prefix
-      // key. Records are keyed only now, so delete it outright instead of
-      // treating it as a synthetic entry: a stale non-terminal copy would
-      // otherwise keep the cleanup timer re-arming forever. It is dead data
-      // either way, so delete whatever is stored there and move on.
+      // Delete the bare pre-upgrade key.
       if (properties.getProperty(ProgressTrackerStore.KEY_PREFIX) !== null) {
         properties.deleteProperty(ProgressTrackerStore.KEY_PREFIX);
-        ABLogger.getInstance().info('Deleted pre-upgrade unkeyed progress record.');
+        ABLogger.getInstance().info('Deleted pre-upgrade unkeyed progress record.', {
+          key: ProgressTrackerStore.KEY_PREFIX,
+        });
       }
 
       for (const entry of ProgressTrackerStore.readAll(properties)) {
@@ -132,13 +160,30 @@ const ProgressTrackerCleanup = {
           hasInFlightRecord = true;
         }
       }
+      wasSuccessful = true;
     } finally {
-      properties.deleteProperty(CLEANUP_MARKER_KEY);
-      cache.remove(CLEANUP_FLAG_KEY);
-    }
-
-    if (hasInFlightRecord) {
-      this.rearm();
+      // Hold the user lock across the clear-and-rearm transition so a
+      // concurrent progress write cannot slip a second trigger in. Without the
+      // lock, leave both fields to that write's schedule() call.
+      const lock = LockService.getUserLock();
+      if (lock.tryLock()) {
+        try {
+          properties.deleteProperty(CLEANUP_MARKER_KEY);
+          cache.remove(CLEANUP_FLAG_KEY);
+          if (wasSuccessful && hasInFlightRecord) this.rearm();
+        } finally {
+          lock.releaseLock();
+        }
+      } else {
+        ABLogger.getInstance().warn(
+          'Could not acquire the user lock to finalise progress cleanup; leaving state to the lock holder.',
+          {
+            phase: 'sweep-finalise',
+            flagKey: CLEANUP_FLAG_KEY,
+            markerKey: CLEANUP_MARKER_KEY,
+          }
+        );
+      }
     }
   },
 
@@ -146,7 +191,8 @@ const ProgressTrackerCleanup = {
    * Creates one cleanup trigger and records its pending state.
    * A declined creation (quota or any other error) leaves marker and flag unset
    * so a later progress write retries. Quota recovery is skipped because it
-   * would delete unrelated assessment triggers.
+   * would delete unrelated assessment triggers. The creation failure is logged
+   * by `createTimeBasedTrigger()`, where the raw error is available.
    *
    * @returns {string|null} The new trigger UID, or null when creation was declined.
    */
@@ -158,9 +204,6 @@ const ProgressTrackerCleanup = {
       { skipTooManyTriggersRecovery: true }
     );
     if (triggerUid === null || triggerUid === undefined) {
-      ABLogger.getInstance().warn(
-        'Cleanup trigger creation was declined; marker and cache flag remain unset.'
-      );
       return null;
     }
 

@@ -410,7 +410,7 @@ follow-ups are retained below; authoritative records are in the preserved
 ### Retained for later sections
 
 - **Cleanup coordinator:** `src/backend/Utils/02_ProgressTrackerCleanup.js` (188 lines) exposes
-  `ProgressTrackerCleanup` with `schedule(properties?)`, `sweep()` and `rearm()`; the guarded
+  `ProgressTrackerCleanup` with `schedule(properties)`, `sweep()` and `rearm()`; the guarded
   `module.exports` is retained. The object must be attached to `globalThis` via
   `Object.assign(globalThis, { ProgressTrackerCleanup })`: a top-level `const` is a lexical binding,
   not a global property in the concatenated GAS runtime, where symbols resolve at call time. The
@@ -421,25 +421,28 @@ follow-ups are retained below; authoritative records are in the preserved
   `CLEANUP_DELAY_MINUTES * RuntimeConstants.SECONDS_PER_MINUTE * RuntimeConstants.MS_PER_SECOND`
   (values verified stable); `{ skipTooManyTriggersRecovery: true }` on every cleanup trigger
   creation.
-- **Dedupe:** `schedule(properties?)` short-circuits on a cache hit; on a cache miss with a valid
-  marker it repopulates the flag without creating a trigger; otherwise it acquires
+- **Dedupe:** `schedule(properties)` short-circuits on a cache hit; on a cache miss it checks the
+  durable marker against the live project triggers. A live marker repopulates the flag without
+  creating a trigger; a stale marker is cleared so the write re-arms. With no live marker it acquires
   `LockService.getUserLock()`, rechecks flag and marker under the lock, then calls `rearm()` inside a
   `try`/`finally` that releases the lock. A failed `tryLock()` warns via `ABLogger` and never throws
   or schedules. `createTimeBasedTrigger` returning `null`/`undefined` leaves marker and flag unset so
-  a later write retries. The optional `properties` argument avoids redundant `getUserProperties()`
-  calls and keeps lazy-init tests green.
-- **Sweep:** deletes terminal keyed records (`completed === true` or non-null `error`) plus a terminal
-  legacy `ProgressTracker` record, keeps non-terminal records, and warns-and-skips malformed keyed
-  values (never deleting or rewriting them). Marker and cache flag are cleared in a `finally` on
-  every sweep; exactly one trigger is re-armed only after a successful sweep that observed a
-  non-terminal record, rewriting marker and flag for the new UID. A sweep failure rethrows after the
-  `finally` without re-arming, so the next progress write re-arms. `triggerHandler` still owns
-  deletion of the fired trigger and its context.
-- **Wiring:** `startTracking`, `updateProgress` and `complete` call `schedule(this.properties)`;
-  `logError` still calls `schedule()` no-arg and honours `deferCleanup`; `triggerMethodHandlers.js`
-  registers `cleanupProgress` as an anonymous arrow dispatching
-  `globalThis.ProgressTrackerCleanup.sweep(parameters)`; `triggerHandler`'s catch passes
-  `{ deferCleanup: true }` to `logAndThrowError` so a failed sweep cannot re-arm through the error path.
+  a later write retries. The caller supplies the property store so no extra `getUserProperties()`
+  handle is created.
+- **Sweep:** deletes terminal keyed records (`completed === true` or a present, non-null `error`) plus
+  a terminal legacy `ProgressTracker` record, keeps non-terminal records (including partial objects
+  with no `error` field), and warns-and-skips malformed keyed values (never deleting or rewriting
+  them). Marker and cache flag are cleared under `LockService.getUserLock()` in a `finally` on every
+  sweep; exactly one trigger is re-armed under that lock only after a successful sweep that observed
+  a non-terminal record, rewriting marker and flag for the new UID. A sweep failure rethrows after
+  the `finally` without re-arming there. `triggerHandler` still owns deletion of the fired trigger
+  and its context.
+- **Wiring:** `startTracking`, `updateProgress`, `complete` and `logError` all call
+  `schedule(this.properties)`; `logError` honours `deferCleanup`; `triggerMethodHandlers.js` registers
+  `cleanupProgress` as an anonymous arrow dispatching `globalThis.ProgressTrackerCleanup.sweep()`;
+  `triggerHandler`'s catch calls `logError(error.message, error, { deferCleanup: true })`, then calls
+  `ProgressTrackerCleanup.schedule(properties)` explicitly so the terminal error record has a cleanup
+  trigger, then rethrows a new `Error` carrying the dispatch error's message.
 - **Extended helpers:** `CacheManager` constructor accepts an optional cache instance with
   `CacheService.getScriptCache()` as the constructor-owned default and adds best-effort `remove(key)`;
   `TriggerController.createTimeBasedTrigger(functionName, triggerTime, options)` returns `null` with
@@ -491,9 +494,9 @@ follow-ups are retained below; authoritative records are in the preserved
   added a `deferCleanup` `@remarks` note in `triggerHandler.js` (comment-only); scoped
   `lint:backend:check` re-run clean after those edits. Pre-existing drift (`mkdocs.yml` /
   `docs/README.md` missing the progress-tracker.md entry) reported but not fixed, already logged.
-- **Deviations from plan:** `schedule()` takes an optional properties-store argument passed as
-  `this.properties` from three write sites to avoid redundant `getUserProperties()` calls and keep
-  lazy-init tests green (`logError` still calls it no-arg). The 10-minute delay is derived via
+- **Deviations from plan:** `schedule(properties)` takes a required properties-store argument passed as
+  `this.properties` from all four write sites, so no extra `getUserProperties()` handle is created.
+  The 10-minute delay is derived via
   `RuntimeConstants` rather than a literal to clear `no-magic-numbers`. `Object.assign(globalThis, {
 … })` is used instead of a literal `globalThis.ProgressTrackerCleanup = …` because that form is
   only permitted on an eslint exempt list outside this section's surface; inline disables are
@@ -773,7 +776,7 @@ and for the section regression gate and commit records to come.
   included as pre-upgrade data. No production code writes, reads or deletes the bare key.
 - **Facade run context:** `_ensureRunContext()` generates `Utilities.getUuid()` correlation IDs
   (the Node test harness supplies a deterministic mock) and is called on every possibly-unbound
-  write or read path — `updateProgress`, `resetSteps`, `complete` before its read, `logError`
+  write or read path — `updateProgress`, `complete` before its read, `logError`
   (reached through `logAndThrowError`/`captureError`), `getCurrentProgress` and `clearProgress` —
   so unbound calls can never select a legacy key. `startTracking(id)` keeps the caller-supplied
   ID (existing pinned behaviour). `complete()` still releases the context after writing the
@@ -937,8 +940,8 @@ their tests). Outcome: no blocking slop; six in-scope fixes applied and reviewed
   absent key) and reused by both `readAll()` consumers; each caller keeps its field-level
   checks. A focused test block covers `parse` in `tests/utils/progressTracker.test.js`.
 - **I2** — `startTracking()` sets `this.step = 0` directly instead of the redundant
-  `resetSteps()` read+write; `resetSteps()` kept (test-pinned public method).
-- **I3** — private `_record(fields, current = {})` builder replaces five record literals.
+  `resetSteps()` read+write; `resetSteps()` removed because it has no production caller.
+- **I3** — private `_record(fields, current)` builder replaces five record literals.
   Deviation from the delegated `(message, overrides)` signature: `(fields, current)` was
   required so fresh-record paths do not merge stored fields and stored-field writes keep
   their exact field sets; records are semantically identical (key order differs; every

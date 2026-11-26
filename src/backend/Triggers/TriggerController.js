@@ -31,7 +31,13 @@ class TriggerController {
       return triggerId;
     } catch (error) {
       if (options?.skipTooManyTriggersRecovery === true) {
-        ABLogger.getInstance().warn(`Error creating trigger for ${functionName}: ${error.message}`);
+        ABLogger.getInstance().warn(
+          `Error creating trigger for ${functionName}: ${error.message}`,
+          {
+            functionName,
+            error,
+          }
+        );
         return null;
       }
       if (error.message.includes('This script has too many triggers')) {
@@ -133,8 +139,16 @@ class TriggerController {
     if (parametersJson !== null) {
       try {
         parameters = JSON.parse(parametersJson);
-      } catch {
+      } catch (error) {
         // Malformed params JSON — graceful degradation, consistent with CacheManager.get().
+        ABLogger.getInstance().warn(
+          'Could not parse stored trigger params; treating it as unknown.',
+          {
+            triggerUid,
+            method,
+            error,
+          }
+        );
         return null;
       }
     }

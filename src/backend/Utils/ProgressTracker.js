@@ -80,7 +80,7 @@ class ProgressTracker extends BaseSingleton {
    *   correlation ID is generated when absent or empty.
    * @returns {void}
    */
-  startTracking(requestId = null) {
+  startTracking(requestId) {
     this.ensureInitialized();
     if (typeof requestId === 'string' && requestId.length > 0) {
       this.activeRequestId = requestId;
@@ -94,7 +94,7 @@ class ProgressTracker extends BaseSingleton {
       error: null,
     });
     ProgressTrackerStore.write(this.properties, this.activeRequestId, initialData);
-    ABLogger.getInstance().info('Progress tracking started.');
+    ABLogger.getInstance().info('Progress tracking started.', { requestId: this.activeRequestId });
     globalThis.ProgressTrackerCleanup.schedule(this.properties);
   }
 
@@ -113,7 +113,9 @@ class ProgressTracker extends BaseSingleton {
 
     const updatedData = this._record({ message, completed: false, error: null });
     ProgressTrackerStore.write(this.properties, this.activeRequestId, updatedData);
-    ABLogger.getInstance().info(`Progress updated: Step ${this.step} - ${message}`);
+    ABLogger.getInstance().info(`Progress updated: Step ${this.step} - ${message}`, {
+      requestId: this.activeRequestId,
+    });
     globalThis.ProgressTrackerCleanup.schedule(this.properties);
   }
 
@@ -122,18 +124,6 @@ class ProgressTracker extends BaseSingleton {
    */
   incrementStep() {
     this.step++;
-  }
-
-  /**
-   * Resets the step counter to 0.
-   */
-  resetSteps() {
-    this._ensureRunContext();
-    this.step = 0;
-    const currentData = this.getCurrentProgress() || {};
-    const updatedData = this._record({}, currentData);
-    ProgressTrackerStore.write(this.properties, this.activeRequestId, updatedData);
-    ABLogger.getInstance().info('Steps reset to 0.');
   }
 
   /**
@@ -150,7 +140,9 @@ class ProgressTracker extends BaseSingleton {
     // Write while the context is still bound, then release it. Clearing first
     // would send the terminal write to a freshly generated context instead.
     ProgressTrackerStore.write(this.properties, this.activeRequestId, updatedData);
-    ABLogger.getInstance().info('Progress tracking completed successfully.');
+    ABLogger.getInstance().info('Progress tracking completed successfully.', {
+      requestId: this.activeRequestId,
+    });
     this.activeRequestId = null;
     globalThis.ProgressTrackerCleanup.schedule(this.properties);
   }
@@ -176,6 +168,7 @@ class ProgressTracker extends BaseSingleton {
     ProgressTrackerStore.write(this.properties, this.activeRequestId, updatedData);
     ABLogger.getInstance().error('ProgressTracker logged a user-facing error.', {
       errorMessage,
+      requestId: this.activeRequestId,
     });
 
     if (extraErrorDetails) {
@@ -183,7 +176,7 @@ class ProgressTracker extends BaseSingleton {
     }
 
     if (!options?.deferCleanup) {
-      globalThis.ProgressTrackerCleanup.schedule();
+      globalThis.ProgressTrackerCleanup.schedule(this.properties);
     }
   }
 
@@ -288,7 +281,7 @@ class ProgressTracker extends BaseSingleton {
    * @param {Object} [current] - The stored record to merge underneath.
    * @returns {Object} The record ready to persist.
    */
-  _record(fields, current = {}) {
+  _record(fields, current) {
     return {
       ...current,
       ...fields,

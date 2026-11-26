@@ -278,17 +278,17 @@ type ProgressRecord = {
 
 ### Behaviour
 
-- On a write, the coordinator checks the cached flag; on a cache miss it reads the per-user marker. If neither is present, it acquires `LockService.getUserLock()`, rechecks, creates one trigger via `TriggerController.createTimeBasedTrigger('triggerHandler', new Date(now + 10 minutes), { skipTooManyTriggersRecovery: true })`, stores context `{ method: 'cleanupProgress', params: {} }`, writes the marker and sets the cache flag.
-- The cache flag TTL is 600 seconds, defined in the cleanup module. `CacheManager.put()` receives it explicitly. The durable marker, not the cache, guarantees correctness when the flag expires.
-- Further writes do not create another trigger while the flag or marker is present.
+- On a write, the coordinator checks the cached flag; on a cache miss it reads the per-user marker and checks it against the live project triggers. A marker whose trigger was deleted externally — by quota recovery in `TriggerController` or by an auth-denied cleanup run in `triggerHandler` — is stale: it is cleared, so the write re-arms. Otherwise it repopulates the cache flag. With no live marker, the coordinator acquires `LockService.getUserLock()`, rechecks the flag and marker, creates one trigger via `TriggerController.createTimeBasedTrigger('triggerHandler', new Date(now + 10 minutes), { skipTooManyTriggersRecovery: true })`, stores context `{ method: 'cleanupProgress', params: {} }`, writes the marker and sets the cache flag.
+- The cache flag TTL is 600 seconds, defined in the cleanup module. `CacheManager.put()` receives it explicitly. The durable marker, validated against live triggers, keeps a pending cleanup across flag expiry without suppressing re-arming after an external deletion.
+- Further writes do not create another trigger while the flag or a live marker is present.
 - The cache wrapper is extended so the coordinator can use `getUserCache()` and remove a key; the shared wrapper keeps its existing script-cache behaviour for other consumers.
 - Trigger creation passes `{ skipTooManyTriggersRecovery: true }`. If the quota is exhausted, `createTimeBasedTrigger()` logs a warning and returns `null`; the coordinator leaves the marker and cache flag unset so a later write retries. It must not call `TriggerController.removeTriggers()`, which would delete assessment triggers.
 - When the trigger fires, `triggerHandler` resolves context, authorises and dispatches `cleanupProgress`.
-- Cleanup deletes only terminal progress records. On a successful sweep it clears the cache flag and marker and, if any non-terminal record was observed, re-arms one trigger and rewrites the marker and cache flag for the new trigger UID before returning. `triggerHandler` deletes the fired trigger and its context in its own `finally` block.
+- Cleanup deletes only terminal progress records, where terminal means `completed === true` or a present, non-null `error`; a record missing `error` is incomplete and is kept as in flight. On a successful sweep it clears the cache flag and marker under `LockService.getUserLock()` and, if any non-terminal record was observed, re-arms one trigger and rewrites the marker and cache flag for the new trigger UID while that lock is held. `triggerHandler` deletes the fired trigger and its context in its own `finally` block.
 
 ### Failure rule
 
-- A sweep failure clears the cache flag and marker in a `finally` block and does **not** re-arm, then propagates to `triggerHandler`. `triggerHandler` calls `logAndThrowError(error.message, error, { deferCleanup: true })`; `logError` accepts an optional `deferCleanup` flag and skips `schedule()` when it is true. This prevents the error-logging path from immediately re-arming the trigger it just failed to clean up. The next ordinary progress write re-arms. Re-arming happens only after a successful sweep that actually observed a non-terminal record.
+- A sweep failure clears the cache flag and marker under the user lock in a `finally` block and does **not** re-arm there, then propagates to `triggerHandler`. `triggerHandler` calls `logError(error.message, error, { deferCleanup: true })`; `logError` accepts an optional `deferCleanup` flag and skips `schedule()` when it is true, so the error-logging path cannot re-arm the trigger it just failed to clean up. `triggerHandler` then calls `ProgressTrackerCleanup.schedule(properties)` explicitly, creating a fresh trigger for the terminal error record that log wrote, and rethrows a new `Error` carrying the dispatch error's message. Re-arming from the sweep itself happens only after a successful sweep that actually observed a non-terminal record.
 - Any trigger-creation failure under `skipTooManyTriggersRecovery` (quota or otherwise) is logged by `createTimeBasedTrigger()` and returns `null`. It leaves the marker and cache flag unset, never deletes a `triggerHandler` trigger, never calls `logAndThrowError()` or `schedule()`, and retries only on a later ordinary progress write.
 - Lock acquisition failure on scheduling logs a warning and does not create a duplicate trigger; progress writes still succeed.
 
@@ -341,7 +341,7 @@ No UI components, hooks, timers or polling loops are added.
 
 - Backend unit tests: keyed writes, active run binding and read redirection, legacy fallback, aggregation and ordering, malformed-record skipping, terminal-only deletion, re-arming with marker/cache rewrite, trigger dedupe under the lock, and `requestId` propagation into trigger context.
 - API tests: `getProgress` registration, envelope data shape, and `startAssessmentRun` returning the correlation ID.
-- Integration test: a failing sweep dispatched through `triggerHandler` must not create a new cleanup trigger.
+- Integration test: a failing sweep dispatched through `triggerHandler` writes the user-facing error with `deferCleanup: true` and then explicitly schedules a fresh cleanup trigger for the terminal error record; the sweep itself does not re-arm.
 - Frontend unit tests: `getProgress` response validation, empty `tasks` acceptance, and the changed `startAssessmentRun` signature.
 - Regression: existing `ProgressTracker`, assignment-controller, trigger and apiHandler suites remain green after opportunistic test updates.
 

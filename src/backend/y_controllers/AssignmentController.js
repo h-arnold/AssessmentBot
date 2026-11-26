@@ -56,14 +56,10 @@ class AssignmentController {
     const triggerController = new TriggerController();
     let triggerId;
 
-    try {
-      triggerId = triggerController.createTimeBasedTrigger('triggerHandler');
-      ABLogger.getInstance().info(
-        `Trigger created for triggerHandler with triggerId: ${triggerId}`
-      );
-    } catch (error) {
-      this.progressTracker.logAndThrowError(`Error creating trigger: ${error.message}`, error);
-    }
+    // TriggerController logs creation failures with the raw error, so let one
+    // propagate unchanged rather than logging it again here.
+    triggerId = triggerController.createTimeBasedTrigger('triggerHandler');
+    ABLogger.getInstance().info(`Trigger created for triggerHandler with triggerId: ${triggerId}`);
 
     try {
       triggerController.storeTriggerContext(triggerId, {
