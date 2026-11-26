@@ -1281,9 +1281,9 @@ caption follow.
 
 ### Class summary contract
 
-The in-memory contract below is recorded from `SPEC.md`, which remains the source contract.
-All entries are delivered: the typed error, analyser, baseline-key reuse, strict schema and
-writer consumption. See also
+The in-memory class-summary contract below is defined by `ClassSummarySchema` in
+`classSummary.zod.ts` and `ClassSummaryAnalyser` in `classSummaryAnalyser.ts`. The rules cover the
+typed error, analyser, baseline-key reuse, strict schema and writer consumption. See also
 [abclass.md § Baseline averages and student standings](abclass.md#baseline-averages-and-student-standings).
 
 - **Typed `AttemptBaselineUnavailableError`**: `deriveAttemptBaseline` throws `AttemptBaselineUnavailableError` extending `Error` for exactly the three documented failure conditions (roster below three students, fewer than two attempt candidates, empty pool intersection), keeping the existing messages; plain invariant errors remain plain `Error`. `ClassSummaryAnalyser` catches only this type around the full-class baseline analysis and emits `available: false` with null baseline averages and standings; every other error propagates without message matching.
@@ -1294,9 +1294,10 @@ writer consumption. See also
 
 `ClassSummary` carries `updatedAt: string | null` on its `target` and `recentAssignments`
 identities: the analyser copies these verbatim from `AssignmentPartial.updatedAt`, which is
-nullable on the read shape. `SPEC.md` simplifies this to `string`; the in-memory schema does not
-validate canonical timestamps, which stay with `CanonicalMetadataTimestampSchema` in the ABClass
-metadata schema and are applied when the summary is projected into persisted metadata.
+nullable on the read shape. `ClassSummarySchema` encodes each identity's `updatedAt` as
+`string | null` rather than a plain `string`, and does not validate canonical timestamps; that
+validation stays with `CanonicalMetadataTimestampSchema` in the ABClass metadata schema and is
+applied when the summary is projected into persisted metadata.
 
 ## File Index
 
