@@ -1,6 +1,5 @@
 import { ZodError } from 'zod';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { StartAssessmentRunResponseSchema } from './assignmentAssessment.zod';
 import type { AssignmentFull } from './assignmentAssessment.zod';
 import type * as ApiService from '../apiService';
 
@@ -201,7 +200,6 @@ describe('assignmentAssessmentService', () => {
 
     await expect(startAssessmentRun(validStartAssessmentRunRequest)).resolves.toEqual(response);
     expect(callApiMock).toHaveBeenCalledTimes(1);
-    expect(StartAssessmentRunResponseSchema.parse(response)).toEqual(response);
   });
 
   it('startAssessmentRun() calls callApi with the correct method name and payload', async () => {
@@ -403,15 +401,29 @@ describe('assignmentAssessmentService', () => {
       callApiMock.mockResolvedValueOnce(incompleteResponse);
 
       const { getAssignment } = await loadAssignmentAssessmentService();
+      const request = { courseId: 'course-1', assignmentId: 'assign-1' };
 
-      await expect(
-        getAssignment({ courseId: 'course-1', assignmentId: 'assign-1' })
-      ).rejects.toBeInstanceOf(ZodError);
+      let thrownError: unknown;
+      try {
+        await getAssignment(request);
+      } catch (error: unknown) {
+        thrownError = error;
+      }
 
-      expect(callApiMock).toHaveBeenCalledWith('getAssignment', {
-        courseId: 'course-1',
-        assignmentId: 'assign-1',
+      expect(thrownError).toBeInstanceOf(ZodError);
+      expect(callApiMock).toHaveBeenCalledWith('getAssignment', request);
+
+      expect(mockLogFrontendError).toHaveBeenCalledTimes(1);
+      const [context, loggedError, metadata] = mockLogFrontendError.mock.calls[0]!;
+      expect(context).toBe('services/apiService.parseApiResponse');
+      expect(loggedError).toBe(thrownError);
+      expect(metadata).toMatchObject({
+        method: 'getAssignment',
+        responsePreview: expect.stringContaining('"assignmentId":"assign-1"'),
       });
+      expect(metadata?.zodIssues).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: ['courseId'] })])
+      );
     });
 
     it('parses input through the request schema before calling callApi', async () => {
