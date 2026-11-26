@@ -94,24 +94,25 @@ describe('Api/startAssessmentRun transport contract', () => {
     expect(() => startAssessmentRun_({ definitionKey: 'dk1', assignmentId: 'a1' })).toThrow(Error);
   });
 
-  it('delegates to controller on valid input and returns result', () => {
+  it('forwards the dispatcher requestId to the controller and returns it', () => {
     const { startAssessmentRun } = installAssignmentControllerStub();
+    // The controller still returns null; the transport owns the response payload.
     startAssessmentRun.mockReturnValue(null);
 
     const { startAssessmentRun_ } = loadAssignmentAssessmentModule();
 
-    const result = startAssessmentRun_({
+    const parameters = {
       definitionKey: 'def-algebra-baseline',
       assignmentId: 'assign-001',
       courseId: 'course-001',
-    });
+    };
+    const result = startAssessmentRun_(parameters, 'req-dispatch-001');
 
-    expect(result).toBeNull();
+    expect(result).toEqual({ requestId: 'req-dispatch-001' });
     expect(startAssessmentRun).toHaveBeenCalledTimes(1);
     expect(startAssessmentRun).toHaveBeenCalledWith({
-      definitionKey: 'def-algebra-baseline',
-      assignmentId: 'assign-001',
-      courseId: 'course-001',
+      ...parameters,
+      requestId: 'req-dispatch-001',
     });
   });
 });

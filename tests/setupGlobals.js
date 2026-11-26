@@ -206,6 +206,14 @@ g.LockService = {
   },
 };
 
+// Default ScriptApp mock; suites can install live triggers via _setProjectTriggers().
+const _projectTriggers = { value: [] };
+g.ScriptApp = {
+  _setProjectTriggers: (t) => (_projectTriggers.value = t),
+  _resetProjectTriggers: () => (_projectTriggers.value = []),
+  getProjectTriggers: () => _projectTriggers.value,
+};
+
 // Default Session mock — supplies the active-user identity for auth checks.
 // Follows the LockService convention: individual tests that need to control the
 // active-user email should override globalThis.Session in their own

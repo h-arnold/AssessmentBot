@@ -142,6 +142,23 @@ describe('CacheManager', () => {
       expect(mockScriptCache.remove).toHaveBeenCalledWith('cleanup:flag');
       expect(cacheStorage.has('cleanup:flag')).toBe(false);
     });
+
+    it('does not throw and logs through ABLogger when the native remove throws', () => {
+      const removeFailure = new Error('Native cache remove failure');
+      mockScriptCache.remove.mockImplementationOnce(() => {
+        throw removeFailure;
+      });
+      // remove() stays best-effort: a native outage is logged, never thrown.
+      expect(() => {
+        new CacheManager().remove('cleanup:flag');
+      }).not.toThrow();
+      expect(mockAbLoggerInstance.error).toHaveBeenCalledTimes(1);
+      expect(mockAbLoggerInstance.error).toHaveBeenCalledWith(
+        'Error removing from cache:',
+        removeFailure
+      );
+      expectConsoleSilent();
+    });
   });
 
   describe('Generic get()', () => {

@@ -54,17 +54,11 @@ const mockTriggerController = {
 
 const mockDispatchHandler = vi.fn();
 
-// The handler's catch routes through ProgressTracker.logAndThrowError (the same
-// seam AssignmentController.processSelectedAssignment uses). The mock rethrows
-// so the error still propagates after the finally cleanup has run.
 const mockProgressTracker = {
   startTracking: vi.fn(),
   updateProgress: vi.fn(),
   complete: vi.fn(),
   logError: vi.fn(),
-  logAndThrowError: vi.fn((message, error) => {
-    throw error || new Error(message);
-  }),
 };
 
 const authGroup = { value: 'teachers@school.edu' };
@@ -254,7 +248,7 @@ describe('triggerHandler', () => {
       expect(mockTriggerController.deleteTriggerById).toHaveBeenCalledWith('trigger-uid-6');
     });
 
-    it('still cleans up when the dispatched handler throws, routing the failure through logAndThrowError', () => {
+    it('still cleans up when the dispatched handler throws, logging with deferred cleanup and re-arming explicitly', () => {
       const params = {
         assignmentId: 'assignment-456',
         definitionKey: 'Essay_1_defKey',
@@ -264,22 +258,36 @@ describe('triggerHandler', () => {
         method: 'processSelectedAssignment',
         params,
       });
+      const dispatchFailure = new Error('handler failure');
       mockDispatchHandler.mockImplementationOnce(() => {
-        throw new Error('handler failure');
+        throw dispatchFailure;
       });
-
-      // The catch routes through ProgressTracker.logAndThrowError (the same
-      // seam AssignmentController.processSelectedAssignment uses), which
-      // rethrows; the finally block still runs cleanup for the resolved
-      // triggerUid before the error propagates.
-      expect(() => triggerHandler({ triggerUid: 'trigger-uid-6' })).toThrow('handler failure');
-
-      expect(mockTriggerController.getTriggerContext).toHaveBeenCalledWith('trigger-uid-6');
-      expect(mockDispatchHandler).toHaveBeenCalledTimes(1);
-      expect(mockDispatchHandler).toHaveBeenCalledWith(params);
-      expect(mockProgressTracker.logAndThrowError).toHaveBeenCalled();
-      expect(mockTriggerController.clearTriggerContext).toHaveBeenCalledWith('trigger-uid-6');
-      expect(mockTriggerController.deleteTriggerById).toHaveBeenCalledWith('trigger-uid-6');
+      const scheduleSpy = vi.fn();
+      const nestedGlobals = withGlobalMocks({
+        ProgressTrackerCleanup: () => ({ schedule: scheduleSpy, sweep: vi.fn(), rearm: vi.fn() }),
+      });
+      try {
+        expect(() => triggerHandler({ triggerUid: 'trigger-uid-6' })).toThrow('handler failure');
+        expect(mockTriggerController.getTriggerContext).toHaveBeenCalledWith('trigger-uid-6');
+        expect(mockDispatchHandler).toHaveBeenCalledTimes(1);
+        expect(mockDispatchHandler).toHaveBeenCalledWith(params);
+        expect(mockProgressTracker.logError).toHaveBeenCalledWith(
+          'handler failure',
+          dispatchFailure,
+          { deferCleanup: true }
+        );
+        expect(scheduleSpy).toHaveBeenCalledTimes(1);
+        expect(scheduleSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ getProperty: expect.any(Function) })
+        );
+        expect(mockProgressTracker.logError.mock.invocationCallOrder[0]).toBeLessThan(
+          scheduleSpy.mock.invocationCallOrder[0]
+        );
+        expect(mockTriggerController.clearTriggerContext).toHaveBeenCalledWith('trigger-uid-6');
+        expect(mockTriggerController.deleteTriggerById).toHaveBeenCalledWith('trigger-uid-6');
+      } finally {
+        nestedGlobals.restore();
+      }
     });
 
     it('aborts and cleans up when auth denies without duplicating the denial log', () => {
@@ -416,17 +424,18 @@ describe('triggerHandler', () => {
       expect(mockTriggerController.deleteTriggerById).toHaveBeenCalledWith('known-uid');
     });
 
-    it('routes a failing cleanup sweep through logAndThrowError with deferCleanup', () => {
+    it('routes a failing cleanup sweep through logError with deferred cleanup, then schedules a fresh trigger', () => {
       const sweepFailure = new Error('sweep blew up');
       const cleanupHandler = vi.fn(() => {
         throw sweepFailure;
       });
+      const scheduleSpy = vi.fn();
       const nestedGlobals = withGlobalMocks({
         TRIGGER_METHOD_HANDLERS: () => ({
           processSelectedAssignment: mockDispatchHandler,
           cleanupProgress: cleanupHandler,
         }),
-        ProgressTrackerCleanup: () => ({ schedule: vi.fn(), sweep: vi.fn(), rearm: vi.fn() }),
+        ProgressTrackerCleanup: () => ({ schedule: scheduleSpy, sweep: vi.fn(), rearm: vi.fn() }),
       });
 
       try {
@@ -434,22 +443,26 @@ describe('triggerHandler', () => {
           method: 'cleanupProgress',
           params: {},
         });
-
         expect(() => triggerHandler({ triggerUid: 'cleanup-fail-uid' })).toThrow('sweep blew up');
         expect(cleanupHandler).toHaveBeenCalledTimes(1);
-        expect(mockProgressTracker.logAndThrowError).toHaveBeenCalledWith(
-          'sweep blew up',
-          sweepFailure,
-          { deferCleanup: true }
+        expect(mockProgressTracker.logError).toHaveBeenCalledWith('sweep blew up', sweepFailure, {
+          deferCleanup: true,
+        });
+        expect(scheduleSpy).toHaveBeenCalledTimes(1);
+        expect(scheduleSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ getProperty: expect.any(Function) })
+        );
+        expect(mockProgressTracker.logError.mock.invocationCallOrder[0]).toBeLessThan(
+          scheduleSpy.mock.invocationCallOrder[0]
         );
       } finally {
         nestedGlobals.restore();
       }
     });
 
-    it('does not schedule another cleanup trigger when a sweep fails', () => {
-      // Integration path: use the real ProgressTracker so logError's
-      // deferCleanup handling decides whether schedule() runs.
+    it('re-arms once after a failed sweep while deferCleanup prevents implicit re-arming', () => {
+      // Use the real ProgressTracker so logError's deferCleanup handling runs;
+      // stub the collaborator so the explicit schedule() call is observable.
       const realProgressTracker = require('#backend/Utils/ProgressTracker.js');
       realProgressTracker.resetForTests();
       globalThis.PropertiesService._resetUserProperties();
@@ -465,17 +478,19 @@ describe('triggerHandler', () => {
           },
         }),
       });
-
       try {
         mockTriggerController.getTriggerContext.mockReturnValue({
           method: 'cleanupProgress',
           params: {},
         });
-
         expect(() => triggerHandler({ triggerUid: 'cleanup-fail-uid-2' })).toThrow(
           'sweep failed again'
         );
-        expect(scheduleSpy).not.toHaveBeenCalled();
+        // One call: deferCleanup suppressed the implicit re-arm in logError.
+        expect(scheduleSpy).toHaveBeenCalledTimes(1);
+        expect(scheduleSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ getProperty: expect.any(Function) })
+        );
       } finally {
         nestedGlobals.restore();
         realProgressTracker.resetForTests();

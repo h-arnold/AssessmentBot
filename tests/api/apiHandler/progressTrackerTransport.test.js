@@ -128,4 +128,34 @@ describe('Api/getProgress transport helper', () => {
       globalThis.PropertiesService.getUserProperties = originalGetUserProperties;
     }
   });
+
+  it('returns a parseable partial record with a missing or mistyped timestamp as-is', () => {
+    const noTimestamp = writeProgressRecord('req-no-timestamp', { timestamp: undefined });
+    const numericTimestamp = writeProgressRecord('req-number-timestamp', { timestamp: 12345 });
+    const valid = writeProgressRecord('req-valid');
+    const getProgress = loadGetProgressHandler();
+
+    let response;
+    expect(() => {
+      response = getProgress();
+    }).not.toThrow();
+
+    // The comparator coerces timestamps with String(...), so a partial record
+    // cannot break the sort or be filtered out of the response.
+    expect(response.tasks).toHaveLength(3);
+    expect(response.tasks.map((task) => task.requestId).sort()).toEqual([
+      noTimestamp.record.requestId,
+      numericTimestamp.record.requestId,
+      valid.record.requestId,
+    ]);
+    expect(
+      response.tasks.find((task) => task.requestId === numericTimestamp.record.requestId).timestamp
+    ).toBe(12345);
+    expect(response.tasks.find((task) => task.requestId === valid.record.requestId)).toEqual(
+      valid.record
+    );
+    expect(
+      response.tasks.find((task) => task.requestId === noTimestamp.record.requestId)
+    ).not.toHaveProperty('timestamp');
+  });
 });

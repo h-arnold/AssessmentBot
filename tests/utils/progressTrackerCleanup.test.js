@@ -85,6 +85,16 @@ function seedMarker(uid) {
   globalThis.PropertiesService.getUserProperties().setProperty(MARKER_KEY, uid);
 }
 
+/** Installs live project triggers carrying the supplied UIDs. */
+function installLiveCleanupTriggers(...triggerUids) {
+  globalThis.ScriptApp._setProjectTriggers(
+    triggerUids.map((triggerUid) => ({
+      getUniqueId: () => triggerUid,
+      getHandler: () => 'triggerHandler',
+    }))
+  );
+}
+
 describe('ProgressTrackerCleanup', () => {
   let restoreGlobals;
   let createTimeBasedTrigger;
@@ -100,6 +110,7 @@ describe('ProgressTrackerCleanup', () => {
     globalThis.PropertiesService._resetUserProperties();
     globalThis.CacheService._resetScriptCache();
     globalThis.CacheService._resetUserCache();
+    globalThis.ScriptApp._resetProjectTriggers();
 
     createTimeBasedTrigger = vi.fn(() => 'cleanup-uid-1');
     storeTriggerContext = vi.fn();
@@ -142,7 +153,8 @@ describe('ProgressTrackerCleanup', () => {
   describe('schedule', () => {
     it('schedules one cleanup trigger on the first progress write and none on later writes', () => {
       const nowMs = Date.now();
-      globalThis.ProgressTrackerCleanup.schedule();
+      const properties = globalThis.PropertiesService.getUserProperties();
+      globalThis.ProgressTrackerCleanup.schedule(properties);
 
       expect(createTimeBasedTrigger).toHaveBeenCalledTimes(1);
       expect(createTimeBasedTrigger).toHaveBeenCalledWith(
@@ -163,14 +175,15 @@ describe('ProgressTrackerCleanup', () => {
         CLEANUP_FLAG_TTL_SECONDS
       );
 
-      globalThis.ProgressTrackerCleanup.schedule();
+      globalThis.ProgressTrackerCleanup.schedule(properties);
       expect(createTimeBasedTrigger).toHaveBeenCalledTimes(1);
     });
 
-    it('repopulates the cache flag from a valid marker on a cache miss without creating a trigger', () => {
+    it('repopulates the cache flag from a marker with a live trigger without creating one', () => {
       seedMarker('existing-cleanup-uid');
+      installLiveCleanupTriggers('existing-cleanup-uid');
 
-      globalThis.ProgressTrackerCleanup.schedule();
+      globalThis.ProgressTrackerCleanup.schedule(globalThis.PropertiesService.getUserProperties());
 
       expect(createTimeBasedTrigger).not.toHaveBeenCalled();
       expect(userCachePutSpy).toHaveBeenCalledWith(
@@ -180,17 +193,54 @@ describe('ProgressTrackerCleanup', () => {
       );
     });
 
+    it('clears a marker whose trigger was deleted externally and arms a fresh one', () => {
+      seedMarker('deleted-cleanup-uid');
+      installLiveCleanupTriggers();
+
+      globalThis.ProgressTrackerCleanup.schedule(globalThis.PropertiesService.getUserProperties());
+
+      expect(createTimeBasedTrigger).toHaveBeenCalledTimes(1);
+      expect(storeTriggerContext).toHaveBeenCalledWith('cleanup-uid-1', {
+        method: CLEANUP_METHOD,
+        params: {},
+      });
+      expect(readMarker()).toBe('cleanup-uid-1');
+      expect(userCachePutSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.anything(),
+        CLEANUP_FLAG_TTL_SECONDS
+      );
+    });
+
+    it('does not create a duplicate trigger when the cache flag appears after the lock is acquired', () => {
+      const userCache = globalThis.CacheService.getUserCache();
+      // CacheManager.get parses stored JSON, so a flag appearing mid-schedule
+      // is represented by the serialised flag value.
+      const getSpy = vi
+        .spyOn(userCache, 'get')
+        .mockReturnValueOnce(null)
+        .mockReturnValue(JSON.stringify('pending'));
+
+      globalThis.ProgressTrackerCleanup.schedule(globalThis.PropertiesService.getUserProperties());
+
+      expect(getSpy).toHaveBeenCalledTimes(2);
+      expect(createTimeBasedTrigger).not.toHaveBeenCalled();
+      expect(userCachePutSpy).not.toHaveBeenCalled();
+      expect(readMarker()).toBeNull();
+    });
+
     it('leaves no marker after a trigger creation failure so a later write retries', () => {
       createTimeBasedTrigger.mockReturnValueOnce(null);
+      const properties = globalThis.PropertiesService.getUserProperties();
 
-      globalThis.ProgressTrackerCleanup.schedule();
+      globalThis.ProgressTrackerCleanup.schedule(properties);
 
       expect(createTimeBasedTrigger).toHaveBeenCalledTimes(1);
       expect(readMarker()).toBeNull();
       expect(userCachePutSpy).not.toHaveBeenCalled();
 
       createTimeBasedTrigger.mockReturnValue('retry-cleanup-uid');
-      globalThis.ProgressTrackerCleanup.schedule();
+      globalThis.ProgressTrackerCleanup.schedule(properties);
       expect(createTimeBasedTrigger).toHaveBeenCalledTimes(2);
     });
 
@@ -202,7 +252,11 @@ describe('ProgressTrackerCleanup', () => {
       });
 
       try {
-        expect(() => globalThis.ProgressTrackerCleanup.schedule()).not.toThrow();
+        expect(() =>
+          globalThis.ProgressTrackerCleanup.schedule(
+            globalThis.PropertiesService.getUserProperties()
+          )
+        ).not.toThrow();
         expect(mockABLogger.warn).toHaveBeenCalled();
         expect(createTimeBasedTrigger).not.toHaveBeenCalled();
         expect(readMarker()).toBeNull();
@@ -227,6 +281,24 @@ describe('ProgressTrackerCleanup', () => {
       expect(readRaw(globalThis.ProgressTrackerStore.keyFor('terminal-error'))).toBeNull();
       expect(readRaw(BARE_LEGACY_KEY)).toBeNull();
       expect(readRaw(globalThis.ProgressTrackerStore.keyFor('still-running'))).not.toBeNull();
+    });
+
+    it('keeps a partial record with a requestId but no error field as in flight', () => {
+      const key = globalThis.ProgressTrackerStore.keyFor('partial-no-error');
+      const partialRecord = {
+        requestId: 'partial-no-error',
+        step: 2,
+        message: 'still working',
+        completed: false,
+        timestamp: '2026-01-01T00:00:00.000Z',
+      };
+      writeRaw(key, JSON.stringify(partialRecord));
+      seedMarker('cleanup-uid-1');
+
+      globalThis.ProgressTrackerCleanup.sweep();
+
+      expect(readRaw(key)).not.toBeNull();
+      expect(JSON.parse(readRaw(key))).toEqual(partialRecord);
     });
 
     it('deletes a non-terminal pre-upgrade record unconditionally without re-arming for it', () => {

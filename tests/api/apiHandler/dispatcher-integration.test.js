@@ -236,7 +236,6 @@ describe('Api/apiHandler dispatcher — integration, VM context and delegation',
         'apiHandler',
         'ApiDispatcher',
         'ALLOWLISTED_METHOD_HANDLERS',
-        'ApiRequestContext',
       ]);
     });
 

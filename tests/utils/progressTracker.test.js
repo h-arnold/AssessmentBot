@@ -166,19 +166,6 @@ describe('ProgressTracker', () => {
     });
   });
 
-  describe('resetSteps', () => {
-    it('resets step counter to 0 and persists', () => {
-      tracker.startTracking(); // initialises properties
-      tracker.incrementStep();
-      tracker.incrementStep();
-      tracker.incrementStep();
-      expect(tracker.step).toBe(3);
-
-      tracker.resetSteps();
-      expect(tracker.step).toBe(0);
-    });
-  });
-
   describe('clearProgress', () => {
     it('deletes the keyed record of the bound run', () => {
       tracker.startTracking('req-clear');
@@ -206,6 +193,48 @@ describe('ProgressTracker', () => {
       expect(status.completed).toBe(false);
       expect(status.step).toBe(0);
       expect(status.message).toContain('Starting the assessment');
+    });
+  });
+
+  describe('getStepAsNumber', () => {
+    /**
+     * Rewrites the bound run record so a step field can be removed or retyped
+     * without relying on the facade's own write paths.
+     */
+    function writeStepOverride(requestId, override) {
+      const key = ProgressTrackerStore.keyFor(requestId);
+      const stored = readUserProperty(key);
+      if (override === undefined) {
+        delete stored.step;
+      } else {
+        stored.step = override;
+      }
+      globalThis.PropertiesService.getUserProperties().setProperty(key, JSON.stringify(stored));
+    }
+
+    it('returns null when the bound record has a missing or null step', () => {
+      tracker.startTracking('req-missing-step');
+      writeStepOverride('req-missing-step', undefined);
+      expect(tracker.getStepAsNumber()).toBeNull();
+
+      tracker.startTracking('req-null-step');
+      writeStepOverride('req-null-step', null);
+      expect(tracker.getStepAsNumber()).toBeNull();
+    });
+
+    it('parses a string step from the bound record as a base-10 number', () => {
+      tracker.startTracking('req-string-step');
+      writeStepOverride('req-string-step', '12');
+
+      expect(tracker.getStepAsNumber()).toBe(12);
+    });
+
+    it('returns the in-memory step when no run context is bound', () => {
+      tracker.incrementStep();
+      tracker.incrementStep();
+
+      expect(tracker.activeRequestId).toBeNull();
+      expect(tracker.getStepAsNumber()).toBe(2);
     });
   });
 
@@ -399,20 +428,6 @@ describe('ProgressTracker', () => {
       const keyed = readUserProperty(ProgressTrackerStore.keyFor(generatedIds[0]));
       expect(keyed).not.toBeNull();
       expect(keyed.error).toBe('Save failed: Disk failure');
-      expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
-    });
-
-    it('resetSteps writes a step-zero record under the generated key', () => {
-      tracker.incrementStep();
-      tracker.incrementStep();
-
-      tracker.resetSteps();
-
-      expect(generatedIds.length).toBeGreaterThan(0);
-      const keyed = readUserProperty(ProgressTrackerStore.keyFor(generatedIds[0]));
-      expect(keyed).not.toBeNull();
-      expect(keyed.step).toBe(0);
-      expect(keyed.requestId).toBe(generatedIds[0]);
       expect(readUserProperty(BARE_LEGACY_KEY)).toBeNull();
     });
 
