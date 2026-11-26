@@ -62,7 +62,7 @@ before domain validation. See [api-layer.md § Response envelope](api-layer.md#r
   3. Checks per-document freshness via `_validateDefinitionFreshness()` using `DriveManager.getFileModifiedTime` and `DateUtils.isNewer` — throws `DefinitionStaleError` if either document has changed
   4. Resolves the ABClass via `ABClassController.loadClass(courseId)` — throws if no stored class exists
   5. Delegates to `startProcessing(assignmentId, definitionKey, courseId, requestId)`, which creates the time-based trigger and stores the run context in Script Properties
-  6. The controller returns `null`; the transport returns `{ requestId }` from the dispatcher accessor
+  6. The controller returns `null`; the transport returns `{ requestId }` built from the ID the dispatcher passes to the handler
 - **Error Handling**:
   - Transport validation failures throw `ApiValidationError` → mapped to `INVALID_REQUEST`
   - Stale definition throws `DefinitionStaleError` → mapped to `DEFINITION_STALE` with `details` block

@@ -40,29 +40,6 @@ const ADMIN_REQUIRED_METHOD_NAMES = Object.freeze([
 
 const PII_LOG_METHODS = Object.freeze(['getAuthenticationSettings', 'setAuthenticationSettings']);
 
-/**
- * Request-scoped accessor for the dispatcher-generated correlation ID.
- *
- * @remarks Modelled as an object literal rather than a top-level function declaration so the
- * global-exposure guard does not treat it as a public GAS function. The value is overwritten on
- * every dispatch, and handlers read it without widening their positional signatures.
- */
-const ApiRequestContext = {
-  requestId: null,
-
-  set(requestId) {
-    this.requestId = requestId;
-  },
-
-  get() {
-    return this.requestId;
-  },
-
-  resetForTests() {
-    this.requestId = null;
-  },
-};
-
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   hasScriptAuthorisation: () => new ScriptAppManager().isAuthorised(),
   getApplicationAccess: () => getApplicationAccess_(),
@@ -82,7 +59,7 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   getABClass: (parameters) => getABClass_(parameters),
   getBackendConfig: () => getBackendConfig_(),
   setBackendConfig: (parameters) => setBackendConfig_(parameters),
-  startAssessmentRun: (parameters) => startAssessmentRun_(parameters, ApiRequestContext.get()),
+  startAssessmentRun: (parameters, requestId) => startAssessmentRun_(parameters, requestId),
   getProgress: () => getProgress_(),
   getCohorts: () => new ReferenceDataController().listCohorts(),
   createCohort: (parameters) => new ReferenceDataController().createCohort(parameters.record),
@@ -113,7 +90,6 @@ class ApiDispatcher extends BaseSingleton {
    */
   handle(request) {
     const requestId = this._resolveRequestId();
-    ApiRequestContext.set(requestId);
 
     if (!this._isValidRequest(request)) {
       return this._failure(requestId, 'INVALID_REQUEST', 'Invalid API request payload.', false);
@@ -170,7 +146,7 @@ class ApiDispatcher extends BaseSingleton {
     let isHandlerFailed = false;
     let data;
     try {
-      data = handler(request.params);
+      data = handler(request.params, requestId);
     } catch (error) {
       isHandlerFailed = true;
       handlerError = error;
@@ -207,7 +183,7 @@ class ApiDispatcher extends BaseSingleton {
     ABLogger.getInstance().debug('API response sent.', {
       requestId,
       method,
-      ...(!PII_LOG_METHODS.includes(method) && { response: JSON.stringify(response) }),
+      ...(!PII_LOG_METHODS.includes(method) && { response }),
     });
   }
 
@@ -479,6 +455,5 @@ if (typeof module !== 'undefined' && module.exports) {
     apiHandler,
     ApiDispatcher,
     ALLOWLISTED_METHOD_HANDLERS,
-    ApiRequestContext,
   };
 }

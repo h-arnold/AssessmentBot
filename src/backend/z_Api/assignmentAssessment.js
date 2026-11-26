@@ -3,18 +3,16 @@
 /**
  * Transport-boundary handler for startAssessmentRun.
  * Validates the parameters object shape and required string fields, then
- * delegates to AssignmentController.startAssessmentRun with the request-scoped
+ * delegates to AssignmentController.startAssessmentRun with the dispatcher's
  * correlation ID and returns that ID as the response data payload.
  *
  * @param {*} parameters - Request payload containing definitionKey, assignmentId, courseId.
- * @param {string} [requestId] - Correlation ID supplied by the allowlist closure.
- * @returns {Object|null} `{ requestId }` when a correlation ID is supplied; the controller's
- *   `null` result for direct helper calls made without request context.
+ * @param {string} requestId - Correlation ID supplied by the dispatcher as the second argument.
+ * @returns {Object} `{ requestId }` correlation ID response payload.
  * @throws {ApiValidationError} If parameters is not a plain object.
  * @throws {Error} If required fields are missing or not non-empty strings.
- * @remarks The dispatcher passes the accessor value explicitly because this module is loaded
- * separately in Node tests and cannot resolve the script-scope accessor as a global. The
- * controller keeps returning `null`; only the transport payload changes.
+ * @remarks The controller still returns `null`; the transport handler owns the `{ requestId }`
+ * payload.
  */
 function startAssessmentRun_(parameters, requestId) {
   if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
@@ -29,11 +27,6 @@ function startAssessmentRun_(parameters, requestId) {
   Validate.validateNonEmptyString('assignmentId', assignmentId);
   Validate.validateNonEmptyString('courseId', courseId);
 
-  if (requestId === undefined) {
-    return new AssignmentController().startAssessmentRun(parameters);
-  }
-
-  Validate.validateNonEmptyString('requestId', requestId);
   new AssignmentController().startAssessmentRun({ ...parameters, requestId });
   return { requestId };
 }

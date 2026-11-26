@@ -20,12 +20,10 @@ const ProgressTrackerStore = {
    * Derives the User Property key for a run.
    * @param {string} requestId - Correlation ID for the run. Required.
    * @returns {string} The property key holding the record.
-   * @throws {Error} When requestId is absent, empty or not a string.
+   * @throws {Error} When requestId is absent, empty, whitespace-only or not a string.
    */
   keyFor(requestId) {
-    if (typeof requestId !== 'string' || requestId.length === 0) {
-      throw new Error('ProgressTrackerStore requires a non-empty requestId string.');
-    }
+    Validate.validateNonEmptyString('requestId', requestId);
     return `${this.KEY_PREFIX}${requestId}`;
   },
 

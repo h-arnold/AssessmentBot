@@ -256,7 +256,7 @@ by creating a time-based trigger.
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Backend handler  | `src/backend/z_Api/assignmentAssessment.js` → `startAssessmentRun_()`                                                                                               |
 | Controller       | `AssignmentController.startAssessmentRun()`                                                                                                                         |
-| Response mapper  | `{ requestId }` read from the dispatcher accessor; the controller returns `null`                                                                                    |
+| Response mapper  | `{ requestId }` built from the ID the dispatcher passes to the handler as a second positional argument; the controller returns `null`                               |
 | Frontend Zod     | `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts` → `StartAssessmentRunResponseSchema` (non-nullable `{ requestId: z.string().min(1) }`) |
 | Frontend service | `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts` → `startAssessmentRun()`                                                            |
 
@@ -272,8 +272,8 @@ by creating a time-based trigger.
 
 Key contract notes:
 
-- The handler validates the parameters object shape, then reads the dispatcher-generated correlation
-  ID from `ApiRequestContext` and delegates to `AssignmentController.startAssessmentRun()` with it.
+- The handler validates the parameters object shape, then receives the dispatcher-generated correlation
+  ID as its second positional argument and delegates to `AssignmentController.startAssessmentRun()` with it.
 - The controller fetches the full definition via `AssignmentDefinitionController.getDefinitionByKey()`, validates definition freshness (reference and template documents checked against Drive timestamps), then creates a time-based trigger via `TriggerController`.
 - If the definition is stale (reference or template documents modified since definition was created), throws `DefinitionStaleError` — see [transport envelope](transport-envelope.md#error-envelope) for the `DEFINITION_STALE` error shape with details.
 - `AssignmentController.startAssessmentRun()` still returns `null`. The transport handler returns
@@ -397,7 +397,7 @@ contract's `StudentSubmissionItem.artifact` uses the same shape with `role` set 
   - `startAssessmentRun_()`:
     - Validates parameters is a plain object.
     - `Validate.validateNonEmptyString(...)` for each field.
-    - When the dispatcher supplies a `requestId`, validates it with `Validate.validateNonEmptyString('requestId', requestId)`; a direct helper call with no ID takes the legacy controller path.
+    - Forwards the dispatcher-supplied `requestId` to `AssignmentController.startAssessmentRun()` in the parameters object and returns `{ requestId }` unconditionally; non-empty validation of `requestId` is owned by the controller (checked in `processSelectedAssignment()`).
   - `throwAssignmentValidationError_()` — shared error factory for assignment validation failures.
 
 **Key domain validation rules** (controller-level business logic not visible from schemas):

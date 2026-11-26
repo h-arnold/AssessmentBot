@@ -597,8 +597,9 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
   Validation: transport enforces `params` object shape and non-empty string checks for each field using `Validate.validateNonEmptyString`; controller owns per-document freshness checks via `DateUtils.isNewer`, definition lookup, and ABClass resolution.
   Controller behaviour: fetches the full definition by key, checks that neither the reference nor template document has been modified since the definition was created (throwing `DefinitionStaleError` if stale), resolves the ABClass via `loadClass(courseId)` (which throws if the class does not exist), and delegates to `startProcessing()` to create the time-based trigger with context stored in Script Properties (keyed by triggerUid) via `TriggerController.storeTriggerContext()` — see [Contract: TriggerContext](../data-shapes/trigger-context.md).
   Response data: `{ requestId: string }` on success, equal to the envelope `requestId`. The
-  `startAssessmentRun_()` helper reads the dispatcher's `ApiRequestContext` accessor; the
-  controller still returns `null` and forwards the ID into trigger context params.
+  dispatcher passes the generated `requestId` to the handler as a second positional argument, which
+  the helper forwards to the controller; the controller still returns `null` and forwards the ID into
+  trigger context params.
   Error codes: `DEFINITION_STALE` (non-retriable, with `details` block), `INVALID_REQUEST` (transport validation failure), `INTERNAL_ERROR` (definition not found, ABClass not found, or other domain errors).
 
 - `getProgress` — returns the current keyed progress records for frontend-driven assessment runs.

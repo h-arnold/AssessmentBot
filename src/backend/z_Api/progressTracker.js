@@ -2,18 +2,17 @@
 
 /* global ABLogger, GASPropertiesUtils, ProgressTrackerStore */
 
-/** Sort comparator result for a value that precedes another. */
-const SORT_BEFORE = -1;
-
 /**
  * Reads all keyed progress records for the frontend transport.
  *
  * @remarks Progress records are keyed only: `readAll()` lists every `ProgressTracker`-prefixed
  * entry, so a pre-upgrade bare `ProgressTracker` key also reaches the loop. The field-level check
- * below skips any record without a non-empty `requestId` — which covers that pre-upgrade data —
- * so it never reaches the response; the cleanup sweep deletes the bare key outright. Malformed
- * values are logged and skipped so one corrupt entry cannot fail the whole request; a failure to
- * read the property store propagates to the apiHandler error boundary.
+ * below skips any record with an absent or empty `requestId` — which covers that pre-upgrade data —
+ * so it never reaches the response; the cleanup sweep deletes the bare key outright.
+ * `ProgressTrackerStore.parse()` skips values whose JSON is malformed or which parse to the JSON
+ * literal `null`. A parseable partial record with a non-empty `requestId` passes through as-is; this
+ * known discrepancy is recorded in the data-shape contract. A failure to read the property store
+ * propagates to the apiHandler error boundary.
  * @returns {{ tasks: Array<Object> }} Keyed records sorted by timestamp, then requestId.
  */
 function getProgress_() {
@@ -40,11 +39,10 @@ function getProgress_() {
   }
 
   tasks.sort((a, b) => {
-    if (a.timestamp < b.timestamp) return SORT_BEFORE;
-    if (a.timestamp > b.timestamp) return 1;
-    if (a.requestId < b.requestId) return SORT_BEFORE;
-    if (a.requestId > b.requestId) return 1;
-    return 0;
+    return (
+      String(a.timestamp).localeCompare(String(b.timestamp)) ||
+      a.requestId.localeCompare(b.requestId)
+    );
   });
 
   return { tasks };

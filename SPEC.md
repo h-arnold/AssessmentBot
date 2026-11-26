@@ -34,7 +34,7 @@ This feature is **not** intended to:
 7. The cleanup trigger deletes only terminal progress records (`completed: true` or a non-null `error`). If any non-terminal record remains, it re-arms one further cleanup trigger 10 minutes later. It never deletes a record whose run may still be in flight.
 8. Frontend delivery in this task is the API surface only: a typed service wrapper and Zod schemas. Polling scheduling and hooks are out of scope.
 9. No new trigger-based cleanup is exposed as a frontend-callable API method; it runs only through the existing `triggerHandler` entry point.
-10. The dispatch request ID is exposed to handlers through a request-scoped accessor owned by `ApiDispatcher`, not by adding a positional argument to every handler.
+10. The dispatch request ID is passed directly to handlers as a second positional argument by `ApiDispatcher`. Handlers that need it declare the parameter; other handlers ignore the extra argument. No request-scoped accessor is used.
 11. Cleanup state is per user because progress records live in per-user User Properties under `USER_ACCESSING` execution.
 
 ## Assumptions
@@ -151,7 +151,7 @@ Avoid:
 ### Placement — contractual ownership boundaries
 
 - `ProgressTracker` remains the sole owner of progress state, the active run context, and cleanup coordination.
-- The dispatcher owns the request-scoped `requestId` accessor; handlers read it and do not receive a new positional argument.
+- The dispatcher passes the generated `requestId` to the handler as a second positional argument; handlers that need it declare the parameter and others ignore it.
 - `TriggerController` owns trigger creation and context storage; the cleanup coordinator decides when to call it and uses the `skipTooManyTriggersRecovery` option so a full trigger quota cannot delete assessment triggers. The facade split separates keyed persistence from cleanup scheduling because they have distinct owners and test surfaces, not because of a line-count threshold.
 - `getProgress_` is a trailing-underscore helper in a single `z_Api` module, registered through `ALLOWLISTED_METHOD_HANDLERS`.
 - The cleanup method is an anonymous arrow entry in `TRIGGER_METHOD_HANDLERS`; no new public GAS function is introduced.
@@ -226,14 +226,13 @@ type ProgressRecord = {
 
 ## Workflow specification
 
-## Request-scoped request ID
+## Request ID passed to handlers
 
 ### Behaviour
 
-- `ApiDispatcher.handle()` sets the accessor immediately after generating `requestId`, before the auth gate and handler call.
-- The accessor exposes `set(requestId)`, `get()` and `resetForTests()`; it is owned by `z_apiHandler.js` and is not a public GAS function.
-- Every call to `handle()` overwrites the stored value, so no cross-call cleanup is needed inside a single GAS execution. Tests call `resetForTests()` between cases.
-- Methods other than `startAssessmentRun` may read the accessor but must not depend on it.
+- `ApiDispatcher.handle()` generates `requestId` before the auth gate and passes it directly to the selected handler as a second positional argument: `handler(request.params, requestId)`.
+- `startAssessmentRun` is the only allowlisted entry that declares the second parameter; all other handlers keep their existing signatures and ignore the extra argument.
+- No request-scoped accessor or per-call test reset is needed: the ID is a local value in `handle()` and is never stored between dispatches.
 
 ## Start an assessment run
 
@@ -243,7 +242,7 @@ type ProgressRecord = {
 
 ### Behaviour
 
-- `startAssessmentRun_` reads the accessor and passes the `requestId` to `AssignmentController.startAssessmentRun()` and back in the response data.
+- `startAssessmentRun_` receives the `requestId` as its second argument, passes it to `AssignmentController.startAssessmentRun()` and returns it in the response data.
 - `startProcessing()` stores `{ assignmentId, definitionKey, courseId, requestId }` in the trigger context.
 - `processSelectedAssignment()` validates the new field with `Validate.validateNonEmptyString()` and calls `startTracking(requestId)`.
 - `startTracking(requestId?)` binds the active run context when an ID is supplied; with no ID it uses the legacy unkeyed key. Every later write in that execution targets the bound record.
@@ -312,7 +311,7 @@ type ProgressRecord = {
 
 ## Backend changes required to support agreed behaviour
 
-1. Add the request-scoped accessor to `ApiDispatcher` and return the correlation ID from `startAssessmentRun`.
+1. Pass the generated `requestId` directly from `ApiDispatcher` to the `startAssessmentRun` handler as a second positional argument and return the correlation ID from `startAssessmentRun`.
 2. Refactor `ProgressTracker` into a facade with separate keyed-store and cleanup modules.
    - Preserve `getInstance()`, `resetForTests()`, `getCurrentProgress()`, `getStatus()` and `getStepAsNumber()`.
    - Extend `logError()` and `logAndThrowError()` with an optional options object carrying `deferCleanup`; default behaviour is unchanged for all existing callers. `captureError()` stays unchanged.
