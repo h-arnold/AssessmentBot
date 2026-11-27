@@ -61,8 +61,8 @@ before domain validation. See [api-layer.md § Response envelope](api-layer.md#r
   2. Fetches the full definition via `AssignmentDefinitionController.getDefinitionByKey`
   3. Checks per-document freshness via `_validateDefinitionFreshness()` using `DriveManager.getFileModifiedTime` and `DateUtils.isNewer` — throws `DefinitionStaleError` if either document has changed
   4. Resolves the ABClass via `ABClassController.loadClass(courseId)` — throws if no stored class exists
-  5. Delegates to `startProcessing(assignmentId, definitionKey, courseId)`, which creates the time-based trigger and stores the run context in Script Properties
-  6. Returns `null` (no data payload)
+  5. Delegates to `startProcessing(assignmentId, definitionKey, courseId, requestId)`, which creates the time-based trigger and stores the run context in Script Properties
+  6. The controller returns `null`; the transport returns `{ requestId }` built from the ID the dispatcher passes to the handler
 - **Error Handling**:
   - Transport validation failures throw `ApiValidationError` → mapped to `INVALID_REQUEST`
   - Stale definition throws `DefinitionStaleError` → mapped to `DEFINITION_STALE` with `details` block
@@ -76,13 +76,13 @@ Definitions are created and updated by a separate flow: the frontend upserts via
 
 #### Create time-based trigger
 
-**Method**: `AssignmentController.startProcessing(assignmentId, definitionKey, courseId)`
+**Method**: `AssignmentController.startProcessing(assignmentId, definitionKey, courseId, requestId)`
 
 - **Location**: `src/backend/y_controllers/AssignmentController.js`
 - **Process**:
-  1. Validates the three required strings (`Validate.requireParams`).
+  1. Validates the three required strings (`Validate.requireParams`) and includes `requestId` when supplied.
   2. Creates a five-second time-based trigger for `triggerHandler` via `TriggerController.createTimeBasedTrigger()`.
-  3. Stores the run context in Script Properties via `TriggerController.storeTriggerContext(triggerUid, { method: 'processSelectedAssignment', params: { assignmentId, definitionKey, courseId } })` — see [Contract: TriggerContext](../data-shapes/trigger-context.md).
+  3. Stores the run context in Script Properties via `TriggerController.storeTriggerContext(triggerUid, { method: 'processSelectedAssignment', params: { assignmentId, definitionKey, courseId, requestId } })` — see [Contract: TriggerContext](../data-shapes/trigger-context.md).
 - **Failures**: trigger-creation or context-storage failures throw via `ProgressTracker.logAndThrowError`.
 
 **Class**: `TriggerController` (`src/backend/Triggers/TriggerController.js`)
@@ -107,17 +107,17 @@ Definitions are created and updated by a separate flow: the frontend upserts via
   1. Validates `event.triggerUid`; a malformed event is logged and returns without cleanup or dispatch.
   2. Resolves the stored context via `TriggerController.getTriggerContext()`; an unknown triggerUid returns with no cleanup; an incomplete or unregistered context is logged and cleaned up.
   3. Fail-closed auth check — `AuthService.checkAccess({ bypassCache: true, neverClaim: true, method })`; a denial is logged once by AuthService and the context is cleaned up.
-  4. Dispatches through `TRIGGER_METHOD_HANDLERS` (`src/backend/Triggers/triggerMethodHandlers.js`) — currently a single `processSelectedAssignment` entry.
+  4. Dispatches through `TRIGGER_METHOD_HANDLERS` (`src/backend/Triggers/triggerMethodHandlers.js`), which registers `processSelectedAssignment` and `cleanupProgress`. The latter runs one deferred cleanup sweep per fired trigger; see [Contract: ProgressTracker § Cleanup behaviour](../data-shapes/progress-tracker.md#cleanup-behaviour).
   5. Owns all cleanup (context clear + trigger deletion) in a finally block, whether the handler completes or throws.
 
 #### Process selected assignment (orchestrator)
 
-**Method**: `AssignmentController.processSelectedAssignment({ assignmentId, definitionKey, courseId })`
+**Method**: `AssignmentController.processSelectedAssignment({ assignmentId, definitionKey, courseId, requestId })`
 
 - **Location**: `src/backend/y_controllers/AssignmentController.js`
 - **Purpose**: Main orchestrator for the entire assessment pipeline. Receives the dispatched params directly; it does not read User Properties, and trigger cleanup is owned by `triggerHandler`.
 - **Process Flow**:
-  1. Validates params; starts progress tracking ("Assessment run starting.").
+  1. Validates params (a supplied `requestId` must be non-empty) and passes it to `startTracking()` before reporting "Assessment run starting."
   2. Loads the full definition via `AssignmentDefinitionController.getDefinitionByKey(definitionKey, { form: 'full' })`; throws if missing.
   3. Loads the ABClass via `ABClassController.loadClass(courseId)` — refreshes the Classroom roster and persists it only when it changed; throws `ClassNotFoundError` when no stored class exists.
   4. Creates the assignment instance (see [Create assignment instance](#create-assignment-instance)).
@@ -540,7 +540,8 @@ Persisted shapes: [Contract: Assignment](../data-shapes/assignment.md) (full rec
 
 **Method**: `ProgressTracker.complete()` — `src/backend/Utils/ProgressTracker.js`
 
-- Progress is a singleton writing a JSON record (`step`, `message`, `completed`, `error`, `timestamp`) to User Properties under the `ProgressTracker` key.
+- Progress is a singleton writing a JSON record (`step`, `message`, `completed`, `error`, `timestamp`, `requestId`) to User Properties. Every record is keyed: writes with no bound run context first bind a backend-generated correlation ID, so records always land under `ProgressTracker<requestId>`, and the cleanup sweep deletes any pre-upgrade unkeyed record.
+- `startTracking(requestId)` binds the active run context for the execution, so later writes need no signature change. `complete()` writes the terminal record while that context is still bound, then clears it.
 - `complete()` sets `completed: true` and leaves any recorded `error` in place.
 
 ---

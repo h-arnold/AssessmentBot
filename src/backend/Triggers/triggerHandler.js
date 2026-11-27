@@ -31,13 +31,19 @@ function cleanupTrigger_(triggerController, triggerUid) {
  * (TriggerController.clearTriggerContext + TriggerController.deleteTriggerById)
  * for any resolved, known triggerUid — including partial-context,
  * unknown-method, auth-denial and auth-throw paths. The dispatch try/finally
- * runs cleanup even when the handler throws (routed through
- * ProgressTracker.logAndThrowError and rethrown); the auth-check try/catch
+ * runs cleanup even when the handler throws (logged through
+ * ProgressTracker.logError and rethrown); the auth-check try/catch
  * runs the same cleanup when AuthService.checkAccess throws.
  *
  * Single log boundary: the group-membership denial and any auth failure are
  * each logged exactly once by AuthService.checkAccess, so this handler never
  * duplicates that log.
+ *
+ * A dispatch failure is logged through ProgressTracker.logError with
+ * `deferCleanup: true`, so the error-logging path cannot re-arm the trigger it
+ * just failed to clean up. The catch re-arms cleanup explicitly and rethrows an
+ * Error carrying the dispatch error's message, so the terminal error record
+ * written by that log has a pending cleanup trigger.
  *
  * Dependencies are resolved as bare globals (GAS concatenation order):
  * TriggerController (Triggers/TriggerController.js) must load before this file.
@@ -106,7 +112,13 @@ function triggerHandler(event) {
     const handler = TRIGGER_METHOD_HANDLERS[context.method];
     handler(context.params);
   } catch (error) {
-    ProgressTracker.getInstance().logAndThrowError(error.message, error);
+    // Write the user-facing error first, with cleanup deferred so this log
+    // cannot re-arm the trigger that is about to be deleted. Schedule a fresh
+    // trigger for the terminal record, then propagate the dispatch error with
+    // the same contract as logAndThrowError.
+    ProgressTracker.getInstance().logError(error.message, error, { deferCleanup: true });
+    ProgressTrackerCleanup.schedule(GASPropertiesUtils.getUserProperties());
+    throw new Error(error.message);
   } finally {
     cleanupTrigger_(triggerController, event.triggerUid);
   }

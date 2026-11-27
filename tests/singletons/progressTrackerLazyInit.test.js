@@ -1,4 +1,5 @@
 const ProgressTracker = require('#backend/Utils/ProgressTracker.js');
+const { withGlobalMocks } = require('../helpers/globalMockManager.js');
 
 // Mock PropertiesService
 // Use global vi (Vitest) if available; otherwise create simple stub factory for Node fallback.
@@ -20,6 +21,7 @@ const mockDeleteProperty = _vi.fn();
 const FakeConfigurationManager = {};
 
 let origConfigMgr;
+let restoreGlobals;
 
 beforeEach(() => {
   ProgressTracker.resetForTests();
@@ -39,9 +41,20 @@ beforeEach(() => {
   mockSetProperty.mockReset();
   mockGetProperty.mockReset();
   mockDeleteProperty.mockReset();
+
+  // Progress writes now delegate cleanup scheduling. Stub that collaborator so
+  // this suite stays focused on lazy initialisation.
+  const cleanupContext = withGlobalMocks({
+    ProgressTrackerCleanup: () => ({
+      ...globalThis.ProgressTrackerCleanup,
+      schedule: _vi.fn(),
+    }),
+  });
+  restoreGlobals = cleanupContext.restore;
 });
 
 afterEach(() => {
+  restoreGlobals();
   globalThis.ConfigurationManager = origConfigMgr;
 });
 

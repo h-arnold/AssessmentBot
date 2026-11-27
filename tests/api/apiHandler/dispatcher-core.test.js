@@ -198,4 +198,143 @@ describe('Api/apiHandler dispatcher — core dispatch, validation and request ID
       }
     }
   });
+
+  it('passes the generated requestId to the handler as a second positional argument', () => {
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const startAssessmentRun = vi.fn(() => null);
+    const originalStartAssessmentRun = globalThis.startAssessmentRun_;
+    globalThis.startAssessmentRun_ = startAssessmentRun;
+
+    try {
+      vi.spyOn(globalThis.Utilities, 'getUuid').mockReturnValueOnce('req-positional-001');
+
+      const response = ApiDispatcher.getInstance().handle({
+        method: 'startAssessmentRun',
+        params: {
+          definitionKey: 'def-algebra-baseline',
+          assignmentId: 'assign-001',
+          courseId: 'course-001',
+        },
+      });
+
+      expect(response.ok).toBe(true);
+      expect(response.requestId).toBe('req-positional-001');
+      expect(startAssessmentRun).toHaveBeenCalledTimes(1);
+      expect(startAssessmentRun).toHaveBeenCalledWith(
+        {
+          definitionKey: 'def-algebra-baseline',
+          assignmentId: 'assign-001',
+          courseId: 'course-001',
+        },
+        'req-positional-001'
+      );
+      expect(startAssessmentRun.mock.calls[0][1]).toBe(response.requestId);
+    } finally {
+      globalThis.startAssessmentRun_ = originalStartAssessmentRun;
+    }
+  });
+
+  it('generates a fresh requestId for each dispatch and passes each one to the handler', () => {
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const startAssessmentRun = vi.fn(() => null);
+    const originalStartAssessmentRun = globalThis.startAssessmentRun_;
+    globalThis.startAssessmentRun_ = startAssessmentRun;
+
+    try {
+      vi.spyOn(globalThis.Utilities, 'getUuid')
+        .mockReturnValueOnce('req-first')
+        .mockReturnValueOnce('req-second');
+
+      const dispatcher = ApiDispatcher.getInstance();
+      const request = {
+        method: 'startAssessmentRun',
+        params: {
+          definitionKey: 'def-algebra-baseline',
+          assignmentId: 'assign-001',
+          courseId: 'course-001',
+        },
+      };
+
+      const firstResponse = dispatcher.handle(request);
+      const secondResponse = dispatcher.handle(request);
+
+      expect(firstResponse.requestId).toBe('req-first');
+      expect(secondResponse.requestId).toBe('req-second');
+      expect(startAssessmentRun).toHaveBeenCalledTimes(2);
+      expect(startAssessmentRun.mock.calls.map((call) => call[1])).toEqual([
+        'req-first',
+        'req-second',
+      ]);
+    } finally {
+      globalThis.startAssessmentRun_ = originalStartAssessmentRun;
+    }
+  });
+
+  it('returns the correlation requestId in startAssessmentRun response data', () => {
+    const { ApiDispatcher } = loadApiHandlerModule();
+
+    // The controller still returns null; only the transport response carries the ID.
+    const startAssessmentRun = vi.fn(() => null);
+    const originalAssignmentController = globalThis.AssignmentController;
+    globalThis.AssignmentController = vi.fn(function AssignmentControllerMock() {
+      return { startAssessmentRun };
+    });
+
+    try {
+      vi.spyOn(globalThis.Utilities, 'getUuid').mockReturnValueOnce('req-start-001');
+
+      const response = ApiDispatcher.getInstance().handle({
+        method: 'startAssessmentRun',
+        params: {
+          definitionKey: 'def-algebra-baseline',
+          assignmentId: 'assign-001',
+          courseId: 'course-001',
+        },
+      });
+
+      expect(response.ok).toBe(true);
+      expect(response.requestId).toBe('req-start-001');
+      expect(response.data).toEqual({ requestId: response.requestId });
+    } finally {
+      if (originalAssignmentController === undefined) {
+        delete globalThis.AssignmentController;
+      } else {
+        globalThis.AssignmentController = originalAssignmentController;
+      }
+    }
+  });
+
+  it('dispatches getProgress through the allowlist and returns tasks in the success envelope', () => {
+    const expectedTasks = [
+      {
+        requestId: 'req-progress-dispatch',
+        step: 1,
+        message: 'Marking submission',
+        completed: false,
+        error: null,
+        timestamp: '2026-01-01T10:00:00.000Z',
+      },
+    ];
+    const getProgressHandler = vi.fn(() => ({ tasks: expectedTasks }));
+    const originalGetProgress = globalThis.getProgress_;
+    globalThis.getProgress_ = getProgressHandler;
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const response = ApiDispatcher.getInstance().handle({ method: 'getProgress' });
+
+      expect(response).toMatchObject({
+        ok: true,
+        data: { tasks: expectedTasks },
+      });
+      expect(getProgressHandler).toHaveBeenCalledTimes(1);
+      expect(getProgressHandler).toHaveBeenCalledWith();
+    } finally {
+      if (originalGetProgress === undefined) {
+        delete globalThis.getProgress_;
+      } else {
+        globalThis.getProgress_ = originalGetProgress;
+      }
+    }
+  });
 });

@@ -344,6 +344,10 @@ const apiKey = config.getApiKey();
    - `resetForTests()` allows clean state between tests
    - Easy to mock and verify lazy behaviour
 
+5. **Mutable state after initialisation**:
+   - If a singleton binds state after `ensureInitialized()`, do not set `FREEZE_AFTER_INIT`; freezing would block the later mutation. `ProgressTracker` binds an active run ID this way.
+   - Clear that state in `resetForTests()` alongside `_instance`, so a later test cannot inherit the previous context.
+
 ---
 
 ## Best Practices
@@ -409,4 +413,4 @@ const apiKey = config.getApiKey();
 ### CacheManager generic methods
 
 - Owning path: `src/backend/RequestHandlers/CacheManager.js`
-- Exposes generic `get(key)` and `put(key, value, ttlSeconds)` methods. Generic methods handle JSON serialisation/deserialisation internally; `put()` requires an explicit TTL (no default — the AuthService passes its 6-hour TTL at the call site). Logging uses `ABLogger`.
+- Exposes generic `get(key)`, `put(key, value, ttlSeconds)` and `remove(key)` methods. Generic methods handle JSON serialisation/deserialisation internally; `put()` requires an explicit TTL (no default — the AuthService passes its 6-hour TTL at the call site). Removal failures are logged and `remove(key)` does not throw, like every other method. The constructor takes the cache client it wraps, defaulting to the script cache. Logging uses `ABLogger`.

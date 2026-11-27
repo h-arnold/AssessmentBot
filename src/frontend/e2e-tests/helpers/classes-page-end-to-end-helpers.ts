@@ -239,7 +239,7 @@ const DEFAULT_UPSERT_SUCCESS_ENTRY: ResponseItem = {
 
 const DEFAULT_START_RUN_SUCCESS_ENTRY: ResponseItem = {
   kind: 'success',
-  data: null,
+  data: { requestId: 'e2e-run-id' },
 };
 
 /**

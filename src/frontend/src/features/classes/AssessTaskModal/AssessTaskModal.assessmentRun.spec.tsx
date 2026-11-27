@@ -7,25 +7,22 @@ import { ApiTransportError } from '@/errors/apiTransportError';
 import { createFixtureClassPartial } from '@/test/classes/classesPageTestHelpers';
 import {
   MOCK_CLASS_ID,
-  renderWithCache,
+  START_ASSESSMENT_RUN_RESPONSE,
+  renderWithMatchedCache,
   selectAssignment,
   clickStartAssessment,
+  resetAssessTaskModalMocks,
 } from '@/test/classes/AssessTaskModal.test-utilities';
 import { renderWithNoMatchCache } from '@/test/classes/AssessTaskModal.link-flow-helpers';
 import { createDefinitionPartial } from '@/test/classes/matchDefinitionForAssignment.test-utilities';
-import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
-import { getYearGroups } from '@/services/referenceData/referenceDataService';
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  vi.mocked(getAssignmentTopics).mockResolvedValue([]);
-  vi.mocked(getYearGroups).mockResolvedValue([]);
+  resetAssessTaskModalMocks();
 });
 
 afterEach(() => {
   vi.resetAllMocks();
 });
-
 
 // ---------------------------------------------------------------------------
 // Assessment Run Interaction
@@ -37,11 +34,7 @@ describe('Assessment run interaction', () => {
   // -----------------------------------------------------------------------
 
   it('shows error Alert when classPartials cache is empty', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: undefined,
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'matched', definition: createDefinitionPartial() },
-    });
+    const { dialog } = renderWithMatchedCache({ classPartials: undefined });
 
     await selectAssignment(dialog);
     await clickStartAssessment(dialog);
@@ -50,12 +43,10 @@ describe('Assessment run interaction', () => {
   });
 
   it('shows error Alert with specific message when classId is not found in cached classPartials', async () => {
-    const { dialog } = renderWithCache({
+    const { dialog } = renderWithMatchedCache({
       classPartials: [
         createFixtureClassPartial({ classId: 'other-class', yearGroupKey: 'year-10' }),
       ],
-      definitionPartials: [createDefinitionPartial()],
-      findMatchResult: { kind: 'matched', definition: createDefinitionPartial() },
     });
 
     await selectAssignment(dialog);
@@ -66,13 +57,7 @@ describe('Assessment run interaction', () => {
   });
 
   it('shows error Alert when assignmentDefinitionPartials cache is empty', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: undefined,
-      findMatchResult: { kind: 'matched', definition: createDefinitionPartial() },
-    });
+    const { dialog } = renderWithMatchedCache({ definitionPartials: undefined });
 
     await selectAssignment(dialog);
     await clickStartAssessment(dialog);
@@ -85,14 +70,19 @@ describe('Assessment run interaction', () => {
   // -----------------------------------------------------------------------
 
   it('shows no-match error Alert when assignment has null topicName', async () => {
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
+    const { dialog } = renderWithMatchedCache({
+      // The matcher must stay unconfigured: the component returns early before
+      // findMatchingDefinition is called because topicName is null.
+      findMatchResult: undefined,
+      assignments: [
+        {
+          assignmentId: 'a1',
+          title: 'Essay',
+          creationTime: '2024-09-02T08:30:00.000Z',
+          topicName: null,
+          topicId: null,
+        },
       ],
-      definitionPartials: [createDefinitionPartial()],
-      // findMatchResult is intentionally omitted: the component returns early
-      // before findMatchingDefinition is called because topicName is null.
-      assignments: [{ assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: null, topicId: null }],
     });
 
     await selectAssignment(dialog);
@@ -125,10 +115,7 @@ describe('Assessment run interaction', () => {
     const definitionOne = createDefinitionPartial({ definitionKey: 'def-1' });
     const definitionTwo = createDefinitionPartial({ definitionKey: 'def-2' });
 
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
+    const { dialog } = renderWithMatchedCache({
       definitionPartials: [definitionOne, definitionTwo],
       findMatchResult: { kind: 'ambiguous', matches: [definitionOne, definitionTwo] },
     });
@@ -145,14 +132,8 @@ describe('Assessment run interaction', () => {
   // -----------------------------------------------------------------------
 
   it('shows success Alert and single Close button when match + API succeeds', async () => {
-    const matchedDefinition = createDefinitionPartial();
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [matchedDefinition],
-      findMatchResult: { kind: 'matched', definition: matchedDefinition },
-      startRunResult: null,
+    const { dialog } = renderWithMatchedCache({
+      startRunResult: START_ASSESSMENT_RUN_RESPONSE,
       startRunType: 'resolve',
     });
 
@@ -177,15 +158,9 @@ describe('Assessment run interaction', () => {
   });
 
   it('shows error Alert when startAssessmentRun rejects with generic API error', async () => {
-    const matchedDefinition = createDefinitionPartial();
     const genericError = new Error('Something went wrong');
 
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [matchedDefinition],
-      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+    const { dialog } = renderWithMatchedCache({
       startRunResult: genericError,
       startRunType: 'reject',
     });
@@ -201,18 +176,12 @@ describe('Assessment run interaction', () => {
   // -----------------------------------------------------------------------
 
   it('matched-flow DEFINITION_STALE enters recovery routing instead of the create path', async () => {
-    const matchedDefinition = createDefinitionPartial();
     const staleError = new ApiTransportError({
       requestId: 'test-id',
       error: { code: 'DEFINITION_STALE', message: 'Definition is stale' },
     });
 
-    const { dialog, queryClient } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [matchedDefinition],
-      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+    const { dialog, queryClient } = renderWithMatchedCache({
       startRunResult: staleError,
       startRunType: 'reject',
     });
@@ -237,15 +206,9 @@ describe('Assessment run interaction', () => {
   });
 
   it('matched-flow non-DEFINITION_STALE errors still surface the existing error alert', async () => {
-    const matchedDefinition = createDefinitionPartial();
     const genericError = new Error('Something went wrong');
 
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [matchedDefinition],
-      findMatchResult: { kind: 'matched', definition: matchedDefinition },
+    const { dialog } = renderWithMatchedCache({
       startRunResult: genericError,
       startRunType: 'reject',
     });
@@ -265,17 +228,11 @@ describe('Assessment run interaction', () => {
   // -----------------------------------------------------------------------
 
   it('shows loading on Start Assessment button during API call, reverts on completion', async () => {
-    const matchedDefinition = createDefinitionPartial();
-    const { promise: pendingRun, resolve: resolveRun } = Promise.withResolvers<null>();
+    const { promise: pendingRun, resolve: resolveRun } =
+      Promise.withResolvers<typeof START_ASSESSMENT_RUN_RESPONSE>();
     vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
 
-    const { dialog } = renderWithCache({
-      classPartials: [
-        createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-      ],
-      definitionPartials: [matchedDefinition],
-      findMatchResult: { kind: 'matched', definition: matchedDefinition },
-    });
+    const { dialog } = renderWithMatchedCache();
 
     await selectAssignment(dialog);
     await clickStartAssessment(dialog);
@@ -287,7 +244,7 @@ describe('Assessment run interaction', () => {
 
     // Resolve the API call
     await act(async () => {
-      resolveRun(null);
+      resolveRun(START_ASSESSMENT_RUN_RESPONSE);
     });
 
     // After completion, loading should be gone (success state shown)

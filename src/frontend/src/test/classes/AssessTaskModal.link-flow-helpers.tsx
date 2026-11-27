@@ -6,9 +6,12 @@
  * duplication in AssessTaskModal.spec.tsx.
  */
 
+import { act } from '@testing-library/react';
 import type { QueryClient } from '@tanstack/react-query';
+import { vi } from 'vitest';
 import {
   renderWithCache,
+  seedAssessmentFlowQueryData,
   type RenderWithCacheOptions,
   MOCK_CLASS_ID,
   selectAssignment,
@@ -17,6 +20,15 @@ import {
   pickLinkableDefinition,
   clickLink,
 } from './AssessTaskModal.test-utilities';
+import { findMatchingDefinition } from '@/features/classes/AssessTaskModal/matchDefinitionForAssignment';
+import type { useAssessTaskFlow } from '@/features/classes/AssessTaskModal/useAssessTaskFlow';
+import { getGoogleClassroomAssignments } from '@/services/googleClassrooms/googleClassroomAssignmentsService';
+import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import { upsertAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
+import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
+import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
+import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import { createAppQueryClient } from '@/query/queryClient';
 import { createDefinitionPartial } from './matchDefinitionForAssignment.test-utilities';
 import { createFixtureClassPartial } from './classesPageTestHelpers';
 
@@ -31,13 +43,12 @@ import { createFixtureClassPartial } from './classesPageTestHelpers';
  * @param {Partial<RenderWithCacheOptions>} [overrides] Overrides spread on top of defaults.
  * @returns {{ dialog: HTMLElement; queryClient: QueryClient }} Dialog element and query client.
  */
-export function renderWithNoMatchCache(
-  overrides: Partial<RenderWithCacheOptions> = {}
-): { dialog: HTMLElement; queryClient: QueryClient } {
+export function renderWithNoMatchCache(overrides: Partial<RenderWithCacheOptions> = {}): {
+  dialog: HTMLElement;
+  queryClient: QueryClient;
+} {
   return renderWithCache({
-    classPartials: [
-      createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' }),
-    ],
+    classPartials: [createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' })],
     definitionPartials: [createDefinitionPartial()],
     findMatchResult: { kind: 'no-match' },
     ...overrides,
@@ -59,4 +70,52 @@ export async function performLinkFlow(dialog: HTMLElement): Promise<void> {
   await clickLinkToExisting(dialog);
   await pickLinkableDefinition(dialog);
   await clickLink(dialog);
+}
+
+/** Rendered flow hook result used by the link-confirmation driver. */
+type FlowHookResult = { current: ReturnType<typeof useAssessTaskFlow> };
+
+/**
+ * Seeds the service mocks and caches for a link-path flow with a held-open assessment start.
+ *
+ * @param {GoogleClassroomAssignmentsResponse} assignments Assignments served by the fetch mock.
+ * @param {Promise<StartAssessmentRunResponse>} pendingRun Held-open assessment-start promise.
+ * @returns {object} The seeded query client and definition partial.
+ */
+export function seedDeferredLinkPath(
+  assignments: GoogleClassroomAssignmentsResponse,
+  pendingRun: Promise<StartAssessmentRunResponse>
+): { queryClient: QueryClient; definition: AssignmentDefinitionPartial } {
+  vi.mocked(getGoogleClassroomAssignments).mockResolvedValue(assignments);
+  vi.mocked(upsertAssignmentDefinition).mockResolvedValue({} as never);
+  vi.mocked(startAssessmentRun).mockReturnValue(pendingRun);
+
+  const queryClient = createAppQueryClient();
+  const definition = createDefinitionPartial();
+  seedAssessmentFlowQueryData(queryClient, definition);
+  return { queryClient, definition };
+}
+
+/**
+ * Drives a rendered flow hook through assignment selection and link confirmation.
+ *
+ * @param {FlowHookResult} result The rendered flow hook result.
+ * @param {string} definitionKey Definition key selected for linking.
+ * @returns {Promise<void>} Resolves once the link confirmation has settled.
+ */
+export async function driveLinkConfirmation(
+  result: FlowHookResult,
+  definitionKey: string
+): Promise<void> {
+  act(() => result.current.handleAssignmentChange('a1'));
+  vi.mocked(findMatchingDefinition).mockReturnValue({ kind: 'no-match' });
+  await act(async () => {
+    await result.current.handleStartAssessment();
+  });
+  act(() => result.current.handleLinkExistingDefinition());
+  act(() => result.current.handleLinkSelect(definitionKey));
+  await act(async () => {
+    void result.current.handleLinkConfirm();
+    await Promise.resolve();
+  });
 }

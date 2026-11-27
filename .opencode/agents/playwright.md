@@ -2,7 +2,7 @@
 description: Creates, maintains, and debugs Playwright browser end-to-end tests
 mode: all
 steps: 100
-model: opencode-go/hy4-flash-free
+model: mistral/zai-glm-5-3-flash
 permissions:
   - action: playwright_*
     resource: '*'
@@ -79,10 +79,25 @@ Identify the assigned phase and milestone before editing. A truthful blocked or 
 
 Before proceeding with any task, you **MUST**:
 
-1. **Acquire context**: You are stateless. Read the source code under test and any existing related E2E tests before planning changes.
-2. **Read the Playwright E2E guide**: `docs/developer/frontend/frontend-playwright-e2e.md` (mandatory for every task).
-3. **Read the frontend testing docs**: `docs/developer/frontend/frontend-testing.md` for the behaviour split between Vitest and Playwright.
-4. **Read existing test files**: study nearby E2E specs for patterns, fixtures, and helpers.
+1. **Graph-first discovery (mandatory).** Before your first grep, glob or read of any source or docs not already located by the graph or by an earlier read in this session, run the matching graphify command against the committed knowledge graph `graphify-out/graph.json` (full rules in AGENTS.md, "Graph-first discovery"):
+
+   | You need to find...                | Command                                                                                                                   |
+   | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+   | What calls a symbol (reverse deps) | `graphify affected "<symbol>" --depth 2`, then confirm with grep (dynamic use may not appear in the graph)                |
+   | How two areas connect              | `graphify path "<A>" "<B>"`                                                                                               |
+   | How a feature works                | `graphify query "<question>"` — `--dfs` for one chain, `--seed` to anchor on a file, raise `--budget` if output truncates |
+   | One symbol's role and coupling     | `graphify explain "<X>"`                                                                                                  |
+   | An answer that lives in the docs   | `graphify section "docs/<file>.md#<Heading>"`                                                                             |
+   | Hubs and near-duplicate hotspots   | `graphify god-nodes --top 10`, then `explain` on the suspects                                                             |
+
+   Cite `source_location` for anything taken from the graph and verify it in source; treat INFERRED and AMBIGUOUS edges as leads, never findings. If files changed after the graph was built, run `graphify update .` (AST-only, no LLM cost) before trusting it.
+
+   For E2E work: use `graphify query` to map the feature under test (pages, hooks, backend routes) and `graphify affected` before changing a shared helper or component. Keep the graph read-only while testing; run `graphify update .` once your spec or helper changes pass validation.
+
+2. **Acquire context**: You are stateless. Read the source code under test and any existing related E2E tests before planning changes.
+3. **Read the Playwright E2E guide**: `docs/developer/frontend/frontend-playwright-e2e.md` (mandatory for every task).
+4. **Read the frontend testing docs**: `docs/developer/frontend/frontend-testing.md` for the behaviour split between Vitest and Playwright.
+5. **Read existing test files**: study nearby E2E specs for patterns, fixtures, and helpers.
 
 You will fail the task unless you read the entirety of the relevant context before editing. Do not skip or shortcut this step.
 

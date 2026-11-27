@@ -1,17 +1,15 @@
 /**
- * RED-phase tests for the startProcessing trigger integration (Section 10).
+ * Tests for the startProcessing trigger integration.
  *
- * The new contract (not yet implemented in startProcessing):
- * - startProcessing() creates a time-based trigger targeting 'triggerHandler'
- *   (not 'triggerProcessSelectedAssignment').
- * - startProcessing() stores the task context via
- *   TriggerController.storeTriggerContext(triggerUid, { method, params }) where
- *   triggerUid is the value returned by createTimeBasedTrigger().
- * - No UserProperties reads/writes remain for task context.
+ * The current implementation already creates the time-based trigger targeting
+ * 'triggerHandler' and stores task context through
+ * TriggerController.storeTriggerContext(triggerUid, { method, params }), with
+ * triggerUid taken from createTimeBasedTrigger() and no direct UserProperties
+ * reads for task context.
  *
- * These tests are RED against the current implementation, which still targets
- * 'triggerProcessSelectedAssignment' and writes task context to UserProperties
- * via GASPropertiesUtils.getUserProperties()/applyProperties().
+ * The RED assertion is the correlation ID: trigger params must include a
+ * non-empty requestId so progress records can be keyed by the dispatch request
+ * ID. The current params carry only assignmentId, definitionKey and courseId.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
@@ -62,17 +60,19 @@ describe('AssignmentController.startProcessing - trigger integration', () => {
   });
 
   it('stores trigger context via TriggerController.storeTriggerContext() with the correct triggerUid, method and params', () => {
-    controller.startProcessing('assignment-456', 'Essay_1_defKey', 'course-123');
+    controller.startProcessing('assignment-456', 'Essay_1_defKey', 'course-123', 'req-trigger-001');
 
     // NEW CONTRACT: startProcessing() must hand the trigger UID returned by
     // createTimeBasedTrigger() to TriggerController.storeTriggerContext() with
-    // method 'processSelectedAssignment' and the direct task params.
+    // method 'processSelectedAssignment' and the direct task params, including
+    // the correlation requestId used to key progress records.
     expect(mockTriggerController.storeTriggerContext).toHaveBeenCalledWith('trigger-789', {
       method: 'processSelectedAssignment',
       params: {
         assignmentId: 'assignment-456',
         definitionKey: 'Essay_1_defKey',
         courseId: 'course-123',
+        requestId: 'req-trigger-001',
       },
     });
 

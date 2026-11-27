@@ -34,6 +34,7 @@ describe('CacheManager', () => {
     mockScriptCache = {
       get: vi.fn((key) => (cacheStorage.has(key) ? cacheStorage.get(key) : null)),
       put: vi.fn((key, value) => cacheStorage.set(key, value)),
+      remove: vi.fn((key) => cacheStorage.delete(key)),
     };
     mockCacheService = {
       getScriptCache: vi.fn().mockReturnValue(mockScriptCache),
@@ -98,6 +99,65 @@ describe('CacheManager', () => {
       const manager = new CacheManager();
       expect(mockCacheService.getScriptCache).toHaveBeenCalledTimes(1);
       expect(manager.cache).toBe(mockScriptCache);
+    });
+
+    it('uses a supplied cache instance without acquiring the script cache', () => {
+      const supplied = {
+        get: vi.fn(() => null),
+        put: vi.fn(),
+        remove: vi.fn(),
+      };
+
+      const manager = new CacheManager(supplied);
+
+      expect(manager.cache).toBe(supplied);
+      expect(mockCacheService.getScriptCache).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('remove()', () => {
+    it('removes a flag from the supplied cache', () => {
+      const store = new Map([['cleanup:flag', 'pending']]);
+      const supplied = {
+        get: vi.fn((key) => store.get(key) ?? null),
+        put: vi.fn((key, value) => store.set(key, value)),
+        remove: vi.fn((key) => store.delete(key)),
+      };
+      const manager = new CacheManager(supplied);
+
+      expect(typeof manager.remove).toBe('function');
+      manager.remove('cleanup:flag');
+
+      expect(supplied.remove).toHaveBeenCalledWith('cleanup:flag');
+      expect(store.has('cleanup:flag')).toBe(false);
+    });
+
+    it('removes a flag from the default script cache', () => {
+      cacheStorage.set('cleanup:flag', 'pending');
+      const manager = new CacheManager();
+
+      expect(typeof manager.remove).toBe('function');
+      manager.remove('cleanup:flag');
+
+      expect(mockScriptCache.remove).toHaveBeenCalledWith('cleanup:flag');
+      expect(cacheStorage.has('cleanup:flag')).toBe(false);
+    });
+
+    it('does not throw and logs through ABLogger when the native remove throws', () => {
+      const removeFailure = new Error('Native cache remove failure');
+      mockScriptCache.remove.mockImplementationOnce(() => {
+        throw removeFailure;
+      });
+      // remove() stays best-effort: a native outage is logged, never thrown.
+      expect(() => {
+        new CacheManager().remove('cleanup:flag');
+      }).not.toThrow();
+      expect(mockAbLoggerInstance.error).toHaveBeenCalledTimes(1);
+      expect(mockAbLoggerInstance.error).toHaveBeenCalledWith(
+        'Error removing from cache:',
+        removeFailure
+      );
+      expectConsoleSilent();
     });
   });
 

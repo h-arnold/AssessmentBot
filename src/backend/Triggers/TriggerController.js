@@ -5,13 +5,16 @@ const DEFAULT_TRIGGER_DELAY_SECONDS = 5;
  */
 class TriggerController {
   /**
-   * Creates a time-based trigger for the specified function to fire 5 seconds after the current time.
+   * Creates a time-based trigger for the specified function at the given time.
    *
    * @param {string} functionName - The name of the function to trigger.
-   * @param {integer} triggerTime - The time the trigger should be run.
-   * @returns {string} The unique ID of the created trigger.
+   * @param {Date} [triggerTime] - When the trigger should run; defaults to five seconds from now.
+   * @param {{skipTooManyTriggersRecovery?: boolean}} [options] - Set skipTooManyTriggersRecovery to log any creation error and return null instead of recovering.
+   * @returns {string|null} The unique ID of the created trigger, or null when creation was declined under skipTooManyTriggersRecovery.
+   * @remarks The opt-out is used by cleanup scheduling: recovery would delete unrelated
+   * assessment triggers, and an error log through ProgressTracker would re-arm cleanup.
    */
-  createTimeBasedTrigger(functionName, triggerTime) {
+  createTimeBasedTrigger(functionName, triggerTime, options) {
     try {
       // Ensure user has granted required permissions for trigger installation and execution
       ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, TriggerController.REQUIRED_SCOPES);
@@ -27,6 +30,16 @@ class TriggerController {
       ABLogger.getInstance().info(`Trigger Id is ${triggerId}`);
       return triggerId;
     } catch (error) {
+      if (options?.skipTooManyTriggersRecovery === true) {
+        ABLogger.getInstance().warn(
+          `Error creating trigger for ${functionName}: ${error.message}`,
+          {
+            functionName,
+            error,
+          }
+        );
+        return null;
+      }
       if (error.message.includes('This script has too many triggers')) {
         ABLogger.getInstance().warn(`Too many triggers error occurred: ${error.message}`);
         this.removeTriggers(functionName);
@@ -126,8 +139,16 @@ class TriggerController {
     if (parametersJson !== null) {
       try {
         parameters = JSON.parse(parametersJson);
-      } catch {
+      } catch (error) {
         // Malformed params JSON — graceful degradation, consistent with CacheManager.get().
+        ABLogger.getInstance().warn(
+          'Could not parse stored trigger params; treating it as unknown.',
+          {
+            triggerUid,
+            method,
+            error,
+          }
+        );
         return null;
       }
     }

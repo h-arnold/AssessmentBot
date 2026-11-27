@@ -22,6 +22,7 @@ import { AssessTaskModal } from '@/features/classes/AssessTaskModal/AssessTaskMo
 import { findMatchingDefinition } from '@/features/classes/AssessTaskModal/matchDefinitionForAssignment';
 import { getGoogleClassroomAssignments } from '@/services/googleClassrooms/googleClassroomAssignmentsService';
 import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import {
   getAssignmentDefinition,
   upsertAssignmentDefinition,
@@ -148,6 +149,9 @@ export function buildNonStaleError(): ApiTransportError {
   return buildCodedError('INTERNAL_ERROR', NON_STALE_FAILURE_MESSAGE);
 }
 
+/** Minimal valid response used by the queued assessment-start mocks. */
+const START_ASSESSMENT_RUN_RESPONSE: StartAssessmentRunResponse = { requestId: 'test-run-id' };
+
 /**
  * A queued `startAssessmentRun` outcome.
  */
@@ -170,10 +174,10 @@ export function queueStartResults(...results: readonly StartResult[]): void {
     } else if (result.kind === 'error') {
       mock.mockRejectedValueOnce(result.error);
     } else {
-      mock.mockResolvedValueOnce(null);
+      mock.mockResolvedValueOnce(START_ASSESSMENT_RUN_RESPONSE);
     }
   }
-  mock.mockResolvedValue(null);
+  mock.mockResolvedValue(START_ASSESSMENT_RUN_RESPONSE);
 }
 
 /**

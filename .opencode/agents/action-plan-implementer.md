@@ -304,9 +304,22 @@ Run plan compaction at every section completion, in parallel with the docs sync 
 
 ---
 
+### **2.75 Graphify refresh (end of every section)**
+
+After the section regression gate passes and plan compaction is complete, but before the section commit and push (§2.7), refresh the knowledge graph so it reflects the section's code changes:
+
+1. Run `graphify update .` from the repository root. This is AST-only and has no API cost.
+2. Inspect `git status --short -- graphify-out/` and stage the regenerated `graphify-out/` outputs together with the section changes. Commit and push them with the section (§2.7); do not leave them as dirty worktree state or in a separate commit. A whole-file rewrite of `graphify-out/graph.json` is expected and must not be flagged as churn. Hooks and incremental updates may also leave `graphify-out/` files dirty; that is normal and is not a reason to skip the refresh.
+3. If the refresh command fails, report the failure and the affected files; do not silently skip it or hand-wave the graph as current.
+4. Record in the section's **Implementation notes** that `graphify update .` ran, whether outputs changed, and that they are covered by the section commit SHA.
+
+This step is mandatory for every completed section, including sections whose code changes are tests only.
+
+---
+
 ### **2.8 Context Compaction**
 
-Once the section is committed and pushed (§2.7), and before starting the next section, call `compact_context` exactly once. This requests compaction of this subagent session's context so that detail from the completed section does not consume the budget needed by the next section.
+Once the section is committed and pushed (§2.7), the graphify refresh (§2.75) is recorded, and before starting the next section, call `compact_context` exactly once. This requests compaction of this subagent session's context so that detail from the completed section does not consume the budget needed by the next section.
 
 - This is **session-context compaction**, distinct from the plan compaction in **§2.5**, which rewrites `ACTION_PLAN.md`. Do not call it as a substitute for §2.5, and do not call it during the red, green, review or refactor phases.
 - The request is **asynchronous**: the tool returns a short status string, not a summary. Compaction runs at the next step boundary; do not treat the return value as a context digest or wait for one.
@@ -438,9 +451,10 @@ A section is **not complete** until all of the following are true:
 - **Regression Gate** run once at section completion and passed (zero regressions, zero new failures).
 - Section checks pass.
 - `ACTION_PLAN.md` updated.
+- Graphify graphs refreshed with `graphify update .` and the regenerated outputs committed and pushed with the section (see **2.75**).
 - Changes committed and pushed.
 - Commit SHA(s), message(s), branch name, and push confirmation recorded.
-- `compact_context` called once after the commit and push, before the next section (see **2.8**).
+- `compact_context` called once after the commit, push and graphify refresh, before the next section (see **2.8**).
 
 ---
 
@@ -542,7 +556,7 @@ When the full plan is complete, provide:
 
 > **📜 Prime Directives:** Never code | Delegate always | Scope-bound | Kif=menial only
 
-> **🔄 Workflow:** Red Loop (tests → Testing Specialist or Playwright for E2E) → focused checks → Green Loop (impl) → focused checks → Refactor → Docs Sync + Plan Compaction (parallel) → Section Regression Gate → Commit → Session Compaction (§2.8)
+> **🔄 Workflow:** Red Loop (tests → Testing Specialist or Playwright for E2E) → focused checks → Green Loop (impl) → focused checks → Refactor → Docs Sync + Plan Compaction (parallel) → Section Regression Gate → Graphify refresh (§2.75) → Commit → Session Compaction (§2.8)
 
 > **🔁 Gate failure:** Restore section body → rework → re-run gate → re-compact → commit
 
@@ -556,4 +570,4 @@ When the full plan is complete, provide:
 
 > **🧭 Scope triage:** In scope → fix | Ambiguous → record and ask user | Out of scope → record, never fix | Critical → stop and notify
 
-> **✅ Exit Criteria:** No in-scope findings | Docs synced | Section compacted | All gates ✓ | ACTION_PLAN.md updated
+> **✅ Exit Criteria:** No in-scope findings | Docs synced | Section compacted | All gates ✓ | Graphify refreshed (§2.75) | ACTION_PLAN.md updated

@@ -29,5 +29,10 @@ playwright-report/
 .opencode/scratchpad/*
 .opencode/scratchpad/synthetic-analysis-full/
 
+# Graphify local state (machine-specific paths and query cache)
+graphify-out/.graphify_python
+graphify-out/.graphify_root
+graphify-out/cache/
+
 # Clasp deploy artefacts (deploy-gas skill pty session capture)
 typescript

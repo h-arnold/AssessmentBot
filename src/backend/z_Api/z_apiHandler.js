@@ -39,6 +39,7 @@ const ADMIN_REQUIRED_METHOD_NAMES = Object.freeze([
 ]);
 
 const PII_LOG_METHODS = Object.freeze(['getAuthenticationSettings', 'setAuthenticationSettings']);
+
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   hasScriptAuthorisation: () => new ScriptAppManager().isAuthorised(),
   getApplicationAccess: () => getApplicationAccess_(),
@@ -58,7 +59,8 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   getABClass: (parameters) => getABClass_(parameters),
   getBackendConfig: () => getBackendConfig_(),
   setBackendConfig: (parameters) => setBackendConfig_(parameters),
-  startAssessmentRun: (parameters) => startAssessmentRun_(parameters),
+  startAssessmentRun: (parameters, requestId) => startAssessmentRun_(parameters, requestId),
+  getProgress: () => getProgress_(),
   getCohorts: () => new ReferenceDataController().listCohorts(),
   createCohort: (parameters) => new ReferenceDataController().createCohort(parameters.record),
   updateCohort: (parameters) => new ReferenceDataController().updateCohort(parameters),
@@ -144,7 +146,7 @@ class ApiDispatcher extends BaseSingleton {
     let isHandlerFailed = false;
     let data;
     try {
-      data = handler(request.params);
+      data = handler(request.params, requestId);
     } catch (error) {
       isHandlerFailed = true;
       handlerError = error;
@@ -181,7 +183,7 @@ class ApiDispatcher extends BaseSingleton {
     ABLogger.getInstance().debug('API response sent.', {
       requestId,
       method,
-      ...(!PII_LOG_METHODS.includes(method) && { response: JSON.stringify(response) }),
+      ...(!PII_LOG_METHODS.includes(method) && { response }),
     });
   }
 

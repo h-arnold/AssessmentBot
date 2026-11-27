@@ -5,17 +5,23 @@ import { AssessTaskModal } from '@/features/classes/AssessTaskModal/AssessTaskMo
 import { getGoogleClassroomAssignments } from '@/services/googleClassrooms/googleClassroomAssignmentsService';
 import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
 import { upsertAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
+import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
+import { getYearGroups } from '@/services/referenceData/referenceDataService';
 import {
   findMatchingDefinition,
   type MatchResult,
 } from '@/features/classes/AssessTaskModal/matchDefinitionForAssignment';
 import { queryKeys } from '@/query/queryKeys';
 import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
-import { DEFAULT_ISO_DATETIME } from './matchDefinitionForAssignment.test-utilities';
+import {
+  createDefinitionPartial,
+  DEFAULT_ISO_DATETIME,
+} from './matchDefinitionForAssignment.test-utilities';
 import { createAppQueryClient } from '@/query/queryClient';
 import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
 import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import type { UpsertAssignmentDefinitionResponse } from '@/services/assignmentDefinition/assignmentDefinition.zod';
+import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import type { QueryClient } from '@tanstack/react-query';
 import { createFixtureClassPartial } from './classesPageTestHelpers';
 
@@ -37,6 +43,20 @@ export const MOCK_ASSIGNMENTS: GoogleClassroomAssignmentsResponse = [
 ];
 
 export const MOCK_EMPTY_ASSIGNMENTS: GoogleClassroomAssignmentsResponse = [];
+
+/** Minimal valid response used by the assessment-start mocks. */
+export const START_ASSESSMENT_RUN_RESPONSE: StartAssessmentRunResponse = {
+  requestId: 'test-run-id',
+};
+
+/**
+ * Clears mock state and seeds the empty reference-data responses used by the modal specs.
+ */
+export function resetAssessTaskModalMocks(): void {
+  vi.clearAllMocks();
+  vi.mocked(getAssignmentTopics).mockResolvedValue([]);
+  vi.mocked(getYearGroups).mockResolvedValue([]);
+}
 
 export const MODAL_TITLE = `Assess Task — ${MOCK_CLASS_NAME}`;
 const SUCCESS_SURFACE_CLOSE_BUTTON_COUNT = 2;
@@ -221,7 +241,7 @@ export function renderWithCache(options: RenderWithCacheOptions = {}): {
   if (startRunType === 'reject') {
     vi.mocked(startAssessmentRun).mockRejectedValue(startRunResult);
   } else if (startRunResult !== undefined) {
-    vi.mocked(startAssessmentRun).mockResolvedValue(startRunResult as null);
+    vi.mocked(startAssessmentRun).mockResolvedValue(startRunResult as StartAssessmentRunResponse);
   }
 
   if (upsertType === 'reject') {
@@ -254,6 +274,27 @@ export function renderWithCache(options: RenderWithCacheOptions = {}): {
     dialog: screen.getByRole('dialog', { name: MODAL_TITLE }),
     queryClient: returnedClient,
   };
+}
+
+/**
+ * Renders the modal on the matched-definition path with the standard class cache.
+ *
+ * @param {Partial<RenderWithCacheOptions>} [overrides] Overrides spread on the matched defaults.
+ * @returns {object} The dialog, query client and definition used by the render.
+ */
+export function renderWithMatchedCache(overrides: Partial<RenderWithCacheOptions> = {}): {
+  dialog: HTMLElement;
+  queryClient: QueryClient;
+  definition: AssignmentDefinitionPartial;
+} {
+  const definition = createDefinitionPartial();
+  const { dialog, queryClient } = renderWithCache({
+    classPartials: [createFixtureClassPartial({ classId: MOCK_CLASS_ID, yearGroupKey: 'year-10' })],
+    definitionPartials: [definition],
+    findMatchResult: { kind: 'matched', definition },
+    ...overrides,
+  });
+  return { dialog, queryClient, definition };
 }
 
 // ---------------------------------------------------------------------------

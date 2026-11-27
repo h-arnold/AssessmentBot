@@ -2,6 +2,7 @@ import { ZodError } from 'zod';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import smallClassesRaw from '@synthetic/small/classesById.json?raw';
 import { CANONICAL_NON_NULL_METADATA } from '@/test/abClass/abClassMetadataFixtures';
+import { expectServiceBoundaryFailure } from '@/test/api/apiServiceTransportTestHelpers';
 import { ClassFullSchema } from './classDetailService.zod';
 import type {
   AssignmentPartial,
@@ -270,27 +271,11 @@ describe('classDetailService.getABClass', () => {
     const { getABClass } = await import('./classDetailService');
     const request = { classId: 'class-1' };
 
-    let thrownError: unknown;
-    try {
-      await getABClass(request);
-    } catch (error: unknown) {
-      thrownError = error;
-    }
-
-    expect(thrownError).toBeInstanceOf(TypeError);
-    expect((thrownError as Error).message).toBe('Invalid partial items');
-    expect(callApiMock).toHaveBeenCalledTimes(1);
-    expect(callApiMock).toHaveBeenCalledWith('getABClass', request);
-
-    expect(mockLogFrontendError).toHaveBeenCalledTimes(1);
-    const [context, loggedError, metadata] = mockLogFrontendError.mock.calls[0]!;
-    expect(context).toBe('services/classDetailService.getABClass');
-    expect(loggedError).toBe(thrownError);
-    expect(metadata).toEqual({ method: 'getABClass' });
-    expect(
-      mockLogFrontendError.mock.calls.some(
-        ([callContext]) => callContext === 'services/apiService.parseApiResponse'
-      )
-    ).toBe(false);
+    await expectServiceBoundaryFailure(
+      () => getABClass(request),
+      request,
+      { api: callApiMock, logs: mockLogFrontendError },
+      ['getABClass', 'services/classDetailService.getABClass', 'Invalid partial items']
+    );
   });
 });

@@ -49,6 +49,7 @@ import {
   expectAssessmentSuccessSurface,
 } from '@/test/classes/AssessTaskModal.test-utilities';
 import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
+import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import type { ReRunContext } from '@/features/shared/reRunAssessmentContext';
 
 /** Definition key persisted on the previously assessed assignment. */
@@ -65,6 +66,9 @@ const RE_RUN_CONTEXT: ReRunContext = {
 
 /** Accessible name of the re-run footer's primary action while a run is in flight. */
 const RE_RUN_ASSESSMENT_BUTTON = 'Re-run Assessment';
+
+/** Minimal valid response used by the assessment-start mocks. */
+const START_ASSESSMENT_RUN_RESPONSE: StartAssessmentRunResponse = { requestId: 'test-run-id' };
 
 /** Modal properties overridden by the re-run specs. */
 type ReRunModalProperties = Readonly<{
@@ -183,7 +187,9 @@ beforeEach(() => {
       definition: createDefinitionPartial({ definitionKey: PERSISTED_DEFINITION_KEY }),
     };
   });
-  vi.mocked(startAssessmentRun).mockImplementation(() => Promise.resolve(null));
+  vi.mocked(startAssessmentRun).mockImplementation(() =>
+    Promise.resolve(START_ASSESSMENT_RUN_RESPONSE)
+  );
   vi.mocked(getAssignmentDefinition).mockImplementation(() => Promise.resolve(RECOVERY_DEFINITION));
   vi.mocked(getAssignmentTopics).mockImplementation(() => Promise.resolve([]));
   vi.mocked(getCohorts).mockImplementation(() => Promise.resolve([]));
@@ -326,7 +332,7 @@ describe('AssessTaskModal — Re-run Assessment entry', () => {
   });
 
   it('does not restart or surface stale results after close and reopen with a cleared context', async () => {
-    const pendingRun = createDeferredPromise<null>();
+    const pendingRun = createDeferredPromise<StartAssessmentRunResponse>();
     vi.mocked(startAssessmentRun).mockImplementation(() => pendingRun.promise);
 
     const { rerender } = renderReRunModal({
@@ -355,7 +361,7 @@ describe('AssessTaskModal — Re-run Assessment entry', () => {
   });
 
   it('ignores a successful obsolete completion after close and reopen with a cleared context', async () => {
-    const pendingRun = createDeferredPromise<null>();
+    const pendingRun = createDeferredPromise<StartAssessmentRunResponse>();
     vi.mocked(startAssessmentRun).mockImplementation(() => pendingRun.promise);
 
     const { rerender } = renderReRunModal({ reRunContext: RE_RUN_CONTEXT });
@@ -372,7 +378,7 @@ describe('AssessTaskModal — Re-run Assessment entry', () => {
     await within(reopenedDialog).findByRole('combobox');
 
     await act(async () => {
-      pendingRun.resolvePromise(null);
+      pendingRun.resolvePromise(START_ASSESSMENT_RUN_RESPONSE);
       await Promise.resolve();
     });
 
@@ -451,7 +457,7 @@ describe('AssessTaskModal — Re-run Assessment entry', () => {
   });
 
   it('labels the loading and success re-run surfaces without the internal key or Start Assessment action', async () => {
-    const pendingRun = createDeferredPromise<null>();
+    const pendingRun = createDeferredPromise<StartAssessmentRunResponse>();
     vi.mocked(startAssessmentRun).mockImplementation(() => pendingRun.promise);
 
     const { dialog } = renderReRunModal({ reRunContext: RE_RUN_CONTEXT });
@@ -467,7 +473,7 @@ describe('AssessTaskModal — Re-run Assessment entry', () => {
     expect(within(dialog).queryByRole('alert')).toBeNull();
 
     await act(async () => {
-      pendingRun.resolvePromise(null);
+      pendingRun.resolvePromise(START_ASSESSMENT_RUN_RESPONSE);
       await Promise.resolve();
     });
 

@@ -6,6 +6,7 @@ import '@/test/classes/AssessTaskModal.mockSetup';
 import { AssessTaskModal } from './AssessTaskModal';
 import { getGoogleClassroomAssignments } from '@/services/googleClassrooms/googleClassroomAssignmentsService';
 import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
+import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import { findMatchingDefinition } from './matchDefinitionForAssignment';
 import { queryKeys } from '@/query/queryKeys';
 import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
@@ -27,6 +28,9 @@ import { createDefinitionPartial } from '@/test/classes/matchDefinitionForAssign
 import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
 import { getYearGroups } from '@/services/referenceData/referenceDataService';
 
+/** Minimal valid response used by the assessment-start mocks. */
+const START_ASSESSMENT_RUN_RESPONSE: StartAssessmentRunResponse = { requestId: 'test-run-id' };
+
 let user: ReturnType<typeof userEvent.setup>;
 
 beforeEach(() => {
@@ -39,7 +43,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.resetAllMocks();
 });
-
 
 /**
  * Renders a no-match choice state, closes the modal, and reopens it with the
@@ -98,7 +101,9 @@ describe('No-match resolution — choice state', () => {
     expect(alert).toHaveTextContent(/Essay/);
 
     // Two choice buttons should be visible
-    expect(within(dialog).getByRole('button', { name: 'Create New Definition' })).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: 'Create New Definition' })
+    ).toBeInTheDocument();
 
     const linkButton = within(dialog).getByRole('button', { name: 'Link to Existing Definition' });
     expect(linkButton).toBeInTheDocument();
@@ -168,7 +173,9 @@ describe('No-match resolution — choice state', () => {
     await within(reopenedDialog).findByRole('combobox');
 
     // noMatchResolution should be reset to 'idle', so choice prompt is NOT shown
-    expect(within(reopenedDialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();
+    expect(
+      within(reopenedDialog).queryByRole('button', { name: 'Create New Definition' })
+    ).toBeNull();
   });
 
   it('reopens modal and resets assessmentState to idle', async () => {
@@ -187,7 +194,7 @@ describe('No-match resolution — choice state', () => {
       ],
       definitionPartials: [matchedDefinition],
       findMatchResult: { kind: 'matched', definition: matchedDefinition },
-      startRunResult: null,
+      startRunResult: START_ASSESSMENT_RUN_RESPONSE,
       startRunType: 'resolve',
     });
 
@@ -199,7 +206,9 @@ describe('No-match resolution — choice state', () => {
     // the normal success flow after a matched definition is found.
     await waitFor(() => {
       expect(within(dialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();
-      expect(within(dialog).queryByRole('button', { name: 'Link to Existing Definition' })).toBeNull();
+      expect(
+        within(dialog).queryByRole('button', { name: 'Link to Existing Definition' })
+      ).toBeNull();
       expect(within(dialog).queryByText(/no matching assignment definition found/i)).toBeNull();
     });
 
@@ -218,13 +227,17 @@ describe('Success state close', () => {
     const matchedDefinition = createDefinitionPartial();
     const onClose = vi.fn();
 
-    vi.mocked(getGoogleClassroomAssignments).mockImplementation(() => Promise.resolve(MOCK_ASSIGNMENTS));
+    vi.mocked(getGoogleClassroomAssignments).mockImplementation(() =>
+      Promise.resolve(MOCK_ASSIGNMENTS)
+    );
 
     vi.mocked(findMatchingDefinition).mockReturnValue({
       kind: 'matched',
       definition: matchedDefinition,
     });
-    vi.mocked(startAssessmentRun).mockImplementation(() => Promise.resolve(null));
+    vi.mocked(startAssessmentRun).mockImplementation(() =>
+      Promise.resolve(START_ASSESSMENT_RUN_RESPONSE)
+    );
 
     const queryClient = createAppQueryClient();
     queryClient.setQueryData(queryKeys.classPartials(), [

@@ -1,9 +1,12 @@
+import { ZodError } from 'zod';
 import { describe, expect, it } from 'vitest';
 import {
   AssignmentDefinitionSchema,
   AssignmentFullSchema,
   AssignmentFullResponseSchema,
   GetAssignmentRequestSchema,
+  GetProgressResponseSchema,
+  ProgressRecordSchema,
   StartAssessmentRunRequestSchema,
   StartAssessmentRunResponseSchema,
   StudentSubmissionItemSchema,
@@ -19,6 +22,15 @@ const validStartAssessmentRunRequest = {
   definitionKey: 'algebra-baseline',
   assignmentId: 'assign-123',
   courseId: 'course-456',
+};
+
+const validProgressRecord = {
+  requestId: '550e8400-e29b-41d4-a716-446655440000',
+  step: 1,
+  message: 'Marking task one',
+  completed: false,
+  error: null,
+  timestamp: '2026-11-25T10:00:00.000Z',
 };
 
 describe('assignmentAssessment.zod schemas', () => {
@@ -50,15 +62,65 @@ describe('assignmentAssessment.zod schemas', () => {
   });
 
   describe('StartAssessmentRunResponseSchema', () => {
-    it('accepts null data', () => {
-      expect(StartAssessmentRunResponseSchema.parse(null)).toBeNull();
+    const validResponse = { requestId: '550e8400-e29b-41d4-a716-446655440000' };
+
+    it('accepts a response carrying a non-empty requestId', () => {
+      expect(StartAssessmentRunResponseSchema.parse(validResponse)).toEqual(validResponse);
     });
 
-    it('rejects non-null data', () => {
+    it('rejects null and other non-requestId data', () => {
+      expect(() => StartAssessmentRunResponseSchema.parse(null)).toThrow();
       expect(() => StartAssessmentRunResponseSchema.parse({ success: true })).toThrow();
       expect(() => StartAssessmentRunResponseSchema.parse('string')).toThrow();
-      // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-      expect(() => StartAssessmentRunResponseSchema.parse(42)).toThrow();
+      expect(() => StartAssessmentRunResponseSchema.parse(Number.MAX_SAFE_INTEGER)).toThrow();
+    });
+
+    it('rejects an empty requestId', () => {
+      expect(() => StartAssessmentRunResponseSchema.parse({ requestId: '' })).toThrow();
+    });
+  });
+
+  describe('ProgressRecordSchema', () => {
+    it('accepts a record with a canonical UTC ISO timestamp', () => {
+      expect(ProgressRecordSchema.parse(validProgressRecord)).toEqual(validProgressRecord);
+    });
+
+    it('rejects a record with a malformed timestamp', () => {
+      expect(() =>
+        ProgressRecordSchema.parse({ ...validProgressRecord, timestamp: 'not-a-date' })
+      ).toThrow(ZodError);
+    });
+
+    it('rejects a record with an empty requestId', () => {
+      expect(() => ProgressRecordSchema.parse({ ...validProgressRecord, requestId: '' })).toThrow(
+        ZodError
+      );
+    });
+
+    it('rejects a record with a non-finite step', () => {
+      expect(() => ProgressRecordSchema.parse({ ...validProgressRecord, step: Infinity })).toThrow(
+        ZodError
+      );
+    });
+
+    it('accepts a terminal record with an error message', () => {
+      const failedRecord = { ...validProgressRecord, error: 'Assessment service unavailable' };
+      expect(ProgressRecordSchema.parse(failedRecord)).toEqual(failedRecord);
+    });
+  });
+
+  describe('GetProgressResponseSchema', () => {
+    it('accepts an empty tasks array', () => {
+      expect(GetProgressResponseSchema.parse({ tasks: [] })).toEqual({ tasks: [] });
+    });
+
+    it('accepts populated progress records', () => {
+      const response = { tasks: [validProgressRecord] };
+      expect(GetProgressResponseSchema.parse(response)).toEqual(response);
+    });
+
+    it('rejects a response without tasks', () => {
+      expect(GetProgressResponseSchema.safeParse({}).success).toBe(false);
     });
   });
 

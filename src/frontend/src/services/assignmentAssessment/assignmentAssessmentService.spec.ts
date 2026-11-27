@@ -1,6 +1,6 @@
 import { ZodError } from 'zod';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { StartAssessmentRunResponseSchema } from './assignmentAssessment.zod';
+import { expectServiceBoundaryFailure } from '@/test/api/apiServiceTransportTestHelpers';
 import type { AssignmentFull } from './assignmentAssessment.zod';
 import type * as ApiService from '../apiService';
 
@@ -161,6 +161,31 @@ async function loadAssignmentAssessmentService() {
   return import('./assignmentAssessmentService');
 }
 
+/**
+ * Adds a task-2 entry derived from task-1 to both task maps, remapping every artifact taskId.
+ *
+ * @param {AssignmentFull} assignment Mutable assignment to extend.
+ * @returns {AssignmentFull} The same assignment with task-2 present in both task maps.
+ */
+function withRemappedTaskTwo(assignment: AssignmentFull): AssignmentFull {
+  type Task = NonNullable<AssignmentFull['tasks']>[string];
+  const remapTaskTwo = (task: Task): Task => {
+    return {
+      ...task,
+      id: 'task-2',
+      artifacts: {
+        reference: task.artifacts.reference.map((artifact) => ({ ...artifact, taskId: 'task-2' })),
+        template: task.artifacts.template.map((artifact) => ({ ...artifact, taskId: 'task-2' })),
+      },
+    };
+  };
+  assignment.tasks!['task-2'] = remapTaskTwo(assignment.tasks!['task-1']!);
+  assignment.assignmentDefinition.tasks['task-2'] = remapTaskTwo(
+    assignment.assignmentDefinition.tasks['task-1']!
+  );
+  return assignment;
+}
+
 describe('assignmentAssessmentService', () => {
   afterEach(() => {
     callApiMock.mockReset();
@@ -168,18 +193,18 @@ describe('assignmentAssessmentService', () => {
     vi.resetModules();
   });
 
-  it('startAssessmentRun() returns null on a successful call', async () => {
-    callApiMock.mockResolvedValueOnce(null);
+  it('startAssessmentRun() returns the request ID on a successful call', async () => {
+    const response = { requestId: '550e8400-e29b-41d4-a716-446655440000' };
+    callApiMock.mockResolvedValueOnce(response);
 
     const { startAssessmentRun } = await loadAssignmentAssessmentService();
 
-    await expect(startAssessmentRun(validStartAssessmentRunRequest)).resolves.toBeNull();
+    await expect(startAssessmentRun(validStartAssessmentRunRequest)).resolves.toEqual(response);
     expect(callApiMock).toHaveBeenCalledTimes(1);
-    expect(StartAssessmentRunResponseSchema.parse(null)).toBeNull();
   });
 
   it('startAssessmentRun() calls callApi with the correct method name and payload', async () => {
-    callApiMock.mockResolvedValueOnce(null);
+    callApiMock.mockResolvedValueOnce({ requestId: '550e8400-e29b-41d4-a716-446655440000' });
 
     const { startAssessmentRun } = await loadAssignmentAssessmentService();
 
@@ -195,6 +220,51 @@ describe('assignmentAssessmentService', () => {
       startAssessmentRun({} as Parameters<typeof startAssessmentRun>[0])
     ).rejects.toBeInstanceOf(ZodError);
     expect(callApiMock).not.toHaveBeenCalled();
+  });
+
+  it('startAssessmentRun() rejects a null response at the service boundary', async () => {
+    callApiMock.mockResolvedValueOnce(null);
+
+    const { startAssessmentRun } = await loadAssignmentAssessmentService();
+
+    await expect(startAssessmentRun(validStartAssessmentRunRequest)).rejects.toBeInstanceOf(
+      ZodError
+    );
+  });
+
+  describe('getProgress', () => {
+    const validProgressRecord = {
+      requestId: '550e8400-e29b-41d4-a716-446655440000',
+      step: 1,
+      message: 'Marking task one',
+      completed: false,
+      error: null,
+      timestamp: '2026-11-25T10:00:00.000Z',
+    };
+
+    it('returns parsed tasks using the getProgress backend method', async () => {
+      const response = { tasks: [validProgressRecord] };
+      callApiMock.mockResolvedValueOnce(response);
+      const { getProgress } = await loadAssignmentAssessmentService();
+      await expect(getProgress()).resolves.toEqual(response);
+      expect(callApiMock).toHaveBeenCalledWith('getProgress');
+      expect(callApiMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('accepts an empty tasks array', async () => {
+      callApiMock.mockResolvedValueOnce({ tasks: [] });
+      const { getProgress } = await loadAssignmentAssessmentService();
+      await expect(getProgress()).resolves.toEqual({ tasks: [] });
+      expect(callApiMock).toHaveBeenCalledWith('getProgress');
+    });
+
+    it('rejects a malformed task timestamp at the service boundary', async () => {
+      callApiMock.mockResolvedValueOnce({
+        tasks: [{ ...validProgressRecord, timestamp: 'not-a-date' }],
+      });
+      const { getProgress } = await loadAssignmentAssessmentService();
+      await expect(getProgress()).rejects.toBeInstanceOf(ZodError);
+    });
   });
 
   describe('getAssignment', () => {
@@ -252,47 +322,7 @@ describe('assignmentAssessmentService', () => {
     });
 
     it('isolates a corrupt identifiable item and preserves its healthy sibling', async () => {
-      const payload = structuredClone(validFullAssignment);
-      payload.tasks!['task-2'] = {
-        ...payload.tasks!['task-1']!,
-        id: 'task-2',
-        artifacts: {
-          reference: payload.tasks!['task-1']!.artifacts.reference.map((artifact) => {
-            return {
-              ...artifact,
-              taskId: 'task-2',
-            };
-          }),
-          template: payload.tasks!['task-1']!.artifacts.template.map((artifact) => {
-            return {
-              ...artifact,
-              taskId: 'task-2',
-            };
-          }),
-        },
-      };
-      payload.assignmentDefinition.tasks['task-2'] = {
-        ...payload.assignmentDefinition.tasks['task-1']!,
-        id: 'task-2',
-        artifacts: {
-          reference: payload.assignmentDefinition.tasks['task-1']!.artifacts.reference.map(
-            (artifact) => {
-              return {
-                ...artifact,
-                taskId: 'task-2',
-              };
-            }
-          ),
-          template: payload.assignmentDefinition.tasks['task-1']!.artifacts.template.map(
-            (artifact) => {
-              return {
-                ...artifact,
-                taskId: 'task-2',
-              };
-            }
-          ),
-        },
-      };
+      const payload = withRemappedTaskTwo(structuredClone(validFullAssignment));
       expect(
         Object.values(payload.tasks!['task-2']!.artifacts)
           .flat()
@@ -317,47 +347,7 @@ describe('assignmentAssessmentService', () => {
     });
 
     it('preserves same-payload missing-task defence and strict unknown-task rejection', async () => {
-      const incomplete = structuredClone(validFullAssignment);
-      incomplete.tasks!['task-2'] = {
-        ...incomplete.tasks!['task-1']!,
-        id: 'task-2',
-        artifacts: {
-          reference: incomplete.tasks!['task-1']!.artifacts.reference.map((artifact) => {
-            return {
-              ...artifact,
-              taskId: 'task-2',
-            };
-          }),
-          template: incomplete.tasks!['task-1']!.artifacts.template.map((artifact) => {
-            return {
-              ...artifact,
-              taskId: 'task-2',
-            };
-          }),
-        },
-      };
-      incomplete.assignmentDefinition.tasks['task-2'] = {
-        ...incomplete.assignmentDefinition.tasks['task-1']!,
-        id: 'task-2',
-        artifacts: {
-          reference: incomplete.assignmentDefinition.tasks['task-1']!.artifacts.reference.map(
-            (artifact) => {
-              return {
-                ...artifact,
-                taskId: 'task-2',
-              };
-            }
-          ),
-          template: incomplete.assignmentDefinition.tasks['task-1']!.artifacts.template.map(
-            (artifact) => {
-              return {
-                ...artifact,
-                taskId: 'task-2',
-              };
-            }
-          ),
-        },
-      };
+      const incomplete = withRemappedTaskTwo(structuredClone(validFullAssignment));
       expect(
         Object.values(incomplete.tasks!['task-2']!.artifacts)
           .flat()
@@ -412,15 +402,29 @@ describe('assignmentAssessmentService', () => {
       callApiMock.mockResolvedValueOnce(incompleteResponse);
 
       const { getAssignment } = await loadAssignmentAssessmentService();
+      const request = { courseId: 'course-1', assignmentId: 'assign-1' };
 
-      await expect(
-        getAssignment({ courseId: 'course-1', assignmentId: 'assign-1' })
-      ).rejects.toBeInstanceOf(ZodError);
+      let thrownError: unknown;
+      try {
+        await getAssignment(request);
+      } catch (error: unknown) {
+        thrownError = error;
+      }
 
-      expect(callApiMock).toHaveBeenCalledWith('getAssignment', {
-        courseId: 'course-1',
-        assignmentId: 'assign-1',
+      expect(thrownError).toBeInstanceOf(ZodError);
+      expect(callApiMock).toHaveBeenCalledWith('getAssignment', request);
+
+      expect(mockLogFrontendError).toHaveBeenCalledTimes(1);
+      const [context, loggedError, metadata] = mockLogFrontendError.mock.calls[0]!;
+      expect(context).toBe('services/apiService.parseApiResponse');
+      expect(loggedError).toBe(thrownError);
+      expect(metadata).toMatchObject({
+        method: 'getAssignment',
+        responsePreview: expect.stringContaining('"assignmentId":"assign-1"'),
       });
+      expect(metadata?.zodIssues).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: ['courseId'] })])
+      );
     });
 
     it('parses input through the request schema before calling callApi', async () => {
@@ -441,28 +445,12 @@ describe('assignmentAssessmentService', () => {
       const { getAssignment } = await loadAssignmentAssessmentService();
       const request = { courseId: 'course-1', assignmentId: 'assign-1' };
 
-      let thrownError: unknown;
-      try {
-        await getAssignment(request);
-      } catch (error: unknown) {
-        thrownError = error;
-      }
-
-      expect(thrownError).toBeInstanceOf(TypeError);
-      expect((thrownError as Error).message).toBe('Invalid submission items');
-      expect(callApiMock).toHaveBeenCalledTimes(1);
-      expect(callApiMock).toHaveBeenCalledWith('getAssignment', request);
-
-      expect(mockLogFrontendError).toHaveBeenCalledTimes(1);
-      const [context, loggedError, metadata] = mockLogFrontendError.mock.calls[0]!;
-      expect(context).toBe('services/assignmentAssessment.getAssignment');
-      expect(loggedError).toBe(thrownError);
-      expect(metadata).toEqual({ method: 'getAssignment' });
-      expect(
-        mockLogFrontendError.mock.calls.some(
-          ([callContext]) => callContext === 'services/apiService.parseApiResponse'
-        )
-      ).toBe(false);
+      await expectServiceBoundaryFailure(
+        () => getAssignment(request),
+        request,
+        { api: callApiMock, logs: mockLogFrontendError },
+        ['getAssignment', 'services/assignmentAssessment.getAssignment', 'Invalid submission items']
+      );
     });
   });
 });

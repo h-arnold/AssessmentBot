@@ -18,6 +18,7 @@ import {
 } from '@/services/assignmentDefinition/assignmentDefinitionService';
 import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
 import type { AssignmentDefinitionPartial } from '@/services/assignmentDefinition/assignmentDefinitionPartials.zod';
+import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import { queryKeys } from '@/query/queryKeys';
 import { createAppQueryClient } from '@/query/queryClient';
 import { createFixtureClassPartial } from '@/test/classes/classesPageTestHelpers';
@@ -34,6 +35,9 @@ import {
 } from '@/test/classes/AssessTaskModal.recovery-helpers';
 import { useAssessTaskLinkFlow } from './useAssessTaskLinkFlow';
 import { useAssessTaskRecoveryFlow } from './useAssessTaskRecoveryFlow';
+
+/** Minimal valid response used by the assessment-start mocks. */
+const START_ASSESSMENT_RUN_RESPONSE: StartAssessmentRunResponse = { requestId: 'test-run-id' };
 
 afterEach(() => {
   vi.resetAllMocks();
@@ -103,7 +107,9 @@ describe('recovery deferred cancellation settlement', () => {
       .mockReset()
       .mockImplementationOnce(() => Promise.resolve(RECOVERY_DEFINITION))
       .mockImplementationOnce(() => pendingSave);
-    vi.mocked(startAssessmentRun).mockImplementation(() => Promise.resolve(null));
+    vi.mocked(startAssessmentRun).mockImplementation(() =>
+      Promise.resolve(START_ASSESSMENT_RUN_RESPONSE)
+    );
 
     const { wrapper } = createHookWrapper();
     const { properties } = recoveryProperties();
@@ -139,7 +145,8 @@ describe('recovery deferred cancellation settlement', () => {
   it('never settles a success when review is cancelled while the resumed run is pending', async () => {
     const { promise: pendingSave, resolve: resolveSave } =
       Promise.withResolvers<AssignmentDefinition>();
-    const { promise: pendingResume, resolve: resolveResume } = Promise.withResolvers<null>();
+    const { promise: pendingResume, resolve: resolveResume } =
+      Promise.withResolvers<StartAssessmentRunResponse>();
     vi.mocked(getAssignmentDefinition).mockImplementation(() =>
       Promise.resolve(RECOVERY_DEFINITION)
     );
@@ -179,7 +186,7 @@ describe('recovery deferred cancellation settlement', () => {
     });
 
     await act(async () => {
-      resolveResume(null);
+      resolveResume(START_ASSESSMENT_RUN_RESPONSE);
       await savePromise;
     });
 
@@ -193,7 +200,9 @@ describe('recovery deferred cancellation settlement', () => {
     vi.mocked(upsertAssignmentDefinition).mockImplementation(() =>
       Promise.resolve(RECOVERY_DEFINITION)
     );
-    vi.mocked(startAssessmentRun).mockImplementation(() => Promise.resolve(null));
+    vi.mocked(startAssessmentRun).mockImplementation(() =>
+      Promise.resolve(START_ASSESSMENT_RUN_RESPONSE)
+    );
     const consoleErrorSpy = vi.spyOn(console, 'error');
 
     const { wrapper } = createHookWrapper();

@@ -416,6 +416,20 @@ function buildTestStudent(Student, { name, email, id } = {}) {
   return new Student(name || 'Test Student', email || 'student@school.edu', id || 's-001');
 }
 
+// Creates a ScriptApp chain whose first create() exhausts the quota and whose retry succeeds.
+const createQuotaExhaustedTriggerChain = (vi, triggerId) => {
+  return {
+    timeBased: vi.fn().mockReturnThis(),
+    at: vi.fn().mockReturnThis(),
+    create: vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw new Error('This script has too many triggers');
+      })
+      .mockImplementationOnce(() => ({ getUniqueId: vi.fn(() => triggerId) })),
+  };
+};
+
 /**
  * Cleanup controller test mocks from global scope
  */
@@ -439,6 +453,7 @@ module.exports = {
   createMockDbManager,
   createMockCollection,
   createMockSlidesParser,
+  createQuotaExhaustedTriggerChain,
   setupDualCollectionGetFunction,
   setupGlobalGASMocks,
   setupControllerTestMocks,

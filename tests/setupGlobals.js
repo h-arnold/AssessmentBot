@@ -81,11 +81,17 @@ g.PropertiesService = {
       deleteProperty(key) {
         delete _userPropertiesData[key];
       },
+      getProperties() {
+        return { ..._userPropertiesData };
+      },
     };
   },
 };
 // Use the shared ProgressTracker mock for tests
 g.ProgressTracker = require('./mocks/ProgressTracker.js');
+
+// The real cleanup coordinator is loaded after its dependencies below,
+// mirroring GAS concatenation order.
 
 // Provide a minimal ABLogger stub for tests so production code can call it directly
 g.ABLogger = {
@@ -137,6 +143,10 @@ g.ArrayUtils = require('../src/backend/Utils/00_ArrayUtils.js');
 
 g.DateUtils = require('../src/backend/Utils/DateUtils.js');
 g.GASPropertiesUtils = require('../src/backend/Utils/00_GASPropertiesUtils.js');
+// Mirror GAS concatenation order: the keyed store helper evaluates before the
+// facade that resolves it as a script-scope global.
+g.ProgressTrackerStore = require('../src/backend/Utils/01_ProgressTrackerStore.js');
+g.ProgressTrackerCleanup = require('../src/backend/Utils/02_ProgressTrackerCleanup.js');
 
 g.ApiValidationError = require('../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 g.ApiRateLimitError = require('../src/backend/Utils/ErrorTypes/ApiRateLimitError.js');
@@ -194,6 +204,14 @@ g.LockService = {
       releaseLock: () => {},
     };
   },
+};
+
+// Default ScriptApp mock; suites can install live triggers via _setProjectTriggers().
+const _projectTriggers = { value: [] };
+g.ScriptApp = {
+  _setProjectTriggers: (t) => (_projectTriggers.value = t),
+  _resetProjectTriggers: () => (_projectTriggers.value = []),
+  getProjectTriggers: () => _projectTriggers.value,
 };
 
 // Default Session mock — supplies the active-user identity for auth checks.
@@ -276,14 +294,36 @@ const _scriptCache = {
     delete _scriptCacheStore[key];
   },
 };
+// Separate in-memory store for the per-user cleanup flag. It is deliberately
+// independent of the script cache so tests can prove user-scoped dedupe.
+const _userCacheStore = {};
+const _userCache = {
+  get(key) {
+    return Object.hasOwn(_userCacheStore, key) ? _userCacheStore[key] : null;
+  },
+  put(key, value, ttlSeconds) {
+    _userCacheStore[key] = value;
+  },
+  remove(key) {
+    delete _userCacheStore[key];
+  },
+};
 g.CacheService = {
   _resetScriptCache() {
     for (const key of Object.keys(_scriptCacheStore)) {
       delete _scriptCacheStore[key];
     }
   },
+  _resetUserCache() {
+    for (const key of Object.keys(_userCacheStore)) {
+      delete _userCacheStore[key];
+    }
+  },
   getScriptCache() {
     return _scriptCache;
+  },
+  getUserCache() {
+    return _userCache;
   },
 };
 
@@ -311,6 +351,7 @@ Object.assign(g, require('../src/backend/z_Api/requestStore.js'));
 Object.assign(g, require('../src/backend/z_Api/apiConfig.js'));
 Object.assign(g, require('../src/backend/z_Api/assignmentAssessment.js'));
 Object.assign(g, require('../src/backend/z_Api/apiAuth.js'));
+Object.assign(g, require('../src/backend/z_Api/progressTracker.js'));
 Object.assign(g, require('../src/backend/z_Api/abclass/abclassMutations.js'));
 Object.assign(g, require('../src/backend/z_Api/abclass/abclassRead.js'));
 g.ApiRateLimitError = require('../src/backend/Utils/ErrorTypes/ApiRateLimitError.js');

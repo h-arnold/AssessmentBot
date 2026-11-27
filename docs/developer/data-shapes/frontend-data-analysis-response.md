@@ -1,7 +1,5 @@
 # Contract: Frontend Data Analysis Response
 
-## Scope
-
 Contract for the frontend-only, in-memory data-analysis response; its values stay in memory
 (see [Persistence](#persistence)). This document covers the ABClass metadata lifecycle, the shared
 post-analysis contracts, both consumer surfaces, the error-aware task-preview view models and the
@@ -1067,12 +1065,12 @@ Aggregate rules:
    Classification: **Deliberate boundary** — stricter parsing is confined to the metadata task
    boundary so timestamp-only freshness comparisons are trustworthy.
 
-## Legacy assignment display
+### Legacy assignment display
 
 Valid legacy scores are included in analysis through the heatmap/averaging and `E` rules. The
 `Reassessment required` tag is shown from the `'legacy'` marker on task heatmaps.
 
-## Attempt-baseline analysis mode
+### Attempt-baseline analysis mode
 
 The top-decile attempt-baseline analysis mode uses a required filter field, a result echo and an
 optional baseline block, together with the analyser's baseline-mode behaviour: post-accumulation
@@ -1281,11 +1279,11 @@ caption follow.
       This override stays preview-local: class-query data, analysed scores/averages and the public
       `MetricResult` output are unaffected, and no repair is persisted.
 
-## Class summary contract
+### Class summary contract
 
-The in-memory contract below is recorded from `SPEC.md`, which remains the source contract.
-All entries are delivered: the typed error, analyser, baseline-key reuse, strict schema and
-writer consumption. See also
+The in-memory class-summary contract below is defined by `ClassSummarySchema` in
+`classSummary.zod.ts` and `ClassSummaryAnalyser` in `classSummaryAnalyser.ts`. The rules cover the
+typed error, analyser, baseline-key reuse, strict schema and writer consumption. See also
 [abclass.md § Baseline averages and student standings](abclass.md#baseline-averages-and-student-standings).
 
 - **Typed `AttemptBaselineUnavailableError`**: `deriveAttemptBaseline` throws `AttemptBaselineUnavailableError` extending `Error` for exactly the three documented failure conditions (roster below three students, fewer than two attempt candidates, empty pool intersection), keeping the existing messages; plain invariant errors remain plain `Error`. `ClassSummaryAnalyser` catches only this type around the full-class baseline analysis and emits `available: false` with null baseline averages and standings; every other error propagates without message matching.
@@ -1296,9 +1294,10 @@ writer consumption. See also
 
 `ClassSummary` carries `updatedAt: string | null` on its `target` and `recentAssignments`
 identities: the analyser copies these verbatim from `AssignmentPartial.updatedAt`, which is
-nullable on the read shape. `SPEC.md` simplifies this to `string`; the in-memory schema does not
-validate canonical timestamps, which stay with `CanonicalMetadataTimestampSchema` in the ABClass
-metadata schema and are applied when the summary is projected into persisted metadata.
+nullable on the read shape. `ClassSummarySchema` encodes each identity's `updatedAt` as
+`string | null` rather than a plain `string`, and does not validate canonical timestamps; that
+validation stays with `CanonicalMetadataTimestampSchema` in the ABClass metadata schema and is
+applied when the summary is projected into persisted metadata.
 
 ## File Index
 

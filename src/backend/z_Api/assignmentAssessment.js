@@ -3,14 +3,18 @@
 /**
  * Transport-boundary handler for startAssessmentRun.
  * Validates the parameters object shape and required string fields, then
- * delegates to AssignmentController.startAssessmentRun.
+ * delegates to AssignmentController.startAssessmentRun with the dispatcher's
+ * correlation ID and returns that ID as the response data payload.
  *
  * @param {*} parameters - Request payload containing definitionKey, assignmentId, courseId.
- * @returns {null} Null on success (no payload).
+ * @param {string} requestId - Correlation ID supplied by the dispatcher as the second argument.
+ * @returns {Object} `{ requestId }` correlation ID response payload.
  * @throws {ApiValidationError} If parameters is not a plain object.
  * @throws {Error} If required fields are missing or not non-empty strings.
+ * @remarks The controller still returns `null`; the transport handler owns the `{ requestId }`
+ * payload.
  */
-function startAssessmentRun_(parameters) {
+function startAssessmentRun_(parameters, requestId) {
   if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
     throw new ApiValidationError('startAssessmentRun requires a parameters object', {
       method: 'startAssessmentRun',
@@ -23,7 +27,8 @@ function startAssessmentRun_(parameters) {
   Validate.validateNonEmptyString('assignmentId', assignmentId);
   Validate.validateNonEmptyString('courseId', courseId);
 
-  return new AssignmentController().startAssessmentRun(parameters);
+  new AssignmentController().startAssessmentRun({ ...parameters, requestId });
+  return { requestId };
 }
 
 /**

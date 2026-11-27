@@ -13,26 +13,23 @@ import {
   MOCK_CLASS_ID,
   MODAL_TITLE,
   DEFAULT_UPSERT_RESULT,
+  START_ASSESSMENT_RUN_RESPONSE,
   defaultProperties,
   createPendingPromise,
+  resetAssessTaskModalMocks,
 } from '@/test/classes/AssessTaskModal.test-utilities';
 import { renderWithNoMatchCache } from '@/test/classes/AssessTaskModal.link-flow-helpers';
-import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
-import { getYearGroups } from '@/services/referenceData/referenceDataService';
 
 let user: ReturnType<typeof userEvent.setup>;
 
 beforeEach(() => {
   user = userEvent.setup();
-  vi.clearAllMocks();
-  vi.mocked(getAssignmentTopics).mockResolvedValue([]);
-  vi.mocked(getYearGroups).mockResolvedValue([]);
+  resetAssessTaskModalMocks();
 });
 
 afterEach(() => {
   vi.resetAllMocks();
 });
-
 
 // ---------------------------------------------------------------------------
 // Footer: Buttons in Non-Success States
@@ -100,7 +97,7 @@ describe('Inline event handler stability', () => {
     const { dialog } = renderWithNoMatchCache({
       upsertResult: DEFAULT_UPSERT_RESULT,
       upsertType: 'resolve',
-      startRunResult: null,
+      startRunResult: START_ASSESSMENT_RUN_RESPONSE,
       startRunType: 'resolve',
     });
 

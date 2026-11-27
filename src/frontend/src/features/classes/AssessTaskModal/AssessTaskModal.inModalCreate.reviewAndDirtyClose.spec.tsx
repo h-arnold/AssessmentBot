@@ -36,6 +36,7 @@ import { setTextboxValue } from '@/test/assignmentDefinition/wizardTestHelpers';
 import { mockTopics, mockYearGroups } from '@/test/assignmentDefinition/sharedTestFixtures';
 import type { AssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinition.zod';
 import type { GoogleClassroomAssignmentsResponse } from '@/services/googleClassrooms/googleClassroomAssignments.zod';
+import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import editableDefinitionsRaw from '@synthetic/small/editableDefinitions.json?raw';
 
 /**
@@ -70,6 +71,9 @@ const CANONICAL_CREATE_DEFINITION: AssignmentDefinition =
  * Definition key returned by the mocked create parse/save responses.
  */
 const CREATED_DEFINITION_KEY = CANONICAL_CREATE_DEFINITION.definitionKey;
+
+/** Minimal valid response used by the assessment-start mocks. */
+const START_ASSESSMENT_RUN_RESPONSE: StartAssessmentRunResponse = { requestId: 'test-run-id' };
 
 /**
  * Repeated accessible names hoisted to constants (sonarjs duplicate-string rule).
@@ -216,7 +220,7 @@ describe('AssessTaskModal in-modal create path', () => {
     vi.mocked(getAssignmentTopics).mockResolvedValue(mockTopics);
     vi.mocked(getYearGroups).mockResolvedValue(mockYearGroups);
     vi.mocked(getCohorts).mockResolvedValue([]);
-    vi.mocked(startAssessmentRun).mockResolvedValue(null);
+    vi.mocked(startAssessmentRun).mockResolvedValue(START_ASSESSMENT_RUN_RESPONSE);
   });
 
   afterEach(() => {
@@ -372,7 +376,7 @@ describe('AssessTaskModal in-modal create path', () => {
     vi.mocked(startAssessmentRun).mockImplementation(() => {
       wasWizardContentMounted = screen.queryByRole('table', { name: TASK_TABLE_PATTERN }) !== null;
       dialogCountAtStartCall = screen.queryAllByRole('dialog').length;
-      return Promise.resolve(null);
+      return Promise.resolve(START_ASSESSMENT_RUN_RESPONSE);
     });
     vi.mocked(upsertAssignmentDefinition).mockResolvedValueOnce(buildCreateUpsertResponse());
 

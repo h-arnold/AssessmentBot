@@ -86,6 +86,7 @@ nav:
           - Google Classrooms: developer/data-shapes/google-classrooms.md
           - Reference Data: developer/data-shapes/reference-data.md
           - Request Store: developer/data-shapes/request-store.md
+          - ProgressTracker: developer/data-shapes/progress-tracker.md
           - Trigger Context: developer/data-shapes/trigger-context.md
           - Frontend Data Analysis Response: developer/data-shapes/frontend-data-analysis-response.md
       - Frontend:

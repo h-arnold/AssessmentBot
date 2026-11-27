@@ -2,7 +2,7 @@
  * AssignmentController.startAssessmentRun Tests
  *
  * Tests for the startAssessmentRun controller method that:
- * - Accepts { definitionKey, assignmentId, courseId }
+ * - Accepts { definitionKey, assignmentId, courseId, requestId }
  * - Fetches definition via AssignmentDefinitionController
  * - Checks freshness of reference/template documents
  * - Resolves ABClass via ABClassController.loadClass
@@ -15,6 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { saveGlobals, restoreGlobals } from '../helpers/globalMockManager.js';
 
 const DefinitionStaleError = require('#backend/Utils/ErrorTypes/DefinitionStaleError.js');
 
@@ -25,6 +26,7 @@ const VALID_PARAMS = Object.freeze({
   definitionKey: 'def-algebra-baseline',
   assignmentId: 'assign-001',
   courseId: 'course-001',
+  requestId: 'req-start-001',
 });
 
 const MOCK_DEFINITION = Object.freeze({
@@ -108,8 +110,18 @@ function loadAssignmentController() {
 
 describe('AssignmentController.startAssessmentRun', () => {
   let controller;
+  let savedGlobals;
 
   beforeEach(() => {
+    savedGlobals = saveGlobals([
+      'ABLogger',
+      'ProgressTracker',
+      'AssignmentDefinitionController',
+      'DriveManager',
+      'ABClassController',
+      'GASPropertiesUtils',
+      'TriggerController',
+    ]);
     setupStandardMocks();
     const AssignmentCtrl = loadAssignmentController();
     controller = new AssignmentCtrl();
@@ -117,14 +129,7 @@ describe('AssignmentController.startAssessmentRun', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    // Clean up globally installed mocks
-    delete globalThis.ABLogger;
-    delete globalThis.ProgressTracker;
-    delete globalThis.AssignmentDefinitionController;
-    delete globalThis.DriveManager;
-    delete globalThis.ABClassController;
-    delete globalThis.GASPropertiesUtils;
-    delete globalThis.TriggerController;
+    restoreGlobals(savedGlobals);
   });
 
   // ========================================================================
@@ -164,7 +169,8 @@ describe('AssignmentController.startAssessmentRun', () => {
       expect(mockStartProcessing).toHaveBeenCalledWith(
         VALID_PARAMS.assignmentId,
         VALID_PARAMS.definitionKey,
-        VALID_PARAMS.courseId
+        VALID_PARAMS.courseId,
+        VALID_PARAMS.requestId
       );
     });
   });

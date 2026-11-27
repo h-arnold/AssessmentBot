@@ -15,33 +15,30 @@ import {
   MOCK_CLASS_ID,
   MODAL_TITLE,
   DEFAULT_UPSERT_RESULT,
+  START_ASSESSMENT_RUN_RESPONSE,
   defaultProperties,
   selectAssignment,
   clickStartAssessment,
   clickLinkToExisting,
   expectLinkButtonDisabled,
+  resetAssessTaskModalMocks,
 } from '@/test/classes/AssessTaskModal.test-utilities';
 import {
   renderWithNoMatchCache,
   performLinkFlow,
 } from '@/test/classes/AssessTaskModal.link-flow-helpers';
 import { createDefinitionPartial } from '@/test/classes/matchDefinitionForAssignment.test-utilities';
-import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
-import { getYearGroups } from '@/services/referenceData/referenceDataService';
 
 let user: ReturnType<typeof userEvent.setup>;
 
 beforeEach(() => {
   user = userEvent.setup();
-  vi.clearAllMocks();
-  vi.mocked(getAssignmentTopics).mockResolvedValue([]);
-  vi.mocked(getYearGroups).mockResolvedValue([]);
+  resetAssessTaskModalMocks();
 });
 
 afterEach(() => {
   vi.resetAllMocks();
 });
-
 
 // ---------------------------------------------------------------------------
 // No-match resolution — linking state and link flow
@@ -54,7 +51,9 @@ describe('No-match resolution — linking state and link flow', () => {
     await selectAssignment(dialog);
     await clickStartAssessment(dialog);
 
-    const linkButton = await within(dialog).findByRole('button', { name: 'Link to Existing Definition' });
+    const linkButton = await within(dialog).findByRole('button', {
+      name: 'Link to Existing Definition',
+    });
     expect(linkButton).toBeEnabled();
   });
 
@@ -66,7 +65,9 @@ describe('No-match resolution — linking state and link flow', () => {
     await selectAssignment(dialog);
     await clickStartAssessment(dialog);
 
-    const linkButton = await within(dialog).findByRole('button', { name: 'Link to Existing Definition' });
+    const linkButton = await within(dialog).findByRole('button', {
+      name: 'Link to Existing Definition',
+    });
     expect(linkButton).toBeDisabled();
 
     // Trigger the tooltip by hovering over the button wrapper
@@ -77,7 +78,6 @@ describe('No-match resolution — linking state and link flow', () => {
 
     await screen.findByText("No assignment definitions exist for this class's year group.");
   });
-
   it('choice prompt: clicking Link to Existing Definition transitions to linking state', async () => {
     const { dialog } = renderWithNoMatchCache();
 
@@ -94,9 +94,10 @@ describe('No-match resolution — linking state and link flow', () => {
 
     // Choice buttons should be gone
     expect(within(dialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();
-    expect(within(dialog).queryByRole('button', { name: 'Link to Existing Definition' })).toBeNull();
+    expect(
+      within(dialog).queryByRole('button', { name: 'Link to Existing Definition' })
+    ).toBeNull();
   });
-
   it('picker: clicking Cancel returns to the choice prompt', async () => {
     const { dialog } = renderWithNoMatchCache();
 
@@ -109,15 +110,18 @@ describe('No-match resolution — linking state and link flow', () => {
 
     // Choice buttons should reappear
     await waitFor(() => {
-      expect(within(dialog).getByRole('button', { name: 'Create New Definition' })).toBeInTheDocument();
-      expect(within(dialog).getByRole('button', { name: 'Link to Existing Definition' })).toBeInTheDocument();
+      expect(
+        within(dialog).getByRole('button', { name: 'Create New Definition' })
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByRole('button', { name: 'Link to Existing Definition' })
+      ).toBeInTheDocument();
     });
 
     // Picker should be gone — in choice state there are no comboboxes
     // (the assignment Select is hidden during choice/linking).
     expect(within(dialog).queryByRole('combobox')).toBeNull();
   });
-
   it('picker: Link button is disabled when no row is selected', async () => {
     const { dialog } = renderWithNoMatchCache();
 
@@ -135,12 +139,11 @@ describe('No-match resolution — linking state and link flow', () => {
     }
     await screen.findByText('Select a definition to link.');
   });
-
   it('picker: clicking a row and clicking Link calls upsertAssignmentDefinition and then startAssessmentRun', async () => {
     const { dialog } = renderWithNoMatchCache({
       upsertResult: DEFAULT_UPSERT_RESULT,
       upsertType: 'resolve',
-      startRunResult: null,
+      startRunResult: START_ASSESSMENT_RUN_RESPONSE,
       startRunType: 'resolve',
     });
 
@@ -173,7 +176,6 @@ describe('No-match resolution — linking state and link flow', () => {
       });
     });
   });
-
   it('picker: empty Google Classroom topic name sends alternateTopics unchanged (not [])', async () => {
     const { dialog } = renderWithNoMatchCache({
       definitionPartials: [
@@ -183,7 +185,13 @@ describe('No-match resolution — linking state and link flow', () => {
         }),
       ],
       assignments: [
-        { assignmentId: 'a1', title: 'Essay', creationTime: '2024-09-02T08:30:00.000Z', topicName: null, topicId: null },
+        {
+          assignmentId: 'a1',
+          title: 'Essay',
+          creationTime: '2024-09-02T08:30:00.000Z',
+          topicName: null,
+          topicId: null,
+        },
       ],
       upsertResult: DEFAULT_UPSERT_RESULT,
       upsertType: 'resolve',
@@ -197,18 +205,15 @@ describe('No-match resolution — linking state and link flow', () => {
 
     const upsertPayload = vi.mocked(upsertAssignmentDefinition).mock.calls[0][0];
     // alternateTitles should contain the deduplicated union
-    expect(upsertPayload.alternateTitles).toEqual(
-      expect.arrayContaining(['Essay'])
-    );
+    expect(upsertPayload.alternateTitles).toEqual(expect.arrayContaining(['Essay']));
     // alternateTopics should be the unchanged existing array (NOT [])
     expect(upsertPayload.alternateTopics).toEqual(['Writing', 'Algebra']);
   });
-
   it('post-link: success Alert replaces the body, Close button replaces the footer', async () => {
     const { dialog } = renderWithNoMatchCache({
       upsertResult: DEFAULT_UPSERT_RESULT,
       upsertType: 'resolve',
-      startRunResult: null,
+      startRunResult: START_ASSESSMENT_RUN_RESPONSE,
       startRunType: 'resolve',
     });
 
@@ -228,7 +233,6 @@ describe('No-match resolution — linking state and link flow', () => {
       expect(within(footer!).queryByRole('button', { name: 'Cancel' })).toBeNull();
     });
   });
-
   it('post-link: cache invalidation on upsert failure', async () => {
     const { dialog, queryClient } = renderWithNoMatchCache({
       upsertResult: new Error('Upsert failed'),
@@ -245,7 +249,6 @@ describe('No-match resolution — linking state and link flow', () => {
       });
     });
   });
-
   it('post-link: error Alert replaces the body, Cancel button closes the modal', async () => {
     const { dialog } = renderWithNoMatchCache({
       upsertResult: new Error('Upsert failed'),
@@ -263,7 +266,6 @@ describe('No-match resolution — linking state and link flow', () => {
     // Footer should have Cancel only (modal stays open)
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
-
   it('post-link: startAssessmentRun failure after a successful upsert (non-DEFINITION_STALE error)', async () => {
     const { dialog } = renderWithNoMatchCache({
       upsertResult: DEFAULT_UPSERT_RESULT,
@@ -285,7 +287,6 @@ describe('No-match resolution — linking state and link flow', () => {
     // Modal does not close — Cancel button still present
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
-
   it('link-flow DEFINITION_STALE preserves the committed link and enters recovery routing instead of the create path', async () => {
     const staleError = new ApiTransportError({
       requestId: 'test-id',
@@ -314,7 +315,6 @@ describe('No-match resolution — linking state and link flow', () => {
     // content stays unmounted.
     expect(within(dialog).queryByRole('textbox', { name: /reference document url/i })).toBeNull();
   });
-
   it('link-flow recovery cancellation returns to assignment selection rather than the link picker', async () => {
     vi.mocked(getAssignmentDefinition).mockResolvedValue(DEFAULT_UPSERT_RESULT);
     const staleError = new ApiTransportError({
@@ -337,9 +337,10 @@ describe('No-match resolution — linking state and link flow', () => {
 
     await within(dialog).findByTestId('assignment-select');
     expect(within(dialog).queryByRole('button', { name: 'Link' })).toBeNull();
-    expect(within(dialog).queryByRole('button', { name: 'Link to Existing Definition' })).toBeNull();
+    expect(
+      within(dialog).queryByRole('button', { name: 'Link to Existing Definition' })
+    ).toBeNull();
   });
-
   it('hasLinkSucceeded flag management', async () => {
     const { dialog } = renderWithNoMatchCache({
       upsertResult: DEFAULT_UPSERT_RESULT,
@@ -356,11 +357,11 @@ describe('No-match resolution — linking state and link flow', () => {
     const alert = await within(dialog).findByRole('alert');
     expect(alert).toHaveTextContent(/link was committed/i);
   });
-
   it('state reset on modal reopen', async () => {
     const onClose = vi.fn();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(upsertAssignmentDefinition).mockImplementation(() => Promise.resolve(DEFAULT_UPSERT_RESULT as any));
+    vi.mocked(upsertAssignmentDefinition).mockImplementation(() =>
+      Promise.resolve(DEFAULT_UPSERT_RESULT)
+    );
 
     const { queryClient } = renderWithNoMatchCache({ onClose });
     cleanup();
@@ -397,9 +398,10 @@ describe('No-match resolution — linking state and link flow', () => {
     // noMatchResolution should be 'idle', so choice prompt is NOT shown
     // and the assignment Select IS shown
     await within(reopenedDialog).findByRole('combobox');
-    expect(within(reopenedDialog).queryByRole('button', { name: 'Create New Definition' })).toBeNull();
+    expect(
+      within(reopenedDialog).queryByRole('button', { name: 'Create New Definition' })
+    ).toBeNull();
   });
-
   it('state reset on Cancel from picker', async () => {
     const onClose = vi.fn();
     const { dialog } = renderWithNoMatchCache({ onClose });
@@ -413,7 +415,9 @@ describe('No-match resolution — linking state and link flow', () => {
 
     // noMatchResolution returns to 'choice' — choice buttons reappear
     await waitFor(() => {
-      expect(within(dialog).getByRole('button', { name: 'Create New Definition' })).toBeInTheDocument();
+      expect(
+        within(dialog).getByRole('button', { name: 'Create New Definition' })
+      ).toBeInTheDocument();
     });
 
     // The picker is no longer visible — in choice state there are no comboboxes
@@ -471,10 +475,9 @@ describe('No-match resolution — linking state and link flow', () => {
     expect(linkButton).toBeDisabled();
 
     // Update the cache with a matching definition partial for the class's year group
-    queryClient.setQueryData(
-      queryKeys.assignmentDefinitionPartials(),
-      [createDefinitionPartial({ yearGroupKey: 'year-10' })]
-    );
+    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [
+      createDefinitionPartial({ yearGroupKey: 'year-10' }),
+    ]);
 
     // The Link to Existing Definition button should become enabled because the
     // linkableDefinitions memo should recompute when the cache data updates.
@@ -482,7 +485,9 @@ describe('No-match resolution — linking state and link flow', () => {
     // dependency array does not include the cache data, so the memo does not
     // recompute and linkableDefinitions remains the stale empty array.
     await waitFor(() => {
-      expect(within(dialog).getByRole('button', { name: 'Link to Existing Definition' })).toBeEnabled();
+      expect(
+        within(dialog).getByRole('button', { name: 'Link to Existing Definition' })
+      ).toBeEnabled();
     });
   });
 });

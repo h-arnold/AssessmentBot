@@ -244,8 +244,8 @@ test.describe('Assess Task modal', () => {
         { kind: 'success', data: parsedDefinition },
       ],
       startAssessmentRun: [
-        { kind: 'success', data: null },
-        { kind: 'success', data: null },
+        { kind: 'success', data: { requestId: 'e2e-run-id' } },
+        { kind: 'success', data: { requestId: 'e2e-run-id' } },
       ],
     };
 

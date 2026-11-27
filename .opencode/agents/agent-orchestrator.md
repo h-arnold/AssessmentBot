@@ -78,6 +78,7 @@ Every subagent handoff **must** include:
 - Constraints, the **authorised change surface** and explicit exclusions
 - Exact requested outcome
 - Expected deliverables
+- When `graphify-out/graph.json` exists, include the graph-first rule in the handoff: use graphify `query`/`affected`/`path`/`explain` with vocabulary expansion before raw grep; the graph is read-only during parallel reviews — no `update`, `save-result` or `reflect` in subagents. The orchestrator owns graph maintenance: `graphify update .` after code changes and any `save-result` / `reflect` after review.
 
 Instruct every subagent to stop and report anything outside the authorised change surface rather than acting on it. A subagent that reports an out-of-scope issue is behaving correctly. Subagents do not decide scope; you do (see §3.5).
 

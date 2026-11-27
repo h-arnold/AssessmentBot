@@ -17,8 +17,11 @@ Sibling contracts:
   with no transport.
 - [Contract: AuthCache](auth-cache.md) — AuthService's in-memory group-membership cache;
   `triggerHandler()` reads it via `AuthService.checkAccess({ bypassCache: true, neverClaim: true })`.
-- No other sibling contracts — TriggerContext is an internal backend mechanism with no
-  frontend-facing transport and no registration in `ALLOWLISTED_METHOD_HANDLERS`.
+- [Contract: ProgressTracker](progress-tracker.md) — Owns the `cleanupProgress` trigger whose method
+  and empty params are stored here, and consumes the `requestId` carried for
+  `processSelectedAssignment`.
+- TriggerContext itself is an internal backend mechanism with no frontend-facing transport and no
+  registration in `ALLOWLISTED_METHOD_HANDLERS`.
 
 ---
 
@@ -31,10 +34,10 @@ The store is a pair of Script Properties keys per triggerUid. Each key embeds th
 `TriggerController.createTimeBasedTrigger()`) and equal to the GAS `event.triggerUid` at fire
 time — so concurrent triggers never collide.
 
-| Key                    | Type     | Value                                                                                               | Notes                                                                                   |
-| ---------------------- | -------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `trigger:<uid>:method` | `string` | Trigger method name (e.g. `'processSelectedAssignment'`)                                            | Written by `storeTriggerContext()`; read by `triggerHandler()` for validation and auth. |
-| `trigger:<uid>:params` | `string` | JSON-serialised params object, e.g. `{"assignmentId":"...","definitionKey":"...","courseId":"..."}` | Written by `storeTriggerContext()`; passed to the registered handler on dispatch.       |
+| Key                    | Type     | Value                                                                                                                 | Notes                                                                                   |
+| ---------------------- | -------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `trigger:<uid>:method` | `string` | Trigger method name (e.g. `'processSelectedAssignment'`)                                                              | Written by `storeTriggerContext()`; read by `triggerHandler()` for validation and auth. |
+| `trigger:<uid>:params` | `string` | JSON-serialised params object, e.g. `{"assignmentId":"...","definitionKey":"...","courseId":"...","requestId":"..."}` | Written by `storeTriggerContext()`; passed to the registered handler on dispatch.       |
 
 ### Record lifecycle
 
@@ -45,7 +48,8 @@ The store is managed by three instance methods on `TriggerController`
 1. **`storeTriggerContext(triggerUid, { method, params })`** — Writes
    `trigger:<uid>:method` and `trigger:<uid>:params` to Script Properties via
    `GASPropertiesUtils`. Called by `AssignmentController.startProcessing()` at trigger
-   creation time.
+   creation time; for `processSelectedAssignment` the params carry the dispatcher-generated
+   `requestId`.
 
 2. **`getTriggerContext(triggerUid)`** — Reads both keys directly from
    `GASPropertiesUtils.getScriptProperties()` (there is no single-key getter wrapper on
@@ -69,6 +73,10 @@ The store is managed by three instance methods on `TriggerController`
   a `finally` block, and only for a resolved, known triggerUid (malformed input does not
   trigger cleanup).
 - The `params` value is a JSON string because Script Properties only stores strings.
+
+The `cleanupProgress` trigger method uses an empty params object. It is a
+`TRIGGER_METHOD_HANDLERS` entry dispatched by `triggerHandler()` like any other method; see
+[Contract: ProgressTracker § Cleanup behaviour](progress-tracker.md#cleanup-behaviour).
 
 ---
 
@@ -106,6 +114,11 @@ None — TriggerContext is a pair of flat key-value properties with no embedded 
 - The method name read from `trigger:<uid>:method` is resolved during input validation in
   `triggerHandler()`, so it is available for the audit log and the fail-closed auth check
   (`AuthService.checkAccess({ bypassCache: true, neverClaim: true })`).
+- `processSelectedAssignment` validates a supplied `requestId` with
+  `Validate.validateNonEmptyString()` before starting progress tracking, so an empty or blank ID
+  fails loudly. A context with no `requestId` reaches the facade unbound, which generates a
+  correlation ID and writes a keyed record (see
+  [Contract: ProgressTracker](progress-tracker.md#persistence)).
 - Malformed input (missing event, unknown triggerUid, unknown method) surfaces via
   fail-loud logging only — GAS discards trigger return values, so no error envelope is
   produced.

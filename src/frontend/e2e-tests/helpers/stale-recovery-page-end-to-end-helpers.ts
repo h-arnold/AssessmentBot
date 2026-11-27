@@ -325,7 +325,7 @@ function buildCanonicalScenario(assignments: ReadonlyArray<unknown>): RuntimeSce
       DEFINITION_PARTIALS_QUEUE_REPEATS
     ),
     getAssignmentDefinition: repeat(success(CANONICAL_RECOVERY_DEFINITION), READ_QUEUE_REPEATS),
-    startAssessmentRun: repeat(success(null), READ_QUEUE_REPEATS),
+    startAssessmentRun: repeat(success({ requestId: 'e2e-run-id' }), READ_QUEUE_REPEATS),
     upsertAssignmentDefinition: repeat(success(CANONICAL_RECOVERY_DEFINITION), READ_QUEUE_REPEATS),
     deleteAssignmentDefinition: repeat(success(null), STARTUP_QUEUE_REPEATS),
   };

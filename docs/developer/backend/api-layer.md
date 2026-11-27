@@ -317,8 +317,9 @@ if (typeof module !== 'undefined' && module.exports) {
 
 This pattern is currently used by `getGoogleClassrooms_`, `getGoogleClassroomAssignments_`,
 `getAssignmentDefinitionPartials_`, `deleteAssignmentDefinition_`, `upsertAssignmentDefinition_`,
-`getAssignmentDefinition_`, `getAssignment_`, `startAssessmentRun_`, `getBackendConfig_`, `setBackendConfig_`,
-`upsertABClass_`, `updateABClass_`, `deleteABClass_`, and `getABClass_`.
+`getAssignmentDefinition_`, `getAssignment_`, `startAssessmentRun_`, `getProgress_`,
+`getBackendConfig_`, `setBackendConfig_`, `upsertABClass_`, `updateABClass_`, `deleteABClass_`, and
+`getABClass_`.
 
 ## Validation ownership rules
 
@@ -593,10 +594,32 @@ Reference: https://developers.google.com/apps-script/guides/html/reference/run
 - `startAssessmentRun` — starts an assessment run for an existing assignment definition.
   Source: `src/backend/z_Api/assignmentAssessment.js`, via the `startAssessmentRun_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentController.startAssessmentRun()` in `src/backend/y_controllers/AssignmentController.js`.
   Required request fields: `definitionKey`, `assignmentId`, `courseId` (all non-empty strings).
-  Validation: transport enforces `params` object shape, required field presence, and non-empty string checks using `Validate.requireParams` and `Validate.validateNonEmptyString`; controller owns per-document freshness checks via `DateUtils.isNewer`, definition lookup, and ABClass resolution.
+  Validation: transport enforces `params` object shape and non-empty string checks for each field using `Validate.validateNonEmptyString`; controller owns per-document freshness checks via `DateUtils.isNewer`, definition lookup, and ABClass resolution.
   Controller behaviour: fetches the full definition by key, checks that neither the reference nor template document has been modified since the definition was created (throwing `DefinitionStaleError` if stale), resolves the ABClass via `loadClass(courseId)` (which throws if the class does not exist), and delegates to `startProcessing()` to create the time-based trigger with context stored in Script Properties (keyed by triggerUid) via `TriggerController.storeTriggerContext()` — see [Contract: TriggerContext](../data-shapes/trigger-context.md).
-  Response data: `null` on success (no data payload; wrapped in standard success envelope).
+  Response data: `{ requestId: string }` on success, equal to the envelope `requestId`. The
+  dispatcher passes the generated `requestId` to the handler as a second positional argument, which
+  the helper forwards to the controller; the controller still returns `null` and forwards the ID into
+  trigger context params.
   Error codes: `DEFINITION_STALE` (non-retriable, with `details` block), `INVALID_REQUEST` (transport validation failure), `INTERNAL_ERROR` (definition not found, ABClass not found, or other domain errors).
+
+- `getProgress` — returns the current keyed progress records for frontend-driven assessment runs.
+  Source: `src/backend/z_Api/progressTracker.js`, via the `getProgress_()` helper called from
+  `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.
+  Parameters: none.
+  Handler behaviour: reads every `ProgressTracker`-prefixed User Property entry through
+  `ProgressTrackerStore.readAll()` and parses each value with the shared
+  `ProgressTrackerStore.parse()` helper before its own field check. Records without a non-empty
+  `requestId` — for example pre-upgrade unkeyed data — are logged at warning level and skipped, so
+  they never reach the frontend. Malformed values are logged and skipped the same way; a
+  property-store read failure propagates to the `apiHandler` error boundary.
+  Response data: `{ tasks: ProgressRecord[] }` inside the standard success envelope, sorted by
+  `timestamp` ascending with `requestId` ascending as tie-break, or `{ tasks: [] }` when no
+  records survive those checks. See [Contract: ProgressTracker § Transport](../data-shapes/progress-tracker.md#transport).
+  Frontend wrapper: `src/frontend/src/services/assignmentAssessment/assignmentAssessmentService.ts`
+  (`getProgress()`), with response validation in
+  `src/frontend/src/services/assignmentAssessment/assignmentAssessment.zod.ts`
+  (`GetProgressResponseSchema`). See
+  [Contract: ProgressTracker § Validation](../data-shapes/progress-tracker.md#validation).
 
 - `getAssignment` — reads a single fully-hydrated assignment by course and assignment id.
   Source: `src/backend/z_Api/assignmentAssessment.js`, via the `getAssignment_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.readRehydrateAssignment()` in `src/backend/y_controllers/ABClassController/index.js`.

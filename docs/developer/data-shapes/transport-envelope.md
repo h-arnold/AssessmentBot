@@ -180,6 +180,9 @@ z.object({
 
 ## Key contract notes
 
+- **`getProgress` endpoint:** uses this envelope unchanged, with `data: { tasks: ProgressRecord[] }`.
+  See [Contract: ProgressTracker § Transport](progress-tracker.md#transport).
+
 - **String transport:** the global `apiHandler()` returns the envelope as a JSON string
   (`JSON.stringify(ApiDispatcher.getInstance().handle(request))`), not an object.
   `ApiDispatcher.handle()` still returns the envelope object; the entry point is the single
