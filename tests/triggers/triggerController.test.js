@@ -28,6 +28,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import { withGlobalMocks } from '../helpers/globalMockManager.js';
+import { createQuotaExhaustedTriggerChain } from '../helpers/mockFactories.js';
 
 // The controller was moved from src/backend/Utils/ to src/backend/Triggers/
 // during the green/refactor phase (ACTION_PLAN Section 8).
@@ -278,16 +279,7 @@ describe('TriggerController', () => {
   });
 
   it('removes triggers for the passed-in functionName when too many triggers error occurs', () => {
-    const newTriggerChain = {
-      timeBased: vi.fn().mockReturnThis(),
-      at: vi.fn().mockReturnThis(),
-      create: vi
-        .fn()
-        .mockImplementationOnce(() => {
-          throw new Error('This script has too many triggers');
-        })
-        .mockImplementationOnce(() => ({ getUniqueId: vi.fn(() => 'trigger-recovery-1') })),
-    };
+    const newTriggerChain = createQuotaExhaustedTriggerChain(vi, 'trigger-recovery-1');
     globalThis.ScriptApp.newTrigger.mockReturnValue(newTriggerChain);
     const removeTriggersSpy = vi.spyOn(TriggerController.prototype, 'removeTriggers');
 
@@ -305,16 +297,7 @@ describe('TriggerController', () => {
 
   describe('createTimeBasedTrigger with skipTooManyTriggersRecovery', () => {
     it('logs and returns null for a full quota without deleting triggers or retrying', () => {
-      const newTriggerChain = {
-        timeBased: vi.fn().mockReturnThis(),
-        at: vi.fn().mockReturnThis(),
-        create: vi
-          .fn()
-          .mockImplementationOnce(() => {
-            throw new Error('This script has too many triggers');
-          })
-          .mockImplementationOnce(() => ({ getUniqueId: vi.fn(() => 'trigger-recovery-1') })),
-      };
+      const newTriggerChain = createQuotaExhaustedTriggerChain(vi, 'trigger-recovery-1');
       globalThis.ScriptApp.newTrigger.mockReturnValue(newTriggerChain);
       const removeTriggersSpy = vi.spyOn(TriggerController.prototype, 'removeTriggers');
       const cleanupScheduleSpy = vi.fn();

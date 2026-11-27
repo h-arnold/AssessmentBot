@@ -1,5 +1,6 @@
 import { ZodError } from 'zod';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { expectServiceBoundaryFailure } from '@/test/api/apiServiceTransportTestHelpers';
 import type { AssignmentFull } from './assignmentAssessment.zod';
 import type * as ApiService from '../apiService';
 
@@ -444,28 +445,12 @@ describe('assignmentAssessmentService', () => {
       const { getAssignment } = await loadAssignmentAssessmentService();
       const request = { courseId: 'course-1', assignmentId: 'assign-1' };
 
-      let thrownError: unknown;
-      try {
-        await getAssignment(request);
-      } catch (error: unknown) {
-        thrownError = error;
-      }
-
-      expect(thrownError).toBeInstanceOf(TypeError);
-      expect((thrownError as Error).message).toBe('Invalid submission items');
-      expect(callApiMock).toHaveBeenCalledTimes(1);
-      expect(callApiMock).toHaveBeenCalledWith('getAssignment', request);
-
-      expect(mockLogFrontendError).toHaveBeenCalledTimes(1);
-      const [context, loggedError, metadata] = mockLogFrontendError.mock.calls[0]!;
-      expect(context).toBe('services/assignmentAssessment.getAssignment');
-      expect(loggedError).toBe(thrownError);
-      expect(metadata).toEqual({ method: 'getAssignment' });
-      expect(
-        mockLogFrontendError.mock.calls.some(
-          ([callContext]) => callContext === 'services/apiService.parseApiResponse'
-        )
-      ).toBe(false);
+      await expectServiceBoundaryFailure(
+        () => getAssignment(request),
+        request,
+        { api: callApiMock, logs: mockLogFrontendError },
+        ['getAssignment', 'services/assignmentAssessment.getAssignment', 'Invalid submission items']
+      );
     });
   });
 });

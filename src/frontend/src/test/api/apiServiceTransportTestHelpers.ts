@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
 import type * as ApiQueue from '@/services/api/apiQueue';
 import {
   createGoogleScriptRunApiHandlerMock,
@@ -235,4 +235,34 @@ export function makeDoneSuccessEnvelope(requestId: string): ApiSuccessEnvelope<{
     requestId,
     data: { done: true },
   };
+}
+
+/**
+ * Asserts the normaliser-failure diagnostics at one service boundary.
+ * @param {Function} invoke - Calls the service under test.
+ * @param {unknown} request - Request forwarded to callApi.
+ * @param {Object} mocks - Mocks for callApi and logFrontendError.
+ * @param {readonly string[]} expected - Method, logger context and message.
+ * @returns {Promise<void>} Nothing.
+ */
+export async function expectServiceBoundaryFailure(
+  invoke: () => Promise<unknown>,
+  request: unknown,
+  mocks: Record<'api' | 'logs', ReturnType<typeof vi.fn>>,
+  [method, context, message]: readonly [string, string, string]
+): Promise<void> {
+  const { api, logs } = mocks;
+  let thrownError: unknown;
+  try {
+    await invoke();
+  } catch (error: unknown) {
+    thrownError = error;
+  }
+  expect(thrownError).toBeInstanceOf(TypeError);
+  expect((thrownError as Error).message).toBe(message);
+  expect(api.mock.calls).toEqual([[method, request]]);
+  const logCalls = logs.mock.calls;
+  expect(logCalls).toEqual([[context, expect.anything(), { method }]]);
+  expect(logCalls[0]![1]).toBe(thrownError);
+  expect(logCalls.map(([name]) => name)).not.toContain('services/apiService.parseApiResponse');
 }
