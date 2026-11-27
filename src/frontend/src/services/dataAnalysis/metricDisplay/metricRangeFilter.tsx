@@ -104,7 +104,12 @@ const RANGE_SLIDER_HANDLE_COUNT = 2;
 export type MetricRangeFilterProperties = {
   filterDropdown: (properties: FilterDropdownProps) => JSX.Element;
   onFilter: (value: unknown, record: unknown) => boolean;
-  filteredValue: string[] | undefined;
+  /**
+   * Always a defined array, so every column built here is controlled. An empty
+   * array means no active filter: it keeps the column controlled without
+   * activating its filter icon or excluding rows.
+   */
+  filteredValue: string[];
   filterMultiple: false;
 };
 
@@ -118,6 +123,14 @@ export type MetricRangeFilterProperties = {
  * states) writes a single encoded filter key into `selectedKeys` and confirms;
  * **Reset** clears it.
  * `onFilter` decodes that key and applies {@link isMetricInRange} to each row.
+ *
+ * Every column built here carries a defined `filteredValue`: `[]` when no key
+ * or complete range is supplied, `[activeFilterKey]` when a key is supplied,
+ * and the encoded key rebuilt from a two-handle `activeRange` otherwise. Every
+ * filter column in a consuming table therefore resolves controlled
+ * `filteredKeys` alike, including while a different column is filtered. The
+ * empty array avoids Ant Design's mixed controlled/uncontrolled warning: an
+ * unfiltered column stays controlled without activating its filter icon.
  *
  * @param {MetricRangeFilterOptions<RecordType>} options - Range filter options.
  * @returns {MetricRangeFilterProperties} The column filter props.
@@ -134,14 +147,12 @@ export function buildMetricRangeFilter<RecordType>(
     step = RANGE_SLIDER_STEP,
   } = options;
 
-  let filteredValue: string[] | undefined;
+  let filteredValue: string[] = [];
   if (activeFilterKey) {
     filteredValue = [activeFilterKey];
   } else if (activeRange.length === RANGE_SLIDER_HANDLE_COUNT) {
     filteredValue = [
-      encodeMetricFilter(
-        createDefaultMetricRangeFilterState(activeRange[0], activeRange[1])
-      ),
+      encodeMetricFilter(createDefaultMetricRangeFilterState(activeRange[0], activeRange[1])),
     ];
   }
 

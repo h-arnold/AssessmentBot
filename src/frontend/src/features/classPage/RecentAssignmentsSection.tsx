@@ -26,9 +26,6 @@
  * they open the heatmap through `onOpenHeatmap` using native button keyboard
  * activation. When that optional callback is absent the names render as
  * static text.
- *
- * @see SPEC_CLASS_PAGE.md — "RecentAssignmentsSection"
- * @see CLASS_PAGE_LAYOUT.md — "3. Assignments Section"
  */
 
 import type { JSX } from 'react';

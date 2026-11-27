@@ -5,9 +5,6 @@
  * The component renders a disabled `Edit Student Details` button (wrapped in
  * a `Tooltip` with "Coming soon") and an enabled `Start New Assessment`
  * button. Pure presentational; receives `onStartNewAssessment` as a prop.
- *
- * @see SPEC_CLASS_PAGE.md - "ClassPageHeaderActions"
- * @see CLASS_PAGE_LAYOUT.md - "Page Heading and Header Actions"
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';

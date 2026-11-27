@@ -33,8 +33,6 @@
  * keyed-cache in-flight deduplication provides a secondary safeguard against
  * duplicate in-flight requests. The guard resets on cross-class navigation
  * (new `classId` differs from the ref).
- *
- * @see SPEC_CLASS_PAGE.md — "useClassPageData — data orchestrator hook"
  */
 
 import { useCallback, useMemo, useState } from 'react';

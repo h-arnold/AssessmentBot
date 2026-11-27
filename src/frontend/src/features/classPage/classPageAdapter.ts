@@ -7,8 +7,6 @@
  * and no Ant Design imports. It emits structured frontend warnings for
  * recoverable analyser/data gaps and throws on data-integrity violations such as a null
  * `updatedAt`, duplicate IDs, or an unparseable `updatedAt`.
- *
- * @see SPEC_CLASS_PAGE.md §"classPageAdapter"
  */
 
 import { logFrontendEvent } from '@/logging/frontendLogger';

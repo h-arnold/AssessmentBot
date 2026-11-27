@@ -1,8 +1,5 @@
 /**
  * Tests for the Class page composition root (`ClassPage`).
- *
- * @see SPEC_CLASS_PAGE.md — "Page composition root"
- * @see CLASS_PAGE_LAYOUT.md — "Surface hierarchy" and "Global state rules"
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';

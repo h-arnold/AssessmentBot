@@ -122,3 +122,56 @@ describe('task metric display text', () => {
     expect(TaskDisplayMetricSchema.safeParse(createExcludedMetricResult()).success).toBe(false);
   });
 });
+
+/** Number of metric sub-columns (Completeness, Accuracy, SPaG) per task. */
+const METRIC_SUB_COLUMN_COUNT = 3;
+
+describe('task metric filter columns stay controlled', () => {
+  /** Encoded key applied to the accuracy sub-column in the mixed case. */
+  const ACTIVE_FILTER_KEY = '2|4|0|1';
+  /** Task key used by the local column fixture. */
+  const TASK_KEY = 'definition::task';
+  /** Column key of the accuracy sub-column. */
+  const ACTIVE_COLUMN_KEY = `${TASK_KEY}::accuracy`;
+
+  it('defines an empty array filteredValue on every metric sub-column when none is filtered', () => {
+    const columns = buildTaskMetricSubColumns(
+      column('definition', 'task'),
+      0,
+      {},
+      null,
+      false,
+      false
+    );
+
+    expect(columns).toHaveLength(METRIC_SUB_COLUMN_COUNT);
+    for (const subColumn of columns) {
+      expect(typeof subColumn.filterDropdown).toBe('function');
+      expect(subColumn.filteredValue).toEqual([]);
+    }
+  });
+
+  it('keeps every metric sub-column controlled while one sub-column is filtered', () => {
+    const columns = buildTaskMetricSubColumns(
+      column('definition', 'task'),
+      0,
+      { [ACTIVE_COLUMN_KEY]: [ACTIVE_FILTER_KEY] },
+      null,
+      false,
+      false
+    );
+
+    expect(columns).toHaveLength(METRIC_SUB_COLUMN_COUNT);
+    for (const subColumn of columns) {
+      expect(typeof subColumn.filterDropdown).toBe('function');
+      expect(Array.isArray(subColumn.filteredValue)).toBe(true);
+    }
+
+    const valuesByKey = new Map(
+      columns.map((subColumn) => [subColumn.key, subColumn.filteredValue])
+    );
+    expect(valuesByKey.get(ACTIVE_COLUMN_KEY)).toEqual([ACTIVE_FILTER_KEY]);
+    expect(valuesByKey.get(`${TASK_KEY}::completeness`)).toEqual([]);
+    expect(valuesByKey.get(`${TASK_KEY}::spag`)).toEqual([]);
+  });
+});

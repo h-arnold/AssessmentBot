@@ -7,9 +7,6 @@
  * - `ClassPageLoading` — shape-matched skeletons
  * - `ClassPageBlocking` — `Result` per error type
  * - `ClassPageReady` — full content tree
- *
- * @see SPEC_CLASS_PAGE.md — "ClassPageContent — per-state dispatcher"
- * @see CLASS_PAGE_LAYOUT.md — "Surface hierarchy" and "Global state rules"
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -145,7 +142,12 @@ describe('ClassPageContent', () => {
   it('renders skeleton placeholders when surfaceState.status is loading', () => {
     const surfaceState: ClassPageSurfaceState = { status: 'loading' };
 
-    renderClassPageContent({ surfaceState, adapterResult: null, analyserResult: null, classFull: null });
+    renderClassPageContent({
+      surfaceState,
+      adapterResult: null,
+      analyserResult: null,
+      classFull: null,
+    });
 
     // The loading state renders Ant Design Skeleton components.
     // Skeleton renders with a CSS class .ant-skeleton.

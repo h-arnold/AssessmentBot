@@ -1,7 +1,5 @@
 /**
  * Tests for Class page view-model construction and unchanged adapter fields.
- *
- * @see SPEC_CLASS_PAGE.md — "classPageModel — view-model builder"
  */
 
 import { describe, expect, it } from 'vitest';

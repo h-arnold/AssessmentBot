@@ -14,8 +14,7 @@
  *
  * - {@link ClassPageLoading} — shape-matched skeletons (heading + assignments
  *   table region + student averages table region) using the
- *   paragraph-row pattern consistent with existing pages
- *   (`CLASS_PAGE_LAYOUT.md` §"Recommended page skeleton").
+ *   paragraph-row pattern consistent with existing pages.
  * - {@link ClassPageBlocking} — a single `Result` per `error.type` with
  *   the correct Ant Design `Result` status variant (`warning` for
  *   retryable, `error` for non-retryable).  Retryable errors include
@@ -24,9 +23,6 @@
  * - {@link ClassPageReady} — the full content tree (`RecentAssignmentsSection`,
  *   `StudentAveragesTableCard`).  Header actions are rendered by the parent
  *   `ClassPage` via `PageHeader`, not here.
- *
- * @see SPEC_CLASS_PAGE.md — "ClassPageContent — per-state dispatcher"
- * @see CLASS_PAGE_LAYOUT.md — "Surface hierarchy"
  */
 
 import type { JSX } from 'react';
@@ -111,8 +107,6 @@ type ErrorConfig = BlockingConfig;
 
 /**
  * Maps each `ClassPageError.type` to its Result configuration.
- *
- * @see SPEC_CLASS_PAGE.md — "Blocking failure" error table
  */
 const ERROR_CONFIG_MAP: Record<ClassPageError['type'], ErrorConfig> = {
   classNotFound: { status: 'error', title: 'Class not found', retryable: false },
@@ -168,12 +162,11 @@ const TABLE_SKELETON_ROWS = 6;
  *
  * @remarks
  * Uses the paragraph-row pattern consistent with `ClassesPage` and
- * `AssignmentsPage` loading states (`CLASS_PAGE_LAYOUT.md` §"Recommended
- * page skeleton").
+ * `AssignmentsPage` loading states.
  *
  * The heading uses a shape-matched `Skeleton.Input` / `Skeleton.Button` while
- * both table regions use the paragraph-row pattern prescribed in
- * `CLASS_PAGE_LAYOUT.md`, matching the shape of the content they replace.
+ * both table regions use the same paragraph-row pattern as the content they
+ * replace.
  *
  * Wraps the skeleton in `role="status"` and `aria-live="polite"` per
  * accessibility requirements (`frontend-loading-and-width-standards.md` §8).

@@ -4,8 +4,6 @@
  * Applies user-controlled search filtering and sorting to the adapter's
  * canonical output. The model is a synchronous, side-effect-free function
  * that trusts its input (no validation).
- *
- * @see SPEC_CLASS_PAGE.md § "classPageModel — view-model builder"
  */
 
 import { getStudentMetric } from './classPageAdapter.zod';
