@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@/test/classes/AssessTaskModal.mockSetup';
 import { AssessTaskModal } from './AssessTaskModal';
 import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
-import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import {
   getAssignmentDefinition,
   upsertAssignmentDefinition,
@@ -16,30 +15,25 @@ import {
   MOCK_CLASS_ID,
   MODAL_TITLE,
   DEFAULT_UPSERT_RESULT,
+  START_ASSESSMENT_RUN_RESPONSE,
   defaultProperties,
   selectAssignment,
   clickStartAssessment,
   clickLinkToExisting,
   expectLinkButtonDisabled,
+  resetAssessTaskModalMocks,
 } from '@/test/classes/AssessTaskModal.test-utilities';
 import {
   renderWithNoMatchCache,
   performLinkFlow,
 } from '@/test/classes/AssessTaskModal.link-flow-helpers';
 import { createDefinitionPartial } from '@/test/classes/matchDefinitionForAssignment.test-utilities';
-import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
-import { getYearGroups } from '@/services/referenceData/referenceDataService';
-
-/** Minimal valid response used by the assessment-start mocks. */
-const START_ASSESSMENT_RUN_RESPONSE: StartAssessmentRunResponse = { requestId: 'test-run-id' };
 
 let user: ReturnType<typeof userEvent.setup>;
 
 beforeEach(() => {
   user = userEvent.setup();
-  vi.clearAllMocks();
-  vi.mocked(getAssignmentTopics).mockResolvedValue([]);
-  vi.mocked(getYearGroups).mockResolvedValue([]);
+  resetAssessTaskModalMocks();
 });
 
 afterEach(() => {

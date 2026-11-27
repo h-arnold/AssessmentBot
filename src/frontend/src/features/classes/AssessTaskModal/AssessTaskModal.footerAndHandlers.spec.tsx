@@ -5,7 +5,6 @@ import '@/test/classes/AssessTaskModal.mockSetup';
 import { AssessTaskModal } from './AssessTaskModal';
 import { getGoogleClassroomAssignments } from '@/services/googleClassrooms/googleClassroomAssignmentsService';
 import { startAssessmentRun } from '@/services/assignmentAssessment/assignmentAssessmentService';
-import type { StartAssessmentRunResponse } from '@/services/assignmentAssessment/assignmentAssessment.zod';
 import { upsertAssignmentDefinition } from '@/services/assignmentDefinition/assignmentDefinitionService';
 import { renderWithFrontendProviders } from '@/test/renderWithFrontendProviders';
 import {
@@ -14,23 +13,18 @@ import {
   MOCK_CLASS_ID,
   MODAL_TITLE,
   DEFAULT_UPSERT_RESULT,
+  START_ASSESSMENT_RUN_RESPONSE,
   defaultProperties,
   createPendingPromise,
+  resetAssessTaskModalMocks,
 } from '@/test/classes/AssessTaskModal.test-utilities';
 import { renderWithNoMatchCache } from '@/test/classes/AssessTaskModal.link-flow-helpers';
-import { getAssignmentTopics } from '@/services/assignmentDefinition/assignmentTopicsService';
-import { getYearGroups } from '@/services/referenceData/referenceDataService';
-
-/** Minimal valid response used by the assessment-start mocks. */
-const START_ASSESSMENT_RUN_RESPONSE: StartAssessmentRunResponse = { requestId: 'test-run-id' };
 
 let user: ReturnType<typeof userEvent.setup>;
 
 beforeEach(() => {
   user = userEvent.setup();
-  vi.clearAllMocks();
-  vi.mocked(getAssignmentTopics).mockResolvedValue([]);
-  vi.mocked(getYearGroups).mockResolvedValue([]);
+  resetAssessTaskModalMocks();
 });
 
 afterEach(() => {
