@@ -257,9 +257,10 @@ full contract is in
    accessible name, neutral tone, filter option, and state sort rank.
 5. Class page aggregate consumers pass `excluded` through their adapter and
    render it through the shared metric-display vocabulary; the Student Averages
-   table and Recent Assignment cards are the visible aggregate surfaces. The
-   card adapter's per-assignment roll-up is contribution-aware and must resolve
-   an all-zero-weight assignment to `excluded`, rather than throw.
+   table and Assignments table are the visible aggregate surfaces. The adapter's
+   `rollupCardCriteria` computes each assignment row's aggregate from
+   contribution evidence and must resolve an all-zero-weight assignment to
+   `excluded`, rather than throw.
 6. The Class-page adapter's existing synthesised no-data `N` is a local
    presentation placeholder, not a data-analysis metric. Its narrow adapter
    validation union permits only that zero-data shape without weakening the

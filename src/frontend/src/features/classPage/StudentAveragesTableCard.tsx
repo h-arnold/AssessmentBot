@@ -54,9 +54,6 @@
  * layout spec's requirement that no submit button is rendered (filters apply
  * on keystroke). The workaround produces the same visual result (search icon,
  * no submit button, updates on keystroke) and the same accessible role.
- *
- * @see SPEC_CLASS_PAGE.md — "StudentAveragesTableCard"
- * @see CLASS_PAGE_LAYOUT.md — "4. Student Averages Table Card"
  */
 
 import type { JSX, ChangeEvent } from 'react';

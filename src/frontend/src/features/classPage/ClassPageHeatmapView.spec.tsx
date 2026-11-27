@@ -35,9 +35,9 @@ import { createCanonicalMetadataFixture } from '@/test/abClass/abClassMetadataFi
 // ===========================================================================
 //
 // Mock only the heavy/ancillary sub-components to keep the overview render
-// light. Use the REAL RecentAssignmentsSection, RecentAssignmentCard,
-// ClassPageContent, TaskHeatmapTable so the click→heatmap→back chain is
-// exercised end-to-end.
+// light. Use the real RecentAssignmentsSection table, ClassPageContent and
+// TaskHeatmapTable so the assignment-name → heatmap → back chain is exercised
+// end-to-end.
 //
 // Also mock the frontend logger to spy on error-handling pathways.
 
@@ -270,37 +270,33 @@ describe('ClassPage heatmap view-state wiring', () => {
   });
 
   // -----------------------------------------------------------------------
-  // Open heatmap on card click
+  // Open heatmap from an assignment-name button
   // -----------------------------------------------------------------------
 
-  it('opens the heatmap view when a RecentAssignmentCard is clicked', async () => {
+  it('opens the heatmap view when a recent assignment name is clicked', async () => {
     const queryClient = createTestQueryClient();
     const harness = createElement(Harness, { initialView: 'overview' });
     const app = createElement(App, null, harness);
     const { container } = render(createElement(QueryClientProvider, { client: queryClient }, app));
 
-    // The overview should render a RecentAssignmentCard for "Assignment One"
-    // with role="button" — the card is clickable via onOpenHeatmap.
-    const card = screen.getByRole('button', { name: /assignment one/i });
-    expect(card).toBeInTheDocument();
+    // The overview table exposes the assignment name as the heatmap control.
+    const overviewTable = screen.getByRole('table', { name: 'Assignments' });
+    const assignmentButton = within(overviewTable).getByRole('button', {
+      name: /assignment one/i,
+    });
+    expect(assignmentButton).toBeInTheDocument();
+    expect(screen.queryByLabelText('Back to Class overview')).not.toBeInTheDocument();
 
-    // The heatmap table must NOT be present initially.
-    expect(container.querySelector('.ant-table-body')).not.toBeInTheDocument();
+    // Clicking the name calls onOpenHeatmap('a-1'), switching the real content
+    // dispatcher to TaskHeatmapPage.
+    await user.click(assignmentButton);
 
-    // Click the card — this should call onOpenHeatmap('a-1') which sets
-    // selectedView to { view: 'heatmap', assignmentId: 'a-1' }, causing
-    // ClassPageContent to render TaskHeatmapPage.
-    await user.click(card);
-
-    // Assert that the TaskHeatmapTable body is now present — meaning
-    // TaskHeatmapPage rendered successfully.
+    expect(screen.getByLabelText('Back to Class overview')).toBeInTheDocument();
     expect(container.querySelector('.ant-table-body')).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Assignments' })).not.toBeInTheDocument();
 
-    // The assignment name "Assignment One" should appear as a header title.
+    // The assignment name also appears as the heatmap header title.
     expect(screen.getByText('Assignment One')).toBeInTheDocument();
-
-    // The overview card should no longer be the sole content.
-    // The heatmap table is present, so the card's button role is gone.
     expect(screen.queryByRole('button', { name: /assignment one/i })).not.toBeInTheDocument();
   });
 
@@ -322,10 +318,9 @@ describe('ClassPage heatmap view-state wiring', () => {
     // Click the Back button.
     await user.click(screen.getByLabelText('Back to Class overview'));
 
-    // The heatmap table body should be gone.
-    expect(container.querySelector('.ant-table-body')).not.toBeInTheDocument();
-
-    // The overview should render the RecentAssignmentCard again.
+    // The heatmap back control should be gone and the overview table restored.
+    expect(screen.queryByLabelText('Back to Class overview')).not.toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Assignments' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /assignment one/i })).toBeInTheDocument();
   });
 
@@ -348,8 +343,8 @@ describe('ClassPage heatmap view-state wiring', () => {
     // The catch-and-navigate behaviour means:
     //   - logFrontendError was called with the 'TaskHeatmapPage.projection' context
     //     and the { classId, assignmentId } metadata
-    //   - The heatmap table body is NOT present
-    //   - The overview card IS present (onBack returned to overview)
+    //   - The heatmap back control is NOT present
+    //   - The overview table IS present (onBack returned to overview)
     //   - No in-view Alert/Result error message is shown
 
     // These assertions verify the catch-and-navigate behaviour.
@@ -360,10 +355,9 @@ describe('ClassPage heatmap view-state wiring', () => {
       { classId: classFullFixture.classId, assignmentId: 'missing-id' }
     );
 
-    // The heatmap should not be visible.
-    expect(container.querySelector('.ant-table-body')).not.toBeInTheDocument();
-
-    // The overview card should be visible (returned to overview).
+    // The heatmap should not be visible; the overview table is restored.
+    expect(screen.queryByLabelText('Back to Class overview')).not.toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Assignments' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /assignment one/i })).toBeInTheDocument();
 
     // A transient message portal is outside the owned page container; only

@@ -66,7 +66,7 @@ In the task heatmap, a zero-weight task heading is marked down its left and
 right edges and explains on hover or keyboard focus that “Zero weighting —
 scores are shown but do not contribute to averages.” The scores themselves keep
 their usual colours. **Excluded** appears wherever an average is shown — on the
-Class page's Recent Assignment cards and Student Averages table — not in the
+Class page's Assignments table and Student Averages table — not in the
 task-level heatmap cells. This helps distinguish intentional practice,
 diagnostic, or display-only work from missing assessment data.
 
@@ -128,7 +128,7 @@ It is important to know that a single task showing **E** does **not** ruin the w
 
 ## Averages basis: all tasks or baseline tasks
 
-The Class page has an **Averages basis** control with two options: **All tasks** (the default) and **Baseline tasks**. It changes which tasks feed the Class page's averages — the Recent Assignment cards and the Student Averages table. It never changes an individual task score. You'll find the control at the top-right of the Student Averages table and, when you open an assignment's heatmap from the Class page, at the top-right of that heatmap table.
+The Class page has an **Averages basis** control with two options: **All tasks** (the default) and **Baseline tasks**. It changes which tasks feed the Class page's averages — the Assignments table and the Student Averages table. It never changes an individual task score. You'll find the control at the top-right of the Student Averages table and, when you open an assignment's heatmap from the Class page, at the top-right of that heatmap table.
 
 ### Why a baseline helps
 
@@ -136,7 +136,7 @@ If a class skipped a lesson or has not yet reached part of an assignment, those 
 
 ### What changes in Baseline tasks mode
 
-- The Recent Assignment cards and the Student Averages table are calculated over the **baseline task set** — the tasks that all of the most-engaged students attempted — rather than every task.
+- The Assignments table and the Student Averages table are calculated over the **baseline task set** — the tasks that all of the most-engaged students attempted — rather than every task.
 - A student whose work all falls outside that set shows **Excluded** for their averages: their work is displayed, but none of it fed these averages. In this mode **Excluded** can mean either zero weighting or work outside the baseline set, and the accompanying description names both possible causes.
 - In the embedded heatmap view, task columns outside the baseline keep their scores but carry a **†** marker, and a caption above the table explains it.
 

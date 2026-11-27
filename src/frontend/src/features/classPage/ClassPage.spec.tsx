@@ -1,8 +1,5 @@
 /**
  * Tests for the Class page composition root (`ClassPage`).
- *
- * @see SPEC_CLASS_PAGE.md — "Page composition root"
- * @see CLASS_PAGE_LAYOUT.md — "Surface hierarchy" and "Global state rules"
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -13,12 +10,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { buildDefaultAssignmentFixture } from '@/test/taskHeatmapPageFixtures';
 import { ClassPage } from './ClassPage';
 import type { ClassPageContent as ClassPageContentType } from './ClassPageContent';
+import { adaptClassPageToViewModel } from './classPageAdapter';
 import {
   CLASS_NAME,
   DEFAULT_CLASS_ID,
   createClassPageAdapterResult as createAdapterResult,
   createReadyClassPageData,
 } from '@/test/classPage/classPageFixtures';
+import { canonicalFullHistoryAdapterInput } from '@/test/classPage/classPageAdapterTestFixtures';
+
+const canonicalRecentAssignments = adaptClassPageToViewModel(
+  canonicalFullHistoryAdapterInput()
+).recentAssignments;
+const navigationAssignment = canonicalRecentAssignments[0];
+if (!navigationAssignment) {
+  throw new Error('Canonical fixture must supply an assignment for heatmap navigation.');
+}
 
 // ===========================================================================
 // Mock setup (hoisted to avoid temporal dead zone issues)
@@ -109,7 +116,8 @@ vi.mock('@/pages/pageContent', () => {
       classDetail: {
         heading: 'Class Overview',
         summary: 'Review assessment performance for this class.',
-        recentAssignmentsEmpty: 'No recent assessments yet',
+        recentAssignmentsEmpty: 'No assignments yet',
+        recentAssignmentsFilteredEmpty: 'No assignments match your filters',
         searchEmpty: 'No students match your search',
       },
     },
@@ -230,42 +238,21 @@ describe('ClassPage', () => {
   it('hides the Back to Classes nav card when the heatmap view is active', async () => {
     const user = userEvent.setup();
 
-    // Provide an adapter result with a recent assignment so a clickable card
-    // renders in the overview.  We use the real ClassPageContent component
-    // (via vi.importActual) so clicking the RecentAssignmentCard triggers
-    // the view transition inside ClassPage.
-    const computedMetric = {
-      state: 'computed' as const,
-      value: 4,
-      totalWeight: 1,
-      applicableDataPoints: 1,
-      totalDataPoints: 1,
-    };
-
+    // Provide a canonical recent assignment so its name button renders in the
+    // overview table. We use the real ClassPageContent component (via
+    // vi.importActual) so the assignment-name → onOpenHeatmap → view transition
+    // chain runs inside ClassPage.
     mockUseClassPageData.mockReturnValue(
       createReadyClassPageData({
         adapterResult: {
           ...createAdapterResult(),
-          recentAssignments: [
-            {
-              assignmentId: 'a-1',
-              assignmentName: 'Test Assignment',
-              lastAssessedAt: '2026-01-15T00:00:00.000Z',
-              lastAssessedAtLabel: '15 Jan 2026',
-              metrics: {
-                completeness: { ...computedMetric },
-                accuracy: { ...computedMetric },
-                spag: { ...computedMetric, value: 3 },
-                average: { ...computedMetric },
-              },
-            },
-          ],
+          recentAssignments: [navigationAssignment],
         },
       })
     );
 
     // Override the ClassPageContent mock to use the real component so the
-    // RecentAssignmentCard → onOpenHeatmap → view transition chain works.
+    // Assignments table → onOpenHeatmap → view transition chain works.
     const { ClassPageContent: RealClassPageContent } = await vi.importActual<{
       ClassPageContent: typeof ClassPageContentType;
     }>('./ClassPageContent');
@@ -289,9 +276,11 @@ describe('ClassPage', () => {
     // The nav card should be visible initially (overview view)
     expect(screen.getByLabelText('Back to Classes')).toBeInTheDocument();
 
-    // Click the recent assignment card to navigate into the heatmap view
-    const card = screen.getByRole('button', { name: /test assignment/i });
-    await user.click(card);
+    // Click the recent assignment name to navigate into the heatmap view.
+    const assignmentButton = screen.getByRole('button', {
+      name: navigationAssignment.assignmentName,
+    });
+    await user.click(assignmentButton);
 
     // In the heatmap view the parent "Back to Classes" nav card must not appear
     expect(screen.queryByLabelText('Back to Classes')).not.toBeInTheDocument();

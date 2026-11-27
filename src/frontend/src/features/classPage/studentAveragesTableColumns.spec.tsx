@@ -1,16 +1,11 @@
 /**
  * Tests for `buildStudentAveragesTableColumns` — column definitions
  * for the Student Averages table.
- *
- * @see SPEC_CLASS_PAGE.md — "studentAveragesTableColumns"
- * @see CLASS_PAGE_LAYOUT.md — "4a. Column Filter Details"
  */
 
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import {
-  buildStudentAveragesTableColumns,
-} from './studentAveragesTableColumns';
+import { buildStudentAveragesTableColumns } from './studentAveragesTableColumns';
 import type { StudentAveragesTableFilters } from './studentAveragesTableColumns';
 import type { StudentAverageRowModel } from './classPageAdapter.zod';
 import { isMetricInRange } from '@/services/dataAnalysis/metricDisplay/metricRangeFilter';
@@ -122,9 +117,7 @@ describe('buildStudentAveragesTableColumns', () => {
         // Render the JSX title element and check the SVG's aria-label via
         // querySelector (getByLabelText does not resolve <svg aria-label="…">
         // in the happy-dom stack).
-        const { container, unmount } = render(
-          <>{column.title as unknown as React.ReactElement}</>
-        );
+        const { container, unmount } = render(<>{column.title as unknown as React.ReactElement}</>);
         const headerElement = container.querySelector('[aria-label]');
         expect(headerElement).not.toBeNull();
         expect(headerElement).toHaveAttribute('aria-label', expectedHeader);
@@ -169,13 +162,25 @@ describe('buildStudentAveragesTableColumns', () => {
   // -----------------------------------------------------------------------
   describe('isMetricInRange predicate', () => {
     it('matches computed values inside the range', () => {
-      expect(isMetricInRange(createComputedMetricResult({ value: 3 }), RANGE_LOWER, RANGE_UPPER)).toBe(true);
-      expect(isMetricInRange(createComputedMetricResult({ value: 4 }), RANGE_UPPER, RANGE_UPPER_ALT)).toBe(true);
+      expect(
+        isMetricInRange(createComputedMetricResult({ value: 3 }), RANGE_LOWER, RANGE_UPPER)
+      ).toBe(true);
+      expect(
+        isMetricInRange(createComputedMetricResult({ value: 4 }), RANGE_UPPER, RANGE_UPPER_ALT)
+      ).toBe(true);
     });
 
     it('excludes computed values outside the range', () => {
-      expect(isMetricInRange(createComputedMetricResult({ value: BELOW_RANGE }), RANGE_LOWER, RANGE_UPPER)).toBe(false);
-      expect(isMetricInRange(createComputedMetricResult({ value: ABOVE_RANGE }), 0, RANGE_UPPER_ALT)).toBe(false);
+      expect(
+        isMetricInRange(
+          createComputedMetricResult({ value: BELOW_RANGE }),
+          RANGE_LOWER,
+          RANGE_UPPER
+        )
+      ).toBe(false);
+      expect(
+        isMetricInRange(createComputedMetricResult({ value: ABOVE_RANGE }), 0, RANGE_UPPER_ALT)
+      ).toBe(false);
     });
 
     it('excludes notAttempted and error metrics', () => {
@@ -426,6 +431,62 @@ describe('buildStudentAveragesTableColumns', () => {
         },
       });
       expect(completenessColumn.onFilter!(ENCODED_KEY_INCLUDE_N, aboveRangeRecord)).toBe(false);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Controlled filteredValue invariant (Ant Design warns on a mixed set)
+  // -----------------------------------------------------------------------
+  describe('controlled filteredValue invariant', () => {
+    /** Encoded key applied to the completeness column in the mixed case. */
+    const ACTIVE_FILTER_KEY = '2|4|1|0';
+
+    /** Filters where only completeness carries an active filter key. */
+    const ONE_ACTIVE_FILTER: StudentAveragesTableFilters = {
+      completeness: [ACTIVE_FILTER_KEY],
+      accuracy: [] as readonly string[],
+      spag: [] as readonly string[],
+      average: [] as readonly string[],
+    };
+
+    it('defines an empty array filteredValue on every metric column when none is filtered', () => {
+      const columns = buildStudentAveragesTableColumns(EMPTY_FILTERS);
+
+      for (const key of METRIC_COLUMN_KEYS) {
+        const column = columns.find((candidate) => candidate.key === key)!;
+        expect(typeof column.filterDropdown).toBe('function');
+        expect(column.filteredValue).toEqual([]);
+      }
+    });
+
+    it('keeps every filter column controlled while one metric column is filtered', () => {
+      const columns = buildStudentAveragesTableColumns(ONE_ACTIVE_FILTER);
+
+      // Every metric column exposes a filterDropdown, so Ant Design collects
+      // all four as filter columns and requires them to resolve filteredKeys
+      // alike. Forename and Surname expose no filter support and are skipped.
+      const filterableKeys = columns
+        .filter((column): boolean => {
+          return (
+            typeof column.filterDropdown === 'function' ||
+            column.filters !== undefined ||
+            column.onFilter !== undefined
+          );
+        })
+        .map((column) => column.key);
+      expect(filterableKeys).toEqual([...METRIC_COLUMN_KEYS]);
+
+      for (const key of METRIC_COLUMN_KEYS) {
+        const column = columns.find((candidate) => candidate.key === key)!;
+        expect(Array.isArray(column.filteredValue)).toBe(true);
+      }
+
+      const completenessColumn = columns.find((column) => column.key === 'completeness')!;
+      expect(completenessColumn.filteredValue).toEqual([ACTIVE_FILTER_KEY]);
+      for (const key of ['accuracy', 'spag', 'average'] as const) {
+        const column = columns.find((candidate) => candidate.key === key)!;
+        expect(column.filteredValue).toEqual([]);
+      }
     });
   });
 });

@@ -7,13 +7,12 @@ Results appear on the class page and on the heatmap surfaces. The numbers are ex
 
 Open **Classes**, then select **View** on a class.
 
-![A class page showing recent assignments and student averages](./images/view-results-class-page.png)
+![A class page showing the Assignments table and student averages](./images/view-results-class-page.png)
 
-- **Recent Assignments** shows the last assessed date and four scores for each assignment.
+- **Assignments** lists every assignment with columns for **Name**, **Completeness**, **Accuracy**, **SPaG**, **Average** and **Last Assessed**. Each column heading has controls to sort or filter it. It shows the three most recent assignments at first; when you have more, **Show all assignments** at the top-right of the card displays them, and **Show fewer assignments** returns to three. Select an assignment's name to open its heatmap.
 - **Student Averages** shows the weighted averages for every student.
 
-Use the search box to find a student, and the controls in a column heading to sort that
-column.
+Use the search box to find a student.
 
 ## Assignment heatmap
 

@@ -5,8 +5,6 @@
  * The model is a pure synchronous function that applies search filtering
  * and sorting to the adapter's canonical output.  These tests define the
  * full behavioural contract.
- *
- * @see SPEC_CLASS_PAGE.md — "classPageModel — view-model builder"
  */
 
 import { describe, expect, it } from 'vitest';

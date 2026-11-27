@@ -11,9 +11,6 @@
  * established codebase convention (see `AssessTaskModal.tsx`).
  *
  * Pure presentational component; owns no state and performs no data fetching.
- *
- * @see SPEC_CLASS_PAGE.md — "ClassPageHeaderActions"
- * @see CLASS_PAGE_LAYOUT.md — "Page Heading and Header Actions"
  */
 
 import type { JSX } from 'react';

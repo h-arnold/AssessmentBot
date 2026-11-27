@@ -20,9 +20,6 @@
  *
  * **No React hooks.** The function is pure and called at render time by
  * `StudentAveragesTableCard` inside a `useMemo`.
- *
- * @see SPEC_CLASS_PAGE.md — "studentAveragesTableColumns"
- * @see CLASS_PAGE_LAYOUT.md — "4a. Column Filter Details"
  */
 
 import type { CSSProperties, JSX } from 'react';

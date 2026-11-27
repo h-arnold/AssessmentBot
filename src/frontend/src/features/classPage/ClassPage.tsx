@@ -18,9 +18,6 @@
  * because the modal open/close state spans the loading/blocking/ready transitions.
  *
  * The breadcrumb is owned by the shell (`AppShell`), not rendered here.
- *
- * @see SPEC_CLASS_PAGE.md — "Page composition root"
- * @see CLASS_PAGE_LAYOUT.md — "Surface hierarchy" and "Global state rules"
  */
 
 import { useState, type JSX } from 'react';

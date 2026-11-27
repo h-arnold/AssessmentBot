@@ -17,6 +17,7 @@
 
 import { expect, type Locator, type Page } from '@playwright/test';
 import { buildMetricCellAccessibleLabel } from '@/features/taskHeatmap/taskHeatmapTableColumns';
+import { assignmentNameButton, assignmentsTable } from './assignments-table-locators';
 import {
   installRuntimeMock,
   type ResponseItem,
@@ -29,6 +30,7 @@ import {
   CANONICAL_DEFINITION_PARTIALS,
   CANONICAL_YEAR_GROUPS,
   canonicalAssignment,
+  CLASS_PAGE_PREFETCH_ASSIGNMENT_IDS,
   ERROR_CLASS_NAME,
   UNAVAILABLE_TITLE,
 } from './assessment-error-preview-fixtures';
@@ -71,6 +73,11 @@ const AUTHORISATION_QUEUE_REPEATS = 4;
 const REFERENCE_DATA_QUEUE_REPEATS = 8;
 const DEFINITION_PARTIALS_QUEUE_REPEATS = 12;
 const CLASS_QUEUE_REPEATS = 6;
+
+/** Prefetch slot whose full record is only used as a content-agnostic filler. */
+const FILLER_PREFETCH_SLOT = 2;
+
+export { ASSIGNMENTS_TABLE_NAME } from './assignments-table-locators';
 
 // ---------------------------------------------------------------------------
 // Scenario and navigation
@@ -130,10 +137,33 @@ export function createErrorPreviewScenario(overrides: ErrorPreviewOverrides = {}
 }
 
 /**
+ * Build the Class page's `getAssignment` queue in the order the prefetch warms it.
+ *
+ * @remarks
+ * `useClassPageAssignmentPrefetch` warms `assignment-2-5`, `assignment-2-4` and
+ * `assignment-2-3`; the opened assignment's slot carries its own canonical full
+ * record so the heatmap joins that query key. The first slot has no full record
+ * in the committed corpus and is served another valid canonical record whose
+ * content no journey reads. Trailing copies cover later refetches on the same
+ * key. Extra entries are never consumed; a missing entry fails loudly.
+ * @returns {ResponseItem[]} The ordered, StrictMode-safe queue.
+ */
+export function classPageAssignmentQueue(): ResponseItem[] {
+  const fillerAssignmentId = CLASS_PAGE_PREFETCH_ASSIGNMENT_IDS.at(FILLER_PREFETCH_SLOT);
+  const openedAssignmentId = CLASS_PAGE_PREFETCH_ASSIGNMENT_IDS.at(1);
+  if (fillerAssignmentId === undefined || openedAssignmentId === undefined) {
+    throw new Error('Canonical prefetch list must carry three assignments.');
+  }
+  const filler: ResponseItem = { kind: 'success', data: canonicalAssignment(fillerAssignmentId) };
+  const opened: ResponseItem = { kind: 'success', data: canonicalAssignment(openedAssignmentId) };
+  return [{ ...filler }, { ...opened }, { ...filler }, { ...opened }, { ...opened }, { ...opened }];
+}
+
+/**
  * Install the scenario and open the canonical class overview.
  * @param {Page} page - The Playwright page.
  * @param {ErrorPreviewOverrides} [overrides] - Per-method queue overrides.
- * @returns {Promise<void>} Resolves once Recent Assignments is visible.
+ * @returns {Promise<void>} Resolves once the Assignments table is visible.
  */
 export async function openErrorClass(
   page: Page,
@@ -145,7 +175,7 @@ export async function openErrorClass(
   const classCard = page.getByRole('article').filter({ hasText: ERROR_CLASS_NAME });
   await expect(classCard).toBeVisible();
   await classCard.getByRole('button', { name: 'View' }).click();
-  await expect(page.getByText('Recent Assignments')).toBeVisible();
+  await expect(assignmentsTable(page)).toBeVisible();
 }
 
 /**
@@ -155,10 +185,9 @@ export async function openErrorClass(
  * @returns {Promise<void>} Resolves once the heatmap table is visible.
  */
 export async function openEmbeddedHeatmap(page: Page, assignmentId: string): Promise<void> {
-  await page
-    .getByRole('button')
-    .filter({ hasText: assignmentCardTitle(assignmentId) })
-    .click();
+  const assignmentName = assignmentNameButton(page, assignmentCardTitle(assignmentId));
+  await expect(assignmentName).toHaveCount(1);
+  await assignmentName.click();
   await expect(stickyTableWrapper(page)).toBeVisible();
 }
 

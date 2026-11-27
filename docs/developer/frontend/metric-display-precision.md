@@ -26,9 +26,9 @@ These two tiers keep the heatmap matrix compact (no unnecessary `.00` noise) whi
   ```tsx
   <MetricPill metric={metricResult} precision={0} compact />
   ```
-- **Average displays** (`RecentAssignmentCard`) omit the `precision` prop and rely on the default 2 dp:
+- **Assignments table metric cells** (`RecentAssignmentsSection`) omit the `precision` prop and rely on the default 2 dp:
   ```tsx
-  <MetricPill metric={getStudentMetric(card.metrics, key)} />
+  <MetricPill metric={getStudentMetric(record.metrics, key)} analysisMode={analysisMode} />
   ```
 
 The `precision` prop is ignored for `notAttempted`, `excluded`, and `error` states (the literals `'N'` and `'E'`, and the visible label **Excluded**, are rendered as-is).

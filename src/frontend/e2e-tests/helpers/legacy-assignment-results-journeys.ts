@@ -34,9 +34,9 @@ export const LEGACY_ASSIGNMENT_ID = 'assignment-2-4';
  * Current-version sibling opened beside the legacy assignment.
  *
  * @remarks
- * Recent Assignments only lists the three newest assignments, so the sibling
- * has to be one of them to have a card. `assignment-2-3` is the third of those
- * and its warmed full read is its own canonical record.
+ * The Assignments table only shows the three newest assignments initially, so
+ * the sibling has to be one of them to have a row. `assignment-2-3` is the third
+ * of those and its warmed full read is its own canonical record.
  */
 export const SIBLING_ASSIGNMENT_ID = 'assignment-2-3';
 /** Task of the sibling assignment the journey reads. */

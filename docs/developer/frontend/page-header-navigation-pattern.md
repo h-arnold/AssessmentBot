@@ -24,7 +24,7 @@ Class page (ready):
 ```text
 [PageTitleCard — class name, level 2]
 [PageNavCard — "Back to Classes" | Edit Student Details + Start New Assessment]
-[Recent Assignments section]
+[Assignments table]
 [Student Averages table — "Averages basis" Segmented in card top-right extra]
 ```
 

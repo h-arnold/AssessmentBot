@@ -1,9 +1,6 @@
 /**
  * Tests for `StudentAveragesTableCard` — the Card wrapping the
  * control row (search + label) and the Student Averages Table.
- *
- * @see SPEC_CLASS_PAGE.md — "StudentAveragesTableCard"
- * @see CLASS_PAGE_LAYOUT.md — "4. Student Averages Table Card"
  */
 
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';

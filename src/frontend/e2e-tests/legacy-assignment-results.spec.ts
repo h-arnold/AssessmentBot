@@ -32,6 +32,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SOURCE_ACTION_LABEL } from '@/features/taskHeatmap/TaskPreviewCard';
 import { releaseNextDeferredSuccess } from './shared/endToEndRuntimeMocks';
+import { assignmentsTable } from './helpers/assignments-table-locators';
 import {
   cellLabel,
   CORRUPT_RECORD_REASONING,
@@ -213,8 +214,8 @@ test.describe('Embedded heatmap — legacy assignment results', () => {
     await page.keyboard.press('Escape');
     await expect(previewPopover(page)).toHaveCount(0);
 
-    // Recent Assignments only lists the three newest assignments, so the
-    // sibling has to be one of them to have a clickable card.
+    // The Assignments table only lists the three newest assignments initially,
+    // so the sibling has to be one of them to have a name button.
     await page.getByRole('button', { name: BACK_LABEL }).click();
     await openEmbeddedHeatmap(page, SIBLING_ASSIGNMENT_ID);
 
@@ -249,9 +250,9 @@ test.describe('Embedded heatmap — legacy reassessment tag', () => {
     await page.keyboard.press('Escape');
     await expect(previewPopover(page)).toHaveCount(0);
 
-    // Recent assignment cards carry no status tag.
+    // Assignments table rows carry no status tag.
     await page.getByRole('button', { name: BACK_LABEL }).click();
-    await expect(page.getByText('Recent Assignments')).toBeVisible();
+    await expect(assignmentsTable(page)).toBeVisible();
     await expect(page.getByText(REASSESSMENT_TAG_TEXT, { exact: true })).toHaveCount(0);
 
     // A current sibling assignment has no tag either.

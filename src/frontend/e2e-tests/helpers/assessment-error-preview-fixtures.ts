@@ -152,7 +152,7 @@ export const ERROR_CLASS_NAME: string = String(CANONICAL_CLASS_PARTIAL.className
 /**
  * Resolve the definition title the Classes page renders for one assignment.
  * @param {string} assignmentId - Assignment identity.
- * @returns {string} The rendered Recent Assignments card title.
+ * @returns {string} The rendered Assignments table name-button label.
  */
 export function assignmentCardTitle(assignmentId: string): string {
   const assignment = CANONICAL_CLASS.assignments.find(

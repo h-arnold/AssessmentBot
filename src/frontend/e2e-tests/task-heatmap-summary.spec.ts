@@ -7,6 +7,7 @@ import {
 import { AssignmentDefinitionPartialSchema } from '../src/services/assignmentDefinition/assignmentDefinitionPartials.zod';
 import { ClassFullSchema } from '../src/services/googleClassrooms/classDetail/classDetailService.zod';
 import { stickyTableBody, stickyTableHeaderHolder } from './helpers/sticky-table-locators';
+import { assignmentNameButton } from './helpers/assignments-table-locators';
 import { buildAssignmentDefinitionPartial } from './helpers/task-heatmap-fixtures';
 import { buildClassFullDocument } from './helpers/task-heatmap-class-fixtures';
 import {
@@ -148,7 +149,7 @@ test.describe('Task Heatmap assignment summaries', () => {
   }, testInfo) => {
     await installRuntimeMock(page, createHeatmapScenario());
     await openHeatmapClass(page);
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     const completeness = page.getByRole('region', { name: 'Completeness summary' });
     const accuracy = page.getByRole('region', { name: 'Accuracy summary' });
     await expect(completeness).toBeVisible();
@@ -210,7 +211,7 @@ test.describe('Task Heatmap assignment summaries', () => {
   }, testInfo) => {
     await installRuntimeMock(page, createHeatmapScenario());
     await openHeatmapClass(page);
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     const explanations = [
       {
         name: 'About completeness',
@@ -276,7 +277,7 @@ test.describe('Task Heatmap assignment summaries', () => {
   test('does not fabricate accuracy when tasks have not been attempted', async ({ page }) => {
     await installRuntimeMock(page, createHeatmapScenario({ emptySubmissions: true }));
     await openHeatmapClass(page);
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     const accuracy = page.getByRole('region', { name: 'Accuracy summary' });
     await expect(accuracy.getByText('No numeric assessments', { exact: true })).toHaveCount(
       TASK_COUNT
@@ -298,7 +299,7 @@ test.describe('Task Heatmap assignment summaries', () => {
     };
     await installRuntimeMock(page, scenario);
     await openHeatmapClass(page);
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     for (const name of ['Completeness summary', 'Accuracy summary']) {
       const card = page.getByRole('region', { name });
       const error = card
@@ -333,7 +334,7 @@ test.describe('Task Heatmap assignment summaries', () => {
   test('shows no-task states', async ({ page }) => {
     await installRuntimeMock(page, createHeatmapScenario({ zeroTasks: true }));
     await openHeatmapClass(page);
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     await expect(
       page.getByRole('region', { name: 'Completeness summary' }).getByText('No tasks to summarise.')
     ).toBeVisible();
@@ -345,7 +346,7 @@ test.describe('Task Heatmap assignment summaries', () => {
   test('retains zero-weight display evidence', async ({ page }) => {
     await installRuntimeMock(page, createHeatmapScenario({ zeroWeightAssignment: true }));
     await openHeatmapClass(page);
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     const completeness = page.getByRole('region', { name: 'Completeness summary' });
     await expect(completeness.getByText('7 of 10', { exact: true })).toBeVisible();
     await expect(completeness.getByText('Zero weighting', { exact: true })).toHaveCount(TASK_COUNT);
@@ -375,7 +376,7 @@ test.describe('Task Heatmap assignment summaries', () => {
     };
     await installRuntimeMock(page, scenario);
     await openHeatmapClass(page);
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     const completeness = page.getByRole('region', { name: 'Completeness summary' });
     const accuracy = page.getByRole('region', { name: 'Accuracy summary' });
     await expect(completeness.getByRole('listitem')).toHaveCount(TASK_COUNT);

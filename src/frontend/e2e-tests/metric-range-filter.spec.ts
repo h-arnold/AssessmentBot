@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { installRuntimeMock } from './shared/endToEndRuntimeMocks';
 import { stickyTableBody, stickyTableHeaderHolder } from './helpers/sticky-table-locators';
+import { assignmentNameButton, assignmentsTable } from './helpers/assignments-table-locators';
 import {
   createHeatmapScenario,
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
@@ -29,7 +30,7 @@ async function openHeatmapClass(page: Page): Promise<void> {
   const classCard = page.getByRole('article').filter({ hasText: HEATMAP_CLASS_NAME });
   await expect(classCard).toBeVisible();
   await classCard.getByRole('button', { name: 'View' }).click();
-  await expect(page.getByText('Recent Assignments')).toBeVisible();
+  await expect(assignmentsTable(page)).toBeVisible();
 }
 
 test('filters excluded aggregate rows and hides the toggle from task filters', async ({ page }) => {
@@ -61,7 +62,7 @@ test('filters excluded aggregate rows and hides the toggle from task filters', a
   await expect(reopenedFilter.getByRole('checkbox', { name: 'Include Excluded' })).toBeChecked();
   await page.keyboard.press('Escape');
 
-  await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+  await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
   const heatmapHeader = stickyTableHeaderHolder(page);
   await expect(heatmapHeader).toBeVisible();
   await heatmapHeader
