@@ -10,6 +10,7 @@ import {
   releaseNextDeferredSuccess,
 } from './shared/endToEndRuntimeMocks';
 import { stickyTableWrapper } from './helpers/sticky-table-locators';
+import { assignmentNameButton, assignmentsTable } from './helpers/assignments-table-locators';
 
 const SAVE_TITLE = 'Class summary not saved';
 const SAVE_DESCRIPTION =
@@ -138,8 +139,8 @@ test('shows persistent save-failure feedback on the Class page without replacing
   await page.getByRole('menuitem', { name: 'Classes' }).click();
   const card = page.getByRole('article').filter({ hasText: 'Synthetic Class 3' });
   await card.getByRole('button', { name: 'View' }).click();
-  await expect(page.getByText('Recent Assignments')).toBeVisible();
-  const recentAssignment = page.getByRole('button', { name: POST_ANALYSIS_ASSIGNMENT_TITLE });
+  await expect(assignmentsTable(page)).toBeVisible();
+  const recentAssignment = assignmentNameButton(page, POST_ANALYSIS_ASSIGNMENT_TITLE);
   await expect(recentAssignment).toBeVisible();
   await recentAssignment.click();
   const notice = page

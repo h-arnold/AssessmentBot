@@ -674,9 +674,9 @@ equal-timestamp tie-break, applied by the shared `compareAssignmentUpdatedAtDesc
 comparator so the adapter result and the Class-page prefetch use identical
 newest-first ordering. `ClassPageAdapterResultSchema` validates the array shape only
 and imposes no length cap. The initial three-entry display limit is temporary and
-owned by the presentation layer: `RecentAssignmentsSection` slices the supplied list
-with `VISIBLE_RECENT_ASSIGNMENTS = 3` for rendering. It is not a property of the
-adapter result or its schema.
+owned by the presentation layer: `RecentAssignmentsSection` filters and sorts the
+supplied list, then slices the matching rows with `INITIAL_VISIBLE_ASSIGNMENTS = 3`
+for display only. It is not a property of the adapter result or its schema.
 
 ### `ClassPageDisplayMetric` (adapter-local exception)
 
@@ -773,8 +773,9 @@ zero-configured criteria, so the result reports every displayed observation. An
 resolve to `excluded`, `buildPerTaskRows` substitutes the task's display overall
 so the row retains a valid narrow display state.
 
-Recent Assignment card averages are aggregate scope. They apply this same
-contribution-aware roll-up over their per-task display inputs and resolve an
+Assignments table row aggregates are aggregate scope. Each row's `average`, built
+by the adapter's `buildRecentAssignment` / `rollupCardCriteria`, applies this same
+contribution-aware roll-up over its per-task display inputs and resolves an
 all-zero-weight assignment to `excluded`, not a throw or a numeric task result.
 
 ### Heatmap projection contract
@@ -1194,7 +1195,7 @@ caption follow.
    input continues to validate the caller's supplied `analysisMode`.
 
 6. **Downstream aggregate consumers.** Per-assignment aggregates on the Class
-   page (recent-assignment cards) are recomputed in baseline mode from
+   page (Assignments table rows) are recomputed in baseline mode from
    baseline-restricted per-task evidence: the adapter reads
    `analyserResult.appliedAnalysisMode` and rolls up the filtered rows; when
    the filtered set is empty it rolls up the unfiltered rows per criterion and
@@ -1242,7 +1243,7 @@ caption follow.
    Class-page
    consumers pass the mode explicitly — `ClassPage` → `ClassPageContent`
    (optional prop) → `renderReadyContent` (options object) → `ClassPageReady` →
-   `RecentAssignmentsSection` → `RecentAssignmentCard` → `MetricPill`, and
+   `RecentAssignmentsSection` → `MetricPill`, and
    `ClassPageReady` → `StudentAveragesTableCard` →
    `buildStudentAveragesTableColumns(filters, analysisMode)` → the resolver for
    the students-table `aria-label` — so excluded pills and table cells announce
@@ -1353,7 +1354,7 @@ Heatmap adapters: `src/frontend/src/services/dataAnalysis/heatmapAdapter.ts`, `s
 Metric display: `src/frontend/src/services/dataAnalysis/metricDisplay/`
 Class-page adapter schema: `src/frontend/src/features/classPage/classPageAdapter.zod.ts`
 Class-page adapter: `src/frontend/src/features/classPage/classPageAdapter.ts` → `adaptClassPageToViewModel()` (full-history `recentAssignments`); `classPageModel.ts` → `compareAssignmentUpdatedAtDesc` (shared recency comparator, also used by the three-assignment prefetch)
-Class-page presentation limit: `src/frontend/src/features/classPage/RecentAssignmentsSection.tsx` → `VISIBLE_RECENT_ASSIGNMENTS` (display-only three-entry slice)
+Class-page presentation limit: `src/frontend/src/features/classPage/RecentAssignmentsSection.tsx` → `INITIAL_VISIBLE_ASSIGNMENTS` (display-only three-row preview slice applied after filtering and sorting the full history)
 Class-page adapter card-rollup rule: `src/frontend/src/features/classPage/classPageAdapter.baselineCardRollup.ts` → `rollupCardCriteria` (baseline-mode card aggregates); `deriveBaselineTaskKeySet` (`src/frontend/src/services/dataAnalysis/analysers/attemptBaselineSelection.ts`)
 
 Metadata refresh execution companions:

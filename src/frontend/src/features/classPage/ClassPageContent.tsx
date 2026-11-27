@@ -12,9 +12,10 @@
  * Three sub-components are co-located here because they are small and
  * tightly coupled to the page-level error precedence:
  *
- * - {@link ClassPageLoading} — shape-matched skeletons (heading + card row
- *   + table region) using the paragraph-row pattern consistent with
- *   existing pages (`CLASS_PAGE_LAYOUT.md` §"Recommended page skeleton").
+ * - {@link ClassPageLoading} — shape-matched skeletons (heading + assignments
+ *   table region + student averages table region) using the
+ *   paragraph-row pattern consistent with existing pages
+ *   (`CLASS_PAGE_LAYOUT.md` §"Recommended page skeleton").
  * - {@link ClassPageBlocking} — a single `Result` per `error.type` with
  *   the correct Ant Design `Result` status variant (`warning` for
  *   retryable, `error` for non-retryable).  Retryable errors include
@@ -67,7 +68,7 @@ type ClassPageContentProperties = Readonly<
     selectedView: { view: 'overview' | 'heatmap'; assignmentId?: string };
     /** Warm-up assignment-definition partials (non-null when `surfaceState.status === 'ready'`). */
     assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse | null;
-    /** Callback invoked when a RecentAssignmentCard is clicked to open the heatmap. */
+    /** Callback invoked when a recent assignment name is clicked to open the heatmap. */
     onOpenHeatmap: (assignmentId: string) => void;
     /** Callback invoked to return from the heatmap view to the overview. */
     onBack: () => void;
@@ -146,22 +147,13 @@ const SECTION_TITLE_SKELETON_HEIGHT_PX = 22;
 /** Top margin for the recent assignments section wrapper. */
 const ROW_TOP_MARGIN_PX = 16;
 
-/** Gap between skeleton cards in the card row. */
-const CARD_ROW_GAP_PX = 16;
-
-/** Top margin for the card row wrapper. */
-const CARD_ROW_TOP_MARGIN_PX = 16;
-
-/** Width of each recent assignment card skeleton. */
-const RECENT_CARD_SKELETON_WIDTH_PX = 280;
-
-/** Height of each recent assignment card skeleton. */
-const RECENT_CARD_SKELETON_HEIGHT_PX = 140;
-
-/** Top margin for the table skeleton wrapper. */
+/** Top margin for each table skeleton wrapper. */
 const TABLE_TOP_MARGIN_PX = 16;
 
-/** Number of paragraph rows in the table skeleton. */
+/** Number of paragraph rows in the assignments table skeleton. */
+const RECENT_TABLE_SKELETON_ROWS = 4;
+
+/** Number of paragraph rows in the student averages table skeleton. */
 const TABLE_SKELETON_ROWS = 6;
 
 // ---------------------------------------------------------------------------
@@ -172,17 +164,16 @@ const TABLE_SKELETON_ROWS = 6;
  * Loading-state skeleton for the Class page.
  *
  * Renders shape-matched `Skeleton` placeholders for the heading row, the
- * Recent Assignments card row, and the Student Averages table region.
+ * Assignments table region, and the Student Averages table region.
  *
  * @remarks
  * Uses the paragraph-row pattern consistent with `ClassesPage` and
  * `AssignmentsPage` loading states (`CLASS_PAGE_LAYOUT.md` §"Recommended
  * page skeleton").
  *
- * The skeleton uses a shape-matched pattern (`Skeleton.Input` / `Skeleton.Button`)
- * instead of the generic paragraph-row pattern prescribed in `CLASS_PAGE_LAYOUT.md`
- * — the shape-matched shapes provide better perceived-performance feedback
- * for the three distinct content regions (heading, card row, table).
+ * The heading uses a shape-matched `Skeleton.Input` / `Skeleton.Button` while
+ * both table regions use the paragraph-row pattern prescribed in
+ * `CLASS_PAGE_LAYOUT.md`, matching the shape of the content they replace.
  *
  * Wraps the skeleton in `role="status"` and `aria-live="polite"` per
  * accessibility requirements (`frontend-loading-and-width-standards.md` §8).
@@ -195,7 +186,7 @@ function ClassPageLoading(): JSX.Element {
       {/* Heading skeleton */}
       <Skeleton.Input size="large" style={{ width: HEADING_SKELETON_WIDTH_PX }} active />
 
-      {/* Recent assignments section skeleton */}
+      {/* Assignments section skeleton */}
       <div style={{ marginTop: ROW_TOP_MARGIN_PX }}>
         <Skeleton.Button
           active
@@ -204,32 +195,12 @@ function ClassPageLoading(): JSX.Element {
             height: SECTION_TITLE_SKELETON_HEIGHT_PX,
           }}
         />
-        <div style={{ display: 'flex', gap: CARD_ROW_GAP_PX, marginTop: CARD_ROW_TOP_MARGIN_PX }}>
-          <Skeleton.Button
-            active
-            style={{
-              width: RECENT_CARD_SKELETON_WIDTH_PX,
-              height: RECENT_CARD_SKELETON_HEIGHT_PX,
-            }}
-          />
-          <Skeleton.Button
-            active
-            style={{
-              width: RECENT_CARD_SKELETON_WIDTH_PX,
-              height: RECENT_CARD_SKELETON_HEIGHT_PX,
-            }}
-          />
-          <Skeleton.Button
-            active
-            style={{
-              width: RECENT_CARD_SKELETON_WIDTH_PX,
-              height: RECENT_CARD_SKELETON_HEIGHT_PX,
-            }}
-          />
+        <div style={{ marginTop: TABLE_TOP_MARGIN_PX }}>
+          <Skeleton paragraph={{ rows: RECENT_TABLE_SKELETON_ROWS }} active />
         </div>
       </div>
 
-      {/* Table skeleton */}
+      {/* Student averages table skeleton */}
       <div style={{ marginTop: TABLE_TOP_MARGIN_PX }}>
         <Skeleton paragraph={{ rows: TABLE_SKELETON_ROWS }} active />
       </div>

@@ -160,7 +160,7 @@ export function assertWarmPrefetchCorpusProvenance(): void {
   }
 }
 
-/** Canonical populated Slides assignment opened from the Recent Assignments card. */
+/** Canonical populated Slides assignment opened from the Assignments table. */
 export const SLIDES_ASSIGNMENT_ID = 'assignment-2-1';
 
 /** Canonical populated Sheets assignment used for the second editor URL shape. */
@@ -227,14 +227,14 @@ export const CANONICAL_SHEETS_ASSIGNMENT: AssignmentFull = deepFreeze(
 );
 
 /**
- * Resolve a recent-assignment card title from the definition registry.
+ * Resolve an Assignments table name-button label from the definition registry.
  *
- * The Class page renders each recent-assignment card with its definition's
+ * The Class page renders each assignment name with its definition's
  * `primaryTitle`, so the journey titles are read from the canonical registry
  * rather than restated.
  *
- * @param {AssignmentFull} assignment - The assignment whose card title is needed.
- * @returns {string} The definition title rendered on the recent-assignment card.
+ * @param {AssignmentFull} assignment - The assignment whose name label is needed.
+ * @returns {string} The definition title rendered on the assignment name button.
  */
 function requireDefinitionTitle(assignment: AssignmentFull): string {
   const definitionKey = assignment.assignmentDefinition.definitionKey;
@@ -274,7 +274,7 @@ export const CANONICAL_DEFINITION_PARTIALS: ReadonlyArray<Record<string, unknown
 /** Visible class name of the canonical class. */
 export const SOURCE_LINK_CLASS_NAME: string = CANONICAL_CLASS_PARTIAL.className;
 
-/** Recent-assignment card title of the canonical Slides assignment. */
+/** Assignments table name-button label of the canonical Slides assignment. */
 export const SLIDES_ASSIGNMENT_TITLE: string = requireDefinitionTitle(CANONICAL_SLIDES_ASSIGNMENT);
 
 /** Heatmaps-builder option label of the canonical Sheets assignment. */

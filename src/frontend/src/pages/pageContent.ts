@@ -30,7 +30,8 @@ export const pageContent = {
   classDetail: {
     heading: 'Class Overview',
     summary: 'Review assessment performance for this class.',
-    recentAssignmentsEmpty: 'No recent assessments yet',
+    recentAssignmentsEmpty: 'No assignments yet',
+    recentAssignmentsFilteredEmpty: 'No assignments match your filters',
     searchEmpty: 'No students match your search',
     // Attempt-baseline mode-control copy (layout spec "Copy homes": header
     // copy lives here; consumed by AveragesBasisControl).

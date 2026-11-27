@@ -14,6 +14,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { installRuntimeMock } from './shared/endToEndRuntimeMocks';
 import { stickyTableWrapper } from './helpers/sticky-table-locators';
+import { assignmentNameButton, assignmentsTable } from './helpers/assignments-table-locators';
 import {
   createHeatmapScenario,
   HEATMAP_CLASS_NAME,
@@ -40,10 +41,11 @@ async function openHeatmapTable(page: Page): Promise<void> {
   await expect(classCard).toBeVisible();
   await classCard.getByRole('button', { name: 'View' }).click();
 
-  await expect(page.getByText('Recent Assignments')).toBeVisible();
+  await expect(assignmentsTable(page)).toBeVisible();
 
-  // Open the heatmap from the recent assignment card.
-  await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+  // Open the heatmap from the Assignments table name button. The row is not an
+  // entry point, so the button is resolved from a data row.
+  await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
 
   const table = stickyTableWrapper(page);
   await expect(table).toBeVisible();

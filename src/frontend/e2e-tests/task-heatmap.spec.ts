@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { EXCLUDED_COLUMN_TOOLTIP_TARGET_CLASS } from '@/features/taskHeatmap/taskHeatmapColumnMarking';
 import { installRuntimeMock, releaseNextDeferredSuccess } from './shared/endToEndRuntimeMocks';
 import { stickyTableBody, stickyTableHeaderHolder } from './helpers/sticky-table-locators';
+import { assignmentNameButton, assignmentsTable } from './helpers/assignments-table-locators';
 import {
   CLASSES_LABEL,
   createHeatmapScenario,
@@ -21,14 +22,16 @@ const LOWER_HANDLE_NUDGE_STEPS = 3;
 const HEATMAP_TASK_TITLES = ['Task 1', 'Task 2', 'Task 3'];
 
 test.describe('Task Heatmap E2E journey', () => {
-  test('opens heatmap from recent assignment card', async ({ page }) => {
+  test('opens heatmap from an assignment-name button', async ({ page }) => {
     const scenario = createHeatmapScenario();
     await installRuntimeMock(page, scenario);
     await openHeatmapClass(page);
 
-    // Click the recent assignment card to open the heatmap (uses primaryTitle display).
-    const card = page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE });
-    await card.click();
+    // The table exposes each assignment name as a button (primaryTitle display);
+    // the surrounding row is not itself an entry point.
+    const assignmentName = assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE);
+    await expect(assignmentName).toHaveCount(1);
+    await assignmentName.click();
 
     // Header: assignment display title (primaryTitle) + class name.
     await expect(
@@ -68,14 +71,16 @@ test.describe('Task Heatmap E2E journey', () => {
     await installRuntimeMock(page, scenario);
     await openHeatmapClass(page);
 
-    const assignmentCard = page
-      .getByRole('button')
-      .filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE })
-      .first();
-    const excludedMetrics = assignmentCard.locator(
+    const assignmentName = assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE);
+    const assignmentRow = assignmentsTable(page)
+      .locator('tbody tr.ant-table-row')
+      .filter({
+        has: page.getByRole('button', { name: HEATMAP_ASSIGNMENT_DISPLAY_TITLE, exact: true }),
+      });
+    const excludedMetrics = assignmentRow.locator(
       `[aria-label="${EXCLUDED_METRIC_ACCESSIBLE_NAME}"]:visible`
     );
-    // The card exposes the three criteria and the overall aggregate; each
+    // The row exposes the three criteria and the overall aggregate; each
     // aggregate carries the same explicit accessible excluded state.
     await expect(excludedMetrics).toHaveCount(EXCLUDED_AGGREGATE_COUNT);
     await excludedMetrics.first().focus();
@@ -84,7 +89,7 @@ test.describe('Task Heatmap E2E journey', () => {
       EXCLUDED_METRIC_ACCESSIBLE_NAME
     );
 
-    await assignmentCard.click();
+    await assignmentName.click();
     const header = stickyTableHeaderHolder(page);
     await expect(header).toBeVisible();
 
@@ -256,7 +261,7 @@ test.describe('Task Heatmap E2E journey', () => {
     await installRuntimeMock(page, scenario);
     await openHeatmapClass(page);
 
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     const header = stickyTableHeaderHolder(page);
     const body = stickyTableBody(page);
     await expect(body).toBeVisible();
@@ -300,7 +305,7 @@ test.describe('Task Heatmap E2E journey', () => {
     await installRuntimeMock(page, scenario);
     await openHeatmapClass(page);
 
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     const header = stickyTableHeaderHolder(page);
     await expect(header).toBeVisible();
 
@@ -334,13 +339,13 @@ test.describe('Task Heatmap E2E journey', () => {
     await installRuntimeMock(page, scenario);
     await openHeatmapClass(page);
 
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     await expect(stickyTableHeaderHolder(page)).toBeVisible();
 
     await page.getByRole('button', { name: 'Back to Class overview' }).click();
 
     // Overview content visible again (antd Card title divs, not headings).
-    await expect(page.getByText('Recent Assignments')).toBeVisible();
+    await expect(assignmentsTable(page)).toBeVisible();
     await expect(page.getByText('Student Averages')).toBeVisible();
   });
 
@@ -359,10 +364,10 @@ test.describe('Task Heatmap E2E journey', () => {
 
     // Release deferred class and expect the class overview to reach ready.
     await releaseNextDeferredSuccess(page);
-    await expect(page.getByText('Recent Assignments')).toBeVisible();
+    await expect(assignmentsTable(page)).toBeVisible();
 
-    // Open the heatmap from the recent assignment card and expect the table.
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    // Open the heatmap from the Assignments table name button and expect the table.
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     await expect(stickyTableHeaderHolder(page)).toBeVisible();
     await expect(page.locator('.ant-skeleton')).toHaveCount(0);
   });
@@ -372,7 +377,7 @@ test.describe('Task Heatmap E2E journey', () => {
     const noSubScenario = createHeatmapScenario({ emptySubmissions: true });
     await installRuntimeMock(page, noSubScenario);
     await openHeatmapClass(page);
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
 
     const body = stickyTableBody(page);
     await expect(body).toBeVisible();
@@ -385,7 +390,7 @@ test.describe('Task Heatmap E2E journey', () => {
     const zeroTaskScenario = createHeatmapScenario({ zeroTasks: true });
     await installRuntimeMock(page, zeroTaskScenario);
     await openHeatmapClass(page);
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
 
     const header = stickyTableHeaderHolder(page);
     await expect(header).toBeVisible();
@@ -397,7 +402,7 @@ test.describe('Task Heatmap E2E journey', () => {
     await installRuntimeMock(page, scenario);
     await openHeatmapClass(page);
 
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     const header = stickyTableHeaderHolder(page);
     await expect(header).toBeVisible();
 
@@ -436,7 +441,7 @@ test.describe('Task Heatmap E2E journey', () => {
     await installRuntimeMock(page, scenario);
     await openHeatmapClass(page);
 
-    await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+    await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     const header = stickyTableHeaderHolder(page);
     await expect(header).toBeVisible();
 

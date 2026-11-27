@@ -66,6 +66,7 @@ import {
   HEATMAP_CLASS_NAME,
   openHeatmapClass,
 } from './helpers/task-heatmap-end-to-end-helpers';
+import { assignmentNameButton } from './helpers/assignments-table-locators';
 
 const NARROW_VIEWPORT_WIDTH = 390;
 const WIDE_VIEWPORT_WIDTH = 1920;
@@ -322,14 +323,18 @@ async function openSurface(
   } else {
     await openHeatmapClass(page);
     if (surface === 'embedded') {
-      await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+      await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
     }
   }
-  await expect(stickyTableWrapper(page)).toBeVisible();
-  if (surface === 'overview') {
-    return page.locator('.ant-card').filter({ hasText: 'Student Averages' });
-  }
-  return page;
+  // The Class page overview now also renders the Assignments table, so
+  // the page-scoped wrapper would match two tables. Scope the readiness gate to
+  // the card owning the student table before any sticky geometry is measured.
+  const scope: StickyTableScope =
+    surface === 'overview'
+      ? page.locator('.ant-card').filter({ hasText: 'Student Averages' })
+      : page;
+  await expect(stickyTableWrapper(scope)).toBeVisible();
+  return scope;
 }
 
 /**

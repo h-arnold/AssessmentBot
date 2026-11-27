@@ -10,7 +10,7 @@ Use it alongside:
 
 ## 1. Purpose
 
-`MetricIconLabel` renders a Lucide icon as a column header label in the heatmap table (`TaskHeatmapTable`) and the student averages table (`studentAveragesTableColumns`). It is also used in `RecentAssignmentCard` for the same purpose.
+`MetricIconLabel` renders a Lucide icon as a column header label in the heatmap table (`TaskHeatmapTable`), the student averages table (`studentAveragesTableColumns`) and the Assignments table (`RecentAssignmentsSection`).
 
 The component wraps a Lucide icon in an Ant Design `Tooltip` so that:
 
@@ -61,12 +61,13 @@ These values are passed directly to `createElement(icon, { size: 20, strokeWidth
 
 ## 5. Relationship to heatmap table columns
 
-`MetricIconLabel` is used as the `title` property of Ant Design `Table.Column` definitions in two places:
+`MetricIconLabel` is used as the `title` property of Ant Design `Table.Column` definitions in three places:
 
 - **Heatmap task-column sub-headers** (`taskHeatmapTableColumns.tsx`): each metric column within a task group renders `MetricIconLabel` as its column title.
 - **Student averages table** (`studentAveragesTableColumns.tsx`): each metric column header renders `MetricIconLabel`.
+- **Assignments table** (`RecentAssignmentsSection.tsx`): each metric column header renders `MetricIconLabel`.
 
-In both cases, the `icon` and `label` come from `METRIC_DISPLAY_META`, a map that centralises metric display metadata (icon, label, display title) for each metric key.
+In all three cases, the `icon` and `label` come from `METRIC_DISPLAY_META`, a map that centralises metric display metadata (icon, label, display title) for each metric key.
 
 The icon renders inside a column header that also includes an Ant Design `Table.Column` `filterDropdown` and a column sorter. The `width: 100%` on the icon's wrapper span keeps the icon centred inside the `align: 'center'` column layout.
 

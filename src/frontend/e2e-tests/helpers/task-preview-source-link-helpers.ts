@@ -21,6 +21,7 @@ import {
   type ResponseItem,
 } from '../shared/endToEndRuntimeMocks';
 import { pageContent } from '@/pages/pageContent';
+import { assignmentNameButton, assignmentsTable } from './assignments-table-locators';
 import {
   SHEETS_ASSIGNMENT_TITLE,
   SLIDES_ASSIGNMENT_TITLE,
@@ -165,13 +166,13 @@ export async function captureSourceNavigation(
 // ---------------------------------------------------------------------------
 
 /**
- * Navigate root → Classes → the canonical class overview (Recent Assignments).
+ * Navigate root → Classes → the canonical class overview (Assignments table).
  *
  * @remarks
  * Mocks must already be installed before calling this.
  *
  * @param {Page} page - The Playwright page under test.
- * @returns {Promise<void>} Resolves once Recent Assignments is visible.
+ * @returns {Promise<void>} Resolves once the Assignments table is visible.
  */
 async function openCanonicalClassOverview(page: Page): Promise<void> {
   await page.goto('/');
@@ -180,7 +181,7 @@ async function openCanonicalClassOverview(page: Page): Promise<void> {
   const classCard = page.getByRole('article').filter({ hasText: SOURCE_LINK_CLASS_NAME });
   await expect(classCard).toBeVisible();
   await classCard.getByRole('button', { name: 'View' }).click();
-  await expect(page.getByText('Recent Assignments')).toBeVisible();
+  await expect(assignmentsTable(page)).toBeVisible();
 }
 
 /**
@@ -190,7 +191,7 @@ async function openCanonicalClassOverview(page: Page): Promise<void> {
  * Mocks must already be installed before calling this.
  *
  * @param {Page} page - The Playwright page under test.
- * @param {string} [assignmentTitle] - Recent-assignment card title to open.
+ * @param {string} [assignmentTitle] - Assignments table assignment-name button label to open.
  * @returns {Promise<void>} Resolves once the heatmap table is visible.
  */
 export async function openEmbeddedHeatmap(
@@ -198,7 +199,7 @@ export async function openEmbeddedHeatmap(
   assignmentTitle: string = SLIDES_ASSIGNMENT_TITLE
 ): Promise<void> {
   await openCanonicalClassOverview(page);
-  await page.getByRole('button').filter({ hasText: assignmentTitle }).click();
+  await assignmentNameButton(page, assignmentTitle).click();
   await expect(stickyTableWrapper(page)).toBeVisible();
 }
 

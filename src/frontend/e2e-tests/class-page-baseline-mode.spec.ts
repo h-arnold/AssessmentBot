@@ -37,6 +37,7 @@ import {
   type HeatmapSkippedTasksByStudentId,
 } from './helpers/task-heatmap-class-fixtures';
 import { stickyTableBody, stickyTableHeaderHolder } from './helpers/sticky-table-locators';
+import { assignmentNameButton, assignmentsTable } from './helpers/assignments-table-locators';
 
 // Visible control copy pinned by the attempt-baseline layout specification
 // (copy home: `pageContent` under `classDetail`).
@@ -82,7 +83,7 @@ const ALL_TASK_IDS = ['task_001', 'task_002', 'task_003'] as const;
  * top two candidates by attempted-task count — Student Ten (three attempts)
  * and Student Two (two attempts, lowest id among the tied group) — whose
  * common attempt set is Task 1 and Task 2. Task 3 therefore sits outside the
- * baseline while still carrying Student Ten's observations, so the card and
+ * baseline while still carrying Student Ten's observations, so the Assignments
  * table aggregates change when the mode toggles and the heatmap column is
  * marked as baseline-off.
  */
@@ -174,13 +175,23 @@ function getModeControl(page: Page): Locator {
 }
 
 /**
- * Locate the recent-assignment card's completeness pill (the first metric pill).
+ * Locate the Assignments table row's completeness pill (the first metric pill).
+ *
+ * @remarks
+ * Metric pills live in the row's cells rather than inside the assignment name
+ * button, so the row is narrowed by a page-level name-button locator (an inner
+ * `filter({ has })` locator must be a single user-facing locator, not a
+ * page-rooted chain) and the first tag in that row is the completeness pill.
  * @param {Page} page - Browser page showing the Class page overview.
- * @returns {Locator} The completeness pill inside the recent-assignment card.
+ * @returns {Locator} The completeness pill in the Assignments table row.
  */
 function getCardCompletenessPill(page: Page): Locator {
-  const card = page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE });
-  return card.locator('.ant-tag').first();
+  const row = assignmentsTable(page)
+    .locator('tbody tr.ant-table-row')
+    .filter({
+      has: page.getByRole('button', { name: HEATMAP_ASSIGNMENT_DISPLAY_TITLE, exact: true }),
+    });
+  return row.locator('.ant-tag').first();
 }
 
 /**
@@ -201,7 +212,7 @@ async function expectModeSettled(control: Locator, optionLabel: string): Promise
 }
 
 test.describe('Class page attempt-baseline mode', () => {
-  test('toggles to baseline tasks, changes the card aggregates, and restores them on toggle back', async ({
+  test('toggles to baseline tasks, changes the Assignments table aggregates, and restores them on toggle back', async ({
     page,
   }) => {
     await installRuntimeMock(page, createBaselineModeScenario(PARTIAL_ATTEMPT_SKIPS));
@@ -354,8 +365,8 @@ test.describe('Class page attempt-baseline mode', () => {
     await expect(control).toBeVisible();
     // Three attempt candidates keep the control enabled on arrival.
     await expect(control).not.toHaveClass(/ant-segmented-disabled/);
-    const card = page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE });
-    await expect(card).toBeVisible();
+    const assignmentName = assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE);
+    await expect(assignmentName).toHaveCount(1);
 
     await control.getByText(BASELINE_OPTION_LABEL).click();
     const blockingTitle = page.getByText("Couldn't compute averages");
@@ -368,7 +379,7 @@ test.describe('Class page attempt-baseline mode', () => {
     await page.mouse.move(0, 0);
     await control.getByText(ABSOLUTE_OPTION_LABEL).click();
     await expectModeSettled(control, ABSOLUTE_OPTION_LABEL);
-    await expect(card).toBeVisible();
+    await expect(assignmentName).toBeVisible();
     await expect(blockingTitle).toHaveCount(0);
     await expect(control.getByRole('radio', { name: ABSOLUTE_OPTION_LABEL })).toBeChecked();
   });
@@ -380,10 +391,11 @@ test.describe('Class page attempt-baseline mode', () => {
     await openHeatmapClass(page);
 
     const control = getModeControl(page);
-    const card = page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE });
+    const assignmentName = assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE);
+    await expect(assignmentName).toHaveCount(1);
 
     // Absolute mode: plain task headers, no caption.
-    await card.click();
+    await assignmentName.click();
     const header = stickyTableHeaderHolder(page);
     await expect(header).toBeVisible();
     await expect(header.getByRole('columnheader', { name: 'Task 3', exact: true })).toBeVisible();

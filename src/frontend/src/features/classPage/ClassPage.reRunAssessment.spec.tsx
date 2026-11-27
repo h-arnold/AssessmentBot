@@ -88,7 +88,7 @@ vi.mock('../taskHeatmap/TaskHeatmapTable', () => {
   };
 });
 
-/** Zero-data display metric used by the recent-assignment card fixture. */
+/** Zero-data display metric used by the Assignments table row fixture. */
 const NO_DATA_METRIC: ClassPageAdapterResult['studentAverages'][number]['metrics']['completeness'] =
   {
     state: 'notAttempted',
@@ -98,7 +98,7 @@ const NO_DATA_METRIC: ClassPageAdapterResult['studentAverages'][number]['metrics
     totalDataPoints: 0,
   };
 
-/** The recent-assignment card shown in the Class page overview. */
+/** The assignment row shown in the Class page overview table. */
 const RECENT_ASSIGNMENT: RecentAssignmentCardModel = {
   assignmentId: 'a-1',
   assignmentName: RECENT_ASSIGNMENT_NAME,
@@ -167,7 +167,7 @@ function getLastModalProperties(): Record<string, unknown> {
 }
 
 /**
- * Clicks the recent-assignment card so the Class page switches to its
+ * Clicks the assignment name in the Assignments table so the Class page switches to its
  * heatmap view.
  *
  * @param {ReturnType<typeof userEvent.setup>} user The user-event controller.

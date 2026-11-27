@@ -6,6 +6,7 @@ import {
   releaseNextDeferredSuccess,
 } from './shared/endToEndRuntimeMocks';
 import { stickyTableWrapper } from './helpers/sticky-table-locators';
+import { assignmentNameButton } from './helpers/assignments-table-locators';
 import {
   createReRunHeatmapScenario,
   HEATMAP_ASSIGNMENT_DISPLAY_TITLE,
@@ -170,7 +171,7 @@ function footerButton(dialog: Locator, name: string): Locator {
  */
 async function openAssignmentHeatmap(page: Page): Promise<void> {
   await openHeatmapClass(page);
-  await page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE }).click();
+  await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
   await expect(stickyTableWrapper(page)).toBeVisible();
 }
 

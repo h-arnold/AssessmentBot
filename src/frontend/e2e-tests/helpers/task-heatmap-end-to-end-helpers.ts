@@ -2,6 +2,7 @@
 
 import { expect, type Page } from '@playwright/test';
 import type { ResponseItem, RuntimeScenario } from '../shared/endToEndRuntimeMocks';
+import { assignmentsTable } from './assignments-table-locators';
 import { ABClassMetadataSchema } from '@/services/abClass/abClassMetadata.zod';
 import { ClassFullSchema } from '@/services/googleClassrooms/classDetail/classDetailService.zod';
 import {
@@ -208,7 +209,7 @@ export function createHeatmapScenario(options: CreateHeatmapScenarioOptions = {}
  * Navigate from the root shell to the heatmap class overview (ready state).
  *
  * @param {Page} page - The Playwright page.
- * @returns {Promise<void>} Resolves once the Recent Assignments section is visible.
+ * @returns {Promise<void>} Resolves once the Assignments table is visible.
  */
 export async function openHeatmapClass(page: Page): Promise<void> {
   await page.goto('/');
@@ -219,8 +220,9 @@ export async function openHeatmapClass(page: Page): Promise<void> {
   await expect(classCard).toBeVisible();
   await classCard.getByRole('button', { name: 'View' }).click();
 
-  // Wait for the ready-state Recent Assignments section (an antd Card title div).
-  await expect(page.getByText('Recent Assignments')).toBeVisible();
+  // Wait for the ready-state Assignments table, not the panel title: the
+  // shell also has an "Assignments" menu item with the same text.
+  await expect(assignmentsTable(page)).toBeVisible();
 }
 
 export interface CreateReRunHeatmapScenarioOptions {

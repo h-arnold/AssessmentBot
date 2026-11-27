@@ -2,11 +2,27 @@
  * Screenshot tests for Class Page and Task Heatmap navigation consistency.
  *
  * These tests capture screenshots of the Class Page overview and Task Heatmap
- * views to verify the consistent PageHeader navigation pattern.
+ * views to verify the consistent PageHeader navigation pattern. The Class Page
+ * capture is deliberately built from the canonical six-assignment class, so it
+ * shows the three-row preview, the title-bar disclosure and every column
+ * control; the heatmap captures keep their own single-assignment fixture.
  */
 
 import { expect, test, type Page } from '@playwright/test';
 import { installRuntimeMock } from './shared/endToEndRuntimeMocks';
+import {
+  assignmentNameButton,
+  assignmentsTable,
+  ASSIGNMENTS_HEADINGS,
+} from './helpers/assignments-table-locators';
+import {
+  EXPECTED_ASSIGNMENT_TITLES,
+  INITIAL_VISIBLE_ROWS,
+} from './helpers/assignments-table-expectations';
+import {
+  classPageAssignmentQueue,
+  openErrorClass,
+} from './helpers/assessment-error-preview-journeys';
 import {
   createHeatmapScenario,
   HEATMAP_CLASS_NAME,
@@ -38,12 +54,12 @@ async function openTaskHeatmap(page: Page): Promise<void> {
   await expect(classCard).toBeVisible();
   await classCard.getByRole('button', { name: 'View' }).click();
 
-  // Wait for the ready-state Recent Assignments section.
-  await expect(page.getByText('Recent Assignments')).toBeVisible();
+  // Wait for the ready-state Assignments table.
+  await expect(assignmentsTable(page)).toBeVisible();
 
-  // Click the recent assignment card to open heatmap.
-  const card = page.getByRole('button').filter({ hasText: HEATMAP_ASSIGNMENT_DISPLAY_TITLE });
-  await card.click();
+  // Click the assignment's name button to open the heatmap. The table row
+  // itself is not an entry point.
+  await assignmentNameButton(page, HEATMAP_ASSIGNMENT_DISPLAY_TITLE).click();
 
   // Wait for heatmap table.
   await expect(stickyTableWrapper(page)).toBeVisible();
@@ -51,19 +67,35 @@ async function openTaskHeatmap(page: Page): Promise<void> {
 
 test.describe('Navigation screenshot tests', () => {
   test('Class Page overview with PageHeader', async ({ page }) => {
-    const scenario = createHeatmapScenario();
-    await installRuntimeMock(page, scenario);
+    // The canonical six-assignment class is essential here: its three-row
+    // preview, six column controls and title-bar disclosure are the capture
+    // subject. The single-assignment heatmap fixture cannot show any of them.
+    await openErrorClass(page, { getAssignment: classPageAssignmentQueue() });
 
-    await page.goto('/');
-    await page.getByRole('menuitem', { name: CLASSES_NAV_LABEL }).click();
-
-    // Click the heatmap class card's View button to open Class Page
-    const classCard = page.getByRole('article').filter({ hasText: HEATMAP_CLASS_NAME });
-    await expect(classCard).toBeVisible();
-    await classCard.getByRole('button', { name: 'View' }).click();
-
-    // Wait for the Class Page ready state
-    await expect(page.getByText('Recent Assignments')).toBeVisible();
+    const table = assignmentsTable(page);
+    await expect(table).toBeVisible();
+    await expect(table.locator('tbody tr.ant-table-row')).toHaveCount(INITIAL_VISIBLE_ROWS);
+    await expect
+      .poll(async () => {
+        const names = await table
+          .locator('tbody tr.ant-table-row')
+          .getByRole('button')
+          .allTextContents();
+        return names.map((name) => name.trim());
+      })
+      .toEqual(EXPECTED_ASSIGNMENT_TITLES.slice(0, INITIAL_VISIBLE_ROWS));
+    await expect(table.getByRole('columnheader')).toHaveCount(ASSIGNMENTS_HEADINGS.length);
+    for (const heading of ASSIGNMENTS_HEADINGS) {
+      const header = table.getByRole('columnheader', { name: heading, exact: true });
+      await expect(header).toHaveCount(1);
+      await expect(header.locator('.ant-table-column-sorters')).toHaveCount(1);
+      await expect(header.locator('.ant-table-filter-trigger')).toHaveCount(1);
+    }
+    const disclosure = page.getByRole('button', { name: 'Show all assignments' });
+    await expect(disclosure).toBeVisible();
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    const cardHead = page.locator('.ant-card-head').filter({ hasText: 'Assignments' });
+    await expect(cardHead.getByRole('button', { name: 'Show all assignments' })).toHaveCount(1);
 
     // The attempt-baseline mode control now sits in the Student Averages
     // card's top-right corner; assert it before capturing so the re-capture is
